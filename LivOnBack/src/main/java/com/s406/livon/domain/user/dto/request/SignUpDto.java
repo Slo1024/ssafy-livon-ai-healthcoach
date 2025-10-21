@@ -1,5 +1,6 @@
 package com.s406.livon.domain.user.dto.request;
 
+import com.s406.livon.domain.user.entity.Organizations;
 import com.s406.livon.domain.user.entity.User;
 import com.s406.livon.domain.user.enums.Gender;
 import com.s406.livon.domain.user.enums.Role;
@@ -26,6 +27,7 @@ public class SignUpDto {
     private double weight;
     private double height;
     private Gender gender;
+    private Organizations organizations;
     private int age;
 
 
@@ -38,6 +40,7 @@ public class SignUpDto {
                 .weight(this.weight)
                 .roles(role)
                 .height(this.height)
+                .organizations(this.organizations)
                 .gender(this.gender)
                 .build();
     }

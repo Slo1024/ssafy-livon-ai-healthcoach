@@ -96,6 +96,21 @@ public class UserController {
         return ResponseEntity.ok().body(ApiResponse.onSuccess(savedMemberDto));
     }
 
+    /**
+     * 생체데이터
+     * @param token
+     * @param healthSurveyRequestDto
+     * @return
+     */
+
+    @PostMapping("/health-survey")
+    @Operation(summary = "생체데이터 API", description = "생체 데이터를 수집합니다.")
+    public ResponseEntity<?> healthSurvey(@RequestHeader("Authorization") String token,@RequestBody HealthSurveyRequestDto healthSurveyRequestDto) {
+        // 회원가입 처리
+        UUID userId = jwtTokenProvider.getUserId(token.substring(7));
+        String savedHealthSurvey = userService.healthSurvey(userId,healthSurveyRequestDto);
+        return ResponseEntity.ok().body(ApiResponse.onSuccess(savedHealthSurvey));
+    }
 
 
     /**

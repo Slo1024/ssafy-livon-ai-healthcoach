@@ -3,6 +3,7 @@ package com.s406.livon.domain.user.service;
 
 
 import com.s406.livon.domain.user.dto.JwtToken;
+import com.s406.livon.domain.user.dto.request.HealthSurveyRequestDto;
 import com.s406.livon.domain.user.dto.request.ReissueDto;
 import com.s406.livon.domain.user.dto.request.ResetPasswordDto;
 import com.s406.livon.domain.user.dto.request.SignUpDto;
@@ -40,7 +41,7 @@ public class UserService {
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
     private final RedisTemplate<String, String> redisTemplate;
-    
+    private final HealthSurveyRepository healthSurveyRepository;
 
 
 
@@ -87,7 +88,10 @@ public class UserService {
 
         // 회원가입 성공 처리
         List<Role> roles = new ArrayList<>();
-        roles.add(Role.MEMBER);  // USER 권한 부여
+        roles.add(Role.MEMBER);  // MEMBER 권한 부여
+
+
+
         return UserDto.toDto(userRepository.save(signUpDto.toEntity(encodedPassword, roles)));
     }
 
@@ -262,5 +266,15 @@ public class UserService {
 
         // 최종적으로 사용자 삭제
         userRepository.delete(user);
+    }
+
+    @Transactional
+    public String healthSurvey(UUID userId, HealthSurveyRequestDto healthSurveyRequestDto) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
+        HealthSurvey healthSurvey = healthSurveyRequestDto.toEntity(user);
+        healthSurveyRepository.save(healthSurvey);
+
+        return "생체 데이터가 저장되었습니다.";
     }
 }

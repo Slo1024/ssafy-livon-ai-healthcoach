@@ -3,6 +3,7 @@ package com.s406.livon.domain.user.controller;
 
 import com.s406.livon.domain.user.dto.JwtToken;
 import com.s406.livon.domain.user.dto.request.*;
+import com.s406.livon.domain.user.dto.response.OrganizationsResponseDto;
 import com.s406.livon.domain.user.dto.response.UserDto;
 import com.s406.livon.domain.user.service.UserService;
 import com.s406.livon.global.security.jwt.JwtTokenProvider;
@@ -96,21 +97,7 @@ public class UserController {
         return ResponseEntity.ok().body(ApiResponse.onSuccess(savedMemberDto));
     }
 
-    /**
-     * 생체데이터
-     * @param token
-     * @param healthSurveyRequestDto
-     * @return
-     */
 
-    @PostMapping("/health-survey")
-    @Operation(summary = "생체데이터 API", description = "생체 데이터를 수집합니다.")
-    public ResponseEntity<?> healthSurvey(@RequestHeader("Authorization") String token,@RequestBody HealthSurveyRequestDto healthSurveyRequestDto) {
-        // 회원가입 처리
-        UUID userId = jwtTokenProvider.getUserId(token.substring(7));
-        String savedHealthSurvey = userService.healthSurvey(userId,healthSurveyRequestDto);
-        return ResponseEntity.ok().body(ApiResponse.onSuccess(savedHealthSurvey));
-    }
 
 
     /**
@@ -194,4 +181,31 @@ public class UserController {
         userService.deleteUser(userId);
         return ResponseEntity.ok().body(ApiResponse.onSuccess(null, "회원탈퇴 성공"));
     }
+
+    /**
+     * 생체데이터
+     * @param token
+     * @param healthSurveyRequestDto
+     * @return
+     */
+
+    @PostMapping("/health-survey")
+    @Operation(summary = "생체데이터 API", description = "생체 데이터를 수집합니다.")
+    public ResponseEntity<?> healthSurvey(@RequestHeader("Authorization") String token,@RequestBody HealthSurveyRequestDto healthSurveyRequestDto) {
+        // 회원가입 처리
+        UUID userId = jwtTokenProvider.getUserId(token.substring(7));
+        String savedHealthSurvey = userService.healthSurvey(userId,healthSurveyRequestDto);
+        return ResponseEntity.ok().body(ApiResponse.onSuccess(savedHealthSurvey));
+    }
+
+
+    @GetMapping("/organization")
+    @Operation(summary = "전체 회사보기 API", description = "전체 회사를 조회합니다.")
+    public ResponseEntity<?> healthSurvey() {
+        // 회원가입 처리
+        return ResponseEntity.ok().body(ApiResponse.onSuccess(userService.allOrganizations()));
+    }
+
+
 }
+

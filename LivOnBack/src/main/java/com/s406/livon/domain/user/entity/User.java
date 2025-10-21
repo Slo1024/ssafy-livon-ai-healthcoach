@@ -62,10 +62,6 @@ public class User extends BaseTime implements UserDetails {
   @Column
   private int age;
 
-  @OneToMany(mappedBy = "coachInfo", cascade = CascadeType.ALL, orphanRemoval = true)
-  private List<CoachCertificates> coachCertificatesList;
-
-
 
   @ElementCollection(fetch = FetchType.EAGER)
   @Builder.Default

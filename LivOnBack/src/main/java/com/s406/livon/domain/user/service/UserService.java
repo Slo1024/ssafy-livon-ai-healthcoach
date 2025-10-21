@@ -8,6 +8,7 @@ import com.s406.livon.domain.user.dto.request.ReissueDto;
 import com.s406.livon.domain.user.dto.request.ResetPasswordDto;
 import com.s406.livon.domain.user.dto.request.SignUpDto;
 import com.s406.livon.domain.user.dto.response.MyInfoResponseDto;
+import com.s406.livon.domain.user.dto.response.OrganizationsResponseDto;
 import com.s406.livon.domain.user.dto.response.UserDto;
 import com.s406.livon.domain.user.entity.*;
 import com.s406.livon.domain.user.enums.Role;
@@ -42,6 +43,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final RedisTemplate<String, String> redisTemplate;
     private final HealthSurveyRepository healthSurveyRepository;
+    private final OrganizationsRepository organizationsRepository;
 
 
 
@@ -273,8 +275,21 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
         HealthSurvey healthSurvey = healthSurveyRequestDto.toEntity(user);
-        healthSurveyRepository.save(healthSurvey);
+        if(healthSurveyRepository.existsById(user.getId())){
+            HealthSurvey  healthSurveyUpdate= healthSurveyRepository.findById(user.getId())
+                    .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND_HEALTH));
+            healthSurveyUpdate.update(healthSurveyRequestDto);
+            return "생체 데이터가 업데이트 되었습니다.";
+
+        }else{
+            healthSurveyRepository.save(healthSurvey);
+        }
 
         return "생체 데이터가 저장되었습니다.";
+    }
+
+    public List<OrganizationsResponseDto> allOrganizations() {
+        return organizationsRepository.findAll().stream().map(OrganizationsResponseDto::toDto).toList();
+
     }
 }

@@ -30,6 +30,10 @@ public class User extends BaseTime implements UserDetails {
   private UUID id;
 
 
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "organizations_id")
+  private Organizations organizations;
+
   @Column(nullable = false)
   private String email;
 
@@ -57,7 +61,6 @@ public class User extends BaseTime implements UserDetails {
   // 나이
   @Column
   private int age;
-
 
 
   @ElementCollection(fetch = FetchType.EAGER)

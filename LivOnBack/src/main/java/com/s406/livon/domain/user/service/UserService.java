@@ -3,10 +3,12 @@ package com.s406.livon.domain.user.service;
 
 
 import com.s406.livon.domain.user.dto.JwtToken;
+import com.s406.livon.domain.user.dto.request.HealthSurveyRequestDto;
 import com.s406.livon.domain.user.dto.request.ReissueDto;
 import com.s406.livon.domain.user.dto.request.ResetPasswordDto;
 import com.s406.livon.domain.user.dto.request.SignUpDto;
 import com.s406.livon.domain.user.dto.response.MyInfoResponseDto;
+import com.s406.livon.domain.user.dto.response.OrganizationsResponseDto;
 import com.s406.livon.domain.user.dto.response.UserDto;
 import com.s406.livon.domain.user.entity.*;
 import com.s406.livon.domain.user.enums.Role;
@@ -40,7 +42,8 @@ public class UserService {
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
     private final RedisTemplate<String, String> redisTemplate;
-    
+    private final HealthSurveyRepository healthSurveyRepository;
+    private final OrganizationsRepository organizationsRepository;
 
 
 
@@ -87,8 +90,12 @@ public class UserService {
 
         // 회원가입 성공 처리
         List<Role> roles = new ArrayList<>();
-        roles.add(Role.MEMBER);  // USER 권한 부여
-        return UserDto.toDto(userRepository.save(signUpDto.toEntity(encodedPassword, roles)));
+        roles.add(Role.MEMBER);  // MEMBER 권한 부여
+
+        Organizations organizations = organizationsRepository.findByName(signUpDto.getOrganizations())
+                .orElseThrow(()-> new UserHandler(ErrorStatus.USER_NOT_FOUND_ORGANIZATIONS));
+
+        return UserDto.toDto(userRepository.save(signUpDto.toEntity(encodedPassword, roles,organizations)));
     }
 
 
@@ -262,5 +269,28 @@ public class UserService {
 
         // 최종적으로 사용자 삭제
         userRepository.delete(user);
+    }
+
+    @Transactional
+    public String healthSurvey(UUID userId, HealthSurveyRequestDto healthSurveyRequestDto) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
+        HealthSurvey healthSurvey = healthSurveyRequestDto.toEntity(user);
+        if(healthSurveyRepository.existsById(user.getId())){
+            HealthSurvey  healthSurveyUpdate= healthSurveyRepository.findById(user.getId())
+                    .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND_HEALTH));
+            healthSurveyUpdate.update(healthSurveyRequestDto);
+            return "생체 데이터가 업데이트 되었습니다.";
+
+        }else{
+            healthSurveyRepository.save(healthSurvey);
+        }
+
+        return "생체 데이터가 저장되었습니다.";
+    }
+
+    public List<OrganizationsResponseDto> allOrganizations() {
+        return organizationsRepository.findAll().stream().map(OrganizationsResponseDto::toDto).toList();
+
     }
 }

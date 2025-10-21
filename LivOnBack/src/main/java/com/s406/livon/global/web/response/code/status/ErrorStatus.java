@@ -39,7 +39,8 @@ public enum ErrorStatus implements BaseErrorCode {
     USER_INVALID_CREDENTIALS(HttpStatus.BAD_REQUEST, "USER4003", "로그인 정보가 일치하지 않습니다."),
     USER_NOT_MATCH(HttpStatus.UNAUTHORIZED, "USER4005", "접근 권한이 없습니다."),
     FCM_NOT_FOUND(HttpStatus.BAD_REQUEST, "USER4010", "해당 유저의 FCM토큰이 없습니다"),
-
+    USER_NOT_FOUND_HEALTH(HttpStatus.INTERNAL_SERVER_ERROR,"USER4007","유저 생체 데이터를 찾을수 없습니다"),
+    USER_NOT_FOUND_ORGANIZATIONS(HttpStatus.INTERNAL_SERVER_ERROR,"USER4008","회사를 찾을수 없습니다"),
     // password 응답
     PASSWORD_NOT_MATCH(HttpStatus.BAD_REQUEST, "PASSWORD4000", "비밀번호가 맞지 않습니다."),
     PASSWORD_SAME_AS_OLD(HttpStatus.CONFLICT, "PASSWORD4090", "기존 비밀번호와 동일합니다"),

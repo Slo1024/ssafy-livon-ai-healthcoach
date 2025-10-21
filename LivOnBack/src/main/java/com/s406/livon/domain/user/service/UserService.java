@@ -92,9 +92,10 @@ public class UserService {
         List<Role> roles = new ArrayList<>();
         roles.add(Role.MEMBER);  // MEMBER 권한 부여
 
+        Organizations organizations = organizationsRepository.findByName(signUpDto.getOrganizations())
+                .orElseThrow(()-> new UserHandler(ErrorStatus.USER_NOT_FOUND_ORGANIZATIONS));
 
-
-        return UserDto.toDto(userRepository.save(signUpDto.toEntity(encodedPassword, roles)));
+        return UserDto.toDto(userRepository.save(signUpDto.toEntity(encodedPassword, roles,organizations)));
     }
 
 

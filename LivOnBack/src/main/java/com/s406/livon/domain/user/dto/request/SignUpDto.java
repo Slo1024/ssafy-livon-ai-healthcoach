@@ -27,11 +27,11 @@ public class SignUpDto {
     private double weight;
     private double height;
     private Gender gender;
-    private Organizations organizations;
+    private String organizations;
     private int age;
 
 
-    public User toEntity(String encodedPassword,List<Role> role){
+    public User toEntity(String encodedPassword,List<Role> role,Organizations organizations){
         return User.builder()
                 .email(this.email)
                 .password(encodedPassword)
@@ -40,7 +40,7 @@ public class SignUpDto {
                 .weight(this.weight)
                 .roles(role)
                 .height(this.height)
-                .organizations(this.organizations)
+                .organizations(organizations)
                 .gender(this.gender)
                 .build();
     }

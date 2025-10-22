@@ -11,7 +11,7 @@ import java.util.UUID;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-
+@Builder
 public class CoachInfo {
     @Id
     @Column(name = "user_id", columnDefinition = "BINARY(16)") // DB 컬럼 설정 (User와 동일하게)

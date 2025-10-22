@@ -48,6 +48,7 @@ public class User extends BaseTime implements UserDetails {
 
   // 성별
   @Column
+  @Enumerated(EnumType.STRING)
   private Gender gender;
 
   // 나이 -> 생년월일로 수정

@@ -31,17 +31,18 @@ public class SignUpDto {
     private int age;
 
 
-    public User toEntity(String encodedPassword,List<Role> role,Organizations organizations){
+    public User toEntity(String encodedPassword,Organizations organizations){
         return User.builder()
                 .email(this.email)
                 .password(encodedPassword)
                 .nickname(this.nickname)
                 .profileImage(this.profileImage)
                 .weight(this.weight)
-                .roles(role)
+                .roles(this.roles)
                 .height(this.height)
                 .organizations(organizations)
                 .gender(this.gender)
+                .age(this.age)
                 .build();
     }
 }

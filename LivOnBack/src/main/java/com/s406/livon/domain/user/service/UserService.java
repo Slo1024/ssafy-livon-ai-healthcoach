@@ -3,10 +3,7 @@ package com.s406.livon.domain.user.service;
 
 
 import com.s406.livon.domain.user.dto.JwtToken;
-import com.s406.livon.domain.user.dto.request.HealthSurveyRequestDto;
-import com.s406.livon.domain.user.dto.request.ReissueDto;
-import com.s406.livon.domain.user.dto.request.ResetPasswordDto;
-import com.s406.livon.domain.user.dto.request.SignUpDto;
+import com.s406.livon.domain.user.dto.request.*;
 import com.s406.livon.domain.user.dto.response.MyInfoResponseDto;
 import com.s406.livon.domain.user.dto.response.OrganizationsResponseDto;
 import com.s406.livon.domain.user.dto.response.UserDto;
@@ -44,6 +41,7 @@ public class UserService {
     private final RedisTemplate<String, String> redisTemplate;
     private final HealthSurveyRepository healthSurveyRepository;
     private final OrganizationsRepository organizationsRepository;
+    private final CoachInfoRepository coachInfoRepository;
 
 
 
@@ -89,13 +87,12 @@ public class UserService {
         String encodedPassword = passwordEncoder.encode(signUpDto.getPassword());
 
         // 회원가입 성공 처리
-        List<Role> roles = new ArrayList<>();
-        roles.add(Role.MEMBER);  // MEMBER 권한 부여
 
+        // 존재하는 조직인지 확인, 없으면 에러 처리
         Organizations organizations = organizationsRepository.findByName(signUpDto.getOrganizations())
                 .orElseThrow(()-> new UserHandler(ErrorStatus.USER_NOT_FOUND_ORGANIZATIONS));
 
-        return UserDto.toDto(userRepository.save(signUpDto.toEntity(encodedPassword, roles,organizations)));
+        return UserDto.toDto(userRepository.save(signUpDto.toEntity(encodedPassword,organizations)));
     }
 
 
@@ -292,5 +289,14 @@ public class UserService {
     public List<OrganizationsResponseDto> allOrganizations() {
         return organizationsRepository.findAll().stream().map(OrganizationsResponseDto::toDto).toList();
 
+    }
+
+    @Transactional
+    public String coachInfo(UUID userId, CoachInfoRequestDto coachInfoRequestDto) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
+        CoachInfo coachInfo = coachInfoRequestDto.toEntity(user, coachInfoRequestDto);
+        coachInfoRepository.save(coachInfo);
+        return "코치 정보가 저장되었습니다.";
     }
 }

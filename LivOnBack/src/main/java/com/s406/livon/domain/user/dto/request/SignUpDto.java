@@ -23,7 +23,7 @@ public class SignUpDto {
     private String password; // 비밀번호
     private String nickname; //닉네임
     private String profileImage;
-    private List<Role> roles = new ArrayList<>();   //  role을 ArrayList로 담는 이유?
+    private List<Role> roles = new ArrayList<>();
     private double weight;
     private double height;
     private Gender gender;

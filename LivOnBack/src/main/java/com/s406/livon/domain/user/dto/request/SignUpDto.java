@@ -33,7 +33,7 @@ public class SignUpDto {
     // 로그인 시 받는 정보 중 몸무게/키 삭제
     // 기존에 int age로 받던 정보를 Date birthdate로 변경
 
-    public User toEntity(String encodedPassword,List<Role> role,Organizations organizations){
+    public User toEntity(String encodedPassword,Organizations organizations){
         return User.builder()
                 .email(this.email)
                 .password(encodedPassword)

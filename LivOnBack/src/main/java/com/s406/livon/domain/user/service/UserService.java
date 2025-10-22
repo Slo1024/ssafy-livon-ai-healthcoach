@@ -90,12 +90,13 @@ public class UserService {
 
         // 회원가입 성공 처리
         List<Role> roles = new ArrayList<>();
-        roles.add(Role.MEMBER);  // MEMBER 권한 부여
+        roles.add(signUpDto.getRoles().get(0)); // MEMBER 권한 부여 -> MEMBER/COACH 선택한 값으로 권한 부여
 
+        // 존재하는 조직인지 확인, 없으면 에러 처리
         Organizations organizations = organizationsRepository.findByName(signUpDto.getOrganizations())
                 .orElseThrow(()-> new UserHandler(ErrorStatus.USER_NOT_FOUND_ORGANIZATIONS));
 
-        return UserDto.toDto(userRepository.save(signUpDto.toEntity(encodedPassword, roles,organizations)));
+        return UserDto.toDto(userRepository.save(signUpDto.toEntity(encodedPassword,roles,organizations)));
     }
 
 

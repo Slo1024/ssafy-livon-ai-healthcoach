@@ -22,6 +22,13 @@ public class HealthSurvey {
     @JoinColumn(name = "user_id")
     private User user;
 
+    // 기존 User Entity에 있던 키/몸무게 컬럼을 HealthSurvey로 이동
+    @Column
+    private double weight;
+
+    @Column
+    private double height;
+
     @Column
     private int steps;
 

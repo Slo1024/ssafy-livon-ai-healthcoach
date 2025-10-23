@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * 상담 예약 엔티티
@@ -24,7 +25,7 @@ public class Consultation {
     private Long id;
     
     @Column(name = "user_id", nullable = false)
-    private Long userId;
+    private UUID userId;
     
     @Column(nullable = false)
     private Integer capacity;

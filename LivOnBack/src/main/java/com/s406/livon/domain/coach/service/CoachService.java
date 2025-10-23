@@ -120,7 +120,7 @@ public class CoachService {
 
         // 자격증 목록 조회
         List<String> certificates = coachCertificateRepository
-                .findCertificateNamesByUserId(coachId);
+                .findCertificateNamesByCoachInfoId(coachId);
 
         return CoachDetailResponse.of(
                 coach.getId(),

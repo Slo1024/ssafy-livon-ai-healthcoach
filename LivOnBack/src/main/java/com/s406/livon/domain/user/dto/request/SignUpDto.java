@@ -1,5 +1,6 @@
 package com.s406.livon.domain.user.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.s406.livon.domain.user.entity.Organizations;
 import com.s406.livon.domain.user.entity.User;
 import com.s406.livon.domain.user.enums.Gender;
@@ -11,6 +12,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 @Getter
@@ -24,12 +26,12 @@ public class SignUpDto {
     private String nickname; //닉네임
     private String profileImage;
     private List<Role> roles = new ArrayList<>();
-    private double weight;
-    private double height;
     private Gender gender;
     private String organizations;
-    private int age;
-
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd", timezone = "Asia/Seoul")
+    private Date birthdate;
+    // 로그인 시 받는 정보 중 몸무게/키 삭제
+    // 기존에 int age로 받던 정보를 Date birthdate로 변경
 
     public User toEntity(String encodedPassword,Organizations organizations){
         return User.builder()
@@ -37,12 +39,10 @@ public class SignUpDto {
                 .password(encodedPassword)
                 .nickname(this.nickname)
                 .profileImage(this.profileImage)
-                .weight(this.weight)
-                .roles(this.roles)
-                .height(this.height)
+                .roles(role)
                 .organizations(organizations)
                 .gender(this.gender)
-                .age(this.age)
+                .birthdate(this.birthdate)
                 .build();
     }
 }

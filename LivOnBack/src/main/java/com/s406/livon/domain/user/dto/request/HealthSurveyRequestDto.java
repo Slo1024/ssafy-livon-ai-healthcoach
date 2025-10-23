@@ -22,10 +22,15 @@ public class HealthSurveyRequestDto {
     private int avgSleepHours;
     private String activityLevel;
     private String caffeineIntakeLevel;
+    // 키/몸무게 정보를 건강설문에서 받도록 수정
+    private double height;
+    private double weight;
 
     public HealthSurvey toEntity(User user){
         return HealthSurvey.builder()
                 .user(user)
+                .height(this.height)
+                .weight(this.weight)
                 .steps(this.steps)
                 .sleepTime(this.sleepTime)
                 .disease(this.disease)

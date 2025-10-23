@@ -5,6 +5,7 @@ import com.s406.livon.domain.user.dto.JwtToken;
 import com.s406.livon.domain.user.dto.request.*;
 import com.s406.livon.domain.user.dto.response.OrganizationsResponseDto;
 import com.s406.livon.domain.user.dto.response.UserDto;
+import com.s406.livon.domain.user.entity.CoachInfo;
 import com.s406.livon.domain.user.service.UserService;
 import com.s406.livon.global.security.jwt.JwtTokenProvider;
 import com.s406.livon.global.web.response.ApiResponse;
@@ -96,6 +97,7 @@ public class UserController {
         UserDto savedMemberDto = userService.signUp(signUpDto);
         return ResponseEntity.ok().body(ApiResponse.onSuccess(savedMemberDto));
     }
+
 
 
 
@@ -204,6 +206,20 @@ public class UserController {
     public ResponseEntity<?> healthSurvey() {
         // 회원가입 처리
         return ResponseEntity.ok().body(ApiResponse.onSuccess(userService.allOrganizations()));
+    }
+
+    /**
+     * 코치 정보 입력받기
+     *
+     */
+    @PostMapping("/coaches/profile")
+    @Operation(summary = "코치 정보 입력받기 API", description = "코치 정보를 입력받습니다.")
+    public ResponseEntity<?> coachInfo(@RequestHeader("Authorization") String token, @RequestBody CoachInfoRequestDto coachInfoRequestDto) {
+        // 회원가입 처리
+        UUID userId = jwtTokenProvider.getUserId(token.substring(7));
+
+        String savedCoachInfo = userService.coachInfo(userId, coachInfoRequestDto);
+        return ResponseEntity.ok().body(ApiResponse.onSuccess(savedCoachInfo));
     }
 
 

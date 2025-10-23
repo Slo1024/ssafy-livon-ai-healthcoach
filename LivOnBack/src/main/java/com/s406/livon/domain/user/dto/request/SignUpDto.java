@@ -39,7 +39,7 @@ public class SignUpDto {
                 .password(encodedPassword)
                 .nickname(this.nickname)
                 .profileImage(this.profileImage)
-                .roles(this.roles)
+                .roles(role)
                 .organizations(organizations)
                 .gender(this.gender)
                 .birthdate(this.birthdate)

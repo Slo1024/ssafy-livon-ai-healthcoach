@@ -4,11 +4,11 @@ package com.s406.livon.domain.user.service;
 
 import com.s406.livon.domain.user.dto.JwtToken;
 import com.s406.livon.domain.user.dto.request.*;
+import com.s406.livon.domain.user.dto.response.HealthSurveyResponseDto;
 import com.s406.livon.domain.user.dto.response.MyInfoResponseDto;
 import com.s406.livon.domain.user.dto.response.OrganizationsResponseDto;
 import com.s406.livon.domain.user.dto.response.UserDto;
 import com.s406.livon.domain.user.entity.*;
-import com.s406.livon.domain.user.enums.Role;
 import com.s406.livon.domain.user.repository.*;
 import com.s406.livon.global.error.handler.TokenHandler;
 import com.s406.livon.global.error.handler.UserHandler;
@@ -25,7 +25,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -143,9 +142,18 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
 
+        // User와 연관된 HealthSurvey 조회 (없을 수 있음)
+        HealthSurvey healthSurvey = user.getHealthSurvey();
+
+        // HealthSurveyResponseDto 생성 (없으면 기본값)
+        HealthSurveyResponseDto healthSurveyDto = HealthSurveyResponseDto.toDTO(healthSurvey);
+
         return MyInfoResponseDto.builder()
-                .profileImage(user.getProfileImage())
                 .nickname(user.getNickname())
+                .profileImage(user.getProfileImage())
+                .gender(user.getGender())
+                .birthdate(user.getBirthdate())
+                .healthSurvey(healthSurveyDto)
                 .build();
     }
 

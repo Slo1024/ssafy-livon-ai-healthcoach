@@ -56,6 +56,9 @@ public class User extends BaseTime implements UserDetails {
   @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd", timezone = "Asia/Seoul")
   private Date birthdate;
 
+  @OneToOne(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+  private HealthSurvey healthSurvey;
+
 
   @ElementCollection(fetch = FetchType.EAGER)
   @Builder.Default

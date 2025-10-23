@@ -14,7 +14,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CoachListResponse {
+public class CoachListResponseDto {
     
     private UUID userId;
     private String nickname;
@@ -22,9 +22,9 @@ public class CoachListResponse {
     private String introduce;
     private String profileImage;
     
-    public static CoachListResponse of(UUID userId, String nickname, String job,
-                                       String introduce, String profileImage) {
-        return CoachListResponse.builder()
+    public static CoachListResponseDto toDTO(UUID userId, String nickname, String job,
+                                             String introduce, String profileImage) {
+        return CoachListResponseDto.builder()
                 .userId(userId)
                 .nickname(nickname)
                 .job(job)

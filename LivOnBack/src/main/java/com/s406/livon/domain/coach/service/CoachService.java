@@ -1,9 +1,9 @@
 package com.s406.livon.domain.coach.service;
 
-import com.s406.livon.domain.coach.dto.request.CoachSearchRequest;
-import com.s406.livon.domain.coach.dto.response.AvailableTimesResponse;
-import com.s406.livon.domain.coach.dto.response.CoachDetailResponse;
-import com.s406.livon.domain.coach.dto.response.CoachListResponse;
+import com.s406.livon.domain.coach.dto.request.CoachSearchRequestDto;
+import com.s406.livon.domain.coach.dto.response.AvailableTimesResponseDto;
+import com.s406.livon.domain.coach.dto.response.CoachDetailResponseDto;
+import com.s406.livon.domain.coach.dto.response.CoachListResponseDto;
 import com.s406.livon.domain.coach.entity.Consultation;
 import com.s406.livon.domain.coach.repository.CoachRepository;
 import com.s406.livon.domain.coach.repository.ConsultationRepository;
@@ -28,7 +28,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -57,10 +56,10 @@ public class CoachService {
     /**
      * 코치 목록 조회
      */
-    public Page<CoachListResponse> getCoachList(UUID currentUserId,
-                                                CoachSearchRequest request,
-                                                int page,
-                                                int size) {
+    public Page<CoachListResponseDto> getCoachList(UUID currentUserId,
+                                                   CoachSearchRequestDto request,
+                                                   int page,
+                                                   int size) {
         // 현재 사용자 정보 조회 (조직 정보 필요)
         User currentUser = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new GeneralException(ErrorStatus.USER_NOT_FOUND));
@@ -71,7 +70,7 @@ public class CoachService {
         Page<User> coaches;
 
         // 조직 필터에 따른 조회
-        if (request.getOrganizationType() == CoachSearchRequest.OrganizationType.SAME_ORG) {
+        if (request.getOrganizationType() == CoachSearchRequestDto.OrganizationType.SAME_ORG) {
             coaches = coachRepository.findCoachesByOrganization(
                     Role.COACH,  // Role enum 전달
                     currentUser.getOrganizations(),
@@ -91,7 +90,7 @@ public class CoachService {
             CoachInfo coachInfo = coachInfoRepository.findByUserId(coach.getId())
                     .orElse(null);
 
-            return CoachListResponse.of(
+            return CoachListResponseDto.toDTO(
                     coach.getId(),
                     coach.getNickname(),
                     coachInfo != null ? coachInfo.getJob() : null,
@@ -104,7 +103,7 @@ public class CoachService {
     /**
      * 코치 상세 정보 조회
      */
-    public CoachDetailResponse getCoachDetail(UUID coachId) {
+    public CoachDetailResponseDto getCoachDetail(UUID coachId) {
         // 코치 조회
         User coach = userRepository.findByIdAndRole(coachId, Role.COACH)
                 .orElseThrow(() -> new GeneralException(ErrorStatus.USER_NOT_FOUND));
@@ -122,7 +121,7 @@ public class CoachService {
         List<String> certificates = coachCertificateRepository
                 .findCertificateNamesByCoachInfoId(coachId);
 
-        return CoachDetailResponse.of(
+        return CoachDetailResponseDto.toDTO(
                 coach.getId(),
                 coach.getNickname(),
                 coachInfo != null ? coachInfo.getJob() : null,
@@ -136,7 +135,7 @@ public class CoachService {
     /**
      * 코치 예약 가능 시간대 조회
      */
-    public AvailableTimesResponse getAvailableTimes(UUID coachId, String dateStr) {
+    public AvailableTimesResponseDto getAvailableTimes(UUID coachId, String dateStr) {
         // 날짜 유효성 검증
         LocalDate requestDate = validateAndParseDate(dateStr);
 
@@ -165,7 +164,7 @@ public class CoachService {
                 .filter(slot -> !bookedTimeSlots.contains(slot))
                 .collect(Collectors.toList());
 
-        return AvailableTimesResponse.of(coachId, dateStr, availableTimes);
+        return AvailableTimesResponseDto.toDTO(coachId, dateStr, availableTimes);
     }
 
     /**

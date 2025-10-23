@@ -1,9 +1,9 @@
 package com.s406.livon.domain.coach.controller;
 
-import com.s406.livon.domain.coach.dto.request.CoachSearchRequest;
-import com.s406.livon.domain.coach.dto.response.AvailableTimesResponse;
-import com.s406.livon.domain.coach.dto.response.CoachDetailResponse;
-import com.s406.livon.domain.coach.dto.response.CoachListResponse;
+import com.s406.livon.domain.coach.dto.request.CoachSearchRequestDto;
+import com.s406.livon.domain.coach.dto.response.AvailableTimesResponseDto;
+import com.s406.livon.domain.coach.dto.response.CoachDetailResponseDto;
+import com.s406.livon.domain.coach.dto.response.CoachListResponseDto;
 import com.s406.livon.domain.coach.service.CoachService;
 import com.s406.livon.global.security.jwt.JwtTokenProvider;
 import com.s406.livon.global.web.response.ApiResponse;
@@ -45,16 +45,16 @@ public class CoachController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String job,
-            @RequestParam(defaultValue = "ALL") CoachSearchRequest.OrganizationType organizationType) {
+            @RequestParam(defaultValue = "ALL") CoachSearchRequestDto.OrganizationType organizationType) {
 
         UUID currentUserId = jwtTokenProvider.getUserId(token.substring(7));
 
-        CoachSearchRequest request = CoachSearchRequest.builder()
+        CoachSearchRequestDto request = CoachSearchRequestDto.builder()
                 .job(job)
                 .organizationType(organizationType)
                 .build();
 
-        Page<CoachListResponse> coaches = coachService.getCoachList(
+        Page<CoachListResponseDto> coaches = coachService.getCoachList(
                 currentUserId, request, page, size);
 
         // 데이터가 없는 경우
@@ -62,7 +62,7 @@ public class CoachController {
             return ResponseEntity.ok().body(ApiResponse.noContent());
         }
 
-        PaginatedResponse<CoachListResponse> response = PaginatedResponse.of(coaches);
+        PaginatedResponse<CoachListResponseDto> response = PaginatedResponse.of(coaches);
 
         return ResponseEntity.ok().body(ApiResponse.of(SuccessStatus.SELECT_SUCCESS, response));
     }
@@ -77,7 +77,7 @@ public class CoachController {
     @Operation(summary = "코치 상세 정보 조회 API", description = "특정 코치의 상세 정보를 조회합니다.")
     public ResponseEntity<?> getCoachDetail(@PathVariable UUID coachId) {
 
-        CoachDetailResponse response = coachService.getCoachDetail(coachId);
+        CoachDetailResponseDto response = coachService.getCoachDetail(coachId);
 
         return ResponseEntity.ok().body(ApiResponse.of(SuccessStatus.SELECT_SUCCESS, response));
     }
@@ -95,7 +95,7 @@ public class CoachController {
             @PathVariable UUID coachId,
             @RequestParam String date) {
 
-        AvailableTimesResponse response = coachService.getAvailableTimes(coachId, date);
+        AvailableTimesResponseDto response = coachService.getAvailableTimes(coachId, date);
 
         return ResponseEntity.ok().body(ApiResponse.of(SuccessStatus.SELECT_SUCCESS, response));
     }

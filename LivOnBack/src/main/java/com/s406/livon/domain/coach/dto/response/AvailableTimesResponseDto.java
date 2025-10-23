@@ -15,14 +15,14 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AvailableTimesResponse {
+public class AvailableTimesResponseDto {
     
     private UUID coachId;
     private String date;
     private List<String> availableTimes;
     
-    public static AvailableTimesResponse of(UUID coachId, String date, List<String> availableTimes) {
-        return AvailableTimesResponse.builder()
+    public static AvailableTimesResponseDto toDTO(UUID coachId, String date, List<String> availableTimes) {
+        return AvailableTimesResponseDto.builder()
                 .coachId(coachId)
                 .date(date)
                 .availableTimes(availableTimes)

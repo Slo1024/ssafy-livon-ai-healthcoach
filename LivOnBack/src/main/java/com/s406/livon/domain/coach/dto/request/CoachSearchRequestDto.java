@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CoachSearchRequest {
+public class CoachSearchRequestDto {
     
     private String job;  // 코치 직업 필터
     private OrganizationType organizationType;  // 조직 필터

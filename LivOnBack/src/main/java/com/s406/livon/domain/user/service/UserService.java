@@ -310,7 +310,7 @@ public class UserService {
     public String coachInfo(UUID userId, CoachInfoRequestDto coachInfoRequestDto) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
-        CoachInfo coachInfo = coachInfoRequestDto.toEntity(user, coachInfoRequestDto);
+        CoachInfo coachInfo = coachInfoRequestDto.toEntity(user);
         coachInfoRepository.save(coachInfo);
         return "코치 정보가 저장되었습니다.";
     }

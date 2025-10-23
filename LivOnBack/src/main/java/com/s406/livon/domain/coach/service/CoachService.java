@@ -111,7 +111,7 @@ public class CoachService {
 
         // 코치가 아닌 경우 예외 처리
         if (!coach.isCoach()) {
-            throw new GeneralException(ErrorStatus.USER_NOT_AUTHORITY);
+            throw new GeneralException(ErrorStatus.USER_NOT_COACH);
         }
 
         // 코치 정보 조회
@@ -145,7 +145,7 @@ public class CoachService {
                 .orElseThrow(() -> new GeneralException(ErrorStatus.USER_NOT_FOUND));
 
         if (!coach.isCoach()) {
-            throw new GeneralException(ErrorStatus.USER_NOT_AUTHORITY);
+            throw new GeneralException(ErrorStatus.USER_NOT_COACH);
         }
 
         // 해당 날짜의 예약 조회
@@ -177,7 +177,7 @@ public class CoachService {
         try {
             requestDate = LocalDate.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE);
         } catch (DateTimeParseException e) {
-            throw new GeneralException(ErrorStatus._BAD_REQUEST);
+            throw new GeneralException(ErrorStatus.DATE_FORM_ERROR);
         }
 
         LocalDate today = LocalDate.now();
@@ -185,12 +185,12 @@ public class CoachService {
 
         // 과거 날짜 체크
         if (requestDate.isBefore(today)) {
-            throw new GeneralException(ErrorStatus._BAD_REQUEST);
+            throw new GeneralException(ErrorStatus.DATE_PAST_DAYS);
         }
 
         // 30일 이후 날짜 체크
         if (requestDate.isAfter(maxDate)) {
-            throw new GeneralException(ErrorStatus._BAD_REQUEST);
+            throw new GeneralException(ErrorStatus.DATE_TOO_FAR);
         }
 
         return requestDate;

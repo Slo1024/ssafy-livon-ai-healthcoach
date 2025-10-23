@@ -50,7 +50,14 @@ public enum ErrorStatus implements BaseErrorCode {
     MAIL_NUMBER_IS_NULL(HttpStatus.BAD_REQUEST,"MAIL4000","인증번호를 입력해주세요"),
     MAIL_NUMBER_IS_NOT_MATCH(HttpStatus.BAD_REQUEST,"MAIL4000","인증번호가 틀렸습니다"),
 
-
+    // coach 정보 조회 관련
+    USER_NOT_COACH(HttpStatus.BAD_REQUEST, "COACH4000", "코치가 아닙니다"),
+    
+    // 날짜 검증 관련
+    DATE_FORM_ERROR(HttpStatus.BAD_REQUEST,"DATE4000","날짜가 형식에 맞지 않습니다"),
+    DATE_PAST_DAYS(HttpStatus.BAD_REQUEST,"DATE4010","과거 날짜는 조회할 수 없습니다"),
+    DATE_TOO_FAR(HttpStatus.BAD_REQUEST,"DATE4020","오늘 기준으로 30일 이후의 날짜는 조회할 수 없습니다"),
+    
 
 
     ;

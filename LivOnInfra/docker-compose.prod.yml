@@ -2,16 +2,14 @@ services:
   livon-be:
     container_name: livon-be-prod
     build:
-      context: ./LivOnBack
+      context: ../LivOnBack
       dockerfile: Dockerfile
     ports:
       - "8081:8081"
     volumes:
-      - ./LivOnBack/src:/app/src
-      # - ./keys:/keys  
+      - ../LivOnBack/src:/app/src
     environment:
       - SPRING_PROFILES_ACTIVE=prod
-      # - GCP_KEY_FILE=/keys/stalkaiproject-812b3a8660a4.json
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: always
@@ -21,7 +19,8 @@ services:
   livon-fe:
     container_name: livon-fe-prod
     build:
-      context: ./LivOnFront
+      context: ../LivOnFront/web
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     extra_hosts:

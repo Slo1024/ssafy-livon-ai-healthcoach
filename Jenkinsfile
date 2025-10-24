@@ -2,14 +2,13 @@ pipeline {
     agent any
 
     environment {
-        // 브랜치 이름과 프로덕션 여부를 맨 위에서 한 번만 정의합니다.
         BRANCH_NAME = "${env.GIT_BRANCH}".replaceAll(".*/", "")
         IS_PROD = (env.BRANCH_NAME == 'master')
     }
 
     stages {
         // 1. 코드 체크아웃 (필수)
-        // changelog를 사용하려면 먼저 코드를 체크아웃해야 합니다.
+        // changelog를 사용하려면 먼저 코드를 체크아웃
         stage('Checkout') {
             steps {
                 checkout scm
@@ -21,7 +20,7 @@ pipeline {
             parallel {
                 // --- FE 배포 스테이지 ---
                 stage('Deploy FE') {
-                    // when: 'LivOnFront/web/' 경로에 변경 사항이 있을 때만 이 스테이지를 실행합니다.
+                    // when: 'LivOnFront/web/' 경로에 변경 사항이 있을 때만 이 스테이지를 실행
                     when {
                         changelog '.*LivOnFront/web/.*'
                     }
@@ -59,7 +58,7 @@ pipeline {
 
                 // --- BE 배포 스테이지 ---
                 stage('Deploy BE') {
-                    // when: 'LivOnBack/' 경로에 변경 사항이 있을 때만 이 스테이지를 실행합니다.
+                    // when: 'LivOnBack/' 경로에 변경 사항이 있을 때만 이 스테이지를 실행
                     when {
                         changelog '.*LivOnBack/.*'
                     }

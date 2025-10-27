@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -23,8 +25,9 @@ public class Consultation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
-    @Column(name = "user_id", nullable = false)
+
+    @JdbcTypeCode(SqlTypes.CHAR)
+    @Column(name = "user_id", nullable = false, length = 36, columnDefinition = "CHAR(36)")
     private UUID userId;
     
     @Column(nullable = false)

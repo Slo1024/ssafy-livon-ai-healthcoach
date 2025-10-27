@@ -52,6 +52,7 @@ public enum ErrorStatus implements BaseErrorCode {
 
     // coach 정보 조회 관련
     USER_NOT_COACH(HttpStatus.BAD_REQUEST, "COACH4000", "코치가 아닙니다"),
+    RESERVED_TIME_CANNOT_BE_BLOCKED(HttpStatus.BAD_REQUEST, "COACH4010", "이미 예약된 시간은 막을 수 없습니다."),
     
     // 날짜 검증 관련
     DATE_FORM_ERROR(HttpStatus.BAD_REQUEST,"DATE4000","날짜가 형식에 맞지 않습니다"),

@@ -22,19 +22,16 @@ public class CoachDetailResponseDto {
     private String job;
     private String introduce;
     private String profileImage;
-    private String professional;
     private List<String> certificates;
     
     public static CoachDetailResponseDto toDTO(UUID userId, String nickname, String job,
-                                            String introduce, String profileImage,
-                                            String professional, List<String> certificates) {
+                                            String introduce, String profileImage, List<String> certificates) {
         return CoachDetailResponseDto.builder()
                 .userId(userId)
                 .nickname(nickname)
                 .job(job)
                 .introduce(introduce)
                 .profileImage(profileImage)
-                .professional(professional)
                 .certificates(certificates)
                 .build();
     }

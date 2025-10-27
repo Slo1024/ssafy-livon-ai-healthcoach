@@ -1,6 +1,9 @@
 package com.s406.livon.domain.user.dto.response;
 
+import com.s406.livon.domain.user.enums.Gender;
 import lombok.*;
+
+import java.util.Date;
 
 @Getter
 @ToString
@@ -9,7 +12,8 @@ import lombok.*;
 @Builder
 public class MyInfoResponseDto {
     private String nickname;
-    private String university;
-    private String major;
     private String profileImage;
+    private Gender gender;
+    private Date birthdate;
+    private HealthSurveyResponseDto healthSurvey;
 }

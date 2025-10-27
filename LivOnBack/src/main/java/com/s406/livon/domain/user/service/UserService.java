@@ -4,11 +4,11 @@ package com.s406.livon.domain.user.service;
 
 import com.s406.livon.domain.user.dto.JwtToken;
 import com.s406.livon.domain.user.dto.request.*;
+import com.s406.livon.domain.user.dto.response.HealthSurveyResponseDto;
 import com.s406.livon.domain.user.dto.response.MyInfoResponseDto;
 import com.s406.livon.domain.user.dto.response.OrganizationsResponseDto;
 import com.s406.livon.domain.user.dto.response.UserDto;
 import com.s406.livon.domain.user.entity.*;
-import com.s406.livon.domain.user.enums.Role;
 import com.s406.livon.domain.user.repository.*;
 import com.s406.livon.global.error.handler.TokenHandler;
 import com.s406.livon.global.error.handler.UserHandler;
@@ -25,7 +25,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -49,7 +48,7 @@ public class UserService {
     @Transactional
     public JwtToken signIn(String username, String password) {
 
-        // 1. username + password 를 기반으로 Authentication 객체 생성
+        // 1. email + password 를 기반으로 Authentication 객체 생성
         UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(username, password);
         try {
 
@@ -64,13 +63,13 @@ public class UserService {
             redisTemplate.opsForValue()
                     .set("RT:" + authentication.getName(), jwtToken.getRefreshToken(), jwtToken.getRefreshTokenExpirationTime(), TimeUnit.MILLISECONDS);
 
-            log.info("[signIn] 로그인 성공: username = {}", username);
+            log.info("[signIn] 로그인 성공: email = {}", username);
             return jwtToken;
         } catch (BadCredentialsException e) {
-            log.error("[signIn] 로그인 실패: 잘못된 아이디 및 비밀번호, username = {}", username);
+            log.error("[signIn] 로그인 실패: 잘못된 아이디 및 비밀번호, email = {}", username);
             throw new UserHandler(ErrorStatus.USER_INVALID_CREDENTIALS);  // 'INVALID_CREDENTIALS' 에러 코드로 구체적인 비밀번호 오류 처리
         } catch (Exception e) {
-            log.error("[signIn] 로그인 실패: username = {}, 오류 = {}", username, e.getMessage());
+            log.error("[signIn] 로그인 실패: email = {}, 오류 = {}", username, e.getMessage());
             throw new UserHandler(ErrorStatus._INTERNAL_SERVER_ERROR);
         }
     }
@@ -79,20 +78,27 @@ public class UserService {
 
     @Transactional
     public UserDto signUp(SignUpDto signUpDto) {
-        log.info("[signUp] 회원가입 요청: username = {}", signUpDto.getEmail());
+        log.info("[signUp] 회원가입 요청: email = {}", signUpDto.getEmail());
+
+        // 중복 검증
         checkEmailDuplicate(signUpDto.getEmail());
         checknicknameDuplicate(signUpDto.getNickname());
 
-        // Password 암호화
+        // 비밀번호 암호화
         String encodedPassword = passwordEncoder.encode(signUpDto.getPassword());
 
-        // 회원가입 성공 처리
+        // 조직 값이 null인지 아닌지 확인하고 분기처리
+        Organizations organizations = null;
+        if (signUpDto.getOrganizations() != null) {
+            organizations = organizationsRepository.findByName(signUpDto.getOrganizations())
+                    .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND_ORGANIZATIONS));
+            log.info("[signUp] 기업 회원 가입: organization = {}", signUpDto.getOrganizations());
+        } else {
+            log.info("[signUp] 개인 회원 가입");
+        }
 
-        // 존재하는 조직인지 확인, 없으면 에러 처리
-        Organizations organizations = organizationsRepository.findByName(signUpDto.getOrganizations())
-                .orElseThrow(()-> new UserHandler(ErrorStatus.USER_NOT_FOUND_ORGANIZATIONS));
-
-        return UserDto.toDto(userRepository.save(signUpDto.toEntity(encodedPassword,organizations)));
+        User savedUser = userRepository.save(signUpDto.toEntity(encodedPassword, organizations));
+        return UserDto.toDto(savedUser);
     }
 
 
@@ -116,7 +122,7 @@ public class UserService {
         }
 
         if (!refreshToken.equals(reissueDto.getRefreshToken())) {
-            log.warn("[reissue] RefreshToken 불일치: username = {}", authentication.getName());
+            log.warn("[reissue] RefreshToken 불일치: email = {}", authentication.getName());
             throw new TokenHandler(ErrorStatus.REFRESH_TOKEN_NOT_MATCH);
         }
 
@@ -127,7 +133,7 @@ public class UserService {
         redisTemplate.opsForValue()
                 .set("RT:" + authentication.getName(), jwtToken.getRefreshToken(), jwtToken.getRefreshTokenExpirationTime(), TimeUnit.MILLISECONDS);
 
-        log.info("[reissue] 토큰 갱신 성공: username = {}", authentication.getName());
+        log.info("[reissue] 토큰 갱신 성공: email = {}", authentication.getName());
         return jwtToken;
     }
 
@@ -136,9 +142,18 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
 
+        // User와 연관된 HealthSurvey 조회 (없을 수 있음)
+        HealthSurvey healthSurvey = user.getHealthSurvey();
+
+        // HealthSurveyResponseDto 생성 (없으면 기본값)
+        HealthSurveyResponseDto healthSurveyDto = HealthSurveyResponseDto.toDTO(healthSurvey);
+
         return MyInfoResponseDto.builder()
-                .profileImage(user.getProfileImage())
                 .nickname(user.getNickname())
+                .profileImage(user.getProfileImage())
+                .gender(user.getGender())
+                .birthdate(user.getBirthdate())
+                .healthSurvey(healthSurveyDto)
                 .build();
     }
 
@@ -295,7 +310,7 @@ public class UserService {
     public String coachInfo(UUID userId, CoachInfoRequestDto coachInfoRequestDto) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
-        CoachInfo coachInfo = coachInfoRequestDto.toEntity(user, coachInfoRequestDto);
+        CoachInfo coachInfo = coachInfoRequestDto.toEntity(user);
         coachInfoRepository.save(coachInfo);
         return "코치 정보가 저장되었습니다.";
     }

@@ -127,7 +127,6 @@ public class CoachService {
                 coachInfo != null ? coachInfo.getJob() : null,
                 coachInfo != null ? coachInfo.getIntroduce() : null,
                 coach.getProfileImage(),
-                coachInfo != null ? coachInfo.getProfessional() : null,
                 certificates
         );
     }

@@ -15,9 +15,11 @@ import java.util.UUID;
 @Repository
 public interface CoachCertificatesRepository extends JpaRepository<CoachCertificates, UUID> {
 
-    /**
-     * CoachInfo ID로 자격증 목록 조회
-     */
-    @Query("SELECT cc.certificatesName FROM CoachCertificates cc WHERE cc.coachInfo.id = :coachInfoId")
+    @Query("""
+        select cc.certificatesName
+        from CoachInfo ci
+        join ci.coachCertificatesList cc
+        where ci.id = :coachInfoId
+    """)
     List<String> findCertificateNamesByCoachInfoId(@Param("coachInfoId") UUID coachInfoId);
 }

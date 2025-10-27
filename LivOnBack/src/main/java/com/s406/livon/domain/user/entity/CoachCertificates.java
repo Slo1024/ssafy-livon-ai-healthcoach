@@ -18,10 +18,6 @@ public class CoachCertificates {
     @Column(name = "coach_certificates_id", updatable = false, nullable = false, columnDefinition = "BINARY(16)")
     private UUID coachCertificatesId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "coach_info_id", nullable = false)
-    private CoachInfo coachInfo;
-
     @Column(nullable = false)
     private String certificatesName;
 }

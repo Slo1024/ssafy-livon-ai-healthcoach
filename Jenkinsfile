@@ -52,7 +52,7 @@ pipeline {
                             docker rm -f ${CONTAINER} || true
 
                             echo "🚀 도커 컴포즈로 빌드 및 실행..."
-                            docker compose -f ${COMPOSE_FILE} up -d --build livon-be
+                            docker compose -f ${COMPOSE_FILE} up -d --build
                         """
                     }
                 }
@@ -93,7 +93,7 @@ pipeline {
                         docker rm -f ${CONTAINER} || true
 
                         echo "🚀 FE docker-compose 실행 중 (${COMPOSE_FILE})..."
-                        docker compose -f ${COMPOSE_FILE} up -d --build livon-fe
+                        docker compose -f ${COMPOSE_FILE} up -d --build
                     """
                 }
             }

@@ -18,7 +18,9 @@ pipeline {
         stage('Deploy BE') {
             // when: 'LivOnBack/' 경로에 변경 사항이 있을 때만 이 스테이지를 실행
             when {
-                changelog '.*LivOnBack/.*'
+                anyOf {
+                    changeset pattern: 'LivOnBack/**', comparator: 'ANT'
+                }
             }
             steps {
                 script {
@@ -61,13 +63,14 @@ pipeline {
         stage('Deploy FE') {
             // when: 'LivOnFront/web/' 경로에 변경 사항이 있을 때만 이 스테이지를 실행
             when {
-                changelog '.*LivOnFront/web/.*'
+                anyOf {
+                    changeset pattern: 'LivOnFront/web/**', comparator: 'ANT'
+                }
             }
             steps {
                 script {
                     echo "✅ FE 디렉토리 변경 감지 → 배포 시작"
                     
-                    // 환경 변수 설정
                     def IS_PROD = BRANCH_NAME == 'master'
                     def COMPOSE_FILE = IS_PROD ? 'LivOnInfra/docker-compose.prod.yml' : 'LivOnInfra/docker-compose.dev.yml'
                     def ENV_ID = IS_PROD ? 'frontend-env-prod' : 'frontend-env-dev'

@@ -109,7 +109,7 @@ public class CoachController {
      * @return 예약 가능한 시간대 목록
      */
     @GetMapping("/block-times")
-    @Operation(summary = "코치 예약 가능 시간대 조회 API", description = "특정 날짜의 코치 예약 가능 시간대를 조회합니다.")
+    @Operation(summary = "코치가 막아놓은 시간대 조회 API", description = "특정 날짜의 코치가 막아놓은 시간대를 조회합니다.")
     public ResponseEntity<?> getBlockedTimes(
             @RequestHeader("Authorization") String token,
             @RequestParam String date) {
@@ -126,7 +126,7 @@ public class CoachController {
      * @return 새로 갱신된 차단 시간대 목록
      */
     @PutMapping("/block-times")
-    @Operation(summary = "코치 예약 가능 시간대 업데이트 API", description = "특정 날짜의 코치 예약 가능 시간대를 업데이트합니다.")
+    @Operation(summary = "코치가 막아놓은 시간대 업데이트 API", description = "특정 날짜의 코치가 막아놓은 시간대를 업데이트합니다.")
     public ResponseEntity<?> updateBlockedTimes(
             @RequestHeader("Authorization") String token,
             @RequestParam String date,

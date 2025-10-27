@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Transactional(readOnly = true)
 public class CoachService {
 
     private final CoachRepository coachRepository;
@@ -203,6 +203,7 @@ public class CoachService {
     /**
      * 전문가가 스스로 예약을 막아놓은 시간대 업데이트
      */
+    @Transactional(readOnly = false)
     public BlockedTimesResponseDto updateBlockedTimes(UUID coachId, String dateStr, BlockedTimesRequestDto blockedTimesRequestDto){
         // 날짜 유효성 검증
         LocalDate requestDate = validateAndParseDate(dateStr);

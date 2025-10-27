@@ -57,7 +57,6 @@ public interface ConsultationRepository extends JpaRepository<Consultation, UUID
     * 특정 코치의 특정 날짜의 차단 시간대를 모두 삭제
     */
     @Modifying
-    @Transactional
     @Query("DELETE FROM Consultation c " +
             "WHERE c.userId = :coachId " +
             "AND c.startAt >= :startOfDay " +

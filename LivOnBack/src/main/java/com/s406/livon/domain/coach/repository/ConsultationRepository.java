@@ -65,4 +65,17 @@ public interface ConsultationRepository extends JpaRepository<Consultation, UUID
     void deleteAllBlockedTimesByCoachIdAndDate(@Param("coachId") UUID coachId,
                                                @Param("startOfDay") LocalDateTime startOfDay,
                                                @Param("endOfDay") LocalDateTime endOfDay);
+
+
+    @Query("SELECT CASE WHEN COUNT(c) > 0 THEN true ELSE false END " +
+            "FROM Consultation c " +
+            "WHERE c.userId = :coachId " +
+            "AND c.startAt >= :startOfDay " +
+            "AND c.startAt < :endOfDay " +
+            "AND c.type != 'BREAK' " +
+            "AND FUNCTION('TIME_FORMAT', c.startAt, '%H:%i') IN :timeSlots")
+    boolean existsConflictingReservation(@Param("coachId") UUID coachId,
+                                         @Param("startOfDay") LocalDateTime startOfDay,
+                                         @Param("endOfDay") LocalDateTime endOfDay,
+                                         @Param("timeSlots") List<String> timeSlots);
 }

@@ -226,30 +226,15 @@ public class CoachService {
         LocalDateTime startOfDay = requestDate.atStartOfDay();
         LocalDateTime endOfDay = requestDate.atTime(LocalTime.MAX);
 
-        List<Consultation> reservedTimes = consultationRepository
-                .findReservationsByCoachIdAndDate(coachId, startOfDay, endOfDay);
-
-        // 예약된 시간대를 "HH:mm" 형식으로 변환
-        Set<String> reservedTimeSlots = reservedTimes.stream()
-                .map(consultation -> consultation.getStartAt()
-                        .toLocalTime()
-                        .format(DateTimeFormatter.ofPattern("HH:mm")))
-                .collect(Collectors.toSet());
-
-        // 충돌하는 시간 찾기
-        List<String> conflictTimes = blockedTimes.stream()
-                .filter(reservedTimeSlots::contains)
-                .toList();
-
-        // 충돌하는 시간이 있다면 에러 던지기
-        if (!conflictTimes.isEmpty()) {
+        if (consultationRepository.existsConflictingReservation(
+                coachId, startOfDay, endOfDay, blockedTimes)) {
             throw new CoachHandler(ErrorStatus.RESERVED_TIME_CANNOT_BE_BLOCKED);
         }
 
-        // 기존에 막아놓은 시간 삭제
+        // 기존 차단 시간 삭제
         consultationRepository.deleteAllBlockedTimesByCoachIdAndDate(coachId, startOfDay, endOfDay);
 
-        // 새로 막아놓을 시간을 추가
+        // 새 차단 시간 생성
         List<Consultation> blockedConsultations = blockedTimes.stream()
                 .map(timeSlot -> {
                     LocalTime time = LocalTime.parse(timeSlot, DateTimeFormatter.ofPattern("HH:mm"));
@@ -270,15 +255,7 @@ public class CoachService {
 
         consultationRepository.saveAll(blockedConsultations);
 
-        // 업데이트된 차단 시간대를 반환
-        List<Consultation> consultations = consultationRepository
-                .findBlockedTimesByCoachIdAndDate(coachId, startOfDay, endOfDay);
-
-        List<String> updatedBlockedTimes = consultations.stream()
-                .map(this::convertToTimeSlot)
-                .toList();
-
-        return BlockedTimesResponseDto.toDTO(dateStr, updatedBlockedTimes);
+        return BlockedTimesResponseDto.toDTO(dateStr, blockedTimes);
     }
 
 

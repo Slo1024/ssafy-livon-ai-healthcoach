@@ -15,7 +15,7 @@ import com.s406.livon.domain.user.enums.Role;
 import com.s406.livon.domain.user.repository.CoachCertificatesRepository;
 import com.s406.livon.domain.user.repository.CoachInfoRepository;
 import com.s406.livon.domain.user.repository.UserRepository;
-import com.s406.livon.global.error.exception.GeneralException;
+import com.s406.livon.global.error.handler.CoachHandler;
 import com.s406.livon.global.web.response.code.status.ErrorStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -66,7 +66,7 @@ public class CoachService {
                                                    int size) {
         // 현재 사용자 정보 조회 (조직 정보 필요)
         User currentUser = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new GeneralException(ErrorStatus.USER_NOT_FOUND));
+                .orElseThrow(() -> new CoachHandler(ErrorStatus.USER_NOT_FOUND));
 
         // 페이징 설정 (닉네임 기준 오름차순 정렬)
         Pageable pageable = PageRequest.of(page, size, Sort.by("nickname").ascending());
@@ -110,11 +110,11 @@ public class CoachService {
     public CoachDetailResponseDto getCoachDetail(UUID coachId) {
         // 코치 조회
         User coach = userRepository.findByIdAndRole(coachId, Role.COACH)
-                .orElseThrow(() -> new GeneralException(ErrorStatus.USER_NOT_FOUND));
+                .orElseThrow(() -> new CoachHandler(ErrorStatus.USER_NOT_FOUND));
 
         // 코치가 아닌 경우 예외 처리
         if (!coach.isCoach()) {
-            throw new GeneralException(ErrorStatus.USER_NOT_COACH);
+            throw new CoachHandler(ErrorStatus.USER_NOT_COACH);
         }
 
         // 코치 정보 조회
@@ -144,10 +144,10 @@ public class CoachService {
 
         // 코치 존재 여부 확인
         User coach = userRepository.findByIdAndRole(coachId, Role.COACH)
-                .orElseThrow(() -> new GeneralException(ErrorStatus.USER_NOT_FOUND));
+                .orElseThrow(() -> new CoachHandler(ErrorStatus.USER_NOT_FOUND));
 
         if (!coach.isCoach()) {
-            throw new GeneralException(ErrorStatus.USER_NOT_COACH);
+            throw new CoachHandler(ErrorStatus.USER_NOT_COACH);
         }
 
         // 해당 날짜의 예약 조회
@@ -180,10 +180,10 @@ public class CoachService {
 
         // 코치 존재 여부 확인
         User coach = userRepository.findByIdAndRole(coachId, Role.COACH)
-                .orElseThrow(() -> new GeneralException(ErrorStatus.USER_NOT_FOUND));
+                .orElseThrow(() -> new CoachHandler(ErrorStatus.USER_NOT_FOUND));
 
         if (!coach.isCoach()) {
-            throw new GeneralException(ErrorStatus.USER_NOT_COACH);
+            throw new CoachHandler(ErrorStatus.USER_NOT_COACH);
         }
 
         // 해당 날짜에 전문가가 막아놓은 시간대 조회
@@ -210,10 +210,10 @@ public class CoachService {
 
         // 코치 존재 여부 확인
         User coach = userRepository.findByIdAndRole(coachId, Role.COACH)
-                .orElseThrow(() -> new GeneralException(ErrorStatus.USER_NOT_FOUND));
+                .orElseThrow(() -> new CoachHandler(ErrorStatus.USER_NOT_FOUND));
 
         if (!coach.isCoach()) {
-            throw new GeneralException(ErrorStatus.USER_NOT_COACH);
+            throw new CoachHandler(ErrorStatus.USER_NOT_COACH);
         }
 
         // 타임 슬롯 형식 유효성 검증
@@ -243,7 +243,7 @@ public class CoachService {
 
         // 충돌하는 시간이 있다면 에러 던지기
         if (!conflictTimes.isEmpty()) {
-            throw new GeneralException(ErrorStatus.RESERVED_TIME_CANNOT_BE_BLOCKED);
+            throw new CoachHandler(ErrorStatus.RESERVED_TIME_CANNOT_BE_BLOCKED);
         }
 
         // 기존에 막아놓은 시간 삭제
@@ -294,7 +294,7 @@ public class CoachService {
         try {
             requestDate = LocalDate.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE);
         } catch (DateTimeParseException e) {
-            throw new GeneralException(ErrorStatus.DATE_FORM_ERROR);
+            throw new CoachHandler(ErrorStatus.DATE_FORM_ERROR);
         }
 
         LocalDate today = LocalDate.now();
@@ -302,12 +302,12 @@ public class CoachService {
 
         // 과거 날짜 체크
         if (requestDate.isBefore(today)) {
-            throw new GeneralException(ErrorStatus.DATE_PAST_DAYS);
+            throw new CoachHandler(ErrorStatus.DATE_PAST_DAYS);
         }
 
         // 30일 이후 날짜 체크
         if (requestDate.isAfter(maxDate)) {
-            throw new GeneralException(ErrorStatus.DATE_TOO_FAR);
+            throw new CoachHandler(ErrorStatus.DATE_TOO_FAR);
         }
 
         return requestDate;
@@ -334,7 +334,7 @@ public class CoachService {
 
         for (String timeSlot : timeSlots) {
             if (!validTimeSlots.contains(timeSlot)) {
-                throw new GeneralException(ErrorStatus.DATE_FORM_ERROR);
+                throw new CoachHandler(ErrorStatus.DATE_FORM_ERROR);
             }
         }
     }

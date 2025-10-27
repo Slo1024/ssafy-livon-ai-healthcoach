@@ -14,8 +14,6 @@ pipeline {
         }
 
         // BE / FE 순차 배포
-        // parallel 블록을 제거하고 stage를 순서대로 나열합니다.
-        
         // --- BE 배포 스테이지 (먼저 실행) ---
         stage('Deploy BE') {
             // when: 'LivOnBack/' 경로에 변경 사항이 있을 때만 이 스테이지를 실행
@@ -69,6 +67,7 @@ pipeline {
                 script {
                     echo "✅ FE 디렉토리 변경 감지 → 배포 시작"
                     
+                    // 환경 변수 설정
                     def IS_PROD = BRANCH_NAME == 'master'
                     def COMPOSE_FILE = IS_PROD ? 'LivOnInfra/docker-compose.prod.yml' : 'LivOnInfra/docker-compose.dev.yml'
                     def ENV_ID = IS_PROD ? 'frontend-env-prod' : 'frontend-env-dev'

@@ -1,5 +1,6 @@
 package com.s406.livon.domain.coach.controller;
 
+import com.s406.livon.domain.coach.dto.request.BlockedTimesResponseDto;
 import com.s406.livon.domain.coach.dto.request.CoachSearchRequestDto;
 import com.s406.livon.domain.coach.dto.response.AvailableTimesResponseDto;
 import com.s406.livon.domain.coach.dto.response.CoachDetailResponseDto;
@@ -96,6 +97,23 @@ public class CoachController {
             @RequestParam String date) {
 
         AvailableTimesResponseDto response = coachService.getAvailableTimes(coachId, date);
+
+        return ResponseEntity.ok().body(ApiResponse.of(SuccessStatus.SELECT_SUCCESS, response));
+    }
+
+    /**
+     * 코치가 스스로 예약을 막아놓은 시간대 조회
+     *
+     * @param date 조회할 날짜 (yyyy-MM-dd 형식)
+     * @return 예약 가능한 시간대 목록
+     */
+    @GetMapping("/block-times")
+    @Operation(summary = "코치 예약 가능 시간대 조회 API", description = "특정 날짜의 코치 예약 가능 시간대를 조회합니다.")
+    public ResponseEntity<?> getBlockedTimes(
+            @RequestHeader("Authorization") String token,
+            @RequestParam String date) {
+        UUID coachId = jwtTokenProvider.getUserId(token.substring(7));
+        BlockedTimesResponseDto response = coachService.getBlockedTimes(coachId, date);
 
         return ResponseEntity.ok().body(ApiResponse.of(SuccessStatus.SELECT_SUCCESS, response));
     }

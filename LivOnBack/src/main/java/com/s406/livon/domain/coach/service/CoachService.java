@@ -1,5 +1,6 @@
 package com.s406.livon.domain.coach.service;
 
+import com.s406.livon.domain.coach.dto.request.BlockedTimesResponseDto;
 import com.s406.livon.domain.coach.dto.request.CoachSearchRequestDto;
 import com.s406.livon.domain.coach.dto.response.AvailableTimesResponseDto;
 import com.s406.livon.domain.coach.dto.response.CoachDetailResponseDto;
@@ -29,6 +30,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -153,18 +155,52 @@ public class CoachService {
         List<Consultation> consultations = consultationRepository
                 .findByCoachIdAndDate(coachId, startOfDay, endOfDay);
 
-        // 예약된 시간대 추출
-        List<String> bookedTimeSlots = consultations.stream()
+        // Set을 사용한 성능 개선 (O(n))
+        // 예약된 시간대 타임 슬롯 가져오기(전문가가 스스로 막아놓은 시간도 포함)
+        Set<String> bookedTimeSlots = consultations.stream()
                 .map(this::convertToTimeSlot)
-                .collect(Collectors.toList());
+                .collect(Collectors.toSet());
 
-        // 예약 가능한 시간대 계산 (기본 시간대 - 예약된 시간대)
+        // 예약 가능한 시간대를 가져오기
         List<String> availableTimes = DEFAULT_TIME_SLOTS.stream()
-                .filter(slot -> !bookedTimeSlots.contains(slot))
+                .filter(slot -> !bookedTimeSlots.contains(slot)) // Set의 contains는 O(1)
                 .collect(Collectors.toList());
 
         return AvailableTimesResponseDto.toDTO(coachId, dateStr, availableTimes);
     }
+
+    /**
+     * 전문가가 스스로 예약을 막아놓은 시간대 조회
+     */
+    public BlockedTimesResponseDto getBlockedTimes(UUID coachId, String dateStr){
+        // 날짜 유효성 검증
+        LocalDate requestDate = validateAndParseDate(dateStr);
+
+        // 코치 존재 여부 확인
+        User coach = userRepository.findByIdAndRole(coachId, Role.COACH)
+                .orElseThrow(() -> new GeneralException(ErrorStatus.USER_NOT_FOUND));
+
+        if (!coach.isCoach()) {
+            throw new GeneralException(ErrorStatus.USER_NOT_COACH);
+        }
+
+        // 해당 날짜에 전문가가 막아놓은 시간대 조회
+        LocalDateTime startOfDay = requestDate.atStartOfDay();
+        LocalDateTime endOfDay = requestDate.atTime(LocalTime.MAX);
+
+        List<Consultation> consultations = consultationRepository
+                .findBlockedTimesByCoachIdAndDate(coachId, startOfDay, endOfDay);
+
+        List<String> blockedTimes = consultations.stream()
+                .map(this::convertToTimeSlot)
+                .toList();
+
+        return BlockedTimesResponseDto.toDTO(dateStr, blockedTimes);
+    }
+
+
+
+
 
     /**
      * 날짜 유효성 검증 및 파싱

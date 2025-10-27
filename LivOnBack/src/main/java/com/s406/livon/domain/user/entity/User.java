@@ -109,4 +109,7 @@ public class User extends BaseTime implements UserDetails {
   }
 
 
+  public boolean isCoach() {
+      return this.roles != null && this.roles.contains(Role.COACH);
+  }
 }

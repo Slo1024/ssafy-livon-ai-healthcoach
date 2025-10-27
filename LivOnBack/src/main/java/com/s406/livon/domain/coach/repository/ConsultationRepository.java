@@ -16,7 +16,7 @@ import java.util.UUID;
  * 상담 예약 레포지토리
  */
 @Repository
-public interface ConsultationRepository extends JpaRepository<Consultation, UUID> {
+public interface ConsultationRepository extends JpaRepository<Consultation, Long> {
     
     /**
      * 특정 코치의 특정 날짜 일정 모두 조회(1:1 상담, 1:N 상담, 스스로 막아놓은 시간 모두 포함)

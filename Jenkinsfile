@@ -3,7 +3,6 @@ pipeline {
 
     environment {
         BRANCH_NAME = "${env.GIT_BRANCH}".replaceAll(".*/", "")
-        IS_PROD = (env.BRANCH_NAME == 'master')
     }
 
     stages {
@@ -27,7 +26,7 @@ pipeline {
                 script {
                     echo "✅ BE 디렉토리 변경 감지 → 배포 시작"
                     
-                    // 환경 변수 설정
+                    def IS_PROD = BRANCH_NAME == 'master'
                     def COMPOSE_FILE = IS_PROD ? 'LivOnInfra/docker-compose.prod.yml' : 'LivOnInfra/docker-compose.dev.yml'
                     def PROPERTIES_ID = IS_PROD ? 'yml-prod' : 'yml-dev'
                     def CONTAINER = IS_PROD ? 'livon-be-prod' : 'livon-be-dev'
@@ -70,7 +69,7 @@ pipeline {
                 script {
                     echo "✅ FE 디렉토리 변경 감지 → 배포 시작"
                     
-                    // 환경 변수 설정
+                    def IS_PROD = BRANCH_NAME == 'master'
                     def COMPOSE_FILE = IS_PROD ? 'LivOnInfra/docker-compose.prod.yml' : 'LivOnInfra/docker-compose.dev.yml'
                     def ENV_ID = IS_PROD ? 'frontend-env-prod' : 'frontend-env-dev'
                     def CONTAINER = IS_PROD ? 'livon-fe-prod' : 'livon-fe-dev'

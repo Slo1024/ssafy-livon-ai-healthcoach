@@ -112,7 +112,7 @@ const CheckboxLabel = styled.label`
 const Checkbox = styled.input`
   width: 16px;
   height: 16px;
-  border-radius: 50%;
+  border-radius: 6px;
   border: 2px solid #ecedec;
   cursor: pointer;
 `;

@@ -17,19 +17,19 @@ export const HomePage: React.FC = () => {
       </div>
       
       {/* 이미지 영역 - 화면 하단을 꽉 채움 */}
-      <div className="flex flex-row w-full" style={{ marginTop: 'auto', paddingBottom: '79px' }}>
-        <div style={{ width: '50%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', backgroundColor: 'white' }}>
+      <div style={{ display: 'flex', flexDirection: 'row', width: '100%', marginTop: 'auto', paddingBottom: '79px', flexWrap: 'nowrap', alignItems: 'flex-end' }}>
+        <div style={{ width: '50%', flexShrink: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', backgroundColor: 'white', overflow: 'hidden' }}>
           <img 
             src={mainpage1} 
             alt="헬스 코칭 서비스 일러스트 1" 
-            style={{ width: '100%', height: 'auto', display: 'block' }}
+            style={{ width: '100%', height: 'auto', display: 'block', maxWidth: '100%' }}
           />
         </div>
-        <div style={{ width: '50%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', backgroundColor: 'white' }}>
+        <div style={{ width: '50%', flexShrink: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', backgroundColor: 'white', overflow: 'hidden' }}>
           <img 
             src={mainpage2} 
             alt="헬스 코칭 서비스 일러스트 2" 
-            style={{ width: '100%', height: 'auto', display: 'block' }}
+            style={{ width: '100%', height: 'auto', display: 'block', maxWidth: '100%' }}
           />
         </div>
       </div>

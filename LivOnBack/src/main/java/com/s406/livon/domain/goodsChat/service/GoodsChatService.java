@@ -47,7 +47,7 @@ public class GoodsChatService {
         User buyer = findUserById(buyerId);
         Consultation consultation = findConsultationId(consultationId); //todo
 
-        User seller = findUserById(consultation.getUserId());
+        User seller = findUserById(consultation.getCoach().getId());
 
 
 //        validateCreateChatRoom(consultation, buyer, seller);

@@ -1,0 +1,318 @@
+package com.s406.livon.domain.coach.service;
+
+import com.s406.livon.domain.coach.dto.request.BlockedTimesRequestDto;
+import com.s406.livon.domain.coach.dto.response.BlockedTimesResponseDto;
+import com.s406.livon.domain.coach.dto.request.CoachSearchRequestDto;
+import com.s406.livon.domain.coach.dto.response.AvailableTimesResponseDto;
+import com.s406.livon.domain.coach.dto.response.CoachDetailResponseDto;
+import com.s406.livon.domain.coach.dto.response.CoachListResponseDto;
+import com.s406.livon.domain.coach.entity.Consultation;
+import com.s406.livon.domain.coach.repository.CoachRepository;
+import com.s406.livon.domain.coach.repository.ConsultationRepository;
+import com.s406.livon.domain.user.entity.CoachInfo;
+import com.s406.livon.domain.user.entity.User;
+import com.s406.livon.domain.user.enums.Role;
+import com.s406.livon.domain.user.repository.CoachCertificatesRepository;
+import com.s406.livon.domain.user.repository.CoachInfoRepository;
+import com.s406.livon.domain.user.repository.UserRepository;
+import com.s406.livon.global.error.handler.CoachHandler;
+import com.s406.livon.global.web.response.code.status.ErrorStatus;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+/**
+ * 코치 서비스
+ */
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class CoachService {
+
+    private final CoachRepository coachRepository;
+    private final CoachInfoRepository coachInfoRepository;
+    private final CoachCertificatesRepository coachCertificateRepository;
+    private final ConsultationRepository consultationRepository;
+    private final UserRepository userRepository;
+
+    // 기본 근무 시간대 (9시~18시, 1시간 단위)
+    private static final List<String> DEFAULT_TIME_SLOTS = List.of(
+            "09:00-10:00", "10:00-11:00", "11:00-12:00", "12:00-13:00",
+            "13:00-14:00", "14:00-15:00", "15:00-16:00",
+            "16:00-17:00", "17:00-18:00"
+    );
+
+    /**
+     * 코치 목록 조회
+     */
+    public Page<CoachListResponseDto> getCoachList(UUID currentUserId,
+                                                   CoachSearchRequestDto request,
+                                                   int page,
+                                                   int size) {
+        // 현재 사용자 정보 조회 (조직 정보 필요)
+        User currentUser = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new CoachHandler(ErrorStatus.USER_NOT_FOUND));
+
+        // 페이징 설정 (닉네임 기준 오름차순 정렬)
+        Pageable pageable = PageRequest.of(page, size, Sort.by("nickname").ascending());
+
+        Page<User> coaches;
+
+        // 조직 필터에 따른 조회
+        if (request.getOrganizationType() == CoachSearchRequestDto.OrganizationType.SAME_ORG) {
+            coaches = coachRepository.findCoachesByOrganization(
+                    Role.COACH,  // Role enum 전달
+                    currentUser.getOrganizations(),
+                    request.getJob(),
+                    pageable
+            );
+        } else {
+            coaches = coachRepository.findCoaches(
+                    Role.COACH,  // Role enum 전달
+                    request.getJob(),
+                    pageable
+            );
+        }
+
+        // DTO 변환
+        return coaches.map(coach -> {
+            CoachInfo coachInfo = coachInfoRepository.findByUserId(coach.getId())
+                    .orElse(null);
+
+            return CoachListResponseDto.toDTO(
+                    coach.getId(),
+                    coach.getNickname(),
+                    coachInfo != null ? coachInfo.getJob() : null,
+                    coachInfo != null ? coachInfo.getIntroduce() : null,
+                    coach.getProfileImage()
+            );
+        });
+    }
+
+    /**
+     * 코치 상세 정보 조회
+     */
+    public CoachDetailResponseDto getCoachDetail(UUID coachId) {
+        // 코치 조회
+        User coach = userRepository.findByIdAndRole(coachId, Role.COACH)
+                .orElseThrow(() -> new CoachHandler(ErrorStatus.USER_NOT_FOUND));
+
+        // 코치가 아닌 경우 예외 처리
+        if (!coach.isCoach()) {
+            throw new CoachHandler(ErrorStatus.USER_NOT_COACH);
+        }
+
+        // 코치 정보 조회
+        CoachInfo coachInfo = coachInfoRepository.findByUserId(coachId)
+                .orElse(null);
+
+        // 자격증 목록 조회
+        List<String> certificates = coachCertificateRepository
+                .findCertificateNamesByCoachInfoId(coachId);
+
+        return CoachDetailResponseDto.toDTO(
+                coach.getId(),
+                coach.getNickname(),
+                coachInfo != null ? coachInfo.getJob() : null,
+                coachInfo != null ? coachInfo.getIntroduce() : null,
+                coach.getProfileImage(),
+                certificates
+        );
+    }
+
+    /**
+     * 코치 예약 가능 시간대 조회
+     */
+    public AvailableTimesResponseDto getAvailableTimes(UUID coachId, String dateStr) {
+        // 날짜 유효성 검증
+        LocalDate requestDate = validateAndParseDate(dateStr);
+
+        // 코치 존재 여부 확인
+        User coach = userRepository.findByIdAndRole(coachId, Role.COACH)
+                .orElseThrow(() -> new CoachHandler(ErrorStatus.USER_NOT_FOUND));
+
+        if (!coach.isCoach()) {
+            throw new CoachHandler(ErrorStatus.USER_NOT_COACH);
+        }
+
+        // 해당 날짜의 예약 조회
+        LocalDateTime startOfDay = requestDate.atStartOfDay();
+        LocalDateTime endOfDay = requestDate.atTime(LocalTime.MAX);
+
+        List<Consultation> consultations = consultationRepository
+                .findByCoachIdAndDate(coachId, startOfDay, endOfDay);
+
+        // Set을 사용한 성능 개선 (O(n))
+        // 예약된 시간대 타임 슬롯 가져오기(전문가가 스스로 막아놓은 시간도 포함)
+        Set<String> bookedTimeSlots = consultations.stream()
+                .map(this::convertToTimeSlot)
+                .collect(Collectors.toSet());
+
+        // 예약 가능한 시간대를 가져오기
+        List<String> availableTimes = DEFAULT_TIME_SLOTS.stream()
+                .filter(slot -> !bookedTimeSlots.contains(slot)) // Set의 contains는 O(1)
+                .collect(Collectors.toList());
+
+        return AvailableTimesResponseDto.toDTO(coachId, dateStr, availableTimes);
+    }
+
+    /**
+     * 전문가가 스스로 예약을 막아놓은 시간대 조회
+     */
+    public BlockedTimesResponseDto getBlockedTimes(UUID coachId, String dateStr){
+        // 날짜 유효성 검증
+        LocalDate requestDate = validateAndParseDate(dateStr);
+
+        // 코치 존재 여부 확인
+        User coach = userRepository.findByIdAndRole(coachId, Role.COACH)
+                .orElseThrow(() -> new CoachHandler(ErrorStatus.USER_NOT_FOUND));
+
+        if (!coach.isCoach()) {
+            throw new CoachHandler(ErrorStatus.USER_NOT_COACH);
+        }
+
+        // 해당 날짜에 전문가가 막아놓은 시간대 조회
+        LocalDateTime startOfDay = requestDate.atStartOfDay();
+        LocalDateTime endOfDay = requestDate.atTime(LocalTime.MAX);
+
+        List<Consultation> consultations = consultationRepository
+                .findBlockedTimesByCoachIdAndDate(coachId, startOfDay, endOfDay);
+
+        List<String> blockedTimes = consultations.stream()
+                .map(this::convertToTimeSlot)
+                .toList();
+
+        return BlockedTimesResponseDto.toDTO(dateStr, blockedTimes);
+    }
+
+    /**
+     * 전문가가 스스로 예약을 막아놓은 시간대 업데이트
+     */
+    @Transactional(readOnly = false)
+    public BlockedTimesResponseDto updateBlockedTimes(UUID coachId, String dateStr, BlockedTimesRequestDto blockedTimesRequestDto){
+        // 날짜 유효성 검증
+        LocalDate requestDate = validateAndParseDate(dateStr);
+
+        // 코치 존재 여부 확인
+        User coach = userRepository.findByIdAndRole(coachId, Role.COACH)
+                .orElseThrow(() -> new CoachHandler(ErrorStatus.USER_NOT_FOUND));
+
+        if (!coach.isCoach()) {
+            throw new CoachHandler(ErrorStatus.USER_NOT_COACH);
+        }
+
+        // 타임 슬롯 형식 유효성 검증
+        List<String> blockedTimes = blockedTimesRequestDto.getBlockedTimes();
+        validateTimeSlots(blockedTimes);
+
+        // 해당 날짜에 이미 잡힌 상담이 존재하는지 조회
+
+        // 해당 날짜의 예약 조회
+        LocalDateTime startOfDay = requestDate.atStartOfDay();
+        LocalDateTime endOfDay = requestDate.atTime(LocalTime.MAX);
+
+        if (consultationRepository.existsConflictingReservation(
+                coachId, startOfDay, endOfDay, blockedTimes)) {
+            throw new CoachHandler(ErrorStatus.RESERVED_TIME_CANNOT_BE_BLOCKED);
+        }
+
+        // 기존 차단 시간 삭제
+        consultationRepository.deleteAllBlockedTimesByCoachIdAndDate(coachId, startOfDay, endOfDay);
+
+        // 새 차단 시간 생성
+        List<Consultation> blockedConsultations = blockedTimes.stream()
+                .map(timeSlot -> {
+                    LocalTime time = LocalTime.parse(timeSlot, DateTimeFormatter.ofPattern("HH:mm"));
+                    LocalDateTime startAt = requestDate.atTime(time);
+                    LocalDateTime endAt = startAt.plusHours(1);
+
+                    return Consultation.builder()
+                            .coach(coach)  // User 엔티티 참조
+                            .capacity(0)
+                            .startAt(startAt)
+                            .endAt(endAt)
+                            .type(Consultation.Type.BREAK)
+                            .sessionId("BREAK")
+                            .status(Consultation.Status.CLOSE)
+                            .build();
+                })
+                .toList();
+
+        consultationRepository.saveAll(blockedConsultations);
+
+        return BlockedTimesResponseDto.toDTO(dateStr, blockedTimes);
+    }
+
+
+
+
+
+    /**
+     * 날짜 유효성 검증 및 파싱
+     */
+    private LocalDate validateAndParseDate(String dateStr) {
+        LocalDate requestDate;
+
+        try {
+            requestDate = LocalDate.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE);
+        } catch (DateTimeParseException e) {
+            throw new CoachHandler(ErrorStatus.DATE_FORM_ERROR);
+        }
+
+        LocalDate today = LocalDate.now();
+        LocalDate maxDate = today.plusDays(30);
+
+        // 과거 날짜 체크
+        if (requestDate.isBefore(today)) {
+            throw new CoachHandler(ErrorStatus.DATE_PAST_DAYS);
+        }
+
+        // 30일 이후 날짜 체크
+        if (requestDate.isAfter(maxDate)) {
+            throw new CoachHandler(ErrorStatus.DATE_TOO_FAR);
+        }
+
+        return requestDate;
+    }
+
+    /**
+     * Consultation을 시간대 문자열로 변환
+     */
+    private String convertToTimeSlot(Consultation consultation) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+        String startTime = consultation.getStartAt().format(formatter);
+        String endTime = consultation.getEndAt().format(formatter);
+        return startTime + "-" + endTime;
+    }
+
+    /**
+     * 시간 슬롯 검증 (09:00~17:00, 정시만)
+     */
+    private void validateTimeSlots(List<String> timeSlots) {
+        List<String> validTimeSlots = Arrays.asList(
+                "09:00", "10:00", "11:00", "12:00",
+                "13:00", "14:00", "15:00", "16:00", "17:00"
+        );
+
+        for (String timeSlot : timeSlots) {
+            if (!validTimeSlots.contains(timeSlot)) {
+                throw new CoachHandler(ErrorStatus.DATE_FORM_ERROR);
+            }
+        }
+    }
+}

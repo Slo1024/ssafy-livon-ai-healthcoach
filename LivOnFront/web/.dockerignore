@@ -1,0 +1,16 @@
+# Docker 빌드 시 복사하지 않을 파일 및 폴더 목록
+
+# 의존성 폴더 (컨테이너 내부에서 설치)
+node_modules
+
+# 빌드 결과물 (컨테이너 내부에서 생성)
+build
+dist
+
+# 운영체제 파일
+.DS_Store
+*.log
+
+# 환경 변수 파일 (Jenkins에서 주입)
+.env
+.env.*

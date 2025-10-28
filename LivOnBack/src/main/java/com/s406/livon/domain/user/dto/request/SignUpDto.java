@@ -1,16 +1,18 @@
 package com.s406.livon.domain.user.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.s406.livon.domain.user.entity.Organizations;
 import com.s406.livon.domain.user.entity.User;
 import com.s406.livon.domain.user.enums.Gender;
 import com.s406.livon.domain.user.enums.Role;
-import jakarta.persistence.Column;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 @Getter
@@ -19,30 +21,29 @@ import java.util.List;
 @Builder
 public class SignUpDto {
 
-    private String email; // 이메일
-    private String password; // 비밀번호
-    private String nickname; //닉네임
+    private String email;
+    private String password;
+    private String nickname;
     private String profileImage;
     private List<Role> roles = new ArrayList<>();
-    private double weight;
-    private double height;
     private Gender gender;
-    private String organizations;
-    private int age;
 
+    @JsonProperty(required = false)  // 선택적 필드로 명시
+    private String organizations;  // null 가능 -> null 이라면 개인회원 처리
 
-    public User toEntity(String encodedPassword,Organizations organizations){
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd", timezone = "Asia/Seoul")
+    private Date birthdate;
+
+    public User toEntity(String encodedPassword, Organizations organizations){
         return User.builder()
                 .email(this.email)
                 .password(encodedPassword)
                 .nickname(this.nickname)
                 .profileImage(this.profileImage)
-                .weight(this.weight)
-                .roles(this.roles)
-                .height(this.height)
-                .organizations(organizations)
+                .roles(roles)
+                .organizations(organizations)  // null 가능
                 .gender(this.gender)
-                .age(this.age)
+                .birthdate(this.birthdate)
                 .build();
     }
 }

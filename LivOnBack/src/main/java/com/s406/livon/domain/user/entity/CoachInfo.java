@@ -1,9 +1,9 @@
 package com.s406.livon.domain.user.entity;
 
-
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;   // ✅ 추가
 import java.util.List;
 import java.util.UUID;
 
@@ -14,7 +14,7 @@ import java.util.UUID;
 @Builder
 public class CoachInfo {
     @Id
-    @Column(name = "user_id", columnDefinition = "BINARY(16)") // DB 컬럼 설정 (User와 동일하게)
+    @Column(name = "user_id", columnDefinition = "BINARY(16)")
     private UUID id;
 
     @MapsId
@@ -24,13 +24,17 @@ public class CoachInfo {
 
     @Column
     private String job;
+
     @Column
     private String introduce;
-    @Column
-    private String professional;
 
-    @OneToMany(mappedBy = "coachInfo", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<CoachCertificates> coachCertificatesList;
-
-
+    // 단방향 1:N + 자식 테이블 FK
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(
+            name = "coach_info_id",
+            referencedColumnName = "user_id",
+            nullable = false
+    )
+    @Builder.Default
+    private List<CoachCertificates> coachCertificatesList = new ArrayList<>(); // ✅ 기본값
 }

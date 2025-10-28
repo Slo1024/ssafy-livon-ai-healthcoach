@@ -1,6 +1,7 @@
 package com.s406.livon.domain.user.entity;
 
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.s406.livon.domain.user.enums.Gender;
 import com.s406.livon.domain.user.enums.Role;
 
@@ -11,10 +12,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Entity
@@ -46,22 +44,20 @@ public class User extends BaseTime implements UserDetails {
   @Column
   private String profileImage;
 
-  // 몸무게
-  @Column
-  private double weight;
-
-  // 키
-  @Column
-  private double height;
+  // 기존 User Entity에 있던 키/몸무게 컬럼을 HealthSurvey로 이동
 
   // 성별
   @Column
   @Enumerated(EnumType.STRING)
   private Gender gender;
 
-  // 나이
+  // 나이 -> 생년월일로 수정
   @Column
-  private int age;
+  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd", timezone = "Asia/Seoul")
+  private Date birthdate;
+
+  @OneToOne(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+  private HealthSurvey healthSurvey;
 
 
   @ElementCollection(fetch = FetchType.EAGER)
@@ -116,4 +112,7 @@ public class User extends BaseTime implements UserDetails {
   }
 
 
+  public boolean isCoach() {
+      return this.roles != null && this.roles.contains(Role.COACH);
+  }
 }

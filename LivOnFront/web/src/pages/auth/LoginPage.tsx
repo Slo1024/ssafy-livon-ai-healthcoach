@@ -1,131 +1,284 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Header } from '../../components/layout/Header';
-import { Footer } from '../../components/layout/Footer';
-import { Button } from '../../components/common/Button';
-import { Input } from '../../components/common/Input';
-import { ROUTES } from '../../constants/routes';
+import styled from 'styled-components';
+import googleIcon from '../../assets/images/google-icon.png';
+import kakaoIcon from '../../assets/images/Kakao.png';
+import naverIcon from '../../assets/images/Naver logo.png';
+import visibilityIcon from '../../assets/images/visibility.png';
+import visibilityOffIcon from '../../assets/images/visibility_off.png';
+
+const LoginContainer = styled.div`
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #ffffff;
+  padding: 20px;
+`;
+
+const LoginTitle = styled.div`
+  text-align: center;
+  margin-bottom: 40px;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 700;
+  font-size: 32px;
+  color: #000000;
+  line-height: 1.4;
+`;
+
+const FormContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  background-color: #ffffff;
+  padding: 30px;
+  width: 422px;
+  height: 516px;
+  border-radius: 32px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    width: 100%;
+  }
+`;
+
+const InputForm = styled.div`
+  border: 1.5px solid #ecedec;
+  border-radius: 6px;
+  height: 48px;
+  width: 342px;
+  display: flex;
+  align-items: center;
+  padding-left: 10px;
+  transition: 0.2s ease-in-out;
+
+  &:focus-within {
+    border: 1.5px solid #2d79f3;
+  }
+`;
+
+const Input = styled.input`
+  margin-left: 10px;
+  border-radius: 10px;
+  border: none;
+  width: 85%;
+  height: 100%;
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  &:focus {
+    outline: none;
+  }
+
+  &::placeholder {
+    font-family: Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+`;
+
+const PasswordToggle = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+  margin-right: 10px;
+`;
+
+const FlexRow = styled.div`
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  justify-content: space-between;
+  margin: 10px 0;
+  width: 342px;
+`;
+
+const CheckboxLabel = styled.label`
+  font-size: 14px;
+  color: black;
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+`;
+
+const Checkbox = styled.input`
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #ecedec;
+  cursor: pointer;
+`;
+
+const ForgotPassword = styled.span`
+  font-size: 14px;
+  color: #4965f6;
+  font-weight: 500;
+  cursor: pointer;
+`;
+
+const ButtonSubmit = styled.button`
+  margin: 20px 0 8px 0;
+  background-color: #77a3f3;
+  border: none;
+  color: white;
+  font-size: 15px;
+  font-weight: 500;
+  border-radius: 6px;
+  height: 48px;
+  width: 342px;
+  cursor: pointer;
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  &:hover {
+    background-color: #4965f6;
+  }
+`;
+
+const SocialButton = styled.button`
+  margin-top: 8px;
+  width: 342px;
+  height: 48px;
+  border-radius: 6px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: 500;
+  gap: 10px;
+  border: 1px solid #ededef;
+  background-color: white;
+  cursor: pointer;
+  transition: 0.2s ease-in-out;
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  &:hover {
+    border: 1px solid #2d79f3;
+  }
+`;
+
+const GoogleButton = styled(SocialButton)`
+  background-color: white;
+  color: black;
+`;
+
+const KakaoButton = styled(SocialButton)`
+  background-color: #FEE500;
+  color: black;
+`;
+
+const NaverButton = styled(SocialButton)`
+  background-color: #03C75A;
+  color: white;
+`;
+
+const SignUpLink = styled.p`
+  text-align: center;
+  color: black;
+  font-size: 14px;
+  margin: 20px 0 5px 0;
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+`;
+
+const SignUpSpan = styled.span`
+  color: #878787;
+  font-weight: 500;
+  cursor: pointer;
+`;
 
 export const LoginPage: React.FC = () => {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [keepLoggedIn, setKeepLoggedIn] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // 로그인 로직 구현
-    console.log('Login:', formData);
-  };
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
-    }
+    console.log('Login attempt:', { email, password, keepLoggedIn });
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
-      
-      <main className="flex-1 flex items-center justify-center bg-gray-50 py-12">
-        <div className="max-w-md w-full space-y-8">
-          <div>
-            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-              로그인
-            </h2>
-            <p className="mt-2 text-center text-sm text-gray-600">
-              또는{' '}
-              <Link to={ROUTES.SIGNUP} className="font-medium text-blue-600 hover:text-blue-500">
-                새 계정 만들기
-              </Link>
-            </p>
-          </div>
-          
-          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-            <div className="space-y-4">
-              <Input
-                label="이메일"
-                type="email"
-                value={formData.email}
-                onChange={(value) => handleInputChange('email', value)}
-                error={errors.email}
-                required
+    <LoginContainer>
+      <LoginTitle>
+        코치님, 기다리고 있을 회원들을 위해<br />
+        로그인을 해주세요.
+      </LoginTitle>
+
+      <FormContainer>
+        <form onSubmit={handleSubmit}>
+          <InputForm style={{ marginBottom: '20px' }}>
+            <Input
+              type="email"
+              placeholder="이메일을 입력하세요"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </InputForm>
+
+          <InputForm>
+            <Input
+              type={showPassword ? 'text' : 'password'}
+              placeholder="비밀번호를 입력하세요"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <PasswordToggle
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              <img 
+                src={showPassword ? visibilityIcon : visibilityOffIcon} 
+                alt={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"} 
+                width="20" 
+                height="20" 
               />
-              
-              <Input
-                label="비밀번호"
-                type="password"
-                value={formData.password}
-                onChange={(value) => handleInputChange('password', value)}
-                error={errors.password}
-                required
+            </PasswordToggle>
+          </InputForm>
+
+          <FlexRow>
+            <CheckboxLabel>
+              <Checkbox
+                type="checkbox"
+                checked={keepLoggedIn}
+                onChange={(e) => setKeepLoggedIn(e.target.checked)}
               />
-            </div>
+              로그인 유지
+            </CheckboxLabel>
+            <ForgotPassword>비밀번호 찾기</ForgotPassword>
+          </FlexRow>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                  로그인 상태 유지
-                </label>
-              </div>
+          <ButtonSubmit type="submit">로그인</ButtonSubmit>
+        </form>
 
-              <div className="text-sm">
-                <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
-                  비밀번호를 잊으셨나요?
-                </a>
-              </div>
-            </div>
+        <GoogleButton type="button">
+          <img src={googleIcon} alt="Google" width="20" height="20" />
+          구글 로그인
+        </GoogleButton>
 
-            <div>
-              <Button
-                type="submit"
-                variant="primary"
-                size="large"
-                className="w-full"
-              >
-                로그인
-              </Button>
-            </div>
+        <KakaoButton type="button">
+          <img src={kakaoIcon} alt="Kakao" width="20" height="20" />
+          카카오 로그인
+        </KakaoButton>
 
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-gray-50 text-gray-500">또는</span>
-                </div>
-              </div>
+        <NaverButton type="button">
+          <img src={naverIcon} alt="Naver" width="20" height="20" />
+          네이버 로그인
+        </NaverButton>
 
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => console.log('Kakao login')}
-                >
-                  카카오 로그인
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => console.log('Naver login')}
-                >
-                  네이버 로그인
-                </Button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </main>
-      
-      <Footer />
-    </div>
+        <SignUpLink>
+          <Link to="/auth/signup">
+            <SignUpSpan>회원가입</SignUpSpan>
+          </Link>
+        </SignUpLink>
+      </FormContainer>
+    </LoginContainer>
   );
 };

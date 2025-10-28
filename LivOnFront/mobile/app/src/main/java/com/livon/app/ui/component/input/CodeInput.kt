@@ -1,63 +1,121 @@
-// com/livon/app/ui/component/input/CodeInput.kt
+// com/livon/app/ui/component/input/CodeInputField.kt
 package com.livon.app.ui.component.input
 
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.livon.app.ui.theme.LivonTheme
 
 /**
- * CodeInput: 4개의 밑줄 표시
- * - 각 라인: W=40dp, stroke=1.6dp, color=primary(Main)
- * - 라인 간 간격: 7dp
- * - 왼쪽 마진: 20dp
- * - 높이: 24dp (라인이 하단에 그려짐)
+ * 이메일 인증코드 4자리 입력 필드
+ * - 왼쪽 마진 20, 각 셀 W=40, 간격 7, 밑줄 stroke 1.6, color=primary
+ * - 숫자만 입력, 최대 4자리, 붙여넣기 지원, 4자리 완료 시 onComplete 호출
  */
 @Composable
-fun CodeInput(
-    code: String = "",
-    cellCount: Int = 4,
+fun CodeInputField(
+    code: String,
+    onCodeChange: (String) -> Unit,
+    onComplete: (String) -> Unit = {},
+    modifier: Modifier = Modifier,
+    cellCount: Int = 4
 ) {
     val lineColor = MaterialTheme.colorScheme.primary
+    val textColor = MaterialTheme.colorScheme.onBackground
 
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
-        modifier = Modifier.padding(start = 20.dp)
-    ) {
-        repeat(cellCount) {
-            Canvas(
-                modifier = Modifier
-                    .size(width = 40.dp, height = 24.dp)
+    val handleChange: (String) -> Unit = { raw ->
+        val filtered = raw.filter { it.isDigit() }.take(cellCount)
+        onCodeChange(filtered)
+        if (filtered.length == cellCount) onComplete(filtered)
+    }
+
+    BasicTextField(
+        value = code,
+        onValueChange = handleChange,
+        singleLine = true,
+        textStyle = TextStyle.Default, // 렌더링은 아래 Box의 Text로 처리
+        cursorBrush = SolidColor(androidx.compose.ui.graphics.Color.Transparent),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Number,
+            imeAction = ImeAction.Done
+        ),
+        modifier = modifier.padding(start = 20.dp),
+        decorationBox = {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // 여기서는 Density 컨텍스트 안이므로 toPx() 사용 가능 ✅
-                drawLine(
-                    color = lineColor,
-                    start = Offset(0f, size.height),
-                    end = Offset(size.width, size.height),
-                    strokeWidth = 1.6.dp.toPx(),
-                    cap = StrokeCap.Round
-                )
+                repeat(cellCount) { index ->
+                    val ch = code.getOrNull(index)?.toString() ?: ""
+                    Box(
+                        modifier = Modifier
+                            .width(40.dp)
+                            .height(40.dp)
+                            .drawBehind {
+                                drawLine(
+                                    color = lineColor,
+                                    start = Offset(0f, size.height),
+                                    end = Offset(size.width, size.height),
+                                    strokeWidth = 1.6.dp.toPx(),
+                                    cap = StrokeCap.Round
+                                )
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (ch.isNotEmpty()) {
+                            Text(
+                                text = ch,
+                                color = textColor,
+                                style = MaterialTheme.typography.headlineSmall.copy(
+                                    fontWeight = FontWeight.Medium
+                                )
+                            )
+                        }
+                    }
+                }
             }
         }
-    }
+    )
 }
 
-/* ---------- Preview ---------- */
-@Preview(showBackground = true, name = "CodeInput (default)")
+/* ---------- Previews ---------- */
+@Preview(showBackground = true, name = "CodeInputField - Empty")
 @Composable
-private fun PreviewCodeInputDefault() {
+private fun PreviewCodeInputField_Empty() {
     LivonTheme {
-        CodeInput()
+        var code by remember { mutableStateOf("") }
+        CodeInputField(code = code, onCodeChange = { code = it })
     }
 }
 
+@Preview(showBackground = true, name = "CodeInputField - Partial")
+@Composable
+private fun PreviewCodeInputField_Partial() {
+    LivonTheme {
+        var code by remember { mutableStateOf("12") }
+        CodeInputField(code = code, onCodeChange = { code = it })
+    }
+}
 
+@Preview(showBackground = true, name = "CodeInputField - Full")
+@Composable
+private fun PreviewCodeInputField_Full() {
+    LivonTheme {
+        var code by remember { mutableStateOf("1234") }
+        CodeInputField(code = code, onCodeChange = { code = it })
+    }
+}

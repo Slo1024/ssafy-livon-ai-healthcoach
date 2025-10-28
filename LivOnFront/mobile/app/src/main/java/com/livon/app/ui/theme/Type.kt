@@ -29,11 +29,23 @@ val Typography = Typography(
         lineHeight = 24.sp,
         letterSpacing = 0.5.sp
     ),
+    titleMedium = TextStyle( // ★ 자주 쓰는 18sp
+        fontFamily = Pretendard,
+        fontWeight = FontWeight.Medium,
+        fontSize = 18.sp,
+        lineHeight = 24.sp
+    ),
     titleLarge = TextStyle(
         fontFamily = Pretendard,
         fontWeight = FontWeight.Bold,
         fontSize = 22.sp,
         lineHeight = 28.sp
+    ),
+    bodySmall = TextStyle( // 라벨(14 Medium) 용
+        fontFamily = Pretendard,
+        fontWeight = FontWeight.Medium,
+        fontSize = 14.sp,
+        lineHeight = 18.sp
     ),
     labelSmall = TextStyle(
         fontFamily = Pretendard,

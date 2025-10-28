@@ -1,11 +1,10 @@
-// com/livon/app/ui/component/overlay/TopBar.kt
+// com/livon/app/ui/component/overlay/TopBar2.kt
 package com.livon.app.ui.component.overlay
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -17,54 +16,54 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import com.livon.app.R
 import com.livon.app.ui.theme.LivonTheme
+import com.livon.app.ui.theme.Spacing
 
 /**
- * 상단바 H40, 좌측 Back, 중앙 Title(18 Bold)
+ * H=70, 좌 Back, 중앙 Title (Medium 20, LetterSpacing 1%)
  * - back 아이콘: res/drawable/ic_back.xml
  */
 @Composable
-fun TopBar(
-    title: String? = null,
-    onBack: (() -> Unit)? = null
+fun TopBar2(
+    title: String,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .height(40.dp)
-            .padding(horizontal = 20.dp),
+            .height(70.dp)
+            .padding(horizontal = Spacing.Horizontal),
         contentAlignment = Alignment.Center
     ) {
         IconButton(
-            onClick = { onBack?.invoke() },
+            onClick = onBack,
             modifier = Modifier.align(Alignment.CenterStart)
         ) {
             Icon(
                 painter = painterResource(id = R.drawable.ic_back),
-                contentDescription = "뒤로",
+                contentDescription = "뒤로가기",
                 tint = MaterialTheme.colorScheme.onBackground
             )
         }
-
-        if (!title.isNullOrBlank()) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Medium,
+                letterSpacing = 0.01.em,
+                color = MaterialTheme.colorScheme.onBackground
             )
-        }
+        )
     }
-    Divider(color = MaterialTheme.colorScheme.outline, thickness = 1.dp)
 }
 
 /* ---------- Preview ---------- */
-@Preview(showBackground = true, name = "TopBar (center title)")
+@Preview(showBackground = true, name = "TopBar2")
 @Composable
-private fun PreviewTopBar() {
+private fun PreviewTopBar2() {
     LivonTheme {
-        TopBar(title = "회원 로그인", onBack = {})
+        TopBar2(title = "건강 정보 입력", onBack = {})
     }
 }

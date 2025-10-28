@@ -1,44 +1,63 @@
+// com/livon/app/ui/component/input/CodeInput.kt
 package com.livon.app.ui.component.input
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.livon.app.ui.theme.LivonTheme
 
 /**
- * 4자리 인증 코드 표시용 간단 스텁
- * - 실제 입력은 BasicTextField로 구현 권장 (여기선 UI 프리뷰 용)
+ * CodeInput: 4개의 밑줄 표시
+ * - 각 라인: W=40dp, stroke=1.6dp, color=primary(Main)
+ * - 라인 간 간격: 7dp
+ * - 왼쪽 마진: 20dp
+ * - 높이: 24dp (라인이 하단에 그려짐)
  */
 @Composable
 fun CodeInput(
-    code: String,              // 최대 4자리
-    cellCount: Int = 4
+    code: String = "",
+    cellCount: Int = 4,
 ) {
-    val shape = RoundedCornerShape(10.dp)
-    val focusedColor = MaterialTheme.colorScheme.primary
-    val idleColor = MaterialTheme.colorScheme.outline
+    val lineColor = MaterialTheme.colorScheme.primary
 
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        repeat(cellCount) { idx ->
-            val ch = code.getOrNull(idx)?.toString() ?: ""
-            val borderColor = if (idx == code.length.coerceAtMost(cellCount - 1)) focusedColor else idleColor
-            Text(
-                text = ch,
-                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Medium, color = Color.Black),
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
+        modifier = Modifier.padding(start = 20.dp)
+    ) {
+        repeat(cellCount) {
+            Canvas(
                 modifier = Modifier
-                    .size(48.dp)
-                    .border(1.dp, borderColor, shape)
-                    .background(Color.White, shape)
-            )
+                    .size(width = 40.dp, height = 24.dp)
+            ) {
+                // 여기서는 Density 컨텍스트 안이므로 toPx() 사용 가능 ✅
+                drawLine(
+                    color = lineColor,
+                    start = Offset(0f, size.height),
+                    end = Offset(size.width, size.height),
+                    strokeWidth = 1.6.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+            }
         }
     }
 }
+
+/* ---------- Preview ---------- */
+@Preview(showBackground = true, name = "CodeInput (default)")
+@Composable
+private fun PreviewCodeInputDefault() {
+    LivonTheme {
+        CodeInput()
+    }
+}
+
+

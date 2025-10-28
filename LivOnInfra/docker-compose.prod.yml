@@ -6,8 +6,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8081:8081"
-    volumes:
-      - ../LivOnBack/src:/app/src
+    # volumes:
+    #  - ../LivOnBack/src:/app/src
     environment:
       - SPRING_PROFILES_ACTIVE=prod
     extra_hosts:

@@ -1,5 +1,6 @@
 package com.s406.livon.domain.coach.entity;
 
+import com.s406.livon.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,9 +27,9 @@ public class Consultation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @JdbcTypeCode(SqlTypes.CHAR)
-    @Column(name = "user_id", nullable = false, length = 36, columnDefinition = "CHAR(36)")
-    private UUID userId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User coach;  // 상담을 진행하는 코치
     
     @Column(nullable = false)
     private Integer capacity;

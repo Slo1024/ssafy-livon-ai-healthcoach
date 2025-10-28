@@ -242,7 +242,7 @@ public class CoachService {
                     LocalDateTime endAt = startAt.plusHours(1);
 
                     return Consultation.builder()
-                            .userId(coachId)
+                            .coach(coach)  // User 엔티티 참조
                             .capacity(0)
                             .startAt(startAt)
                             .endAt(endAt)

@@ -24,6 +24,7 @@ public class Consultation {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "consultation_id", nullable = false)
     private Long id;
 
     @JdbcTypeCode(SqlTypes.CHAR)

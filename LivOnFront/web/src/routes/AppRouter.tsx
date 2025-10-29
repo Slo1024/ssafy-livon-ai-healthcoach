@@ -7,7 +7,11 @@ import { HomePage } from '../pages/main/HomePage';
 import { AboutPage } from '../pages/main/AboutPage';
 import { DownloadPage } from '../pages/main/DownloadPage';
 import { LoginPage } from '../pages/auth/LoginPage';
+import { SignupCompletePage } from '../pages/auth/SignupCompletePage';
+import { MyPageVerificationPage } from '../pages/coach/MyPageVerificationPage';
 import { NotFoundPage } from '../pages/notfound/NotFoundPage';
+import { FAQPage } from '../pages/support/FAQPage';
+import { InquiryPage } from '../pages/support/InquiryPage';
 
 // 보호된 라우트 컴포넌트
 import { ProtectedRoute } from './ProtectedRoute';
@@ -27,7 +31,7 @@ export const AppRouter: React.FC = () => {
         <Route path={ROUTES.TERMS} element={<div>이용약관 페이지</div>} />
         <Route path={ROUTES.EMAIL_VERIFICATION} element={<div>이메일 인증 페이지</div>} />
         <Route path={ROUTES.PROFILE_SETUP} element={<div>프로필 설정 페이지</div>} />
-        <Route path={ROUTES.SIGNUP_COMPLETE} element={<div>회원가입 완료 페이지</div>} />
+        <Route path={ROUTES.SIGNUP_COMPLETE} element={<SignupCompletePage />} />
         
         {/* 코치 보호된 라우트 */}
         <Route
@@ -43,6 +47,14 @@ export const AppRouter: React.FC = () => {
           element={
             <ProtectedRoute requiredRole="coach">
               <div>클래스 개설 페이지</div>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/mypage/coach-verification"
+          element={
+            <ProtectedRoute requiredRole="coach">
+              <MyPageVerificationPage />
             </ProtectedRoute>
           }
         />
@@ -80,8 +92,9 @@ export const AppRouter: React.FC = () => {
         />
         
         {/* 고객센터 라우트 */}
-        <Route path={ROUTES.FAQ} element={<div>FAQ 페이지</div>} />
-        <Route path={ROUTES.INQUIRY} element={<div>고객문의 페이지</div>} />
+        <Route path="/support" element={<Navigate to={ROUTES.FAQ} replace />} />
+        <Route path={ROUTES.FAQ} element={<FAQPage />} />
+        <Route path={ROUTES.INQUIRY} element={<InquiryPage />} />
         
         {/* 404 페이지 */}
         <Route path={ROUTES.NOT_FOUND} element={<NotFoundPage />} />

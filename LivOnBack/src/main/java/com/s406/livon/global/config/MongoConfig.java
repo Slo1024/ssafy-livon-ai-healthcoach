@@ -2,6 +2,9 @@ package com.s406.livon.global.config;
 
 
 import java.util.List;
+
+import com.s406.livon.global.util.DateToLocalDateTimeKstConverter;
+import com.s406.livon.global.util.LocalDateTimeToDateKstConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.mongodb.MongoDatabaseFactory;
@@ -38,6 +41,7 @@ public class MongoConfig {
         return converter;
     }
 
+
     @Bean(name = "mongoTransactionManager")
     public MongoTransactionManager transactionManager(MongoDatabaseFactory mongoDatabaseFactory) {
         return new MongoTransactionManager(mongoDatabaseFactory);
@@ -47,4 +51,5 @@ public class MongoConfig {
     public TransactionTemplate transactionTemplate(MongoTransactionManager mongoTransactionManager) {
         return new TransactionTemplate(mongoTransactionManager);
     }
+
 }

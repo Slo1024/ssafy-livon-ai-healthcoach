@@ -43,7 +43,7 @@ public class GoodsChatRoomController {
             @RequestParam Long memberId,
             @PageableDefault Pageable pageable
     ) {
-        PageResponse<GoodsChatMessageResponse> response = goodsChatService.getMessagesForChatRoom(chatRoomId, memberId, pageable);
+        PageResponse<GoodsChatMessageResponse> response = goodsChatService.getChatRoomMessages(chatRoomId, memberId, pageable);
         return ResponseEntity.ok(ApiResponse.onSuccess(response));
     }
 

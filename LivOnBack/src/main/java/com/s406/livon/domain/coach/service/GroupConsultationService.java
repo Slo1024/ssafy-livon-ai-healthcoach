@@ -132,10 +132,17 @@ public class GroupConsultationService {
 
         return GroupConsultationDetailResponseDto.from(gc, currentParticipants);
     }
-    
+
     /**
      * 클래스 수정
-     * 
+     *
+     * @param coachId 코치 ID
+     * @param id 클래스 ID
+     * @param request 수정 요청
+     */
+    /**
+     * 클래스 수정
+     *
      * @param coachId 코치 ID
      * @param id 클래스 ID
      * @param request 수정 요청
@@ -145,18 +152,36 @@ public class GroupConsultationService {
         // 1. 클래스 조회
         GroupConsultation groupConsultation = groupConsultationRepository.findById(id)
                 .orElseThrow(() -> new CoachHandler(ErrorStatus._BAD_REQUEST));
-        
+
         // 2. 권한 확인 (본인이 만든 클래스인지)
         validateOwnership(coachId, groupConsultation);
-        
+
         // 3. 예약자가 있는지 확인
         long participantCount = participantRepository.countByConsultationId(id);
         if (participantCount > 0) {
-            throw new CoachHandler(ErrorStatus._BAD_REQUEST);  // "예약된 클래스는 수정할 수 없습니다"
+            throw new CoachHandler(ErrorStatus.CONSULTATION_HAS_PARTICIPANTS);
         }
-        
-        // 4. 수정 (불변 객체이므로 재생성 필요 또는 setter 추가)
-        // TODO: GroupConsultation과 Consultation에 수정 메서드 추가 필요
+
+        // 4. GroupConsultation 수정 (optional 필드만)
+        if (request.title() != null || request.description() != null || request.imageUrl() != null) {
+            groupConsultation.updateDetails(
+                    request.title() != null ? request.title() : groupConsultation.getTitle(),
+                    request.description() != null ? request.description() : groupConsultation.getDescription(),
+                    request.imageUrl() != null ? request.imageUrl() : groupConsultation.getImageUrl()
+            );
+        }
+
+        // 5. Consultation 수정 (optional 필드만)
+        Consultation consultation = groupConsultation.getConsultation();
+        if (request.startAt() != null || request.endAt() != null || request.capacity() != null) {
+            consultation.updateDetails(
+                    request.startAt() != null ? request.startAt() : consultation.getStartAt(),
+                    request.endAt() != null ? request.endAt() : consultation.getEndAt(),
+                    request.capacity() != null ? request.capacity() : consultation.getCapacity()
+            );
+        }
+
+        // 6. 변경 사항 저장 (JPA dirty checking으로 자동 저장됨)
     }
     
     /**
@@ -176,8 +201,7 @@ public class GroupConsultationService {
         
         // 3. Soft Delete: status를 CANCELLED로 변경
         Consultation consultation = groupConsultation.getConsultation();
-        // TODO: Consultation에 status 변경 메서드 추가 필요
-        // consultation.cancel();
+        consultation.cancel();
     }
     
     // === Private Helper Methods ===

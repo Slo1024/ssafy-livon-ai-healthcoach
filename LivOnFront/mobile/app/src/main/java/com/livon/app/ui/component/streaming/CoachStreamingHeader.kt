@@ -22,7 +22,7 @@ import com.livon.app.R
 import com.livon.app.ui.theme.*
 
 @Composable
-fun CoachStreamingHeader() {
+fun CoachStreamingHeader(roomName: String, onLeaveRoom: () -> Unit, modifier: Modifier = Modifier) {
     Surface(
         color = Basic,
         modifier = Modifier.fillMaxWidth(),

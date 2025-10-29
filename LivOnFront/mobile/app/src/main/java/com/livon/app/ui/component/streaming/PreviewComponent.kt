@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.livon.app.feature.coach.streaming.ui.ConfigureUrlsScreen
 import com.livon.app.ui.theme.LivonTheme
 
 @Preview(showBackground = true)
@@ -16,9 +17,11 @@ fun PreviewHeaderBarComponent() {
         // CoachStreamingHeader()
         // MemberStreamingHeader()
         // StreamingNav()
-        StreamingCamera(
-            userName = "사용자 A",
-            modifier = Modifier.height(300.dp)
-        )
+//        StreamingCamera(
+//            userName = "사용자 A",
+//            modifier = Modifier.height(300.dp)
+//        )
+        //LiveStreamingCoachScreen()
+        ConfigureUrlsScreen()
     }
 }

@@ -57,6 +57,16 @@ public class Consultation {
     }
     
     public enum Status {
-        OPEN, CLOSE
+        OPEN, CLOSE, CANCELLED
+    }
+
+    public void cancel() {
+        this.status = Status.CANCELLED;
+    }
+
+    public void updateDetails(LocalDateTime startAt, LocalDateTime endAt, Integer capacity) {
+        this.startAt = startAt;
+        this.endAt = endAt;
+        this.capacity = capacity;
     }
 }

@@ -1,6 +1,5 @@
-package com.s406.livon.domain.coach.dto.request;
+package com.s406.livon.domain.coach.dto.response;
 
-import com.s406.livon.domain.coach.dto.response.AvailableTimesResponseDto;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;

@@ -71,6 +71,9 @@ public class User extends BaseTime implements UserDetails {
         .collect(Collectors.toList());
   }
 
+  @OneToOne(mappedBy = "user", fetch = FetchType.LAZY)
+  private CoachInfo coachInfo;
+
   public void setNickname(String nickname) {
     this.nickname = nickname;
   }

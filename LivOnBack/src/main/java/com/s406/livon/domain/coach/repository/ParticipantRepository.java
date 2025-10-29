@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
+import java.util.UUID;
 
 public interface ParticipantRepository extends JpaRepository<Participant, Long> {
     
@@ -17,12 +18,12 @@ public interface ParticipantRepository extends JpaRepository<Participant, Long> 
     /**
      * 특정 사용자가 특정 상담에 예약했는지 확인
      */
-    boolean existsByUserIdAndConsultationId(Long userId, Long consultationId);
+    boolean existsByUserIdAndConsultationId(UUID userId, Long consultationId);
     
     /**
      * 특정 사용자의 특정 상담 예약 조회
      */
-    Optional<Participant> findByUserIdAndConsultationId(Long userId, Long consultationId);
+    Optional<Participant> findByUserIdAndConsultationId(UUID userId, Long consultationId);
     
     /**
      * 특정 상담의 모든 참가자 삭제 (상담 취소 시)

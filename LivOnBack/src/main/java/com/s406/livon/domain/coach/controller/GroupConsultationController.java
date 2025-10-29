@@ -75,10 +75,9 @@ public class GroupConsultationController {
             @RequestParam(defaultValue = "10") int size) {
         
         UUID userId = jwtTokenProvider.getUserId(token.substring(7));
-        
+
         // 시작 시간 오름차순 정렬
-        Pageable pageable = PageRequest.of(page, size, 
-                Sort.by(Sort.Direction.ASC, "startAt"));
+        Pageable pageable = PageRequest.of(page, size);
         
         PaginatedResponse<GroupConsultationListResponseDto> response =
                 groupConsultationService.getGroupConsultations(userId, sameOrganization, pageable);

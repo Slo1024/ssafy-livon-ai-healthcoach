@@ -26,17 +26,19 @@ public record GroupConsultationDetailResponseDto(
             String nickname,
             String profileImage,
             String job,
-            String introduce,
-            String professional
+            String introduce
     ) {}
-    
+
     public static GroupConsultationDetailResponseDto from(
-            GroupConsultation gc, 
+            GroupConsultation gc,
             Long currentParticipants) {
-        
-        int availableSeats = Math.max(0, 
+
+        int availableSeats = Math.max(0,
                 gc.getConsultation().getCapacity() - currentParticipants.intValue());
-        
+
+        var coach = gc.getConsultation().getCoach();
+        var coachInfo = coach.getCoachInfo();  // LAZY 로딩이지만 FETCH JOIN으로 이미 로딩됨
+
         return GroupConsultationDetailResponseDto.builder()
                 .id(gc.getId())
                 .title(gc.getTitle())
@@ -49,10 +51,11 @@ public record GroupConsultationDetailResponseDto(
                 .availableSeats(availableSeats)
                 .isFull(availableSeats == 0)
                 .coach(CoachInfo.builder()
-                        .id(gc.getConsultation().getCoach().getId())
-                        .nickname(gc.getConsultation().getCoach().getNickname())
-                        .profileImage(gc.getConsultation().getCoach().getProfileImage())
-                        // TODO: CoachInfo 조회 추가
+                        .id(coach.getId())
+                        .nickname(coach.getNickname())
+                        .profileImage(coach.getProfileImage())
+                        .job(coachInfo != null ? coachInfo.getJob() : null)
+                        .introduce(coachInfo != null ? coachInfo.getIntroduce() : null)
                         .build())
                 .build();
     }

@@ -21,6 +21,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -119,15 +120,16 @@ public class GroupConsultationService {
      * @return 클래스 상세 정보
      */
     public GroupConsultationDetailResponseDto getGroupConsultation(Long id) {
-        Object[] result = groupConsultationRepository.findByIdWithParticipantCount(id);
-        
-        if (result == null) {
-            throw new CoachHandler(ErrorStatus._BAD_REQUEST);  // 적절한 에러 코드로 변경 필요
+        List<Object[]> results = groupConsultationRepository.findByIdWithParticipantCount(id);
+
+        if (results.isEmpty()) {
+            throw new CoachHandler(ErrorStatus._BAD_REQUEST);
         }
-        
+
+        Object[] result = results.get(0);  // 첫 번째 행 가져오기
         GroupConsultation gc = (GroupConsultation) result[0];
         Long currentParticipants = (Long) result[1];
-        
+
         return GroupConsultationDetailResponseDto.from(gc, currentParticipants);
     }
     

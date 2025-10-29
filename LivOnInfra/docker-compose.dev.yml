@@ -1,0 +1,51 @@
+services:
+
+  livon-be:
+    container_name: livon-be-dev
+    build:
+      context: ../LivOnBack
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8081" # 외부:내부 포트
+    volumes:
+      - ../LivOnBack/src:/app/src
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always
+    networks:
+      - livon-dev-net
+
+  livon-fe:
+    container_name: livon-fe-dev
+    build:
+      context: ../LivOnFront/web
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always
+    networks:
+      - livon-dev-net
+
+  nginx:
+    container_name: nginx-dev
+    image: nginx:latest
+    ports:
+      - "8443:443"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./nginx.dev.conf:/etc/nginx/conf.d/default.conf
+      - /etc/letsencrypt:/etc/letsencrypt
+    depends_on:
+      - livon-fe
+    networks:
+      - livon-dev-net
+
+networks:
+  livon-dev-net:
+    external: true
+

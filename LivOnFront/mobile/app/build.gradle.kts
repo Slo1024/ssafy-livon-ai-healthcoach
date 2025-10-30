@@ -42,7 +42,7 @@ android {
     packaging {
         resources {
             excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
-            excludes += "META-INF/*.kotlin_module" // 다른 흔한 충돌 파일도 함께 처리
+            excludes += "META-INF/*.kotlin_module"
         }
     }
 }

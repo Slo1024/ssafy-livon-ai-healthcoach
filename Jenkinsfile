@@ -30,6 +30,7 @@ pipeline {
                     def COMPOSE_FILE = IS_PROD ? 'LivOnInfra/docker-compose.prod.yml' : 'LivOnInfra/docker-compose.dev.yml'
                     def PROPERTIES_ID = IS_PROD ? 'yml-prod' : 'yml-dev'
                     def CONTAINER = IS_PROD ? 'livon-be-prod' : 'livon-be-dev'
+                    def PROJECT = IS_PROD ? 'livon-prod' : 'livon-dev'
                     
                     // application.yml 파일 주입
                     withCredentials([
@@ -52,7 +53,7 @@ pipeline {
                             docker rm -f ${CONTAINER} || true
 
                             echo "🚀 도커 컴포즈로 빌드 및 실행..."
-                            docker compose -f ${COMPOSE_FILE} up -d --build livon-be
+                            docker compose -p ${PROJECT} -f ${COMPOSE_FILE} up -d --build livon-be
                         """
                     }
                 }
@@ -75,6 +76,7 @@ pipeline {
                     def COMPOSE_FILE = IS_PROD ? 'LivOnInfra/docker-compose.prod.yml' : 'LivOnInfra/docker-compose.dev.yml'
                     def ENV_ID = IS_PROD ? 'frontend-env-prod' : 'frontend-env-dev'
                     def CONTAINER = IS_PROD ? 'livon-fe-prod' : 'livon-fe-dev'
+                    def PROJECT = IS_PROD ? 'livon-prod' : 'livon-dev'
 
                     // .env 파일 주입
                     withCredentials([file(credentialsId: ENV_ID, variable: 'ENV_FILE')]) {
@@ -93,7 +95,7 @@ pipeline {
                         docker rm -f ${CONTAINER} || true
 
                         echo "🚀 FE docker-compose 실행 중 (${COMPOSE_FILE})..."
-                        docker compose -f ${COMPOSE_FILE} up -d --build livon-fe
+                        docker compose -p ${PROJECT} -f ${COMPOSE_FILE} up -d --build livon-fe
                     """
                 }
             }

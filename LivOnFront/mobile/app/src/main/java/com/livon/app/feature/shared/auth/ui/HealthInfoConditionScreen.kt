@@ -35,7 +35,7 @@ fun HealthInfoConditionScreen() {
         }
     ) {
         // ───────── Topic ─────────
-        Topic("기저질환")
+        Topic("기저 질환")
         Spacer(Modifier.height(15.dp))
 
         // ───────── Requirement / Caption ─────────

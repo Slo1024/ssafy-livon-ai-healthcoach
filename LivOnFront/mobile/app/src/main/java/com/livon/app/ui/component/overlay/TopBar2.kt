@@ -52,7 +52,7 @@ fun TopBar2(
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium.copy(
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.SemiBold,
                 letterSpacing = 0.01.em,
                 color = MaterialTheme.colorScheme.onBackground
             )

@@ -60,7 +60,7 @@ fun SurveyOption(
         ),
         border = borderStroke,
         modifier = modifier
-            .width(220.dp)
+            .width(250.dp)
             .height(50.dp)
     ) {
         Text(

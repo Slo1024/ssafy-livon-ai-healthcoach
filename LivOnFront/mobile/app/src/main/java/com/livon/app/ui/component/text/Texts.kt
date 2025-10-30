@@ -12,6 +12,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
 import com.livon.app.ui.preview.PreviewSurface
+import com.livon.app.ui.theme.Sub1
 
 /** 요구사항 텍스트: titleLarge + Medium + onBackground */
 
@@ -52,6 +53,21 @@ fun CaptionText(text: String) {
         )
     )
 }
+
+@Composable
+fun NoticeTextSmall(text: String) {
+    Text(
+        text = text,
+        modifier = Modifier.fillMaxWidth(),
+        textAlign = TextAlign.Center,
+        style = MaterialTheme.typography.bodySmall.copy(
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Normal,
+            color = Sub1
+        )
+    )
+}
+
 
 /* ---------- Preview ---------- */
 @Preview(showBackground = true, name = "Requirement & Caption")

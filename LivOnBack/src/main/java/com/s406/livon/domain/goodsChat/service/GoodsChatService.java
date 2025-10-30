@@ -3,15 +3,14 @@ package com.s406.livon.domain.goodsChat.service;
 
 import com.s406.livon.domain.coach.entity.Consultation;
 import com.s406.livon.domain.coach.repository.ConsultationRepository;
+import com.s406.livon.domain.goodsChat.document.GoodsChatMessage;
 import com.s406.livon.domain.goodsChat.dto.response.GoodsChatMessageResponse;
 import com.s406.livon.domain.goodsChat.dto.response.GoodsChatRoomResponse;
-import com.s406.livon.domain.goodsChat.entity.GoodsChatMessage;
 import com.s406.livon.domain.goodsChat.entity.GoodsChatRoom;
 import com.s406.livon.domain.goodsChat.entity.MessageType;
 import com.s406.livon.domain.goodsChat.event.GoodsChatEvent;
 import com.s406.livon.domain.goodsChat.event.GoodsChatEventPublisher;
 import com.s406.livon.domain.goodsChat.repository.GoodsChatMessageRepository;
-import com.s406.livon.domain.goodsChat.repository.GoodsChatPartRepository;
 import com.s406.livon.domain.goodsChat.repository.GoodsChatRoomRepository;
 import com.s406.livon.domain.user.entity.User;
 import com.s406.livon.domain.user.enums.Role;
@@ -38,7 +37,7 @@ public class GoodsChatService {
 //    private final GoodsPostRepository goodsPostRepository;
     private final UserRepository userRepository;
     private final GoodsChatRoomRepository chatRoomRepository;
-    private final GoodsChatPartRepository partRepository;
+//    private final GoodsChatPartRepository partRepository;
     private final GoodsChatMessageRepository messageRepository;
     private final GoodsChatEventPublisher eventPublisher;
     private final ConsultationRepository consultationRepository;
@@ -94,15 +93,15 @@ private User findUserById(UUID userId) {
     }
 //
     @Transactional(readOnly = true)
-    public PageResponse<GoodsChatMessageResponse> getMessagesForChatRoom(Long chatRoomId, Long memberId, Pageable pageable) {
-//        validateMemberParticipation(memberId, chatRoomId);
-        Pageable validatePageable = PageResponse.validatePageable(pageable);
+    public PageResponse<GoodsChatMessageResponse> getChatRoomMessages(Long chatRoomId, Long memberId, Pageable pageable) {
+        Page<GoodsChatMessage> chatMessagePage = messageRepository.getChatMessages(chatRoomId, pageable);
 
-        Page<GoodsChatMessage> chatMessagePage = messageRepository.findByChatRoomId(chatRoomId, validatePageable);
         List<GoodsChatMessageResponse> content = chatMessagePage.getContent().stream()
-                .map(GoodsChatMessageResponse::of)
+                .map(message -> {
+                    User user = findUserById(message.getUserId());
+                    return GoodsChatMessageResponse.of(message, user);
+                })
                 .toList();
-
         return PageResponse.from(chatMessagePage, content);
     }
 //

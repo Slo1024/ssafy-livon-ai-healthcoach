@@ -49,7 +49,7 @@ fun SurveyOption(
 
     val bgColor = if (selected) Main else Sub2
     val textColor = if (selected) Basic else BorderBlack
-    val borderStroke = if (selected) null else BorderStroke(1.dp, Border)
+    val borderStroke = if (selected) null else BorderStroke(0.5.dp, Border)
 
     Button(
         onClick = onClick,

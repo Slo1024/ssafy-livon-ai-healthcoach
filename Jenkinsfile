@@ -90,6 +90,15 @@ pipeline {
                         }
                     }
 
+                    // Nginx 배포 전, 유령 디렉터리/권한 문제 해결 (Jenkins 권한 문제 해결)
+                    sh """
+                        echo "--- Nginx 배포 전 사전 작업 ---"
+                        echo "Jenkins 작업 공간 소유권 복구"
+                        echo "WORKSPACE: ${WORKSPACE}"
+                        # 'jenkins' 유저가 이 폴더에 파일을 쓸 수 있도록 권한 부여.
+                        sudo chown -R jenkins:jenkins ${WORKSPACE}
+                    """
+
                     // Docker Compose 실행
                     sh """
                         echo "🗑️ 기존 FE 컨테이너 직접 삭제 (${CONTAINER})..."

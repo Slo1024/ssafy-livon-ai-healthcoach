@@ -20,6 +20,7 @@ export const ROUTES = {
   PAST_RESERVATION: '/coach/past-reservation',
   STREAMING: '/coach/streaming',
   COACH_MYPAGE: '/coach/mypage',
+  COACH_MYPAGE_INFO: '/coach/mypage/info',
   
   // 고객센터
   FAQ: '/support/faq',

@@ -1,0 +1,55 @@
+package com.s406.livon.global.config;
+
+
+import java.util.List;
+
+import com.s406.livon.global.util.DateToLocalDateTimeKstConverter;
+import com.s406.livon.global.util.LocalDateTimeToDateKstConverter;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.mongodb.MongoDatabaseFactory;
+import org.springframework.data.mongodb.MongoTransactionManager;
+import org.springframework.data.mongodb.core.convert.DbRefResolver;
+import org.springframework.data.mongodb.core.convert.DefaultDbRefResolver;
+import org.springframework.data.mongodb.core.convert.DefaultMongoTypeMapper;
+import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
+import org.springframework.data.mongodb.core.convert.MongoCustomConversions;
+import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
+import org.springframework.transaction.support.TransactionTemplate;
+
+@Configuration
+public class MongoConfig {
+
+    @Bean
+    public MappingMongoConverter mappingMongoConverter(
+            MongoDatabaseFactory mongoDatabaseFactory,
+            MongoMappingContext mongoMappingContext,
+            LocalDateTimeToDateKstConverter dateKstConverter,
+            DateToLocalDateTimeKstConverter localDateTimeKstConverter
+    ) {
+        DbRefResolver dbRefResolver = new DefaultDbRefResolver(mongoDatabaseFactory);
+        MappingMongoConverter converter = new MappingMongoConverter(dbRefResolver, mongoMappingContext);
+
+        // "_class" 타입을 저장하지 않도록 설정
+        converter.setTypeMapper(new DefaultMongoTypeMapper(null));
+
+        // MongoDB KST 변환 컨버터 설정
+        converter.setCustomConversions(new MongoCustomConversions(
+                List.of(localDateTimeKstConverter, dateKstConverter)
+        ));
+
+        return converter;
+    }
+
+
+    @Bean(name = "mongoTransactionManager")
+    public MongoTransactionManager transactionManager(MongoDatabaseFactory mongoDatabaseFactory) {
+        return new MongoTransactionManager(mongoDatabaseFactory);
+    }
+
+    @Bean(name = "mongoTransactionTemplate")
+    public TransactionTemplate transactionTemplate(MongoTransactionManager mongoTransactionManager) {
+        return new TransactionTemplate(mongoTransactionManager);
+    }
+
+}

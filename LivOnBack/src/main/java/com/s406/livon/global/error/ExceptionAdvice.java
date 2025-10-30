@@ -7,6 +7,7 @@ import com.s406.livon.global.web.response.ApiResponse;
 import com.s406.livon.global.web.response.code.ErrorReasonDTO;
 import com.s406.livon.global.web.response.code.status.ErrorStatus;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -32,11 +33,24 @@ public class ExceptionAdvice extends ResponseEntityExceptionHandler {
     @ExceptionHandler
     public ResponseEntity<Object> validation(ConstraintViolationException e, WebRequest request) {
         String errorMessage = e.getConstraintViolations().stream()
-                .map(constraintViolation -> constraintViolation.getMessage())
+                .map(ConstraintViolation::getMessage)
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("ConstraintViolationException 추출 도중 에러 발생"));
 
-        return handleExceptionInternalConstraint(e, ErrorStatus.valueOf(errorMessage), HttpHeaders.EMPTY,request);
+        try {
+            // 시도 1: ErrorStatus enum 상수명인 경우
+            ErrorStatus errorStatus = ErrorStatus.valueOf(errorMessage);
+            return handleExceptionInternalConstraint(e, errorStatus, HttpHeaders.EMPTY, request);
+        } catch (IllegalArgumentException ex) {
+            // 시도 2: 일반 메시지인 경우
+            ApiResponse<Object> body = ApiResponse.onFailure(
+                    ErrorStatus._BAD_REQUEST.getCode(),
+                    errorMessage,  // 메시지 그대로 사용
+                    null
+            );
+            return super.handleExceptionInternal(e, body, HttpHeaders.EMPTY,
+                    ErrorStatus._BAD_REQUEST.getHttpStatus(), request);
+        }
     }
 
 

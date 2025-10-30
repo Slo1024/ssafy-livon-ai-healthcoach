@@ -30,6 +30,7 @@ pipeline {
                     def COMPOSE_FILE = IS_PROD ? 'LivOnInfra/docker-compose.prod.yml' : 'LivOnInfra/docker-compose.dev.yml'
                     def PROPERTIES_ID = IS_PROD ? 'yml-prod' : 'yml-dev'
                     def CONTAINER = IS_PROD ? 'livon-be-prod' : 'livon-be-dev'
+                    def PROJECT = IS_PROD ? 'livon-prod' : 'livon-dev'
                     
                     // application.yml 파일 주입
                     withCredentials([
@@ -52,7 +53,7 @@ pipeline {
                             docker rm -f ${CONTAINER} || true
 
                             echo "🚀 도커 컴포즈로 빌드 및 실행..."
-                            docker compose -f ${COMPOSE_FILE} up -d --build livon-be
+                            docker compose --project-directory LivOnInfra -p ${PROJECT} -f ${COMPOSE_FILE} up -d --build livon-be
                         """
                     }
                 }
@@ -75,6 +76,8 @@ pipeline {
                     def COMPOSE_FILE = IS_PROD ? 'LivOnInfra/docker-compose.prod.yml' : 'LivOnInfra/docker-compose.dev.yml'
                     def ENV_ID = IS_PROD ? 'frontend-env-prod' : 'frontend-env-dev'
                     def CONTAINER = IS_PROD ? 'livon-fe-prod' : 'livon-fe-dev'
+                    def PROJECT = IS_PROD ? 'livon-prod' : 'livon-dev'
+                    def NGINX_CONTAINER = IS_PROD ? 'nginx-prod' : 'nginx-dev'
 
                     // .env 파일 주입
                     withCredentials([file(credentialsId: ENV_ID, variable: 'ENV_FILE')]) {
@@ -87,13 +90,47 @@ pipeline {
                         }
                     }
 
+                    // Nginx 배포 전, 잘못된 경로 타입(파일↔디렉터리) 정리
+                    sh """
+                        echo "--- Nginx 배포 전 사전 작업 ---"
+                        echo "WORKSPACE: ${WORKSPACE}"
+
+                        # dev 설정 파일이 디렉터리로 잘못 생성된 경우 제거
+                        if [ -d LivOnInfra/nginx.dev.conf ]; then
+                          echo "Fix: removing directory LivOnInfra/nginx.dev.conf"
+                          rm -rf LivOnInfra/nginx.dev.conf
+                        fi
+                        # dev 설정 파일이 없으면 git에서 복원
+                        if [ ! -f LivOnInfra/nginx.dev.conf ]; then
+                          echo "Restore: checking out LivOnInfra/nginx.dev.conf"
+                          git checkout -- LivOnInfra/nginx.dev.conf || true
+                        fi
+
+                        # prod 설정 파일이 디렉터리로 잘못 생성된 경우 제거 (브랜치에 없을 수 있어도 안전)
+                        if [ -d LivOnInfra/nginx.prod.conf ]; then
+                          echo "Fix: removing directory LivOnInfra/nginx.prod.conf"
+                          rm -rf LivOnInfra/nginx.prod.conf
+                        fi
+                        # prod 설정 파일이 없으면 복원 시도 (없어도 실패 무시)
+                        if [ ! -f LivOnInfra/nginx.prod.conf ]; then
+                          echo "Restore: checking out LivOnInfra/nginx.prod.conf"
+                          git checkout -- LivOnInfra/nginx.prod.conf || true
+                        fi
+                    """
+
                     // Docker Compose 실행
                     sh """
                         echo "🗑️ 기존 FE 컨테이너 직접 삭제 (${CONTAINER})..."
                         docker rm -f ${CONTAINER} || true
 
                         echo "🚀 FE docker-compose 실행 중 (${COMPOSE_FILE})..."
-                        docker compose -f ${COMPOSE_FILE} up -d --build livon-fe
+                        docker compose --project-directory LivOnInfra -p ${PROJECT} -f ${COMPOSE_FILE} up -d --build livon-fe
+
+                        echo "🗑️ 기존 Nginx 컨테이너 삭제 (${NGINX_CONTAINER})..."
+                        docker rm -f ${NGINX_CONTAINER} || true
+
+                        echo "🌐 Nginx 프록시 기동 (${COMPOSE_FILE})..."
+                        docker compose --project-directory LivOnInfra -p ${PROJECT} -f ${COMPOSE_FILE} up -d --build nginx
                     """
                 }
             }

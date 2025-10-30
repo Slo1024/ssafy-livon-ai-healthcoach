@@ -77,6 +77,7 @@ pipeline {
                     def ENV_ID = IS_PROD ? 'frontend-env-prod' : 'frontend-env-dev'
                     def CONTAINER = IS_PROD ? 'livon-fe-prod' : 'livon-fe-dev'
                     def PROJECT = IS_PROD ? 'livon-prod' : 'livon-dev'
+                    def NGINX_CONTAINER = IS_PROD ? 'nginx-prod' : 'nginx-dev'
 
                     // .env 파일 주입
                     withCredentials([file(credentialsId: ENV_ID, variable: 'ENV_FILE')]) {
@@ -96,6 +97,12 @@ pipeline {
 
                         echo "🚀 FE docker-compose 실행 중 (${COMPOSE_FILE})..."
                         docker compose -p ${PROJECT} -f ${COMPOSE_FILE} up -d --build livon-fe
+
+                        echo "🗑️ 기존 Nginx 컨테이너 삭제 (${NGINX_CONTAINER})..."
+                        docker rm -f ${NGINX_CONTAINER} || true
+
+                        echo "🌐 Nginx 프록시 기동 (${COMPOSE_FILE})..."
+                        docker compose -p ${PROJECT} -f ${COMPOSE_FILE} up -d --build nginx
                     """
                 }
             }

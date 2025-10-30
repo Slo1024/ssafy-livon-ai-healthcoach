@@ -2,12 +2,34 @@ import React from 'react';
 
 export const TermsPage: React.FC = () => {
   return (
-    <div className="max-w-4xl mx-auto px-4 py-16" style={{ fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
-      <div className="bg-white rounded-lg shadow-lg p-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8 text-center">
-          이용약관
-        </h1>
-        
+    <div style={{ 
+      fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      minHeight: '100vh',
+      padding: '40px 20px',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'flex-start'
+    }}>
+      <h1 style={{ 
+        fontSize: '32px',
+        fontWeight: 700,
+        color: '#1f2937',
+        marginBottom: '40px',
+        textAlign: 'center',
+        width: '100%'
+      }}>
+        이용약관
+      </h1>
+      
+      <div style={{
+        maxWidth: '900px',
+        width: '100%',
+        backgroundColor: '#ffffff',
+        borderRadius: '8px',
+        padding: '40px',
+        boxSizing: 'border-box'
+      }}>
         <div className="prose max-w-none">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">제1조 (목적)</h2>
           <p className="text-gray-600 mb-6">
@@ -37,7 +59,6 @@ export const TermsPage: React.FC = () => {
             <li>실시간 헬스케어 코칭 서비스</li>
             <li>개인 맞춤형 건강 관리 프로그램</li>
             <li>전문 코치와의 1:1 상담 서비스</li>
-            <li>기타 회사가 정하는 서비스</li>
           </ul>
           
           <h2 className="text-xl font-semibold text-gray-800 mb-4">제5조 (이용자의 의무)</h2>

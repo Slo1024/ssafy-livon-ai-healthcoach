@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -21,25 +22,22 @@ public class CoachInfoRequestDto {
     private List<String> certificates;
 
     public CoachInfo toEntity(User user) {
-        // 1) 부모 생성 (단방향 1:N 이므로 리스트는 기본값으로 비어 있음)
-        CoachInfo coachInfo = CoachInfo.builder()
-                .id(user.getId())          // @MapsId 이므로 user의 PK 사용
+        // 자격증 문자열 리스트 -> 자격증 엔티티 리스트 변환
+        List<CoachCertificates> certificatesList = new ArrayList<>();
+        if (certificates != null && !certificates.isEmpty()) {
+            certificatesList = certificates.stream()
+                    .map(name -> CoachCertificates.builder()
+                            .certificatesName(name)
+                            .build())
+                    .collect(Collectors.toList());
+        }
+
+        // CoachInfo 생성 (한 번에 모든 필드 설정)
+        return CoachInfo.builder()
                 .user(user)
                 .job(job)
                 .introduce(introduce)
-                .build();                  // coachCertificatesList 는 [] 로 초기화됨
-
-        // 2) 자격증 문자열 리스트 -> 자격증 엔티티 리스트
-        if (certificates != null && !certificates.isEmpty()) {
-            coachInfo.getCoachCertificatesList().addAll(
-                    certificates.stream()
-                            .map(name -> CoachCertificates.builder()
-                                    .certificatesName(name)
-                                    .build())
-                            .collect(Collectors.toList())
-            );
-        }
-
-        return coachInfo;
+                .coachCertificatesList(certificatesList)
+                .build();
     }
 }

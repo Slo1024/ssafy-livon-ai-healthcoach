@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.TextStyle
@@ -33,12 +34,12 @@ fun LivonTextField(
     modifier: Modifier = Modifier,
     textStyle: TextStyle = MaterialTheme.typography.titleMedium.copy( // 18sp
         fontWeight = FontWeight.Normal,
-        color = MaterialTheme.colorScheme.onBackground
+        color = Color(0xFF000000) // 명세: 입력 후 텍스트 regular 18 색상 #000000
     )
 ) {
-    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val placeholderColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val lineColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val labelColor = Color(0xFF818286) // 명세: 제목 medium 14 색상 #818286
+    val placeholderColor = Color(0xFFB5B6BD) // 명세: 입력 전 텍스트 regular 18 색상 #B5B6BD
+    val lineColor = Color(0xFFB5B6BD) // 입력 라인 색상
 
     Column(
         modifier = modifier

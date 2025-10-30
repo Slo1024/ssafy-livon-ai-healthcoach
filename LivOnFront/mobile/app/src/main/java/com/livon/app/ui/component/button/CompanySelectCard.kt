@@ -41,7 +41,7 @@ fun CompanySelectCard(
     val shape = RoundedCornerShape(10.dp)
     val inactiveBg = Color(0xFFF7F8FA)
     val container = if (selected) Basic else inactiveBg
-    val borderStroke = if (selected) BorderStroke(2.dp, Main) else null
+    val borderStroke = if (selected) BorderStroke(2.dp, Color(0xFF7F7CFA)) else null
 
     Card(
         onClick = onClick,
@@ -50,12 +50,12 @@ fun CompanySelectCard(
         border = borderStroke,
         modifier = modifier
             .width(276.dp)
-            .height(53.dp)
+            .height(153.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .height(53.dp)
+                .height(153.dp)
                 .padding(start = 20.dp) // 텍스트 왼쪽 패딩 20
         ) {
             Text(

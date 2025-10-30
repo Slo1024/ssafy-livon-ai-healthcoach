@@ -17,7 +17,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.livon.app.R
+import com.livon.app.ui.theme.BorderBlack
 import com.livon.app.ui.theme.LivonTheme
 
 /**
@@ -26,18 +28,19 @@ import com.livon.app.ui.theme.LivonTheme
  */
 @Composable
 fun TopBar(
-    title: String? = null,
-    onBack: (() -> Unit)? = null
+    title: String,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(40.dp)
             .padding(horizontal = 20.dp),
         contentAlignment = Alignment.Center
     ) {
         IconButton(
-            onClick = { onBack?.invoke() },
+            onClick = onBack,
             modifier = Modifier.align(Alignment.CenterStart)
         ) {
             Icon(
@@ -47,21 +50,20 @@ fun TopBar(
             )
         }
 
-        if (!title.isNullOrBlank()) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                color = BorderBlack
             )
-        }
+        )
     }
     Divider(color = MaterialTheme.colorScheme.outline, thickness = 1.dp)
 }
 
 /* ---------- Preview ---------- */
-@Preview(showBackground = true, name = "TopBar (center title)")
+@Preview(showBackground = true, name = "TopBar")
 @Composable
 private fun PreviewTopBar() {
     LivonTheme {

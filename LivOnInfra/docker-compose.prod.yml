@@ -1,4 +1,5 @@
 services:
+
   livon-be:
     container_name: livon-be-prod
     build:
@@ -40,6 +41,7 @@ services:
     volumes:
       - ./nginx.prod.d:/etc/nginx/conf.d
       - /etc/letsencrypt:/etc/letsencrypt
+      - /var/www/certbot:/var/www/certbot
     depends_on:
       - livon-fe
     networks:

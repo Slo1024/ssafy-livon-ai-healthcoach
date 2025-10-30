@@ -275,16 +275,10 @@ public class CoachService {
         }
 
         LocalDate today = LocalDate.now();
-        LocalDate maxDate = today.plusDays(30);
 
         // 과거 날짜 체크
         if (requestDate.isBefore(today)) {
             throw new CoachHandler(ErrorStatus.DATE_PAST_DAYS);
-        }
-
-        // 30일 이후 날짜 체크
-        if (requestDate.isAfter(maxDate)) {
-            throw new CoachHandler(ErrorStatus.DATE_TOO_FAR);
         }
 
         return requestDate;

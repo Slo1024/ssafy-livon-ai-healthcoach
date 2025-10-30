@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">Livon</string>
+    <string name="application_server_url">Application Server URL</string>
+    <string name="livekit_url">LiveKit URL</string>
+    <string name="configure_urls">Configure URLs</string>
+    <string name="save">Save</string>
+    <string name="join_room">Join Room</string>
+    <string name="participant">Participant</string>
+    <string name="room">Room</string>
+    <string name="joinBtn">Join</string>
 </resources>

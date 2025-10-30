@@ -19,7 +19,7 @@ public class RedissonConfig {
     @Value("${spring.data.redis.port}")
     private int redisPort;
 
-    @Value("${spring.data.redis.password:}")
+    @Value("${spring.data.redis.password}")
     private String redisPassword;
 
     private static final String REDISSON_HOST_PREFIX = "redis://";
@@ -34,6 +34,7 @@ public class RedissonConfig {
         if (redisPassword != null && !redisPassword.isBlank()) {
             singleServerConfig.setPassword(redisPassword);
         }
+
         redisson = Redisson.create(config);
         return redisson;
     }

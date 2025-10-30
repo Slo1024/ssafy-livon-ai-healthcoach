@@ -58,7 +58,9 @@ public enum ErrorStatus implements BaseErrorCode {
     DATE_FORM_ERROR(HttpStatus.BAD_REQUEST,"DATE4000","날짜가 형식에 맞지 않습니다"),
     DATE_PAST_DAYS(HttpStatus.BAD_REQUEST,"DATE4010","과거 날짜는 조회할 수 없습니다"),
     DATE_TOO_FAR(HttpStatus.BAD_REQUEST,"DATE4020","오늘 기준으로 30일 이후의 날짜는 조회할 수 없습니다"),
-    
+
+    // 클래스 정보 관련
+    CONSULTATION_HAS_PARTICIPANTS(HttpStatus.BAD_REQUEST, "CLASS4000", "예약된 클래스는 수정할 수 없습니다"),
 
 
     ;

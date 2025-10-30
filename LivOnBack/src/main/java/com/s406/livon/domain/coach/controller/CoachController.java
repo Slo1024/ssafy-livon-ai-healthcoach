@@ -12,11 +12,14 @@ import com.s406.livon.global.web.response.ApiResponse;
 import com.s406.livon.global.web.response.PaginatedResponse;
 import com.s406.livon.global.web.response.code.status.SuccessStatus;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.constraints.Future;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
@@ -95,9 +98,12 @@ public class CoachController {
     @Operation(summary = "코치 예약 가능 시간대 조회 API", description = "특정 날짜의 코치 예약 가능 시간대를 조회합니다.")
     public ResponseEntity<?> getAvailableTimes(
             @PathVariable UUID coachId,
-            @RequestParam String date) {
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            @Future(message = "날짜는 미래여야 합니다")
+            LocalDate date) {
 
-        AvailableTimesResponseDto response = coachService.getAvailableTimes(coachId, date);
+        AvailableTimesResponseDto response = coachService.getAvailableTimes(coachId, String.valueOf(date));
 
         return ResponseEntity.ok().body(ApiResponse.of(SuccessStatus.SELECT_SUCCESS, response));
     }
@@ -126,14 +132,17 @@ public class CoachController {
      * @return 새로 갱신된 차단 시간대 목록
      */
     @PutMapping("/block-times")
-    @Operation(summary = "코치가 막아놓은 시간대 업데이트 API", description = "특정 날짜의 코치가 막아놓은 시간대를 업데이트합니다.")
     public ResponseEntity<?> updateBlockedTimes(
             @RequestHeader("Authorization") String token,
-            @RequestParam String date,
-            @RequestBody BlockedTimesRequestDto blockedTimesRequestDto) {
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            @Future(message = "날짜는 미래여야 합니다")
+            LocalDate date,
+            @RequestBody BlockedTimesRequestDto blockedTimesRequestDto
+    ) {
         UUID coachId = jwtTokenProvider.getUserId(token.substring(7));
-        BlockedTimesResponseDto response = coachService.updateBlockedTimes(coachId, date, blockedTimesRequestDto);
-
+        BlockedTimesResponseDto response = coachService.updateBlockedTimes(coachId, String.valueOf(date), blockedTimesRequestDto);
         return ResponseEntity.ok().body(ApiResponse.of(SuccessStatus.SELECT_SUCCESS, response));
     }
+
 }

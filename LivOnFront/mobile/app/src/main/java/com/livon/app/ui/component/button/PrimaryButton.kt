@@ -18,6 +18,9 @@ import androidx.compose.ui.unit.sp
 import com.livon.app.ui.theme.Border
 import com.livon.app.ui.theme.LivonTheme
 
+
+
+
 @Composable
 fun PrimaryButtonCore(
     text: String,
@@ -49,7 +52,7 @@ fun PrimaryButtonCore(
         )
     }
 }
-
+// com/livon/app/ui/component/button/PrimaryButton.kt
 @Composable
 fun PrimaryButtonBottom(
     text: String,
@@ -59,80 +62,89 @@ fun PrimaryButtonBottom(
     bottomMargin: Dp = 24.dp,
     targetWidth: Dp = 288.dp,
     height: Dp = 44.dp,
+    modifier: Modifier = Modifier
 ) {
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(
-//                start = horizontalMargin,
-//                end = horizontalMargin,
-                bottom = bottomMargin,
-                top = bottomMargin,
-            )
+    // bottomBar는 "세로 wrap"이어야 함
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp
     ) {
-        val maxW = maxWidth
-        val available = (maxW - horizontalMargin)
-        val buttonWidth: Dp = available.coerceAtMost(targetWidth)
-
         Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.BottomCenter
+            modifier = modifier
+                .fillMaxWidth()                 // 가로만 꽉
+                .wrapContentHeight()            // ★ 세로는 wrap
+                .navigationBarsPadding()        // 하단 시스템바 피하기
+                .padding(
+                    start = horizontalMargin,
+                    end = horizontalMargin,
+                    bottom = bottomMargin
+                ),
+            contentAlignment = Alignment.Center
         ) {
+            // 버튼은 "최대 targetWidth, 최소 가로폭=남은 공간" 형태로
             PrimaryButtonCore(
                 text = text,
                 onClick = onClick,
                 enabled = enabled,
                 modifier = Modifier
-                    .width(buttonWidth)
+                    .fillMaxWidth()
+                    .widthIn(max = targetWidth) // 화면이 좁으면 줄어들고, 넓으면 targetWidth로 제한
                     .height(height)
             )
         }
     }
-} // ← 함수 닫힘 (원본 로직 그대로, 누락된 중괄호만 보완)
+}
 
-/* ---------- Previews ---------- */
 
-@Preview(showBackground = true, showSystemUi = true, name = "PrimaryButtonBottom - Enabled")
+@Preview(
+    name = "PrimaryButtonBottom – Just Button",
+    backgroundColor = 0xFFFFFFFF, // 흰 배경
+    showSystemUi = false          // 상태바/네비바 숨김
+)
 @Composable
-private fun Preview_PrimaryButtonBottom_Enabled() {
+private fun Preview_PrimaryButtonBottom_JustButton() {
     LivonTheme {
-        // 버튼이 잘 보이도록 연회색 배경
+        // 작은 캔버스에 버튼만 가운데 표시
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFFF2F2F2))
+                .width(360.dp)          // 프리뷰 캔버스 가로
+                .wrapContentHeight()    // 세로는 버튼 높이만
+                .background(Color.White),
+            contentAlignment = Alignment.Center
         ) {
             PrimaryButtonBottom(
                 text = "다음",
                 onClick = {},
-                enabled = true,
-                horizontalMargin = 20.dp,
-                bottomMargin = 24.dp,
-                targetWidth = 288.dp,
-                height = 44.dp
+                enabled = true
             )
         }
     }
 }
 
-@Preview(showBackground = true, showSystemUi = true, name = "PrimaryButtonBottom - Disabled")
+@Preview(
+    name = "PrimaryButtonBottom – Disabled (Just Button)",
+    showBackground = true,
+    backgroundColor = 0xFFFFFFFF,
+    showSystemUi = false
+)
 @Composable
-private fun Preview_PrimaryButtonBottom_Disabled() {
+private fun Preview_PrimaryButtonBottom_JustButton_Disabled() {
     LivonTheme {
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFFF2F2F2))
+                .width(360.dp)
+                .wrapContentHeight()
+                .background(Color.White),
+            contentAlignment = Alignment.Center
         ) {
             PrimaryButtonBottom(
                 text = "다음",
                 onClick = {},
-                enabled = false,   // Border(#BABABA) 확인
-                horizontalMargin = 20.dp,
-                bottomMargin = 24.dp,
-                targetWidth = 288.dp,
-                height = 44.dp
+                enabled = false
             )
         }
     }
+
+
 }
+

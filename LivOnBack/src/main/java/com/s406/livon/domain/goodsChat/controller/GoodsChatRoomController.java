@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -38,12 +40,12 @@ public class GoodsChatRoomController {
     TODO: @RequestParam Long memberId -> @AuthenticationPrincipal 로 변경
     */
     @GetMapping("/{chatRoomId}/message")
-    public ResponseEntity<ApiResponse<PageResponse<GoodsChatMessageResponse>>> getGoodsChatRoomMessages(
+    public ResponseEntity<ApiResponse<List<GoodsChatMessageResponse>>> getGoodsChatRoomMessages(
             @PathVariable Long chatRoomId,
-            @RequestParam Long memberId,
-            @PageableDefault Pageable pageable
+            @RequestParam Long userId,
+            @RequestParam(required = false) LocalDateTime lastSentAt
     ) {
-        PageResponse<GoodsChatMessageResponse> response = goodsChatService.getChatRoomMessages(chatRoomId, memberId, pageable);
+        List<GoodsChatMessageResponse> response = goodsChatService.getChatRoomMessages(chatRoomId, userId, lastSentAt);
         return ResponseEntity.ok(ApiResponse.onSuccess(response));
     }
 

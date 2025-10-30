@@ -25,6 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -93,17 +95,25 @@ private User findUserById(UUID userId) {
     }
 //
     @Transactional(readOnly = true)
-    public PageResponse<GoodsChatMessageResponse> getChatRoomMessages(Long chatRoomId, Long memberId, Pageable pageable) {
-        Page<GoodsChatMessage> chatMessagePage = messageRepository.getChatMessages(chatRoomId, pageable);
+    public List<GoodsChatMessageResponse> getChatRoomMessages(Long chatRoomId, Long memberId, LocalDateTime lastSentAt) {
+    //    validateMemberInChatRoom(memberId, chatRoomId);
+        List<GoodsChatMessage> chatMessages = messageRepository.getChatMessages(chatRoomId, lastSentAt, 20);
 
-        List<GoodsChatMessageResponse> content = chatMessagePage.getContent().stream()
-                .map(message -> {
-                    User user = findUserById(message.getUserId());
-                    return GoodsChatMessageResponse.of(message, user);
-                })
-                .toList();
-        return PageResponse.from(chatMessagePage, content);
+        return mapMessagesToResponses(chatMessages);
     }
+
+    // 메시지 발신자 정보 조회 및 DTO 매핑
+    private List<GoodsChatMessageResponse> mapMessagesToResponses(List<GoodsChatMessage> chatMessages) {
+        List<GoodsChatMessageResponse> goodsChatMessageResponses = new ArrayList<>();
+
+        for (GoodsChatMessage chatMessage : chatMessages) {
+            UUID userId = chatMessage.getUserId();
+            User user = findUserById(userId);
+            goodsChatMessageResponses.add(GoodsChatMessageResponse.of(chatMessage, user));
+        }
+        return goodsChatMessageResponses;
+    }
+
 //
 //    private void validateMemberParticipation(Long memberId, Long chatRoomId) {
 //        if (!partRepository.existsById(new GoodsChatPartId(memberId, chatRoomId))) {

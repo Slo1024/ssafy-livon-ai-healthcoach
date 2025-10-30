@@ -90,13 +90,32 @@ pipeline {
                         }
                     }
 
-                    // Nginx 배포 전, 유령 디렉터리/권한 문제 해결 (Jenkins 권한 문제 해결)
+                    // Nginx 배포 전, 잘못된 경로 타입(파일↔디렉터리) 정리
                     sh """
                         echo "--- Nginx 배포 전 사전 작업 ---"
-                        echo "Jenkins 작업 공간 소유권 복구"
                         echo "WORKSPACE: ${WORKSPACE}"
-                        # 'jenkins' 유저가 이 폴더에 파일을 쓸 수 있도록 권한 부여.
-                        sudo chown -R jenkins:jenkins ${WORKSPACE}
+
+                        # dev 설정 파일이 디렉터리로 잘못 생성된 경우 제거
+                        if [ -d LivOnInfra/nginx.dev.conf ]; then
+                          echo "Fix: removing directory LivOnInfra/nginx.dev.conf"
+                          rm -rf LivOnInfra/nginx.dev.conf
+                        fi
+                        # dev 설정 파일이 없으면 git에서 복원
+                        if [ ! -f LivOnInfra/nginx.dev.conf ]; then
+                          echo "Restore: checking out LivOnInfra/nginx.dev.conf"
+                          git checkout -- LivOnInfra/nginx.dev.conf || true
+                        fi
+
+                        # prod 설정 파일이 디렉터리로 잘못 생성된 경우 제거 (브랜치에 없을 수 있어도 안전)
+                        if [ -d LivOnInfra/nginx.prod.conf ]; then
+                          echo "Fix: removing directory LivOnInfra/nginx.prod.conf"
+                          rm -rf LivOnInfra/nginx.prod.conf
+                        fi
+                        # prod 설정 파일이 없으면 복원 시도 (없어도 실패 무시)
+                        if [ ! -f LivOnInfra/nginx.prod.conf ]; then
+                          echo "Restore: checking out LivOnInfra/nginx.prod.conf"
+                          git checkout -- LivOnInfra/nginx.prod.conf || true
+                        fi
                     """
 
                     // Docker Compose 실행

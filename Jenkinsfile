@@ -48,13 +48,16 @@ pipeline {
                         // ... (주석 처리된 GCP 키 복사 로직) ...
 
                         // Docker Compose 실행
-                        sh """
-                            echo "🗑️ 기존 BE 컨테이너 삭제 (${CONTAINER})..."
-                            docker rm -f ${CONTAINER} || true
+                        dir('LivOnInfra') {
+                            sh """
+                                echo "🗑️ 기존 BE 컨테이너 삭제 (${CONTAINER})..."
+                                docker rm -f ${CONTAINER} || true
 
-                            echo "🚀 도커 컴포즈로 빌드 및 실행..."
-                            docker compose -p ${PROJECT} -f ${COMPOSE_FILE} up -d --build livon-be
-                        """
+                                echo "🚀 도커 컴포즈로 빌드 및 실행..."
+                                // -f COMPOSE_FILE (경로 수정)
+                                docker compose -p ${PROJECT} -f ${COMPOSE_FILE} up -d --build livon-be
+                            """
+                        }
                     }
                 }
             }
@@ -91,19 +94,21 @@ pipeline {
                     }
 
                     // Docker Compose 실행
-                    sh """
-                        echo "🗑️ 기존 FE 컨테이너 직접 삭제 (${CONTAINER})..."
-                        docker rm -f ${CONTAINER} || true
+                    dir('LivOnInfra') {
+                        sh """
+                            echo "🗑️ 기존 FE 컨테이너 직접 삭제 (${CONTAINER})..."
+                            docker rm -f ${CONTAINER} || true
 
-                        echo "🚀 FE docker-compose 실행 중 (${COMPOSE_FILE})..."
-                        docker compose -p ${PROJECT} -f ${COMPOSE_FILE} up -d --build livon-fe
+                            echo "🚀 FE docker-compose 실행 중 (${COMPOSE_FILE})..."
+                            docker compose -p ${PROJECT} -f ${COMPOSE_FILE} up -d --build livon-fe
 
-                        echo "🗑️ 기존 Nginx 컨테이너 삭제 (${NGINX_CONTAINER})..."
-                        docker rm -f ${NGINX_CONTAINER} || true
+                            echo "🗑️ 기존 Nginx 컨테이너 삭제 (${NGINX_CONTAINER})..."
+                            docker rm -f ${NGINX_CONTAINER} || true
 
-                        echo "🌐 Nginx 프록시 기동 (${COMPOSE_FILE})..."
-                        docker compose -p ${PROJECT} -f ${COMPOSE_FILE} up -d --build nginx
-                    """
+                            echo "🌐 Nginx 프록시 기동 (${COMPOSE_FILE})..."
+                            docker compose -p ${PROJECT} -f ${COMPOSE_FILE} up -d --build nginx
+                        """
+                    }
                 }
             }
         } // End stage('Deploy FE')

@@ -48,8 +48,16 @@ public class GroupConsultationService {
     public Long createGroupConsultation(UUID coachId, GroupConsultationCreateRequestDto request) {
         // 1. 코치 권한 확인
         User coach = validateCoach(coachId);
+
+        // 추가 검증 로직 필요
+        // 내가 막아놓은 시간과 겹치지 않는지 검증
+        // DB레벨에서 검증하기
+        // 내가 클래스를 열고자 하는 시간대와 겹치는 1:1상담/1:N상담/쉬는시간이 있으면 예외 던지기
+
+
+
         
-        // 2. Consultation 생성
+        // 3. Consultation 생성
         Consultation consultation = Consultation.builder()
                 .coach(coach)
                 .capacity(request.capacity())
@@ -62,7 +70,7 @@ public class GroupConsultationService {
         
         Consultation savedConsultation = consultationRepository.save(consultation);
         
-        // 3. GroupConsultation 생성
+        // 4. GroupConsultation 생성
         GroupConsultation groupConsultation = GroupConsultation.builder()
                 .consultation(savedConsultation)
                 .title(request.title())
@@ -133,13 +141,6 @@ public class GroupConsultationService {
         return GroupConsultationDetailResponseDto.from(gc, currentParticipants);
     }
 
-    /**
-     * 클래스 수정
-     *
-     * @param coachId 코치 ID
-     * @param id 클래스 ID
-     * @param request 수정 요청
-     */
     /**
      * 클래스 수정
      *

@@ -10,9 +10,11 @@ public record GroupConsultationUpdateRequestDto(
         String description,
         
         String imageUrl,
-        
+
+        @Future(message = "시작 시간은 미래여야 합니다")
         LocalDateTime startAt,
-        
+
+        @Future(message = "종료 시간은 미래여야 합니다")
         LocalDateTime endAt,
         
         @Min(value = 1, message = "최대 인원은 1명 이상이어야 합니다")

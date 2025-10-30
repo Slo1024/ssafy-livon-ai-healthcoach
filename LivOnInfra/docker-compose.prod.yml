@@ -39,7 +39,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - ./nginx.prod.d/default.conf:/etc/nginx/conf.d/default.conf
+      - ./nginx.prod.conf:/etc/nginx/conf.d/default.conf
       - /etc/letsencrypt:/etc/letsencrypt
       - /var/www/certbot:/var/www/certbot
     depends_on:

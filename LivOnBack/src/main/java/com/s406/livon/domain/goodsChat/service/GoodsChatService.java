@@ -40,7 +40,7 @@ public class GoodsChatService {
 //    private final GoodsPostRepository goodsPostRepository;
     private final UserRepository userRepository;
     private final GoodsChatRoomRepository chatRoomRepository;
-//    private final GoodsChatPartRepository partRepository;
+    //    private final GoodsChatPartRepository partRepository;
     private final GoodsChatMessageRepository messageRepository;
     private final GoodsChatEventPublisher eventPublisher;
     private final ConsultationRepository consultationRepository;
@@ -86,17 +86,20 @@ public class GoodsChatService {
 
         return savedChatRoom;
     }
-//
-private User findUserById(UUID userId) {
-    return userRepository.findById(userId)
-            .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
-}
-//
+
+    //
+    private User findUserById(UUID userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
+    }
+
+    //
     private Consultation findConsultationId(Long goodsPostId) {
         return consultationRepository.findById(goodsPostId).orElseThrow(() ->
                 new GeneralException(ErrorStatus._INTERNAL_SERVER_ERROR)); //todo
     }
-//
+
+    //
     @Transactional(readOnly = true)
 //    public List<GoodsChatMessageResponse> getChatRoomMessages(Long chatRoomId, Long memberId, LocalDateTime lastSentAt) {
     public List<GoodsChatMessage> getChatRoomMessages(Long chatRoomId, Long memberId, LocalDateTime lastSentAt) {

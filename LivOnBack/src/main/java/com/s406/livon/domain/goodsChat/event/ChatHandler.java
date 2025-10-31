@@ -36,6 +36,9 @@ public class ChatHandler implements ChannelInterceptor {
         StompHeaderAccessor accessor =
                 MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 
+        //todo : 구독하는 것도 예외처리 이 채팅방으 구독 할 수 있는가?
+
+
         // STOMP CONNECT 요청일 때만 인증 처리
         if (StompCommand.CONNECT.equals(accessor.getCommand())) {
 
@@ -74,8 +77,6 @@ public class ChatHandler implements ChannelInterceptor {
 
                 // 5. 검증 성공 시, Authentication 객체 생성
                 Authentication auth = tokenProvider.getAuthentication(token);
-
-                System.out.println("응???" + auth);
 
                 // 6. STOMP 세션에 사용자 정보(Authentication) 저장
                 accessor.setUser(auth);

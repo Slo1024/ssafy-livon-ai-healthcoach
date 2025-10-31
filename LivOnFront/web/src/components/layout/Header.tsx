@@ -266,7 +266,7 @@ export const Header: React.FC<HeaderProps> = ({
     { path: '/classes', label: '나의 클래스' },
     { path: '/support/faq', label: '고객센터' },
     { path: '/download', label: '앱 다운로드' },
-    { path: '/mypage', label: '마이페이지' },
+    { path: '/coach/mypage/info', label: '마이페이지' },
   ];
 
   return (

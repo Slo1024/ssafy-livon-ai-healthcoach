@@ -9,6 +9,7 @@ import { DownloadPage } from '../pages/main/DownloadPage';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { SignupCompletePage } from '../pages/auth/SignupCompletePage';
 import { MyPageVerificationPage } from '../pages/coach/MyPageVerificationPage';
+import { MyPageInfoPage } from '../pages/coach/MyPageInfoPage';
 import { NotFoundPage } from '../pages/notfound/NotFoundPage';
 import { FAQPage } from '../pages/support/FAQPage';
 import { InquiryPage } from '../pages/support/InquiryPage';
@@ -87,6 +88,14 @@ export const AppRouter: React.FC = () => {
           element={
             <ProtectedRoute requiredRole="coach">
               <div>코치 마이페이지</div>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.COACH_MYPAGE_INFO}
+          element={
+            <ProtectedRoute requiredRole="coach">
+              <MyPageInfoPage />
             </ProtectedRoute>
           }
         />

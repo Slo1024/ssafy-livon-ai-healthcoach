@@ -1,7 +1,7 @@
 package com.s406.livon.domain.goodsChat.repository;
 
 
-import com.s406.livon.domain.goodsChat.entity.GoodsChatMessage;
+import com.s406.livon.domain.goodsChat.document.GoodsChatMessage;
 
 import java.time.LocalDateTime;
 import java.util.List;

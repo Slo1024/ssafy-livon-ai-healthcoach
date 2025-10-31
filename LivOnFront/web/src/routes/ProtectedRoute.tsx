@@ -14,6 +14,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requiredRole,
   redirectTo = ROUTES.LOGIN,
 }) => {
+  // 개발 단계에서는 인증을 우회하여 모든 화면 작업을 진행할 수 있도록 허용합니다.
+  // 실제 배포 시에는 아래 플래그를 false 로 변경하거나 제거하세요.
+  const BYPASS_AUTH_FOR_SCREEN_BUILD = true;
+  if (BYPASS_AUTH_FOR_SCREEN_BUILD) {
+    return <>{children}</>;
+  }
+
   const { isAuthenticated, user, isLoading } = useAuth();
   const location = useLocation();
 

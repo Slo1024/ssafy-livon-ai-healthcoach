@@ -49,14 +49,12 @@ public class GroupConsultationService {
         // 1. 코치 권한 확인
         User coach = validateCoach(coachId);
 
-        // 추가 검증 로직 필요
-        // 내가 막아놓은 시간과 겹치지 않는지 검증
-        // DB레벨에서 검증하기
-        // 내가 클래스를 열고자 하는 시간대와 겹치는 1:1상담/1:N상담/쉬는시간이 있으면 예외 던지기
+        // 2. 시간 겹침 검증 (DB 레벨)
+        if (groupConsultationRepository.existsTimeConflict(
+                coachId, request.startAt(), request.endAt())) {
+            throw new CoachHandler(ErrorStatus.CONSULTATION_TIME_CONFLICT);
+        }
 
-
-
-        
         // 3. Consultation 생성
         Consultation consultation = Consultation.builder()
                 .coach(coach)

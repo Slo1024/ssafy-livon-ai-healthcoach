@@ -177,7 +177,7 @@ const ProfileDescription = styled.div`
 const FormGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px; /* add space between left inputs and right labels */
+  gap: 10px; /* reduce gap to pull right column slightly left */
   margin-bottom: 25px;
 `;
 
@@ -200,24 +200,18 @@ const FormLabel = styled.label`
   font-weight: 500;
   color: #000000;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  width: 100px;
+  width: 120px;
   flex-shrink: 0;
   white-space: nowrap;
-  margin-left: 0;
+  margin-left: 20px;
 `;
 
 const InputWithButton = styled.div`
   display: flex;
-  gap: 6px;
+  gap: 10px;
   align-items: center;
   flex: 1;
   width: 100%;
-`;
-
-const FieldColumn = styled.div`
-  display: flex;
-  flex-direction: column;
-  flex: 1;
 `;
 
 const StyledInput = styled.input`
@@ -291,10 +285,6 @@ const PasswordMatchIndicator = styled.div`
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   white-space: nowrap;
   width: 100%;
-`;
-
-const ErrorIndicator = styled(PasswordMatchIndicator)`
-  color: #ff0000;
 `;
 
 const PasswordConfirmWrapper = styled.div`
@@ -421,12 +411,6 @@ const StyledDropdown = styled.select<{ isPlaceholder?: boolean }>`
   font-size: 13px;
   color: ${props => (props.isPlaceholder ? '#999999' : '#000000')};
   background-color: white;
-  /* custom caret */
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%23999999' d='M1 0l4 4 4-4 1 1-5 5-5-5z'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 10px 6px;
-  padding-right: 36px; /* space for caret */
   cursor: pointer;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   flex: 1;
@@ -560,10 +544,10 @@ const ModalBody = styled.div`
 
 const SubmitButton = styled.button`
   width: 686px;
-  height: 40px;
+  height: 80px;
   border: none;
   border-radius: 8px;
-  font-size: 18px;
+  font-size: 25px;
   font-weight: 800;
   cursor: pointer;
   background-color: #2d79f3;
@@ -577,12 +561,6 @@ const SubmitButton = styled.button`
 
 const CheckIcon = styled.span`
   color: #28a745;
-  font-size: 16px;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-`;
-
-const CrossIcon = styled.span`
-  color: #ff0000;
   font-size: 16px;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 `;
@@ -617,10 +595,6 @@ export const SignupPage: React.FC = () => {
   const [agreeThirdParty, setAgreeThirdParty] = useState(false);
   const [agreeAll, setAgreeAll] = useState(false);
   const [emailDomains] = useState(['gmail.com', 'naver.com', 'daum.net', 'kakao.com']);
-
-  // ID / Nickname duplication check states
-  const [idCheckStatus, setIdCheckStatus] = useState<'idle' | 'available' | 'taken'>('idle');
-  const [nicknameCheckStatus, setNicknameCheckStatus] = useState<'idle' | 'available' | 'taken'>('idle');
   const [showPersonalModal, setShowPersonalModal] = useState(false);
   const [showThirdPartyModal, setShowThirdPartyModal] = useState(false);
 
@@ -638,26 +612,6 @@ export const SignupPage: React.FC = () => {
       const confirm = field === 'confirmPassword' ? value : formData.confirmPassword;
       setPasswordMatch(password !== '' && confirm !== '' && password === confirm);
     }
-
-    // 입력이 바뀌면 중복결과 초기화
-    if (field === 'userId') setIdCheckStatus('idle');
-    if (field === 'nickname') setNicknameCheckStatus('idle');
-  };
-
-  // 임시 중복 확인 로직 (화면 작업용). 실제 API 연결 시 대체하세요
-  const isTaken = (value: string) => {
-    const blacklist = ['admin', 'test', 'user', 'guest', 'root'];
-    return blacklist.includes(value.trim().toLowerCase());
-  };
-
-  const handleCheckUserId = () => {
-    if (!formData.userId.trim()) return;
-    setIdCheckStatus(isTaken(formData.userId) ? 'taken' : 'available');
-  };
-
-  const handleCheckNickname = () => {
-    if (!formData.nickname.trim()) return;
-    setNicknameCheckStatus(isTaken(formData.nickname) ? 'taken' : 'available');
   };
 
   const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -776,29 +730,15 @@ export const SignupPage: React.FC = () => {
           <FormColumn>
             <FormField>
               <FormLabel>아이디</FormLabel>
-              <FieldColumn>
-                <InputWithButton>
-                  <StyledInput
-                    type="text"
-                    placeholder="아이디를 입력하세요"
-                    value={formData.userId}
-                    onChange={(e) => handleInputChange('userId', e.target.value)}
-                  />
-                  <SmallButton type="button" onClick={handleCheckUserId}>중복확인</SmallButton>
-                </InputWithButton>
-                {idCheckStatus === 'available' && (
-                  <PasswordMatchIndicator style={{ marginLeft: '0' }}>
-                    <CheckIcon>✓</CheckIcon>
-                    사용 가능한 아이디입니다.
-                  </PasswordMatchIndicator>
-                )}
-                {idCheckStatus === 'taken' && (
-                  <ErrorIndicator style={{ marginLeft: '0' }}>
-                    <CrossIcon>✕</CrossIcon>
-                    이미 사용중인 아이디입니다.
-                  </ErrorIndicator>
-                )}
-              </FieldColumn>
+              <InputWithButton>
+                <StyledInput
+                  type="text"
+                  placeholder="아이디를 입력하세요"
+                  value={formData.userId}
+                  onChange={(e) => handleInputChange('userId', e.target.value)}
+                />
+                <SmallButton type="button">중복확인</SmallButton>
+              </InputWithButton>
             </FormField>
 
             <FormField>
@@ -813,29 +753,15 @@ export const SignupPage: React.FC = () => {
 
             <FormField>
               <FormLabel>닉네임</FormLabel>
-              <FieldColumn>
-                <InputWithButton>
-                  <StyledInput
-                    type="text"
-                    placeholder="닉네임을 입력하세요"
-                    value={formData.nickname}
-                    onChange={(e) => handleInputChange('nickname', e.target.value)}
-                  />
-                  <SmallButton type="button" onClick={handleCheckNickname}>중복확인</SmallButton>
-                </InputWithButton>
-                {nicknameCheckStatus === 'available' && (
-                  <PasswordMatchIndicator style={{ marginLeft: '0' }}>
-                    <CheckIcon>✓</CheckIcon>
-                    사용 가능한 닉네임입니다.
-                  </PasswordMatchIndicator>
-                )}
-                {nicknameCheckStatus === 'taken' && (
-                  <ErrorIndicator style={{ marginLeft: '0' }}>
-                    <CrossIcon>✕</CrossIcon>
-                    이미 사용중인 닉네임입니다.
-                  </ErrorIndicator>
-                )}
-              </FieldColumn>
+              <InputWithButton>
+                <StyledInput
+                  type="text"
+                  placeholder="닉네임을 입력하세요"
+                  value={formData.nickname}
+                  onChange={(e) => handleInputChange('nickname', e.target.value)}
+                />
+                <SmallButton type="button">중복확인</SmallButton>
+              </InputWithButton>
             </FormField>
 
             <FormField>
@@ -890,12 +816,6 @@ export const SignupPage: React.FC = () => {
                     <CheckIcon>✓</CheckIcon>
                     입력한 비밀번호와 일치합니다.
                   </PasswordMatchIndicator>
-                )}
-                {!passwordMatch && formData.password !== '' && formData.confirmPassword !== '' && (
-                  <ErrorIndicator style={{ marginLeft: '0' }}>
-                    <CrossIcon>✕</CrossIcon>
-                    입력한 비밀번호가 일치하지 않습니다.
-                  </ErrorIndicator>
                 )}
               </PasswordConfirmWrapper>
             </FormField>
@@ -1026,7 +946,7 @@ export const SignupPage: React.FC = () => {
         <FormField style={{ alignItems: 'flex-start' }}>
           <div style={{ width: '120px', flexShrink: 0 }}>
             <FormLabel style={{ marginLeft: 0 }}>자격</FormLabel>
-            <div style={{ fontSize: '10px', color: '#666666', marginTop: '0px', marginLeft: 0, whiteSpace: 'nowrap' }}>
+            <div style={{ fontSize: '10px', color: '#666666', marginTop: '8px', marginLeft: 0, whiteSpace: 'nowrap' }}>
               취득한 자격증을 입력해 주세요.
             </div>
           </div>
@@ -1048,8 +968,8 @@ export const SignupPage: React.FC = () => {
 
         <FormField style={{ alignItems: 'flex-start' }}>
           <div style={{ width: '120px', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
-            <FormLabel style={{ marginLeft: 0, marginBottom: '0px' }}>소개</FormLabel>
-            <div style={{ fontSize: '10px', color: '#666666', marginLeft: 0, lineHeight: '1.2', marginTop: '0px' }}>
+            <FormLabel style={{ marginLeft: 0, marginBottom: '6px' }}>소개</FormLabel>
+            <div style={{ fontSize: '10px', color: '#666666', marginLeft: 0, lineHeight: '1.2' }}>
               회원들에게 코치님을<br />소개하는 글을 입력해 주세요.
             </div>
           </div>

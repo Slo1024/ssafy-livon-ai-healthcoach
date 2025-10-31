@@ -3,15 +3,14 @@ package com.s406.livon.domain.goodsChat.service;
 
 import com.s406.livon.domain.coach.entity.Consultation;
 import com.s406.livon.domain.coach.repository.ConsultationRepository;
+import com.s406.livon.domain.goodsChat.document.GoodsChatMessage;
 import com.s406.livon.domain.goodsChat.dto.response.GoodsChatMessageResponse;
 import com.s406.livon.domain.goodsChat.dto.response.GoodsChatRoomResponse;
-import com.s406.livon.domain.goodsChat.entity.GoodsChatMessage;
 import com.s406.livon.domain.goodsChat.entity.GoodsChatRoom;
 import com.s406.livon.domain.goodsChat.entity.MessageType;
 import com.s406.livon.domain.goodsChat.event.GoodsChatEvent;
 import com.s406.livon.domain.goodsChat.event.GoodsChatEventPublisher;
 import com.s406.livon.domain.goodsChat.repository.GoodsChatMessageRepository;
-import com.s406.livon.domain.goodsChat.repository.GoodsChatPartRepository;
 import com.s406.livon.domain.goodsChat.repository.GoodsChatRoomRepository;
 import com.s406.livon.domain.user.entity.User;
 import com.s406.livon.domain.user.enums.Role;
@@ -26,6 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -38,7 +39,7 @@ public class GoodsChatService {
 //    private final GoodsPostRepository goodsPostRepository;
     private final UserRepository userRepository;
     private final GoodsChatRoomRepository chatRoomRepository;
-    private final GoodsChatPartRepository partRepository;
+//    private final GoodsChatPartRepository partRepository;
     private final GoodsChatMessageRepository messageRepository;
     private final GoodsChatEventPublisher eventPublisher;
     private final ConsultationRepository consultationRepository;
@@ -94,17 +95,25 @@ private User findUserById(UUID userId) {
     }
 //
     @Transactional(readOnly = true)
-    public PageResponse<GoodsChatMessageResponse> getMessagesForChatRoom(Long chatRoomId, Long memberId, Pageable pageable) {
-//        validateMemberParticipation(memberId, chatRoomId);
-        Pageable validatePageable = PageResponse.validatePageable(pageable);
+    public List<GoodsChatMessageResponse> getChatRoomMessages(Long chatRoomId, Long memberId, LocalDateTime lastSentAt) {
+    //    validateMemberInChatRoom(memberId, chatRoomId);
+        List<GoodsChatMessage> chatMessages = messageRepository.getChatMessages(chatRoomId, lastSentAt, 20);
 
-        Page<GoodsChatMessage> chatMessagePage = messageRepository.findByChatRoomId(chatRoomId, validatePageable);
-        List<GoodsChatMessageResponse> content = chatMessagePage.getContent().stream()
-                .map(GoodsChatMessageResponse::of)
-                .toList();
-
-        return PageResponse.from(chatMessagePage, content);
+        return mapMessagesToResponses(chatMessages);
     }
+
+    // 메시지 발신자 정보 조회 및 DTO 매핑
+    private List<GoodsChatMessageResponse> mapMessagesToResponses(List<GoodsChatMessage> chatMessages) {
+        List<GoodsChatMessageResponse> goodsChatMessageResponses = new ArrayList<>();
+
+        for (GoodsChatMessage chatMessage : chatMessages) {
+            UUID userId = chatMessage.getUserId();
+            User user = findUserById(userId);
+            goodsChatMessageResponses.add(GoodsChatMessageResponse.of(chatMessage, user));
+        }
+        return goodsChatMessageResponses;
+    }
+
 //
 //    private void validateMemberParticipation(Long memberId, Long chatRoomId) {
 //        if (!partRepository.existsById(new GoodsChatPartId(memberId, chatRoomId))) {

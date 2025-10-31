@@ -7,10 +7,27 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface GroupConsultationRepository extends JpaRepository<GroupConsultation, Long> {
+
+    /**
+     * 특정 코치의 특정 시간대에 겹치는 일정이 있는지 확인
+     * - BREAK 타입: 항상 확인
+     * - ONE/GROUP 타입: OPEN 상태만 확인
+     */
+    @Query("SELECT CASE WHEN COUNT(c) > 0 THEN true ELSE false END " +
+            "FROM Consultation c " +
+            "WHERE c.coach.id = :coachId " +
+            "AND c.startAt < :endAt " +
+            "AND c.endAt > :startAt " +
+            "AND (c.type = 'BREAK' OR c.status = 'OPEN')")
+    boolean existsTimeConflict(@Param("coachId") UUID coachId,
+                               @Param("startAt") LocalDateTime startAt,
+                               @Param("endAt") LocalDateTime endAt);
 
     /**
      * 같은 소속(기업) 코치의 클래스 목록 조회 (OPEN 상태만)

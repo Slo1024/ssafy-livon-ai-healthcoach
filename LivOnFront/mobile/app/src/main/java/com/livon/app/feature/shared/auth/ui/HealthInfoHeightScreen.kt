@@ -22,13 +22,13 @@ fun HealthInfoHeightScreen() {
     ) {
         // 요구사항 텍스트 (TopBar2 아래 15, 좌측 25)
         RequirementText("키를 입력해 주세요")
-        Spacer(Modifier.height(105.dp))
+        Spacer(Modifier.height(200.dp))
         LivonTextField(
             value = "",
             onValueChange = {},
             label = "키",
             placeholder = "예: 175",
-            modifier = Modifier.padding(start = 25.dp)
+//            modifier = Modifier.padding(start = 25.dp)
         )
     }
 }

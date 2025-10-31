@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { Input } from '../../components/common/Input';
+import { Dropdown } from '../../components/common/Dropdown';
+import { Button } from '../../components/common/Button';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import visibilityIcon from '../../assets/images/visibility.png';
@@ -220,27 +223,6 @@ const FieldColumn = styled.div`
   flex: 1;
 `;
 
-const StyledInput = styled.input`
-  flex: 1;
-  height: 48px;
-  border: 1px solid #ecedec;
-  border-radius: 12px;
-  padding: 0 12px;
-  font-size: 13px;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  min-width: 0;
-  line-height: 48px;
-
-  &:focus {
-    outline: none;
-    border-color: #2d79f3;
-  }
-
-  &::placeholder {
-    color: #999999;
-    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  }
-`;
 
 const SmallButton = styled.button`
   height: 40px;
@@ -412,48 +394,6 @@ const EmailSeparator = styled.span`
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 `;
 
-const StyledDropdown = styled.select<{ isPlaceholder?: boolean }>`
-  height: 48px;
-  line-height: 48px;
-  border: 1px solid #ecedec;
-  border-radius: 12px;
-  padding: 0 12px;
-  font-size: 13px;
-  color: ${props => (props.isPlaceholder ? '#999999' : '#000000')};
-  background-color: white;
-  /* custom caret */
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%23999999' d='M1 0l4 4 4-4 1 1-5 5-5-5z'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 10px 6px;
-  padding-right: 36px; /* space for caret */
-  cursor: pointer;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  flex: 1;
-  min-width: 0;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-
-  &:focus {
-    outline: none;
-    border-color: #2d79f3;
-  }
-
-  &::placeholder {
-    color: #999999;
-  }
-
-  option {
-    color: #000000;
-  }
-  option[disabled] {
-    color: #999999;
-  }
-`;
 
 const VerificationButton = styled.button`
   height: 40px;
@@ -558,22 +498,6 @@ const ModalBody = styled.div`
   font-size: 14px;
 `;
 
-const SubmitButton = styled.button`
-  width: 686px;
-  height: 40px;
-  border: none;
-  border-radius: 8px;
-  font-size: 18px;
-  font-weight: 800;
-  cursor: pointer;
-  background-color: #2d79f3;
-  color: white;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-
-  &:hover {
-    background-color: #1a5fd9;
-  }
-`;
 
 const CheckIcon = styled.span`
   color: #28a745;
@@ -778,11 +702,12 @@ export const SignupPage: React.FC = () => {
               <FormLabel>아이디</FormLabel>
               <FieldColumn>
                 <InputWithButton>
-                  <StyledInput
+                  <Input
                     type="text"
                     placeholder="아이디를 입력하세요"
                     value={formData.userId}
                     onChange={(e) => handleInputChange('userId', e.target.value)}
+                    style={{ flex: 1 }}
                   />
                   <SmallButton type="button" onClick={handleCheckUserId}>중복확인</SmallButton>
                 </InputWithButton>
@@ -803,11 +728,12 @@ export const SignupPage: React.FC = () => {
 
             <FormField>
               <FormLabel>이름</FormLabel>
-              <StyledInput
-              type="text"
+              <Input
+                type="text"
                 placeholder="이름을 입력해주세요."
-              value={formData.name}
-              onChange={(e) => handleInputChange('name', e.target.value)}
+                value={formData.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+                style={{ flex: 1 }}
               />
             </FormField>
 
@@ -815,11 +741,12 @@ export const SignupPage: React.FC = () => {
               <FormLabel>닉네임</FormLabel>
               <FieldColumn>
                 <InputWithButton>
-                  <StyledInput
+                  <Input
                     type="text"
                     placeholder="닉네임을 입력하세요"
                     value={formData.nickname}
                     onChange={(e) => handleInputChange('nickname', e.target.value)}
+                    style={{ flex: 1 }}
                   />
                   <SmallButton type="button" onClick={handleCheckNickname}>중복확인</SmallButton>
                 </InputWithButton>
@@ -841,23 +768,23 @@ export const SignupPage: React.FC = () => {
             <FormField>
               <FormLabel>비밀번호</FormLabel>
               <PasswordInputContainer>
-                <StyledInput
-              type={showPassword ? 'text' : 'password'}
+                <Input
+                  type={showPassword ? 'text' : 'password'}
                   placeholder="비밀번호를 입력해주세요."
-              value={formData.password}
-              onChange={(e) => handleInputChange('password', e.target.value)}
-                  style={{ paddingRight: '40px' }}
-            />
+                  value={formData.password}
+                  onChange={(e) => handleInputChange('password', e.target.value)}
+                  style={{ paddingRight: '40px', flex: 1 }}
+                />
                 <PasswordToggleButton
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-            >
-              <img 
-                src={showPassword ? visibilityIcon : visibilityOffIcon} 
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  <img 
+                    src={showPassword ? visibilityIcon : visibilityOffIcon} 
                     alt={showPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
-                width="20" 
-                height="20" 
-              />
+                    width="20" 
+                    height="20" 
+                  />
                 </PasswordToggleButton>
               </PasswordInputContainer>
             </FormField>
@@ -866,12 +793,12 @@ export const SignupPage: React.FC = () => {
               <FormLabel style={{ marginTop: '12px' }}>비밀번호 확인</FormLabel>
               <PasswordConfirmWrapper>
                 <PasswordInputContainer>
-                  <StyledInput
+                  <Input
                     type={showConfirmPassword ? 'text' : 'password'}
                     placeholder="비밀번호를 한 번 더 입력해주세요."
                     value={formData.confirmPassword}
                     onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                    style={{ paddingRight: '40px' }}
+                    style={{ paddingRight: '40px', flex: 1 }}
                   />
                   <PasswordToggleButton
                     type="button"
@@ -928,11 +855,12 @@ export const SignupPage: React.FC = () => {
 
             <FormField>
               <FormLabel>생년월일</FormLabel>
-              <StyledInput
+              <Input
                 type="text"
                 placeholder="YYYY.MM.DD"
                 value={formData.birthDate}
                 onChange={(e) => handleInputChange('birthDate', e.target.value)}
+                style={{ flex: 1 }}
               />
             </FormField>
 
@@ -942,11 +870,12 @@ export const SignupPage: React.FC = () => {
           <FormColumn>
             <FormField style={{ gap: '0px' }}>
               <FormLabel style={{ width: '90px' }}>연락처</FormLabel>
-              <StyledInput
+              <Input
                 type="tel"
                 placeholder="연락처를 입력해주세요."
                 value={formData.contact}
                 onChange={(e) => handleInputChange('contact', e.target.value)}
+                style={{ flex: 1 }}
               />
             </FormField>
 
@@ -954,7 +883,7 @@ export const SignupPage: React.FC = () => {
               <FormLabel style={{ marginTop: '17px', width: '90px' }}>이메일</FormLabel>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
                 <EmailInputContainer style={{ width: '100%' }}>
-                  <StyledInput
+                  <Input
                     type="text"
                     placeholder="이메일을 입력하세요."
                     value={formData.emailId}
@@ -963,19 +892,13 @@ export const SignupPage: React.FC = () => {
                   />
                   <EmailSeparator style={{ marginLeft: '6px' }}>@</EmailSeparator>
                 </EmailInputContainer>
-                <StyledDropdown
+                <Dropdown
                   value={formData.emailDomain}
                   onChange={(e) => handleInputChange('emailDomain', e.target.value)}
-                  style={{ width: '100%', height: '48px' }}
-                  isPlaceholder={formData.emailDomain === ''}
-                >
-                  <option value="" disabled>이메일 주소를 입력하세요.</option>
-                  {emailDomains.map((domain) => (
-                    <option key={domain} value={domain}>
-                      {domain}
-                    </option>
-                  ))}
-                </StyledDropdown>
+                  options={emailDomains.map(domain => ({ value: domain, label: domain }))}
+                  placeholder="이메일 주소를 입력하세요."
+                  style={{ width: '100%' }}
+                />
                 <VerificationButton type="button">인증번호 보내기</VerificationButton>
               </div>
             </FormField>
@@ -983,7 +906,7 @@ export const SignupPage: React.FC = () => {
             <FormField style={{ alignItems: 'flex-start', gap: '0px' }}>
               <FormLabel style={{ marginTop: '17px', width: '90px' }}>인증하기</FormLabel>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
-                <StyledInput
+                <Input
                   type="text"
                   placeholder="인증번호를 입력하세요."
                   value={formData.verificationCode}
@@ -997,27 +920,29 @@ export const SignupPage: React.FC = () => {
 
             <FormField style={{ gap: '0px' }}>
               <FormLabel style={{ width: '90px' }}>소속</FormLabel>
-              <StyledInput
+              <Input
                 type="text"
                 placeholder="소속을 입력해 주세요."
                 value={formData.affiliation}
                 onChange={(e) => handleInputChange('affiliation', e.target.value)}
+                style={{ flex: 1 }}
               />
             </FormField>
 
             <FormField style={{ gap: '0px' }}>
               <FormLabel style={{ width: '90px' }}>직무</FormLabel>
-              <StyledDropdown
+              <Dropdown
                 value={formData.job}
                 onChange={(e) => handleInputChange('job', e.target.value)}
-                isPlaceholder={formData.job === ''}
-              >
-                <option value="" disabled>코칭할 분야를 선택해 주세요.</option>
-                <option value="exercise-fitness">운동/피트니스</option>
-                <option value="diet-nutrition">식단/영양</option>
-                <option value="physical-health">신체건강/통증 관리</option>
-                <option value="mental-health">정신건강/멘탈케어</option>
-              </StyledDropdown>
+                options={[
+                  { value: 'exercise-fitness', label: '운동/피트니스' },
+                  { value: 'diet-nutrition', label: '식단/영양' },
+                  { value: 'physical-health', label: '신체건강/통증 관리' },
+                  { value: 'mental-health', label: '정신건강/멘탈케어' }
+                ]}
+                placeholder="코칭할 분야를 선택해 주세요."
+                style={{ flex: 1 }}
+              />
             </FormField>
           </FormColumn>
         </FormGrid>
@@ -1032,7 +957,7 @@ export const SignupPage: React.FC = () => {
           </div>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', position: 'relative' }}>
             {qualificationFields.map((value, index) => (
-              <StyledInput
+              <Input
                 key={index}
                 type="text"
                 placeholder="자격증 명을 입력해 주세요."
@@ -1040,6 +965,7 @@ export const SignupPage: React.FC = () => {
                 onChange={(e) =>
                   setQualificationFields(prev => prev.map((v, i) => (i === index ? e.target.value : v)))
                 }
+                style={{ flex: 1 }}
               />
             ))}
             <AddButton type="button" onClick={handleAddQualification}>추가 +</AddButton>
@@ -1145,7 +1071,7 @@ export const SignupPage: React.FC = () => {
       )}
 
         <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-          <SubmitButton type="submit">회원가입 완료</SubmitButton>
+          <Button type="submit" variant="submit">회원가입 완료</Button>
         </div>
         </form>
       </SignupContentWrapper>

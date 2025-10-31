@@ -19,6 +19,7 @@ import com.livon.app.feature.shared.streaming.TrackInfo
 import com.livon.app.feature.shared.streaming.ui.StreamingCheating
 import com.livon.app.feature.shared.streaming.ui.StreamingParticipant
 import com.livon.app.ui.component.streaming.CoachStreamingHeader
+import com.livon.app.ui.component.streaming.MemberStreamingCamera
 import com.livon.app.ui.component.streaming.StreamingCamera
 import com.livon.app.ui.component.streaming.StreamingNav
 import com.livon.app.ui.theme.LivonTheme
@@ -230,7 +231,7 @@ fun LiveStreamingCoachScreen(
                                                             .padding(12.dp)
                                                             .size(140.dp)
                                                     ) {
-                                                        StreamingCamera(
+                                                        MemberStreamingCamera(
                                                             track = me.track as? VideoTrack,
                                                             userName = me.participantIdentity,
                                                             isCameraEnabled = me.isCameraEnabled,

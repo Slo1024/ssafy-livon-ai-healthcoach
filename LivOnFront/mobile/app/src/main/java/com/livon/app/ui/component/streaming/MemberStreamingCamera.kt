@@ -3,6 +3,7 @@ package com.livon.app.ui.component.streaming
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -11,6 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.zIndex
 import io.livekit.android.room.Room
 import io.livekit.android.room.track.VideoTrack
 import io.livekit.android.room.track.LocalVideoTrack
@@ -91,25 +93,11 @@ fun MemberStreamingCamera(
             }
         }
 
-        // Top-right information icon
-        IconButton(
-            onClick = {},
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(8.dp)
-                .size(32.dp)
-        ) {
-            Icon(
-                painter = painterResource(id = com.livon.app.R.drawable.information),
-                contentDescription = "정보",
-                tint = Color.White
-            )
-        }
-
         UserNameTag(
             name = userName,
             modifier = Modifier
                 .align(Alignment.BottomStart)
+                .zIndex(2f)
                 .padding(12.dp)
         )
     }

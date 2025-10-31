@@ -1,68 +1,74 @@
 // com/livon/app/feature/shared/auth/ui/GenderSelectScreen.kt
 package com.livon.app.feature.shared.auth.ui
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.livon.app.ui.component.button.ChoiceButtonCard
 import com.livon.app.ui.component.button.PrimaryButtonBottom
-import com.livon.app.ui.component.button.SurveyOption
-import com.livon.app.ui.theme.LivonTheme
+import com.livon.app.ui.component.text.CaptionText
+import com.livon.app.ui.component.text.RequirementText
+import com.livon.app.ui.preview.PreviewSurface
 import com.livon.app.ui.theme.Spacing
 
 @Composable
-fun GenderSelectScreen(
-    modifier: Modifier = Modifier
-) {
+fun GenderSelectScreen(modifier: Modifier = Modifier) {
     var selectedGender by remember { mutableStateOf<String?>(null) }
 
     CommonSignUpScreenB(
         title = "건강 정보 입력",
         onBack = {},
-        bottomBar = { 
+        bottomBar = {
             PrimaryButtonBottom(
                 text = "다음",
                 enabled = selectedGender != null,
-                onClick = { /* TODO: Navigate to next screen */ }
-            ) 
+                onClick = {}
+            )
         }
     ) {
-        Text(
-            text = "성별을 선택해주세요.",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-        Text(
-            text = "입력하신 정보는 공개되지 않습니다.\n코칭 맞춤 분석을 위해 필요합니다.",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-        Spacer(Modifier.height(Spacing.DescToContent))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        // TopBar2 아래 Spacer(30dp)는 템플릿에서 제공
+        Column(modifier = Modifier.fillMaxWidth()) {
+            RequirementText("성별을 선택해주세요.")
+            androidx.compose.foundation.layout.Spacer(Modifier.height(30.dp))
+            CaptionText("입력하신 정보는 공개되지 않습니다.\n코칭 맞춤 분석을 위해 필요합니다.")
+        }
+
+        // 가운데 높이에 2개 카드가 양옆으로 배치되도록 Box 사용
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 30.dp),
+            contentAlignment = Alignment.Center
         ) {
-            SurveyOption(
-                text = "남성",
-                selected = selectedGender == "M",
-                onClick = { selectedGender = "M" }
-            )
-            SurveyOption(
-                text = "여성",
-                selected = selectedGender == "F",
-                onClick = { selectedGender = "F" }
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ChoiceButtonCard(
+                    text = "남성",
+                    selected = selectedGender == "M",
+                    onClick = { selectedGender = "M" }
+                )
+                ChoiceButtonCard(
+                    text = "여성",
+                    selected = selectedGender == "F",
+                    onClick = { selectedGender = "F" }
+                )
+            }
         }
     }
 }
 
 @Preview(showBackground = true)
 @Composable
-fun GenderSelectScreenPreview() {
-    LivonTheme {
-        GenderSelectScreen()
-    }
-}
+fun GenderSelectScreenPreview() = PreviewSurface { GenderSelectScreen() }

@@ -1,13 +1,9 @@
 package com.livon.app.feature.shared.auth.ui
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -16,54 +12,61 @@ import com.livon.app.ui.component.button.PrimaryButtonBottom
 import com.livon.app.ui.component.overlay.TopBar
 import com.livon.app.ui.preview.PreviewSurface
 import com.livon.app.ui.theme.Spacing
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.unit.dp
 
 /**
  * A그룹 화면 템플릿
  * - 기존 TopBar 사용
- * - StatusBar 포함 상단 여백 24dp 확보 후 TopBar 배치
- * - 하단 공통 버튼 바(좌우 20dp, 하단 24dp)
+ * - 상단 여백 24dp 확보 후 TopBar 배치(상단 statusBars 패딩은 적용하지 않음)
+ * - 하단 공통 버튼 바(좌우 20dp, 하단 24dp) + navigationBars 패딩
  */
 @Composable
 fun CommonSignUpScreenA(
-    topBar: @Composable () -> Unit,
-    bottomBar: @Composable () -> Unit,
+    topBar: @Composable (Modifier) -> Unit,     // ✅ modifier 받도록 타입 변경
+    bottomBar: @Composable (Modifier) -> Unit,  // ✅ modifier 받도록 타입 변경
     modifier: Modifier = Modifier,
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit
 ) {
     Scaffold(
         modifier = modifier,
-        // Scaffold 기본 systemBars inset을 끄고 우리가 직접 준다(중복 방지)
-        contentWindowInsets = WindowInsets(0),
         topBar = {
-            // ✅ Status bar 영역 패딩 + 상단 마진 24dp 후 TopBar 배치
             Box(
                 Modifier
-//                    .windowInsetsPadding(WindowInsets.statusBars)
                     .padding(top = Spacing.TopMargin)
-            ) { topBar() }
+//                    .padding(horizontal = Spacing.Horizontal)
+                    .fillMaxWidth()                                 // ✅ 가로 꽉
+            ) {
+                topBar(Modifier.fillMaxWidth())                     // ✅ 전달한 컴포넌트도 꽉
+            }
         },
         bottomBar = {
             Box(
                 Modifier
-//                    .windowInsetsPadding(WindowInsets.navigationBars) // 제스처/네비게이션 바 포함
-                    .padding(
-                        horizontal = Spacing.Horizontal,
-//                        vertical = Spacing.BottomMargin
-                    )
-            ) { bottomBar() }
+//                    .padding(horizontal = Spacing.Horizontal)
+                    .fillMaxWidth()                                 // ✅ 가로 꽉
+                    .windowInsetsPadding(WindowInsets.navigationBars) // ✅ 제스처 바 겹침 방지
+            ) {
+                bottomBar(Modifier.fillMaxWidth())                  // ✅ 전달한 컴포넌트도 꽉
+            }
         }
-    ) { innerPadding: PaddingValues ->
+    ) { inner ->
         androidx.compose.foundation.layout.Column(
             Modifier
-                .padding(innerPadding)
+                .padding(inner)
                 .fillMaxSize()
                 .padding(horizontal = Spacing.Horizontal)
         ) {
-            // A그룹은 추가 스페이서는 여기서 필요 시 화면별로 넣기
+            Spacer(Modifier.height(80.dp)) // TopBar 아래 공통 80dp
             content()
         }
     }
 }
+
 
 /* ---------- Preview ---------- */
 @Preview(showBackground = true, showSystemUi = true, name = "CommonSignUpScreenA")

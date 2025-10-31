@@ -26,6 +26,7 @@ fun PrimaryButtonCore(
     text: String,
     onClick: () -> Unit,
     enabled: Boolean = true,
+
     modifier: Modifier = Modifier
 ) {
     val shape = RoundedCornerShape(10.dp)
@@ -60,8 +61,10 @@ fun PrimaryButtonBottom(
     enabled: Boolean = true,
     horizontalMargin: Dp = 20.dp,
     bottomMargin: Dp = 24.dp,
-    targetWidth: Dp = 288.dp,
+//    targetWidth: Dp = 288.dp,
+    targetWidth: Dp? = null,
     height: Dp = 44.dp,
+
     modifier: Modifier = Modifier
 ) {
     // bottomBar는 "세로 wrap"이어야 함
@@ -81,16 +84,31 @@ fun PrimaryButtonBottom(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            // 버튼은 "최대 targetWidth, 최소 가로폭=남은 공간" 형태로
+            var m: Modifier = Modifier
+                .fillMaxWidth()
+                .height(height)
+
+            // ✅ 최대폭 제한이 필요할 때만 적용
+            if (targetWidth != null) {
+                m = m.widthIn(max = targetWidth)
+            }
+
             PrimaryButtonCore(
                 text = text,
                 onClick = onClick,
                 enabled = enabled,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .widthIn(max = targetWidth) // 화면이 좁으면 줄어들고, 넓으면 targetWidth로 제한
-                    .height(height)
+                modifier = m
             )
+//            // 버튼은 "최대 targetWidth, 최소 가로폭=남은 공간" 형태로
+//            PrimaryButtonCore(
+//                text = text,
+//                onClick = onClick,
+//                enabled = enabled,
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .widthIn(max = targetWidth) // 화면이 좁으면 줄어들고, 넓으면 targetWidth로 제한
+//                    .height(height)
+//            )
         }
     }
 }

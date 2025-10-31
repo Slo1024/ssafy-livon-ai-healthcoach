@@ -3,7 +3,9 @@ package com.livon.app.ui.component.button
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -43,7 +45,8 @@ fun ChoiceButtonCard(
     text: String,
     selected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+//    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier.size(135.dp, 160.dp) // ✅ 기본값: 기존 크기 유지
 ) {
     val shape = RoundedCornerShape(10.dp)
     val containerColor = if (selected) Main else Basic
@@ -59,13 +62,12 @@ fun ChoiceButtonCard(
             contentColor = contentColor
         ),
         modifier = modifier
-            .width(135.dp)
-            .height(160.dp)
+//            .width(135.dp)
+//            .height(160.dp)
     ) {
         Box(
-            modifier = Modifier
-                .width(135.dp)
-                .height(160.dp),
+//            modifier = Modifier.width(135.dp).height(160.dp),
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             Text(

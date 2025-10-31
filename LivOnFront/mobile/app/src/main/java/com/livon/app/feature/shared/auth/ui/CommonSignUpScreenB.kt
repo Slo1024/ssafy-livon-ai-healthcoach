@@ -53,7 +53,7 @@ fun CommonSignUpScreenB(
                 Modifier
                     .fillMaxWidth()
                     .padding(top = Spacing.TopMargin)
-                    .padding(horizontal = Spacing.Horizontal)
+//                    .padding(horizontal = Spacing.Horizontal)
             ) {
                 TopBar2(
                     title = title,
@@ -65,11 +65,12 @@ fun CommonSignUpScreenB(
         bottomBar = {
             Box(
                 Modifier
-                    .windowInsetsPadding(WindowInsets.navigationBars) // ✅ 하단 인셋
                     .fillMaxWidth()
-                    .padding(
-                        horizontal = Spacing.Horizontal,
-                    )
+                    .windowInsetsPadding(WindowInsets.navigationBars) // ✅ 하단 인셋
+
+//                    .padding(
+//                        horizontal = Spacing.Horizontal,
+//                    )
             ) { bottomBar() }
         }
     ) { inner ->

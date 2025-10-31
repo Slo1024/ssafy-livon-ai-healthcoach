@@ -1,6 +1,7 @@
 package com.livon.app.feature.shared.auth.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -12,8 +13,11 @@ import com.livon.app.ui.component.overlay.TopBar
 import com.livon.app.ui.preview.PreviewSurface
 import com.livon.app.ui.theme.Spacing
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.unit.dp
 
 /**
  * A그룹 화면 템플릿
@@ -23,8 +27,8 @@ import androidx.compose.foundation.layout.windowInsetsPadding
  */
 @Composable
 fun CommonSignUpScreenA(
-    topBar: @Composable () -> Unit,
-    bottomBar: @Composable () -> Unit,
+    topBar: @Composable (Modifier) -> Unit,     // ✅ modifier 받도록 타입 변경
+    bottomBar: @Composable (Modifier) -> Unit,  // ✅ modifier 받도록 타입 변경
     modifier: Modifier = Modifier,
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit
 ) {
@@ -34,16 +38,21 @@ fun CommonSignUpScreenA(
             Box(
                 Modifier
                     .padding(top = Spacing.TopMargin)
-                    .padding(horizontal = Spacing.Horizontal)
-            ) { topBar() }
+//                    .padding(horizontal = Spacing.Horizontal)
+                    .fillMaxWidth()                                 // ✅ 가로 꽉
+            ) {
+                topBar(Modifier.fillMaxWidth())                     // ✅ 전달한 컴포넌트도 꽉
+            }
         },
         bottomBar = {
             Box(
                 Modifier
-                    .padding(
-                        horizontal = Spacing.Horizontal,
-                    )
-            ) { bottomBar() }
+//                    .padding(horizontal = Spacing.Horizontal)
+                    .fillMaxWidth()                                 // ✅ 가로 꽉
+                    .windowInsetsPadding(WindowInsets.navigationBars) // ✅ 제스처 바 겹침 방지
+            ) {
+                bottomBar(Modifier.fillMaxWidth())                  // ✅ 전달한 컴포넌트도 꽉
+            }
         }
     ) { inner ->
         androidx.compose.foundation.layout.Column(
@@ -52,10 +61,12 @@ fun CommonSignUpScreenA(
                 .fillMaxSize()
                 .padding(horizontal = Spacing.Horizontal)
         ) {
+            Spacer(Modifier.height(80.dp)) // TopBar 아래 공통 80dp
             content()
         }
     }
 }
+
 
 /* ---------- Preview ---------- */
 @Preview(showBackground = true, showSystemUi = true, name = "CommonSignUpScreenA")

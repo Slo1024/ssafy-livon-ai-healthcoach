@@ -98,21 +98,24 @@ private User findUserById(UUID userId) {
     }
 //
     @Transactional(readOnly = true)
-    public List<GoodsChatMessageResponse> getChatRoomMessages(Long chatRoomId, Long memberId, LocalDateTime lastSentAt) {
+//    public List<GoodsChatMessageResponse> getChatRoomMessages(Long chatRoomId, Long memberId, LocalDateTime lastSentAt) {
+    public List<GoodsChatMessage> getChatRoomMessages(Long chatRoomId, Long memberId, LocalDateTime lastSentAt) {
 //        validateMemberInChatRoom(memberId, chatRoomId);
         StopWatch stopWatch = new StopWatch(); // (1) 스톱워치 생성
-        stopWatch.start("메인 로직"); // (2) 타이머 시작 (작업 이름 지정)
-        try {
-            List<GoodsChatMessage> chatMessages = fetchMessagesFromCacheOrDB(chatRoomId, lastSentAt, 20);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        stopWatch.stop(); // (3) 타이머 중지
-        System.out.println(stopWatch.prettyPrint());
+
 
         List<GoodsChatMessage> chatMessages = fetchMessagesFromCacheOrDB(chatRoomId, lastSentAt, 20);
 
-        return mapMessagesToResponses(chatMessages);
+//        stopWatch.start("데이터 변환 로직"); // (2) 타이머 시작 (작업 이름 지정)
+//        try {
+//            List<GoodsChatMessageResponse> test = mapMessagesToResponses(chatMessages);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//        stopWatch.stop(); // (3) 타이머 중지
+//        System.out.println(stopWatch.prettyPrint());
+//        return mapMessagesToResponses(chatMessages);
+        return chatMessages;
     }
 
     // 채팅 내역 조회

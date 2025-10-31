@@ -8,6 +8,7 @@ val Main          = Color(0xFF4965F6) // main  - 4965F6
 val Sub1          = Color(0xFF77A3F3) // sub1  - 77A3F3
 val Sub2          = Color(0xFFEDF2FC) // sub2  - EDF2FC
 
+val LightGray     = Color(0xFFF0F0F0) // light_gray - D9D9D9
 val Gray          = Color(0xFF878787) // gray  - 878787
 val Gray2         = Color(0xFF666666) // gray2 - 666666
 

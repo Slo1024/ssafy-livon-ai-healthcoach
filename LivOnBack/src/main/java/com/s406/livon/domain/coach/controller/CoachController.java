@@ -1,6 +1,7 @@
 package com.s406.livon.domain.coach.controller;
 
-import com.s406.livon.domain.coach.dto.request.BlockedTimesResponseDto;
+import com.s406.livon.domain.coach.dto.request.BlockedTimesRequestDto;
+import com.s406.livon.domain.coach.dto.response.BlockedTimesResponseDto;
 import com.s406.livon.domain.coach.dto.request.CoachSearchRequestDto;
 import com.s406.livon.domain.coach.dto.response.AvailableTimesResponseDto;
 import com.s406.livon.domain.coach.dto.response.CoachDetailResponseDto;
@@ -11,11 +12,15 @@ import com.s406.livon.global.web.response.ApiResponse;
 import com.s406.livon.global.web.response.PaginatedResponse;
 import com.s406.livon.global.web.response.code.status.SuccessStatus;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.constraints.Future;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
@@ -24,6 +29,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/coaches")
 @RequiredArgsConstructor
+@Validated
 public class CoachController {
 
     private final CoachService coachService;
@@ -94,9 +100,12 @@ public class CoachController {
     @Operation(summary = "코치 예약 가능 시간대 조회 API", description = "특정 날짜의 코치 예약 가능 시간대를 조회합니다.")
     public ResponseEntity<?> getAvailableTimes(
             @PathVariable UUID coachId,
-            @RequestParam String date) {
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            @Future(message = "DATE_PAST_DAYS")
+            LocalDate date) {
 
-        AvailableTimesResponseDto response = coachService.getAvailableTimes(coachId, date);
+        AvailableTimesResponseDto response = coachService.getAvailableTimes(coachId, String.valueOf(date));
 
         return ResponseEntity.ok().body(ApiResponse.of(SuccessStatus.SELECT_SUCCESS, response));
     }
@@ -108,7 +117,7 @@ public class CoachController {
      * @return 예약 가능한 시간대 목록
      */
     @GetMapping("/block-times")
-    @Operation(summary = "코치 예약 가능 시간대 조회 API", description = "특정 날짜의 코치 예약 가능 시간대를 조회합니다.")
+    @Operation(summary = "코치가 막아놓은 시간대 조회 API", description = "특정 날짜의 코치가 막아놓은 시간대를 조회합니다.")
     public ResponseEntity<?> getBlockedTimes(
             @RequestHeader("Authorization") String token,
             @RequestParam String date) {
@@ -117,4 +126,25 @@ public class CoachController {
 
         return ResponseEntity.ok().body(ApiResponse.of(SuccessStatus.SELECT_SUCCESS, response));
     }
+
+    /**
+     * 코치가 스스로 예약을 막아놓은 시간대 업데이트
+     *
+     * @param date 조회할 날짜 (yyyy-MM-dd 형식)
+     * @return 새로 갱신된 차단 시간대 목록
+     */
+    @PutMapping("/block-times")
+    public ResponseEntity<?> updateBlockedTimes(
+            @RequestHeader("Authorization") String token,
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            @Future(message = "DATE_PAST_DAYS")
+            LocalDate date,
+            @RequestBody BlockedTimesRequestDto blockedTimesRequestDto
+    ) {
+        UUID coachId = jwtTokenProvider.getUserId(token.substring(7));
+        BlockedTimesResponseDto response = coachService.updateBlockedTimes(coachId, String.valueOf(date), blockedTimesRequestDto);
+        return ResponseEntity.ok().body(ApiResponse.of(SuccessStatus.SELECT_SUCCESS, response));
+    }
+
 }

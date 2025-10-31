@@ -11,8 +11,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 @Getter
@@ -32,7 +32,7 @@ public class SignUpDto {
     private String organizations;  // null 가능 -> null 이라면 개인회원 처리
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd", timezone = "Asia/Seoul")
-    private Date birthdate;
+    private LocalDate birthdate;
 
     public User toEntity(String encodedPassword, Organizations organizations){
         return User.builder()

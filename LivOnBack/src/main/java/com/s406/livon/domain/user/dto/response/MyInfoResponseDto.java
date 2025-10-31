@@ -14,6 +14,7 @@ import java.util.Date;
 public class MyInfoResponseDto {
     private String nickname;
     private String profileImage;
+    private String organizations;
     private Gender gender;
     private LocalDate birthdate;
     private HealthSurveyResponseDto healthSurvey;

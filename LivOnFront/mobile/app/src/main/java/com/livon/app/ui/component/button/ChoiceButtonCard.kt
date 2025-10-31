@@ -15,7 +15,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,8 +48,14 @@ fun ChoiceButtonCard(
     selected: Boolean,
     onClick: () -> Unit,
 //    modifier: Modifier = Modifier
-    modifier: Modifier = Modifier.size(135.dp, 160.dp) // ✅ 기본값: 기존 크기 유지
-) {
+    modifier: Modifier = Modifier.size(135.dp, 160.dp), // ✅ 기본값: 기존 크기 유지
+    textStyle: TextStyle = MaterialTheme.typography.titleLarge.copy( // ✅ 기본 24sp(공통)
+        fontSize = 24.sp,
+        fontWeight = FontWeight.Medium,
+        letterSpacing = 0.sp
+),
+    textAlign: TextAlign = TextAlign.Center
+){
     val shape = RoundedCornerShape(10.dp)
     val containerColor = if (selected) Main else Basic
     val contentColor = if (selected) Basic else Main
@@ -70,14 +78,18 @@ fun ChoiceButtonCard(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = contentColor,
-                    letterSpacing = 0.sp
-                )
+//            Text(
+//                text = text,
+//                style = MaterialTheme.typography.titleLarge.copy(
+//                    fontSize = 24.sp,
+//                    fontWeight = FontWeight.Medium,
+//                    color = contentColor,
+//                    letterSpacing = 0.sp
+//                )
+                Text(
+                    text = text,
+                    textAlign = textAlign,
+                    style = textStyle.copy(color = contentColor) // ✅ 색상은 선택 상태에 맞춰 덮어쓰기
             )
         }
     }

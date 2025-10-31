@@ -47,13 +47,11 @@ fun CommonSignUpScreenB(
 ) {
     Scaffold(
         modifier = modifier,
-        // ✅ 기본 인셋 사용 권장
         topBar = {
             Box(
                 Modifier
                     .fillMaxWidth()
                     .padding(top = Spacing.TopMargin)
-//                    .padding(horizontal = Spacing.Horizontal)
             ) {
                 TopBar2(
                     title = title,
@@ -68,9 +66,6 @@ fun CommonSignUpScreenB(
                     .fillMaxWidth()
                     .windowInsetsPadding(WindowInsets.navigationBars) // ✅ 하단 인셋
 
-//                    .padding(
-//                        horizontal = Spacing.Horizontal,
-//                    )
             ) { bottomBar() }
         }
     ) { inner ->

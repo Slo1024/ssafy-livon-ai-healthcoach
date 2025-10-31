@@ -43,7 +43,7 @@ fun UserProfileItem(
             contentDescription = "사용자 프로필",
             contentScale = ContentScale.Crop,
             modifier = Modifier
-                .padding(start = 4.dp)
+                .padding(start = 16.dp)
                 .size(28.dp)
                 .clip(CircleShape)
         )

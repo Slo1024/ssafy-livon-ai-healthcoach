@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.util.StopWatch;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -43,6 +44,8 @@ public class GoodsChatService {
     private final GoodsChatMessageRepository messageRepository;
     private final GoodsChatEventPublisher eventPublisher;
     private final ConsultationRepository consultationRepository;
+    private final GoodsChatCacheManager goodsChatCacheManager;
+
 
     public GoodsChatRoomResponse getOrCreateGoodsChatRoom(UUID buyerId, Long consultationId) {
         User buyer = findUserById(buyerId);
@@ -96,10 +99,50 @@ private User findUserById(UUID userId) {
 //
     @Transactional(readOnly = true)
     public List<GoodsChatMessageResponse> getChatRoomMessages(Long chatRoomId, Long memberId, LocalDateTime lastSentAt) {
-    //    validateMemberInChatRoom(memberId, chatRoomId);
-        List<GoodsChatMessage> chatMessages = messageRepository.getChatMessages(chatRoomId, lastSentAt, 20);
+//        validateMemberInChatRoom(memberId, chatRoomId);
+        StopWatch stopWatch = new StopWatch(); // (1) 스톱워치 생성
+        stopWatch.start("메인 로직"); // (2) 타이머 시작 (작업 이름 지정)
+        try {
+            List<GoodsChatMessage> chatMessages = fetchMessagesFromCacheOrDB(chatRoomId, lastSentAt, 20);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        stopWatch.stop(); // (3) 타이머 중지
+        System.out.println(stopWatch.prettyPrint());
+
+        List<GoodsChatMessage> chatMessages = fetchMessagesFromCacheOrDB(chatRoomId, lastSentAt, 20);
 
         return mapMessagesToResponses(chatMessages);
+    }
+
+    // 채팅 내역 조회
+    private List<GoodsChatMessage> fetchMessagesFromCacheOrDB(Long chatRoomId, LocalDateTime lastSentAt, int size) {
+
+        // 1. redis 캐싱 데이터 조회
+
+        List<GoodsChatMessage> chatMessages = goodsChatCacheManager.fetchMessagesFromCache(chatRoomId, lastSentAt, size);
+
+        // 2. 데이터가 비어있는 경우, DB 에서 size 만큼 조회
+        if (chatMessages.isEmpty()) {
+            chatMessages = messageRepository.getChatMessages(chatRoomId, lastSentAt, size);
+            // 2-1. redis 저장
+            goodsChatCacheManager.storeMessagesInCache(chatRoomId, chatMessages);
+            System.out.println("mongodb저장 및 조회");
+        }
+        // 3. 데이터가 size 보다 적은 경우
+        else if (chatMessages.size() < size) {
+            // 3-1. 캐싱 데이터의 마지막 보낸 시간 추출
+            lastSentAt = chatMessages.get(chatMessages.size() - 1).getSentAt();
+
+            // 3-2. 부족한 개수만큼 DB 에서 조회 후 추가
+            List<GoodsChatMessage> additionalMessages = messageRepository.getChatMessages(chatRoomId, lastSentAt, size - chatMessages.size());
+            chatMessages.addAll(additionalMessages);
+
+            // 3-3. redis 저장
+            goodsChatCacheManager.storeMessagesInCache(chatRoomId, additionalMessages);
+            System.out.println("사이즈가 없는만큼 mongodb저장 및 조회");
+        }
+        return chatMessages;
     }
 
     // 메시지 발신자 정보 조회 및 DTO 매핑

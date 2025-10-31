@@ -69,51 +69,142 @@ fun LiveStreamingCoachScreen(
                 Log.d("LiveStreamingCoachScreen", "Coach track info: $coachTrackInfo")
                 Log.d("LiveStreamingCoachScreen", "Remote tracks count: ${remoteTracks.size}")
 
-                Column(
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (coachTrackInfo != null) {
-                            val videoTrack = coachTrackInfo.track as? VideoTrack
-                            Log.d("LiveStreamingCoachScreen", "Coach video track: $videoTrack, enabled=${coachTrackInfo.isCameraEnabled}")
-
+                    when (remoteTracks.size) {
+                        0 -> {
+                            coachTrackInfo?.let { me ->
+                                StreamingCamera(
+                                    track = me.track as? VideoTrack,
+                                    userName = me.participantIdentity,
+                                    isCameraEnabled = me.isCameraEnabled,
+                                    eglBaseContext = eglBaseContext,
+                                    room = room,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } ?: Text("비디오 스트림을 준비 중입니다.")
+                        }
+                        1 -> {
+                            val remote = remoteTracks.first()
                             StreamingCamera(
-                                track = videoTrack,
-                                userName = coachTrackInfo.participantIdentity,
-                                isCameraEnabled = coachTrackInfo.isCameraEnabled,
+                                track = remote.track as? VideoTrack,
+                                userName = remote.participantIdentity,
+                                isCameraEnabled = remote.isCameraEnabled,
                                 eglBaseContext = eglBaseContext,
                                 room = room,
                                 modifier = Modifier.fillMaxSize()
                             )
-                        } else {
-                            Log.w("LiveStreamingCoachScreen", "No coach track info found")
-                            Text("비디오 스트림을 준비 중입니다.")
-                        }
-                    }
 
-                    LazyRow(
+                            coachTrackInfo?.let { me ->
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .padding(12.dp)
+                                        .size(140.dp)
+                                ) {
+                                    StreamingCamera(
+                                        track = me.track as? VideoTrack,
+                                        userName = me.participantIdentity,
+                                        isCameraEnabled = me.isCameraEnabled,
+                                        eglBaseContext = eglBaseContext,
+                                        room = room,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+                            }
+                        }
+                        else -> {
+                            val pageSize = 4
+                            val pages = (remoteTracks.size + pageSize - 1) / pageSize
+
+                            LazyRow(
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                items(pages) { pageIndex ->
+                                    val start = pageIndex * pageSize
+                                    val end = minOf(start + pageSize, remoteTracks.size)
+
+                                    Box(
+                                        modifier = Modifier
+                                            .fillParentMaxWidth()
+                                            .fillParentMaxHeight()
+                                            .padding(8.dp)
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.fillMaxSize(),
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.weight(1f),
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                for (i in 0 until 2) {
+                                                    val idx = start + i
+                                                    if (idx < end) {
+                                                        val t = remoteTracks[idx]
+                                                        Box(modifier = Modifier.weight(1f)) {
+                                                            StreamingCamera(
+                                                                track = t.track as? VideoTrack,
+                                                                userName = t.participantIdentity,
+                                                                isCameraEnabled = t.isCameraEnabled,
+                                                                eglBaseContext = eglBaseContext,
+                                                                room = room,
+                                                                modifier = Modifier.fillMaxSize()
+                                                            )
+                                                        }
+                                                    } else {
+                                                        Spacer(modifier = Modifier.weight(1f))
+                                                    }
+                                                }
+                                            }
+                                            Row(
+                                                modifier = Modifier.weight(1f),
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                for (i in 2 until 4) {
+                                                    val idx = start + i
+                                                    if (idx < end) {
+                                                        val t = remoteTracks[idx]
+                                                        Box(modifier = Modifier.weight(1f)) {
+                                                            StreamingCamera(
+                                                                track = t.track as? VideoTrack,
+                                                                userName = t.participantIdentity,
+                                                                isCameraEnabled = t.isCameraEnabled,
+                                                                eglBaseContext = eglBaseContext,
+                                                                room = room,
+                                                                modifier = Modifier.fillMaxSize()
+                                                            )
+                                                        }
+                                                    } else {
+                                                        Spacer(modifier = Modifier.weight(1f))
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        coachTrackInfo?.let { me ->
+                                            Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(120.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
-                    ) {
-                        items(remoteTracks) { trackInfo ->
+                                                    .align(Alignment.BottomEnd)
+                                                    .padding(12.dp)
+                                                    .size(140.dp)
+                                            ) {
                             StreamingCamera(
-                                track = trackInfo.track as? VideoTrack,
-                                userName = trackInfo.participantIdentity,
-                                isCameraEnabled = trackInfo.isCameraEnabled,
+                                                    track = me.track as? VideoTrack,
+                                                    userName = me.participantIdentity,
+                                                    isCameraEnabled = me.isCameraEnabled,
                                 eglBaseContext = eglBaseContext,
-                                room = room,
-                                modifier = Modifier.size(100.dp)
+                                                    room = room,
+                                                    modifier = Modifier.fillMaxSize()
                             )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

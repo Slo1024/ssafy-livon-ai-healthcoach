@@ -23,10 +23,12 @@ public class GoodsChatMessageController {
 //        org.springframework.security.core.userdetails.User user =
 //                (org.springframework.security.core.userdetails.User) authentication.getPrincipal();
 
-//        User sender = (User) authentication.getPrincipal();
+        User sender = (User) authentication.getPrincipal();
         System.out.println(sender.getNickname());
+        System.out.println(sender.getPassword());
+//        System.out.println(sender.getNickname());
 //        log.info("User: {}", user);
 
-        goodsChatMessageService.sendMessage(message);
+        goodsChatMessageService.sendMessage(message,sender);
     }
 }

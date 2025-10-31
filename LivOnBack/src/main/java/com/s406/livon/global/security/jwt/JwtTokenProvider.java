@@ -3,7 +3,9 @@ package com.s406.livon.global.security.jwt;
 
 import com.s406.livon.domain.user.dto.JwtToken;
 import com.s406.livon.domain.user.enums.Role;
+import com.s406.livon.domain.user.repository.UserRepository;
 import com.s406.livon.global.error.handler.TokenHandler;
+import com.s406.livon.global.error.handler.UserHandler;
 import com.s406.livon.global.web.response.code.status.ErrorStatus;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
@@ -29,25 +31,29 @@ public class JwtTokenProvider {
     private static final long REFRESH_TOKEN_EXPIRE_TIME = 7 * 24 * 60 * 60 * 1000L;
 
     //테스트용
-    private static final long ACCESS_TOKEN_EXPIRE_TIME = 30 * 60 * 1000L *100000;
+    private static final long ACCESS_TOKEN_EXPIRE_TIME = 30 * 60 ;
+//    private static final long ACCESS_TOKEN_EXPIRE_TIME = 30 * 60 * 1000L *100000;
+    private final UserRepository userRepository; // UserRepository 주입
 //    private static final long ACCESS_TOKEN_EXPIRE_TIME = 30 * 60 * 1000L ;
 
     // application.yml에서 secret 값 가져와서 key에 저장
-    public JwtTokenProvider(@Value("${jwt.secret}") String secretKey) {
+    public JwtTokenProvider(@Value("${jwt.secret}") String secretKey, UserRepository userRepository) {
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);
         this.key = Keys.hmacShaKeyFor(keyBytes);
+        this.userRepository = userRepository; // 주입받은 리포지토리 할당
     }
 
     // Member 정보를 가지고 AccessToken, RefreshToken을 생성하는 메서드
     public JwtToken generateToken(Authentication authentication) {
 
-        List<Role> roles = authentication.getAuthorities().stream()
-                .map(grantedAuthority -> Role.valueOf(grantedAuthority.getAuthority().replace("ROLE_", "")))
-                .collect(Collectors.toList());
+        com.s406.livon.domain.user.entity.User user =
+                (com.s406.livon.domain.user.entity.User) authentication.getPrincipal();
+
+        List<Role> roles = user.getRoles(); // User 엔티티에서 직접 Role 가져오기
 
         // JWT에 들어갈 권한 문자열 (예: "ROLE_USER,ROLE_ADMIN")
         String authorities = roles.stream()
-                .map(role -> role.getRoleName())
+                .map(Role::getRoleName) // getRoleName() 사용 권장
                 .collect(Collectors.joining(","));
 
         long now = (new Date()).getTime();
@@ -55,7 +61,8 @@ public class JwtTokenProvider {
         // Access Token 생성
         Date accessTokenExpiresIn = new Date(now + ACCESS_TOKEN_EXPIRE_TIME);
         String accessToken = Jwts.builder()
-                .setSubject(authentication.getName())
+                // ★★★ 수정된 부분: Subject에 이메일 대신 User ID(UUID) 저장
+                .setSubject(user.getId().toString())
                 .claim("auth", authorities)
                 .setExpiration(accessTokenExpiresIn)
                 .signWith(key, SignatureAlgorithm.HS256)
@@ -82,17 +89,20 @@ public class JwtTokenProvider {
         Claims claims = parseClaims(accessToken);
 
         if (claims.get("auth") == null) {
-            throw new RuntimeException("권한 정보가 없는 토큰입니다.");
+            throw new UserHandler(ErrorStatus._UNAUTHORIZED);
         }
 
-        // 클레임에서 권한 정보 가져오기
-        Collection<? extends GrantedAuthority> authorities = Arrays.stream(claims.get("auth").toString().split(","))
-                .map(SimpleGrantedAuthority::new)
-                .collect(Collectors.toList());
+        // ★★★ 수정된 부분: subject에서 UUID를 파싱
+        UUID userId = UUID.fromString(claims.getSubject());
 
-        // UserDetails 객체를 만들어서 Authentication return
-        // UserDetails: interface, User: UserDetails를 구현한 class
-        UserDetails principal = new User(claims.getSubject(), "", authorities);
+        // ★★★ 수정된 부분: UUID로 DB에서 실제 User 엔티티 조회
+        UserDetails principal = userRepository.findById(userId)
+                .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
+
+        // 클레임에서 권한 정보 가져오기 (이 부분은 UserDetails에서 직접 가져와도 됩니다)
+        Collection<? extends GrantedAuthority> authorities = principal.getAuthorities();
+
+        // ★★★ 수정된 부분: principal에 DB에서 조회한 실제 User 엔티티를 넣음
         return new UsernamePasswordAuthenticationToken(principal, "", authorities);
     }
 

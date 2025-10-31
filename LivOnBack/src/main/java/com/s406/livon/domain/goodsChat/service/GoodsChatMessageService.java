@@ -38,8 +38,7 @@ public class GoodsChatMessageService {
     private static final String MEMBER_LEAVE_MESSAGE = "님이 채팅방을 떠나셨습니다.";
 
 
-    public void sendMessage(GoodsChatMessageRequest message) {
-        User sender = findMemberById(message.getSenderId());
+    public void sendMessage(GoodsChatMessageRequest message,User sender) {
         GoodsChatRoom chatRoom = findByChatRoomById(message.getRoomId());
         saveAndSendMessage(chatRoom, sender, message.getMessage(), message.getType());
     }

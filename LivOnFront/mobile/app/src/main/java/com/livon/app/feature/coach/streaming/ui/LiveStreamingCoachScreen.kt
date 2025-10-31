@@ -39,12 +39,14 @@ fun LiveStreamingCoachScreen(
     onConnect: () -> Unit,
     onToggleCamera: () -> Unit = {},
     onToggleMic: () -> Unit = {},
+    onShareScreen: () -> Unit = {},
 ) {
     LaunchedEffect(key1 = true) {
         onConnect()
     }
 
     var currentScreen by remember { mutableStateOf("streaming") } // "streaming", "participant", "chatting"
+    var showHeader by remember { mutableStateOf(false) } // default: header hidden
 
     LivonTheme {
         when (currentScreen) {
@@ -65,17 +67,32 @@ fun LiveStreamingCoachScreen(
             else -> {
                 Scaffold(
                     topBar = {
-                        CoachStreamingHeader(
-                            roomName = uiState.roomName,
-                            onLeaveRoom = onLeaveRoom,
-                            onPersonClick = { currentScreen = "participant" },
-                            onChatClick = { currentScreen = "chatting" }
-                        )
+                        if (showHeader) {
+                            CoachStreamingHeader(
+                                roomName = uiState.roomName,
+                                onLeaveRoom = onLeaveRoom,
+                                onPersonClick = { currentScreen = "participant" },
+                                onChatClick = { currentScreen = "chatting" }
+                            )
+                        }
                     },
                     bottomBar = {
+                        var micEnabled by remember { mutableStateOf(true) }
+                        var cameraEnabled by remember { mutableStateOf(true) }
                         StreamingNav(
-                            //onToggleCamera = onToggleCamera,
-                            //onToggleMic = onToggleMic
+                            isMicEnabled = micEnabled,
+                            isCameraEnabled = cameraEnabled,
+                            onToggleMic = {
+                                onToggleMic()
+                                micEnabled = !micEnabled
+                            },
+                            onToggleCamera = {
+                                onToggleCamera()
+                                cameraEnabled = !cameraEnabled
+                            },
+                            onShare = { onShareScreen() },
+                            onMore = { showHeader = !showHeader },
+                            onExit = onLeaveRoom
                         )
                     }
                 ) { paddingValues ->

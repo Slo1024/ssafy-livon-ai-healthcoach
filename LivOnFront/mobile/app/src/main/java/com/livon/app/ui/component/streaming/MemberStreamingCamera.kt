@@ -10,6 +10,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
@@ -89,7 +91,12 @@ fun MemberStreamingCamera(
                     .background(Color.DarkGray),
                 contentAlignment = Alignment.Center
             ) {
-                Text("카메라 비활성화", color = Color.White)
+                Icon(
+                    painter = painterResource(id = com.livon.app.R.drawable.profile),
+                    contentDescription = "프로필",
+                    tint = Color.Unspecified,
+                    modifier = Modifier.size(64.dp)
+                )
             }
         }
 

@@ -17,10 +17,6 @@ fun PreviewHeaderBarComponent() {
         // CoachStreamingHeader()
         // MemberStreamingHeader()
         // StreamingNav()
-//        StreamingCamera(
-//            userName = "사용자 A",
-//            modifier = Modifier.height(300.dp)
-//        )
         // LiveStreamingCoachScreen()
         // ConfigureUrlsScreen()
         // StreamingParticipantsHeader(onBackClick = {})
@@ -40,24 +36,24 @@ fun PreviewHeaderBarComponent() {
 //            message = "오늘은 여기서 마무리하겠습니다",
 //            time = "14:30"
 //        )
-
-        val sampleBio = listOf(
-            BioInfo("고혈압"),
-            BioInfo("수면 질 저하"),
-            BioInfo("활동 부족"),
-            BioInfo("과체중"),
-        )
-
-        val sampleQA = listOf(
-            QAItem("전완근을 키우고 싶어요"),
-            QAItem("렛풀다운을 잘하고 싶어요"),
-        )
-
-        StreamingMemberDetail(
-            memberName = "홍길동",
-            bioInfoList = sampleBio,
-            bottomText = "혈압약 복용 중이므로 격렬한 운동은 피하세요",
-            qaList = sampleQA
-        )
+//
+//        val sampleBio = listOf(
+//            BioInfo("고혈압"),
+//            BioInfo("수면 질 저하"),
+//            BioInfo("활동 부족"),
+//            BioInfo("과체중"),
+//        )
+//
+//        val sampleQA = listOf(
+//            QAItem("전완근을 키우고 싶어요"),
+//            QAItem("렛풀다운을 잘하고 싶어요"),
+//        )
+//
+//        StreamingMemberDetail(
+//            memberName = "홍길동",
+//            bioInfoList = sampleBio,
+//            bottomText = "혈압약 복용 중이므로 격렬한 운동은 피하세요",
+//            qaList = sampleQA
+//        )
     }
 }

@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import io.livekit.android.room.Room
@@ -17,7 +18,7 @@ import io.livekit.android.renderer.SurfaceViewRenderer
 import livekit.org.webrtc.RendererCommon
 
 @Composable
-fun StreamingCamera(
+fun MemberStreamingCamera(
     track: VideoTrack?,
     userName: String,
     isCameraEnabled: Boolean,
@@ -90,6 +91,21 @@ fun StreamingCamera(
             }
         }
 
+        // Top-right information icon
+        IconButton(
+            onClick = {},
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(8.dp)
+                .size(32.dp)
+        ) {
+            Icon(
+                painter = painterResource(id = com.livon.app.R.drawable.information),
+                contentDescription = "정보",
+                tint = Color.White
+            )
+        }
+
         UserNameTag(
             name = userName,
             modifier = Modifier
@@ -99,17 +115,3 @@ fun StreamingCamera(
     }
 }
 
-@Composable
-fun UserNameTag(name: String, modifier: Modifier = Modifier) {
-    Surface(
-        color = Color.Black.copy(alpha = 0.6f),
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
-        modifier = modifier
-    ) {
-        Text(
-            text = name,
-            color = Color.White,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-        )
-    }
-}

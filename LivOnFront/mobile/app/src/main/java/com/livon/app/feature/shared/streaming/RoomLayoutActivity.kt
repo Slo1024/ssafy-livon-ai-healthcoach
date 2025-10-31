@@ -130,7 +130,12 @@ class RoomLayoutActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 val token = getToken(roomName, participantName)
-                room.connect(Urls.livekitUrl, token)
+                // Ensure we auto-subscribe to remote tracks
+                room.connect(
+                    Urls.livekitUrl,
+                    token,
+                    ConnectOptions(autoSubscribe = true)
+                )
                 Log.d("LiveKitDebug", "Connected to room: ${room.name}, local participant: ${room.localParticipant.identity?.value}")
 
                 // 이벤트 수집 시작
@@ -184,6 +189,15 @@ class RoomLayoutActivity : AppCompatActivity() {
     private suspend fun collectRoomEvents() {
         room.events.collect { event ->
             when (event) {
+                is RoomEvent.ParticipantConnected -> {
+                    Log.d("LiveKitDebug", "Participant connected: ${event.participant.identity?.value}")
+                }
+                is RoomEvent.ParticipantDisconnected -> {
+                    Log.d("LiveKitDebug", "Participant disconnected: ${event.participant.identity?.value}")
+                }
+                is RoomEvent.TrackPublished -> {
+                    Log.d("LiveKitDebug", "Track published by ${event.participant.identity?.value}: ${event.publication.sid}")
+                }
                 is RoomEvent.TrackSubscribed -> onTrackSubscribed(event)
                 is RoomEvent.TrackUnsubscribed -> onTrackUnsubscribed(event)
                 else -> {}

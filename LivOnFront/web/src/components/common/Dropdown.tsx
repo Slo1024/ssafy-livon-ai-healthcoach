@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import styled from 'styled-components';
 
 interface DropdownOption {
   value: string;
@@ -6,18 +7,65 @@ interface DropdownOption {
 }
 
 interface DropdownProps {
-  label?: string;
   options: DropdownOption[];
   value: string;
-  onChange: (value: string) => void;
+  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   placeholder?: string;
   error?: string;
   disabled?: boolean;
   className?: string;
+  style?: React.CSSProperties;
 }
 
+const StyledDropdown = styled.select<{ isPlaceholder?: boolean }>`
+  height: 48px;
+  line-height: 48px;
+  border: 1px solid #ecedec;
+  border-radius: 12px;
+  padding: 0 12px;
+  font-size: 13px;
+  color: ${props => (props.isPlaceholder ? '#999999' : '#000000')};
+  background-color: white;
+  /* custom caret */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%23999999' d='M1 0l4 4 4-4 1 1-5 5-5-5z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 10px 6px;
+  padding-right: 36px; /* space for caret */
+  cursor: pointer;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+
+  &:focus {
+    outline: none;
+    border-color: #2d79f3;
+  }
+
+  &::placeholder {
+    color: #999999;
+  }
+
+  option {
+    color: #000000;
+  }
+  option[disabled] {
+    color: #999999;
+  }
+
+  &:disabled {
+    background-color: #f5f5f5;
+    cursor: not-allowed;
+  }
+`;
+
 export const Dropdown: React.FC<DropdownProps> = ({
-  label,
   options,
   value,
   onChange,
@@ -25,62 +73,36 @@ export const Dropdown: React.FC<DropdownProps> = ({
   error,
   disabled = false,
   className = '',
+  style,
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
-
-  const selectedOption = options.find(option => option.value === value);
+  const isPlaceholder = value === '';
 
   return (
-    <div className={`space-y-1 ${className}`}>
-      {label && (
-        <label className="block text-sm font-medium text-gray-700">
-          {label}
-        </label>
-      )}
-      
-      <div className="relative">
-        <button
-          type="button"
-          onClick={() => setIsOpen(!isOpen)}
-          disabled={disabled}
-          className={`
-            w-full px-3 py-2 text-left border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500
-            ${error ? 'border-red-500' : 'border-gray-300'}
-            ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}
-          `}
-        >
-          <span className={selectedOption ? 'text-gray-900' : 'text-gray-500'}>
-            {selectedOption ? selectedOption.label : placeholder}
-          </span>
-          <span className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </span>
-        </button>
-        
-        {isOpen && !disabled && (
-          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
-            {options.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => {
-                  onChange(option.value);
-                  setIsOpen(false);
-                }}
-                className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
+    <>
+      <StyledDropdown
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        className={className}
+        style={style}
+        isPlaceholder={isPlaceholder}
+      >
+        {placeholder && (
+          <option value="" disabled>
+            {placeholder}
+          </option>
         )}
-      </div>
-      
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </StyledDropdown>
       {error && (
-        <p className="text-sm text-red-600">{error}</p>
+        <div style={{ fontSize: '12px', color: '#ff0000', marginTop: '5px' }}>
+          {error}
+        </div>
       )}
-    </div>
+    </>
   );
 };

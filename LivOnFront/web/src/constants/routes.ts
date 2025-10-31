@@ -21,6 +21,7 @@ export const ROUTES = {
   STREAMING: '/coach/streaming',
   COACH_MYPAGE: '/coach/mypage',
   COACH_MYPAGE_INFO: '/coach/mypage/info',
+  COACH_MYPAGE_VERIFICATION: '/mypage/coach-verification',
   
   // 고객센터
   FAQ: '/support/faq',

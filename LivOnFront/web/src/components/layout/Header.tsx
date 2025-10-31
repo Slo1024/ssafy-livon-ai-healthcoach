@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../../hooks/useAuth';
+import { Button } from '../common/Button';
 
 const StyledLoginButton = styled.div`
   button {
@@ -353,7 +354,7 @@ export const Header: React.FC<HeaderProps> = ({
           ) : (
             <StyledLoginButton>
               <Link to="/auth/login">
-                <button>로그인</button>
+                <Button variant="outline" size="medium">로그인</Button>
               </Link>
             </StyledLoginButton>
           )}

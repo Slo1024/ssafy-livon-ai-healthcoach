@@ -23,28 +23,51 @@ const PageTitle = styled.h1`
 
 const Tabs = styled.div`
   display: flex;
+  gap: 0;
+  
+  /* 두 버튼이 맞닿도록 인접 모서리 처리 */
+  button {
+    border-radius: 6px;
+  }
+  button:last-child {
+    margin-left: -1px; /* 테두리 겹치기 */
+  }
 `;
 
-const TabButton = styled.button<{ active: boolean }>`
-  width: 100px;
+const PrimaryTabButton = styled.button`
+  width: 120px;
   height: 48px;
   border: 1px solid #4965f6;
-  background-color: ${p => (p.active ? '#4965f6' : '#ffffff')};
-  color: ${p => (p.active ? '#ffffff' : '#4965f6')};
+  background-color: #4965f6;
+  color: #ffffff;
   font-weight: 500; /* Pretendard Medium */
   font-size: 16px;
   cursor: pointer;
-  border-radius: 0;
+  border-radius: 6px;
+  white-space: nowrap;
+`;
 
-  &:first-child { border-radius: 6px 0 0 6px; }
-  &:last-child { border-radius: 0 6px 6px 0; border-left: none; }
+const OutlineTabButton = styled.button`
+  width: 120px;
+  height: 48px;
+  border: 1px solid #4965f6;
+  background-color: #ffffff;
+  color: #4965f6;
+  font-weight: 500; /* Pretendard Medium */
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 6px;
+  white-space: nowrap;
 `;
 
 const Divider = styled.div`
-  width: 100%;
+  width: 100vw; /* 화면 전체 폭 */
   height: 2px;
   background-color: #4965f6;
-  margin: 0; /* 붙어 있도록 */
+  margin: 0;
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%); /* 중앙 기준으로 좌우 끝까지 */
 `;
 
 const FAQList = styled.div`
@@ -85,8 +108,8 @@ export const FAQPage: React.FC = () => {
         <PageTitle>고객센터 - 자주 묻는 질문</PageTitle>
 
         <Tabs>
-          <TabButton active={activeTab === 'faq'} onClick={() => setActiveTab('faq')}>자주 묻는 질문</TabButton>
-          <TabButton active={activeTab === 'inquiry'} onClick={goInquiry}>고객 문의</TabButton>
+          <PrimaryTabButton onClick={() => setActiveTab('faq')}>자주 묻는 질문</PrimaryTabButton>
+          <OutlineTabButton onClick={goInquiry}>고객 문의</OutlineTabButton>
         </Tabs>
 
         <Divider />

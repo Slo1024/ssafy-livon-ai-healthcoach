@@ -1,6 +1,7 @@
 package com.s406.livon.domain.goodsChat.document;
 
 import com.s406.livon.domain.goodsChat.entity.MessageType;
+import com.s406.livon.domain.user.enums.Role;
 import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
@@ -9,6 +10,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -35,6 +37,9 @@ public class GoodsChatMessage {
 
     @Field(name = "sent_at")
     private LocalDateTime sentAt;
+
+    @Field(name = "role")
+    private List<Role> role;
 
     @Field(name = "message_type")
     private MessageType messageType;

@@ -26,8 +26,8 @@ public class GoodsChatPart {
     @JoinColumn(name = "chat_room_id")
     private GoodsChatRoom goodsChatRoom;
 
-    @Enumerated(EnumType.STRING)
-    private Role role;
+//    @Enumerated(EnumType.STRING)
+//    private Role role;
 
     @Column(name = "is_active")
     @Builder.Default

@@ -62,6 +62,12 @@ public enum ErrorStatus implements BaseErrorCode {
     CONSULTATION_HAS_PARTICIPANTS(HttpStatus.BAD_REQUEST, "CLASS4000", "예약된 클래스는 수정할 수 없습니다"),
     CONSULTATION_TIME_CONFLICT(HttpStatus.CONFLICT, "CLASS4010", "해당 시간대에 이미 정해진 일정이 있습니다"),
 
+    // 채팅 관련
+    USER_NOT_SEND_VALID(HttpStatus.BAD_REQUEST, "CHAT4000", "해당유저는 전송 권한이 없습니다."),
+    USER_NOT_SELECT_VALID(HttpStatus.BAD_REQUEST, "CHAT4001", "해당유저는 채팅 조회 권한이 없습니다."),
+    CONSULTATION_NOT_FOUND(HttpStatus.BAD_REQUEST, "CHAT4002", "해당 코칭을 찾을수 없어 채팅방에 입장 불가합니다."),
+    USER_NOT_PARTICIPANT_VALID(HttpStatus.BAD_REQUEST, "CHAT4003", "해당유저는 채팅 참여 권한이 없습니다."),
+
 
     ;
 

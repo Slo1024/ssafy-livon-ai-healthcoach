@@ -16,11 +16,12 @@ public class CustomUserDetailsService implements UserDetailsService {
   private final UserRepository userRepository;
 
 
+  @Override // loadUserByUsername 메서드에 @Override 추가
   public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
 
+    // email로 사용자를 찾아서 UserDetails(User 엔티티)를 그대로 반환합니다.
     return userRepository.findByEmail(username)
-        .map(this::createUserDetails)
-        .orElseThrow(() -> new UsernameNotFoundException("해당하는 회원을 찾을 수 없습니다."));
+            .orElseThrow(() -> new UsernameNotFoundException("해당하는 회원을 찾을 수 없습니다."));
   }
 
 

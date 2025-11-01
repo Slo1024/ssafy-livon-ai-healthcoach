@@ -18,6 +18,7 @@ fun CommonScreenC(
     content: @Composable ColumnScope.() -> Unit
 ) {
     Scaffold(
+        contentWindowInsets = WindowInsets.safeDrawing,
         modifier = modifier,
         topBar = {
             Box(
@@ -45,12 +46,13 @@ fun CommonScreenC(
 
             // 가로 풀 콘텐츠
             fullBleedContent?.let {
+                val bottom = inner.calculateBottomPadding()
                 Spacer(Modifier.height(8.dp))
                 Box(
-                    Modifier.fillMaxWidth()
-                ) {
-                    it()
-                }
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = bottom)
+                ) { it() }
             }
         }
     }

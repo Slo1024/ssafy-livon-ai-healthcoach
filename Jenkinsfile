@@ -9,7 +9,6 @@ pipeline {
         // 코드 체크아웃 (필수)
         stage('Checkout') {
             steps {
-                cleanWs()
                 checkout scm
             }
         }

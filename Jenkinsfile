@@ -173,10 +173,10 @@ pipeline {
                 }
             }
             steps {
-                sh """
+                sh '''
                     echo "🧹 Pruning old APKs (keep 5 latest)..."
                     ls -tp /downloads/*.apk 2>/dev/null | grep -v '/$' | tail -n +6 | xargs -r rm --
-                """
+                '''
             }
         }
     }

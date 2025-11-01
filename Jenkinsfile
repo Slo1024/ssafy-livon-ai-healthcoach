@@ -104,15 +104,15 @@ pipeline {
                 script {
                     echo '🛠️ Setting up Android SDK...'
                     withEnv([
-                        'ANDROID_SDK_ROOT=/opt/android-sdk',
-                        'ANDROID_HOME=/opt/android-sdk',
-                        'PATH=/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+                        'ANDROID_SDK_ROOT=/var/jenkins_home/android-sdk',
+                        'ANDROID_HOME=/var/jenkins_home/android-sdk',
+                        'PATH=/var/jenkins_home/android-sdk/cmdline-tools/latest/bin:/var/jenkins_home/android-sdk/platform-tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
                     ]) {
                         // 1) commandline-tools 설치(없으면)
                         sh '''
                             set -e
-                            mkdir -p /opt/android-sdk
-                            if [ ! -x /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager ]; then
+                            mkdir -p /var/jenkins_home/android-sdk
+                            if [ ! -x /var/jenkins_home/android-sdk/cmdline-tools/latest/bin/sdkmanager ]; then
                                 echo "[+] Installing Android commandline-tools..."
                                 cd /tmp
                                 # 구글 공식 cmdline-tools 최신 버전 다운로드 (버전은 수시로 바뀜; 'latest' 링크 사용)
@@ -169,9 +169,9 @@ pipeline {
                     def TASK    = IS_PROD ? 'assembleRelease' : 'assembleDebug'
 
                     withEnv([
-                        'ANDROID_SDK_ROOT=/opt/android-sdk',
-                        'ANDROID_HOME=/opt/android-sdk',
-                        'PATH=/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+                        'ANDROID_SDK_ROOT=/var/jenkins_home/android-sdk',
+                        'ANDROID_HOME=/var/jenkins_home/android-sdk',
+                        'PATH=/var/jenkins_home/android-sdk/cmdline-tools/latest/bin:/var/jenkins_home/android-sdk/platform-tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
                     ]) {
                         dir('LivOnFront/mobile') {
                             sh '''

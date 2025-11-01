@@ -1,26 +1,24 @@
 // com/livon/app/feature/shared/auth/ui/RoleSelectScreen.kt
 package com.livon.app.feature.shared.auth.ui
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.livon.app.ui.component.button.ChoiceButtonCard
 import com.livon.app.ui.component.button.PrimaryButtonBottom
 import com.livon.app.ui.component.overlay.TopBar
+import com.livon.app.ui.component.text.RequirementText
 import com.livon.app.ui.theme.LivonTheme
 import com.livon.app.ui.theme.Spacing
-import androidx.compose.foundation.layout.height
 
 @Composable
 fun RoleSelectScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onComplete: (mode: String) -> Unit = {}
 ) {
     var selected by remember { mutableStateOf<String?>(null) }
 
@@ -30,78 +28,65 @@ fun RoleSelectScreen(
             PrimaryButtonBottom(
                 text = "다음",
                 enabled = selected != null,
-                onClick = { /* TODO: navigate */ }
+                onClick = { /* TODO */ }
             )
         },
         modifier = modifier
     ) {
-        Text(
-            text = "어떤 포지션으로 참여하나요?",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-        Spacer(Modifier.height(Spacing.DescToContent))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            ChoiceButtonCard(
-                text = "회원",
-                selected = selected == "member",
-                onClick = { selected = "member" }
-            )
-            ChoiceButtonCard(
-                text = "코치",
-                selected = selected == "coach",
-                onClick = { selected = "coach" }
-            )
+        // content 루트는 전체 높이
+        Box(Modifier.fillMaxSize()) {
+            // 1) TopBar 아래 80dp는 CommonSignUpScreenA가 이미 넣어줌
+            //    여기선 타이틀만 위쪽에 붙여 두세요.
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .fillMaxWidth()
+            ) {
+                RequirementText("어떤 포지션으로 참여하나요?")
+            }
+
+            // 2) 화면(TopBar~BottomBar 사이) 전체 기준 '진짜 중앙'에 카드 2개
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.Center)
+                    .offset(y = (-40).dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
+            ) {
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    ChoiceButtonCard(
+                        text = "회원",
+                        selected = selected == "member",
+                        onClick = { selected = "member" },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(135f / 160f) // 비율 유지
+                    )
+                }
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    ChoiceButtonCard(
+                        text = "코치",
+                        selected = selected == "coach",
+                        onClick = { selected = "coach" },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(135f / 160f) // 비율 유지
+                    )
+                }
+            }
         }
     }
 }
 
 /* ---------- Previews ---------- */
-@Preview(showBackground = true, name = "RoleSelectScreen - Unselected")
+@Preview(showBackground = true, showSystemUi = true, name = "RoleSelectScreen")
 @Composable
-private fun PreviewRoleSelectScreen_Unselected() {
+private fun PreviewRoleSelectScreen() {
     LivonTheme { RoleSelectScreen() }
-}
-
-@Preview(showBackground = true, name = "RoleSelectScreen - Member selected")
-@Composable
-private fun PreviewRoleSelectScreen_MemberSelected() {
-    LivonTheme {
-        var selected by remember { mutableStateOf("member") }
-        CommonSignUpScreenA(
-            topBar = { TopBar(title = "회원가입", onBack = {}) },
-            bottomBar = {
-                PrimaryButtonBottom(
-                    text = "다음",
-                    enabled = selected != null,
-                    onClick = {}
-                )
-            }
-        ) {
-            Text(
-                text = "어떤 포지션으로 참여하나요?",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Spacer(Modifier.height(Spacing.DescToContent))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                ChoiceButtonCard(
-                    text = "회원",
-                    selected = true,
-                    onClick = { selected = "member" }
-                )
-                ChoiceButtonCard(
-                    text = "코치",
-                    selected = false,
-                    onClick = { selected = "coach" }
-                )
-            }
-        }
-    }
 }

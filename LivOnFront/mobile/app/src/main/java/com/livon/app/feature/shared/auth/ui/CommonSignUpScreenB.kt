@@ -1,19 +1,32 @@
 package com.livon.app.feature.shared.auth.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.livon.app.ui.component.button.PrimaryButtonBottom
+import com.livon.app.ui.component.button.SurveyOption
 import com.livon.app.ui.component.overlay.TopBar2
+import com.livon.app.ui.component.text.CaptionText
+import com.livon.app.ui.component.text.RequirementText
 import com.livon.app.ui.preview.PreviewSurface
 import com.livon.app.ui.theme.Spacing
 
@@ -30,23 +43,20 @@ fun CommonSignUpScreenB(
     onBack: () -> Unit,
     bottomBar: @Composable () -> Unit,
     modifier: Modifier = Modifier,
-    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit
+    content: @Composable () -> Unit,
 ) {
     Scaffold(
         modifier = modifier,
-        contentWindowInsets = WindowInsets(0), // 시스템 인셋 수동 관리
         topBar = {
-            // ✅ TopBar 영역: 상단 24dp + 좌우 20dp + 가로 꽉 채우기
             Box(
                 Modifier
                     .fillMaxWidth()
                     .padding(top = Spacing.TopMargin)
-                    .padding(horizontal = Spacing.Horizontal)
             ) {
                 TopBar2(
                     title = title,
                     onBack = onBack,
-                    modifier = Modifier.fillMaxWidth() // ✅ TopBar2도 폭을 꽉
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         },
@@ -54,32 +64,49 @@ fun CommonSignUpScreenB(
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = Spacing.Horizontal)
+                    .windowInsetsPadding(WindowInsets.navigationBars) // ✅ 하단 인셋
+
             ) { bottomBar() }
         }
-    ) { innerPadding: PaddingValues ->
-        androidx.compose.foundation.layout.Column(
+    ) { inner ->
+        Column(
             Modifier
-                .padding(innerPadding)
+                .padding(inner)
                 .fillMaxSize()
                 .padding(horizontal = Spacing.Horizontal)
         ) {
-            // B 전용: TopBar2 아래 타이틀까지 간격
             Spacer(Modifier.height(Spacing.TopbarToTitle_B))
             content()
         }
     }
 }
 
-/* ---------- Preview ---------- */
-@Preview(showBackground = true, showSystemUi = true, name = "CommonSignUpScreenB")
+@Preview(
+    name = "CommonSignUpScreenB Preview",
+    showBackground = true,
+    showSystemUi = true,
+    backgroundColor = 0xFFFFFFFF,
+)
 @Composable
-private fun PreviewCommonSignUpScreenB() = PreviewSurface {
-    CommonSignUpScreenB(
-        title = "건강 정보 입력",
-        onBack = {},
-        bottomBar = { PrimaryButtonBottom(text = "완료", onClick = {}) }
-    ) {
-        // content
+private fun PreviewCommonSignUpScreenB() {
+    PreviewSurface {
+        CommonSignUpScreenB(
+            title = "건강 정보 입력",
+            onBack = {},
+            bottomBar = {
+                PrimaryButtonBottom(
+                    text = "다음",
+                    onClick = {},
+                    enabled = true
+                )
+            }
+        ) {
+            // ✅ 실제 content가 잘 보이는지 테스트
+            RequirementText("성별을 선택해주세요.")
+            Spacer(Modifier.height(8.dp))
+            CaptionText("입력하신 정보는 공개되지 않습니다.")
+        }
     }
 }
+
+

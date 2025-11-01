@@ -92,5 +92,38 @@ pipeline {
                 }
             }
         }
+
+        stage('Build Mobile APK') {
+            when {
+                changeset pattern: 'LivOnFront/mobile/**', comparator: 'ANT'
+            }
+            steps {
+                script {
+                    echo "✅Mobile changes detected. Building APK for branch ${BRANCH_NAME}."
+                    
+                    // 1. 모바일 프로젝트 폴더로 이동
+                    dir('LivOnFront/mobile') {
+                        
+                        // 2. gradlew 스크립트에 실행 권한 부여
+                        // (빌드 스크립트를 실행 가능하게 만듭니다)
+                        sh 'chmod +x ./gradlew'
+                        
+                        // 3. Gradle을 사용해 APK 빌드 (Debug 빌드 예시)
+                        // 'assembleRelease'를 사용할 수도 있습니다.
+                        echo 'Starting Gradle build...'
+                        sh './gradlew assembleDebug' 
+                        
+                        // 4. 빌드된 APK 파일을 공유 볼륨으로 복사
+                        // (주의!) 안드로이드 프로젝트 설정에 따라 이 경로는 다를 수 있습니다.
+                        // 보통 'app/build/outputs/apk/debug/app-debug.apk' 입니다.
+                        echo 'Copying APK to shared volume...'
+                        sh 'cp app/build/outputs/apk/debug/app-debug.apk /var/apk_storage/livon-${BRANCH_NAME}-build-${BUILD_NUMBER}.apk'
+                        
+                        echo "APK successfully built and copied."
+                        echo "Download at: /download/livon-${BRANCH_NAME}-build-${BUILD_NUMBER}.apk"
+                    }
+                }
+            }
+        }
     }
 }

@@ -1,4 +1,0 @@
-# APK artifacts are produced by CI and served via Nginx.
-*.apk
-*.aab
-!.gitignore

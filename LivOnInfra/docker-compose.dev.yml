@@ -36,7 +36,7 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt:ro
-      - ./downloads:/usr/share/nginx/html/download:ro
+      - apk_storage:/var/www/download/
     ports:
       - "8443:443"
     extra_hosts:
@@ -48,4 +48,8 @@ services:
 
 networks:
   livon-dev-net:
+    external: true
+
+volumes:
+  apk_storage:
     external: true

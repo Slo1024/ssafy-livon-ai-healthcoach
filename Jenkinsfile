@@ -1,4 +1,4 @@
-pipeline {
+ipeline {
     agent any
 
     environment {
@@ -66,7 +66,7 @@ pipeline {
                     def PROJECT = IS_PROD ? 'livon-prod' : 'livon-dev'
                     def NGINX_CONTAINER = IS_PROD ? 'nginx-prod' : 'nginx-dev'
                     def NGINX_CONFIG_DIR = IS_PROD ? 'LivOnInfra/nginx.prod' : 'LivOnInfra/nginx.dev'
-                    def NGINX_CONFIG_SRC = IS_PROD ? 'LivOnInfra/nginx.prod/default.conf' : 'LivOnInfra/nginx.dev/default.conf'
+                    def NGINX_CONFIG_SRC = IS_PROD ? 'LivOnInfra/nginx.prod.default.conf' : 'LivOnInfra/nginx.dev.default.conf'
                     def NGINX_CONFIG_DEST = "${NGINX_CONFIG_DIR}/default.conf"
 
                     withCredentials([file(credentialsId: ENV_ID, variable: 'ENV_FILE')]) {

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface GoodsChatPartRepository extends JpaRepository<GoodsChatPart, GoodsChatPartId> {
 
@@ -18,4 +19,6 @@ public interface GoodsChatPartRepository extends JpaRepository<GoodsChatPart, Go
             AND cr.isActive = true
             """)
     List<GoodsChatPart> findAllWithMemberByChatRoomId(@Param("chatRoomId") Long chatRoomId);
+
+    boolean existsByUserIdAndGoodsChatRoomId(UUID id, Long roomId);
 }

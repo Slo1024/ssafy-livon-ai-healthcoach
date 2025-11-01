@@ -1,14 +1,18 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ROUTES } from '../constants/routes';
+import { Layout } from '../components/layout/Layout';
 
 // 페이지 컴포넌트들
 import { HomePage } from '../pages/main/HomePage';
 import { AboutPage } from '../pages/main/AboutPage';
 import { DownloadPage } from '../pages/main/DownloadPage';
 import { LoginPage } from '../pages/auth/LoginPage';
+import { SignupPage } from '../pages/auth/SignupPage';
+import { TermsPage } from '../pages/main/TermsPage';
 import { SignupCompletePage } from '../pages/auth/SignupCompletePage';
 import { MyPageVerificationPage } from '../pages/coach/MyPageVerificationPage';
+import { MyPageInfoPage } from '../pages/coach/MyPageInfoPage';
 import { NotFoundPage } from '../pages/notfound/NotFoundPage';
 import { FAQPage } from '../pages/support/FAQPage';
 import { InquiryPage } from '../pages/support/InquiryPage';
@@ -19,6 +23,7 @@ import { ProtectedRoute } from './ProtectedRoute';
 export const AppRouter: React.FC = () => {
   return (
     <Router>
+      <Layout>
       <Routes>
         {/* 공개 라우트 */}
         <Route path={ROUTES.HOME} element={<HomePage />} />
@@ -27,8 +32,10 @@ export const AppRouter: React.FC = () => {
         
         {/* 인증 라우트 */}
         <Route path={ROUTES.LOGIN} element={<LoginPage />} />
-        <Route path={ROUTES.SIGNUP} element={<div>회원가입 페이지</div>} />
-        <Route path={ROUTES.TERMS} element={<div>이용약관 페이지</div>} />
+        <Route path={ROUTES.SIGNUP} element={<SignupPage />} />
+        <Route path={ROUTES.TERMS} element={<TermsPage />} />
+        {/* 호환용(기존 App.tsx 경로) */}
+        <Route path="/terms" element={<TermsPage />} />
         <Route path={ROUTES.EMAIL_VERIFICATION} element={<div>이메일 인증 페이지</div>} />
         <Route path={ROUTES.PROFILE_SETUP} element={<div>프로필 설정 페이지</div>} />
         <Route path={ROUTES.SIGNUP_COMPLETE} element={<SignupCompletePage />} />
@@ -90,6 +97,14 @@ export const AppRouter: React.FC = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path={ROUTES.COACH_MYPAGE_INFO}
+          element={
+            <ProtectedRoute requiredRole="coach">
+              <MyPageInfoPage />
+            </ProtectedRoute>
+          }
+        />
         
         {/* 고객센터 라우트 */}
         <Route path="/support" element={<Navigate to={ROUTES.FAQ} replace />} />
@@ -102,6 +117,7 @@ export const AppRouter: React.FC = () => {
         {/* 기본 리다이렉트 */}
         <Route path="*" element={<Navigate to={ROUTES.NOT_FOUND} replace />} />
       </Routes>
+      </Layout>
     </Router>
   );
 };

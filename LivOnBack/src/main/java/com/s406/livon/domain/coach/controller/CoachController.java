@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -28,6 +29,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/coaches")
 @RequiredArgsConstructor
+@Validated
 public class CoachController {
 
     private final CoachService coachService;
@@ -100,7 +102,7 @@ public class CoachController {
             @PathVariable UUID coachId,
             @RequestParam
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            @Future(message = "날짜는 미래여야 합니다")
+            @Future(message = "DATE_PAST_DAYS")
             LocalDate date) {
 
         AvailableTimesResponseDto response = coachService.getAvailableTimes(coachId, String.valueOf(date));
@@ -136,7 +138,7 @@ public class CoachController {
             @RequestHeader("Authorization") String token,
             @RequestParam
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            @Future(message = "날짜는 미래여야 합니다")
+            @Future(message = "DATE_PAST_DAYS")
             LocalDate date,
             @RequestBody BlockedTimesRequestDto blockedTimesRequestDto
     ) {

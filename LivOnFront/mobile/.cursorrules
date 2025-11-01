@@ -1,0 +1,792 @@
+# Livon Android Compose 규칙
+language: Kotlin
+framework: Jetpack Compose + Material3
+theme: com.livon.app.ui.theme.*
+
+rules:
+  - 색상을 하드코딩하지 말 것 (Main, Basic, Border 등 테마 컬러 토큰 사용)
+  - 모든 Preview는 LivonTheme으로 감싸기
+  - 뒤로가기 아이콘은 반드시 R.drawable.ic_back 사용
+  - Composable 함수 이름과 파일 이름은 동일하게
+  - 입력 라인은 OutlinedTextField 대신 BasicTextField + Line 조합으로 구현
+  - 모든 버튼은 Preview 포함, dp/sp 단위 사용
+  - 회원가입 화면은 Group A → CommonSignUpScreenA / Group B → CommonSignUpScreenB 템플릿 사용
+
+paths:
+  component: com/livon/app/ui/component/
+  feature: com/livon/app/feature/shared/auth/ui/
+
+
+# Livon Android Compose 커스텀 규칙 예시
+
+rules:
+  - 색상을 하드코딩하지 말고, 반드시 테마 컬러(Main, Basic, Sub2, Border, onBackground 등)를 사용할 것
+  - 모든 Preview Composable은 LivonTheme으로 감싸서 작성할 것
+  - 뒤로가기 아이콘은 R.drawable.ic_back 만을 사용할 것
+  - 입력 라인은 반드시 OutlinedTextField 대신 BasicTextField + 테마의 Border 색상 선(Line) 조합으로 커스텀 구현할 것
+  - 모든 버튼의 Preview는 dp, sp 단위 명시해서 작성할 것
+  - 회원가입 화면에서 Group A는 CommonSignUpScreenA, Group B는 CommonSignUpScreenB 템플릿으로 공통화해서 사용할 것
+  - Composable 함수와 해당 파일 이름은 일치시킬 것
+
+paths:
+  component: com/livon/app/ui/component/
+  feature: com/livon/app/feature/shared/auth/ui/
+
+examples:
+  - |
+    // com/livon/app/feature/shared/auth/ui/CommonSignUpScreenA.kt
+    @Composable
+    fun CommonSignUpScreenA(
+      modifier: Modifier = Modifier,
+      title: String,
+      onBack: () -> Unit,
+      content: @Composable ColumnScope.() -> Unit,
+      bottomBar: @Composable () -> Unit
+    ) {
+      Scaffold(
+        modifier = modifier,
+        topBar = {
+          TopBar(title = title, onBack = onBack)
+        },
+        bottomBar = {
+          Box(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(
+                horizontal = Spacing.Horizontal,
+                vertical = Spacing.BottomMargin
+              )
+          ) {
+            bottomBar()
+          }
+        }
+      ) { innerPadding ->
+        Column(
+          modifier = Modifier
+            .padding(innerPadding)
+            .fillMaxSize()
+            .padding(horizontal = Spacing.Horizontal)
+        ) {
+          Spacer(Modifier.height(Spacing.TopbarToTitle_A))
+          content()
+        }
+      }
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun CommonSignUpScreenAPreview() {
+      LivonTheme {
+        CommonSignUpScreenA(
+          title = "회원가입",
+          onBack = {},
+          content = {},
+          bottomBar = {
+            PrimaryButtonBottom(
+              text = "다음",
+              onClick = {}
+            )
+          }
+        )
+      }
+    }
+  - |
+    // com/livon/app/feature/shared/auth/ui/CommonSignUpScreenB.kt
+    @Composable
+    fun CommonSignUpScreenB(
+      modifier: Modifier = Modifier,
+      title: String,
+      onBack: () -> Unit,
+      content: @Composable ColumnScope.() -> Unit,
+      bottomBar: @Composable () -> Unit
+    ) {
+      Scaffold(
+        modifier = modifier,
+        topBar = {
+          TopBar2(title = title, onBack = onBack)
+        },
+        bottomBar = {
+          Box(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(
+                horizontal = Spacing.Horizontal,
+                vertical = Spacing.BottomMargin
+              )
+          ) {
+            bottomBar()
+          }
+        }
+      ) { innerPadding ->
+        Column(
+          modifier = Modifier
+            .padding(innerPadding)
+            .fillMaxSize()
+            .padding(horizontal = Spacing.Horizontal)
+        ) {
+          Spacer(Modifier.height(Spacing.TopbarToTitle_B))
+          content()
+        }
+      }
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun CommonSignUpScreenBPreview() {
+      LivonTheme {
+        CommonSignUpScreenB(
+          title = "건강 정보 입력",
+          onBack = {},
+          content = {},
+          bottomBar = {
+            PrimaryButtonBottom(
+              text = "완료",
+              onClick = {}
+            )
+          }
+        )
+      }
+    }
+  - |
+    // com/livon/app/feature/shared/auth/ui/RoleSelectScreen.kt
+    @Composable
+    fun RoleSelectScreen(
+      modifier: Modifier = Modifier
+    ) {
+      var selected by remember { mutableStateOf<String?>(null) }
+
+      CommonSignUpScreenA(
+        title = "회원가입",
+        onBack = {},
+        content = {
+          Text(
+            text = "어떤 포지션으로 참여하나요?",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground
+          )
+          Spacer(modifier = Modifier.height(12.dp))
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+          ) {
+            ChoiceButtonCard(
+              text = "회원",
+              selected = selected == "member",
+              onClick = { selected = "member" }
+            )
+            ChoiceButtonCard(
+              text = "코치",
+              selected = selected == "coach",
+              onClick = { selected = "coach" }
+            )
+          }
+        },
+        bottomBar = {
+          PrimaryButtonBottom(
+            text = "다음",
+            enabled = selected != null,
+            onClick = { /* no-op */ }
+          )
+        }
+      )
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun RoleSelectScreenPreview_Unselected() {
+      LivonTheme {
+        RoleSelectScreen()
+      }
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun RoleSelectScreenPreview_MemberSelected() {
+      LivonTheme {
+        var selected by remember { mutableStateOf("member") }
+
+        CommonSignUpScreenA(
+          title = "회원가입",
+          onBack = {},
+          content = {
+            Text(
+              text = "어떤 포지션으로 참여하나요?",
+              style = MaterialTheme.typography.titleMedium,
+              color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+              ChoiceButtonCard(
+                text = "회원",
+                selected = selected == "member",
+                onClick = { selected = "member" }
+              )
+              ChoiceButtonCard(
+                text = "코치",
+                selected = selected == "coach",
+                onClick = { selected = "coach" }
+              )
+            }
+          },
+          bottomBar = {
+            PrimaryButtonBottom(
+              text = "다음",
+              enabled = selected != null,
+              onClick = { /* no-op */ }
+            )
+          }
+        )
+      }
+    }
+  - |
+    // com/livon/app/feature/shared/auth/ui/EmailSetupScreen.kt
+    @Composable
+    fun EmailSetupScreen(
+      modifier: Modifier = Modifier
+    ) {
+      var value by remember { mutableStateOf("") }
+      val isValidEmail = value.contains("@") && value.contains(".")
+
+      CommonSignUpScreenA(
+        title = "회원가입",
+        onBack = {},
+        content = {
+          Text(
+            text = "만나서 반가워요\n이메일을 입력해주세요!",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground
+          )
+          Spacer(Modifier.height(Spacing.DescToContent))
+          LivonTextField(
+            value = value,
+            onValueChange = { value = it },
+            label = "이메일",
+            placeholder = "example@example.com"
+          )
+        },
+        bottomBar = {
+          PrimaryButtonBottom(
+            text = "다음",
+            enabled = isValidEmail,
+            onClick = { /* next step */ }
+          )
+        }
+      )
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun EmailSetupScreenPreview_Empty() {
+      LivonTheme {
+        EmailSetupScreen()
+      }
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun EmailSetupScreenPreview_Valid() {
+      LivonTheme {
+        var value by remember { mutableStateOf("user@example.com") }
+        val isValidEmail = value.contains("@") && value.contains(".")
+        CommonSignUpScreenA(
+          title = "회원가입",
+          onBack = {},
+          content = {
+            Text(
+              text = "만나서 반가워요\n이메일을 입력해주세요!",
+              style = MaterialTheme.typography.titleMedium,
+              color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(Modifier.height(Spacing.DescToContent))
+            LivonTextField(
+              value = value,
+              onValueChange = { value = it },
+              label = "이메일",
+              placeholder = "example@example.com"
+            )
+          },
+          bottomBar = {
+            PrimaryButtonBottom(
+              text = "다음",
+              enabled = isValidEmail,
+              onClick = {}
+            )
+          }
+        )
+      }
+    }
+  - |
+    // com/livon/app/feature/shared/auth/ui/EmailVerifyScreen.kt
+    @Composable
+    fun EmailVerifyScreen(
+      modifier: Modifier = Modifier
+    ) {
+      var code by remember { mutableStateOf("") }
+
+      CommonSignUpScreenA(
+        title = "회원가입",
+        onBack = {},
+        content = {
+          Text(
+            text = "안전한 사용을 위해\n이메일 인증을 해주세요.",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground
+          )
+          Spacer(Modifier.height(20.dp))
+          CodeInputField(
+            value = code,
+            onValueChange = { code = it },
+            onComplete = { }
+          )
+        },
+        bottomBar = {
+          PrimaryButtonBottom(
+            text = "인증하기",
+            enabled = code.length == 4,
+            onClick = {}
+          )
+        }
+      )
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun EmailVerifyScreenPreview_Empty() {
+      LivonTheme {
+        EmailVerifyScreen()
+      }
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun EmailVerifyScreenPreview_Partial() {
+      LivonTheme {
+        var code by remember { mutableStateOf("1") }
+        CommonSignUpScreenA(
+          title = "회원가입",
+          onBack = {},
+          content = {
+            Text(
+              text = "안전한 사용을 위해\n이메일 인증을 해주세요.",
+              style = MaterialTheme.typography.titleMedium,
+              color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(Modifier.height(20.dp))
+            CodeInputField(
+              value = code,
+              onValueChange = { code = it },
+              onComplete = {}
+            )
+          },
+          bottomBar = {
+            PrimaryButtonBottom(
+              text = "인증하기",
+              enabled = code.length == 4,
+              onClick = {}
+            )
+          }
+        )
+      }
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun EmailVerifyScreenPreview_Full() {
+      LivonTheme {
+        var code by remember { mutableStateOf("1234") }
+        CommonSignUpScreenA(
+          title = "회원가입",
+          onBack = {},
+          content = {
+            Text(
+              text = "안전한 사용을 위해\n이메일 인증을 해주세요.",
+              style = MaterialTheme.typography.titleMedium,
+              color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(Modifier.height(20.dp))
+            CodeInputField(
+              value = code,
+              onValueChange = { code = it },
+              onComplete = {}
+            )
+          },
+          bottomBar = {
+            PrimaryButtonBottom(
+              text = "인증하기",
+              enabled = code.length == 4,
+              onClick = {}
+            )
+          }
+        )
+      }
+    }
+  - |
+    // com/livon/app/feature/shared/auth/ui/PasswordSetupScreen.kt
+    @Composable
+    fun PasswordSetupScreen(
+      modifier: Modifier = Modifier
+    ) {
+      var pw by remember { mutableStateOf("") }
+      var pw2 by remember { mutableStateOf("") }
+      val valid = pw.length >= 8 && pw2.length >= 8 && pw == pw2
+
+      CommonSignUpScreenA(
+        title = "회원가입",
+        onBack = {},
+        content = {
+          Text(
+            text = "안전한 사용을 위해\n비밀번호를 입력해주세요.",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground
+          )
+          Spacer(Modifier.height(Spacing.DescToContent))
+          LivonTextField(
+            value = pw,
+            onValueChange = { pw = it },
+            label = "비밀번호",
+            placeholder = "비밀번호를 입력해주세요"
+          )
+          Spacer(Modifier.height(12.dp))
+          LivonTextField(
+            value = pw2,
+            onValueChange = { pw2 = it },
+            label = "비밀번호 확인",
+            placeholder = "비밀번호를 입력해주세요"
+          )
+        },
+        bottomBar = {
+          PrimaryButtonBottom(
+            text = "다음",
+            enabled = valid,
+            onClick = {}
+          )
+        }
+      )
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun PasswordSetupScreenPreview_Invalid() {
+      LivonTheme {
+        PasswordSetupScreen()
+      }
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun PasswordSetupScreenPreview_Valid() {
+      LivonTheme {
+        var pw by remember { mutableStateOf("password1") }
+        var pw2 by remember { mutableStateOf("password1") }
+        val valid = pw.length >= 8 && pw2.length >= 8 && pw == pw2
+
+        CommonSignUpScreenA(
+          title = "회원가입",
+          onBack = {},
+          content = {
+            Text(
+              text = "안전한 사용을 위해\n비밀번호를 입력해주세요.",
+              style = MaterialTheme.typography.titleMedium,
+              color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(Modifier.height(Spacing.DescToContent))
+            LivonTextField(
+              value = pw,
+              onValueChange = { pw = it },
+              label = "비밀번호",
+              placeholder = "비밀번호를 입력해주세요"
+            )
+            Spacer(Modifier.height(12.dp))
+            LivonTextField(
+              value = pw2,
+              onValueChange = { pw2 = it },
+              label = "비밀번호 확인",
+              placeholder = "비밀번호를 입력해주세요"
+            )
+          },
+          bottomBar = {
+            PrimaryButtonBottom(
+              text = "다음",
+              enabled = valid,
+              onClick = {}
+            )
+          }
+        )
+      }
+    }
+  - |
+    // com/livon/app/feature/shared/auth/ui/NicknameScreen.kt
+    @Composable
+    fun NicknameScreen(
+      modifier: Modifier = Modifier
+    ) {
+      var nickname by remember { mutableStateOf("") }
+      val enabled = nickname.length in 1..10
+
+      CommonSignUpScreenA(
+        title = "회원가입",
+        onBack = {},
+        content = {
+          Box(
+            modifier = Modifier.fillMaxWidth()
+          ) {
+            Column {
+              Text(
+                text = "사용자님을\n어떻게 불러드리면 될까요?",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground
+              )
+              Spacer(Modifier.height(Spacing.DescToContent))
+              LivonTextField(
+                value = nickname,
+                onValueChange = { nickname = it },
+                label = "닉네임",
+                placeholder = "닉네임을 입력해주세요"
+              )
+            }
+            Text(
+              text = "${nickname.length}/10",
+              style = MaterialTheme.typography.labelSmall,
+              color = MaterialTheme.colorScheme.onBackground,
+              modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp)
+            )
+          }
+        },
+        bottomBar = {
+          PrimaryButtonBottom(
+            text = "다음",
+            enabled = enabled,
+            onClick = {}
+          )
+        }
+      )
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun NicknameScreenPreview_Empty() {
+      LivonTheme {
+        NicknameScreen()
+      }
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun NicknameScreenPreview_Filled() {
+      LivonTheme {
+        var nickname by remember { mutableStateOf("Jinny") }
+        val enabled = nickname.length in 1..10
+        CommonSignUpScreenA(
+          title = "회원가입",
+          onBack = {},
+          content = {
+            Box(
+              modifier = Modifier.fillMaxWidth()
+            ) {
+              Column {
+                Text(
+                  text = "사용자님을\n어떻게 불러드리면 될까요?",
+                  style = MaterialTheme.typography.titleMedium,
+                  color = MaterialTheme.colorScheme.onBackground
+                )
+                Spacer(Modifier.height(Spacing.DescToContent))
+                LivonTextField(
+                  value = nickname,
+                  onValueChange = { nickname = it },
+                  label = "닉네임",
+                  placeholder = "닉네임을 입력해주세요"
+                )
+              }
+              Text(
+                text = "${nickname.length}/10",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp)
+              )
+            }
+          },
+          bottomBar = {
+            PrimaryButtonBottom(
+              text = "다음",
+              enabled = enabled,
+              onClick = {}
+            )
+          }
+        )
+      }
+    }
+  - |
+    // com/livon/app/feature/shared/auth/ui/MemberTypeSelectScreen.kt
+    @Composable
+    fun MemberTypeSelectScreen(
+      modifier: Modifier = Modifier
+    ) {
+      var type by remember { mutableStateOf<String?>(null) }
+
+      CommonSignUpScreenA(
+        title = "회원가입",
+        onBack = {},
+        content = {
+          Text(
+            text = "소속된 기업이 있으신가요?",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground
+          )
+          Spacer(Modifier.height(12.dp))
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+          ) {
+            ChoiceButtonCard(
+              text = "일반",
+              selected = type == "general",
+              onClick = { type = "general" }
+            )
+            ChoiceButtonCard(
+              text = "기업",
+              selected = type == "company",
+              onClick = { type = "company" }
+            )
+          }
+        },
+        bottomBar = {
+          PrimaryButtonBottom(
+            text = "완료",
+            enabled = type != null,
+            onClick = {}
+          )
+        }
+      )
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun MemberTypeSelectScreenPreview() {
+      LivonTheme {
+        MemberTypeSelectScreen()
+      }
+    }
+  - |
+    // com/livon/app/feature/shared/auth/ui/CompanySelectScreen.kt
+    @Composable
+    fun CompanySelectScreen(
+      modifier: Modifier = Modifier
+    ) {
+      var search by remember { mutableStateOf("") }
+      var sel by remember { mutableStateOf<String?>(null) }
+      val companies = listOf("삼성전자", "무직")
+
+      CommonSignUpScreenA(
+        title = "회원가입",
+        onBack = {},
+        content = {
+          Column {
+            Text(
+              text = "사용자님은\n어디에 재직중이신가요?",
+              style = MaterialTheme.typography.titleMedium,
+              color = MaterialTheme.colorScheme.onBackground
+            )
+            Text(
+              text = "무직도 가능해요!",
+              style = MaterialTheme.typography.labelSmall,
+              color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(Modifier.height(Spacing.DescToContent))
+            LivonTextField(
+              value = search,
+              onValueChange = { search = it },
+              label = "회사 검색",
+              placeholder = "회사명을 입력하세요"
+            )
+            Spacer(Modifier.height(12.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+              companies.forEach { company ->
+                CompanySelectCard(
+                  text = company,
+                  selected = sel == company,
+                  onClick = { sel = company }
+                )
+              }
+            }
+          }
+        },
+        bottomBar = {
+          PrimaryButtonBottom(
+            text = "완료",
+            enabled = sel != null,
+            onClick = {}
+          )
+        }
+      )
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun CompanySelectScreenPreview() {
+      LivonTheme {
+        CompanySelectScreen()
+      }
+    }
+  - |
+    // com/livon/app/feature/shared/auth/ui/GenderSelectScreen.kt
+    @Composable
+    fun GenderSelectScreen(
+      modifier: Modifier = Modifier
+    ) {
+      var gender by remember { mutableStateOf<String?>(null) }
+
+      CommonSignUpScreenB(
+        title = "건강 정보 입력",
+        onBack = {},
+        content = {
+          Text(
+            text = "성별을 선택해주세요.",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground
+          )
+          Text(
+            text = "입력하신 정보는 공개되지 않습니다.\n코칭 맞춤 분석을 위해 필요합니다.",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onBackground
+          )
+          Spacer(Modifier.height(Spacing.DescToContent))
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+          ) {
+            SurveyOption(
+              text = "남성",
+              selected = gender == "M",
+              onClick = { gender = "M" }
+            )
+            SurveyOption(
+              text = "여성",
+              selected = gender == "F",
+              onClick = { gender = "F" }
+            )
+          }
+        },
+        bottomBar = {
+          PrimaryButtonBottom(
+            text = "다음",
+            enabled = gender != null,
+            onClick = {}
+          )
+        }
+      )
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun GenderSelectScreenPreview() {
+      LivonTheme {
+        GenderSelectScreen()
+      }
+    }
+
+
+
+

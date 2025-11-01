@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Input } from '../../components/common/Input';
+import { Dropdown } from '../../components/common/Dropdown';
+import { Button } from '../../components/common/Button';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import visibilityIcon from '../../assets/images/visibility.png';
@@ -90,6 +93,7 @@ const ProfileImagePlaceholder = styled.div`
   justify-content: center;
   font-size: 64px;
   color: #adb5bd;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 `;
 
 const ProfileImage = styled.img`
@@ -110,7 +114,7 @@ const ProfileInfo = styled.div`
 `;
 
 const ProfileLabel = styled.h3`
-  font-size: 24px;
+  font-size: 10px;
   font-weight: 800;
   color: #000000;
   margin: 0;
@@ -137,7 +141,7 @@ const FileNameInput = styled.input`
   flex: 1;
   height: 36px;
   border: 1px solid #ecedec;
-  border-radius: 6px;
+  border-radius: 12px;
   padding: 0 10px;
   font-size: 13px;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -176,7 +180,7 @@ const ProfileDescription = styled.div`
 const FormGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  gap: 20px; /* add space between left inputs and right labels */
   margin-bottom: 25px;
 `;
 
@@ -190,7 +194,8 @@ const FormField = styled.div`
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 15px;
+  gap: 3px; /* tighter label-input spacing */
+  width: 100%;
 `;
 
 const FormLabel = styled.label`
@@ -198,38 +203,26 @@ const FormLabel = styled.label`
   font-weight: 500;
   color: #000000;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  width: 120px;
+  width: 100px;
   flex-shrink: 0;
   white-space: nowrap;
+  margin-left: 0;
 `;
 
 const InputWithButton = styled.div`
   display: flex;
-  gap: 10px;
+  gap: 6px;
   align-items: center;
   flex: 1;
+  width: 100%;
 `;
 
-const StyledInput = styled.input`
+const FieldColumn = styled.div`
+  display: flex;
+  flex-direction: column;
   flex: 1;
-  height: 40px;
-  border: 1px solid #ecedec;
-  border-radius: 6px;
-  padding: 0 12px;
-  font-size: 13px;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  min-width: 0;
-
-  &:focus {
-    outline: none;
-    border-color: #2d79f3;
-  }
-
-  &::placeholder {
-    color: #999999;
-    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  }
 `;
+
 
 const SmallButton = styled.button`
   height: 40px;
@@ -282,6 +275,10 @@ const PasswordMatchIndicator = styled.div`
   width: 100%;
 `;
 
+const ErrorIndicator = styled(PasswordMatchIndicator)`
+  color: #ff0000;
+`;
+
 const PasswordConfirmWrapper = styled.div`
   display: flex;
   flex-direction: column;
@@ -332,31 +329,36 @@ const QualificationItem = styled.div`
 `;
 
 const AddButton = styled.button`
-  height: 36px;
-  padding: 0 16px;
-  border: 1px solid #2d79f3;
-  border-radius: 6px;
+  align-self: flex-end;
+  margin-top: 0;
+  margin-bottom: 12px; /* add space before 소개 섹션 */
+  border: none;
+  background: transparent;
+  padding: 0;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 500; /* Pretendard Medium */
+  color: #000000;
   cursor: pointer;
-  background-color: white;
-  color: #2d79f3;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-
-  &:hover {
-    background-color: #f0f7ff;
-  }
 `;
 
 const TextArea = styled.textarea`
   width: 100%;
-  min-height: 100px;
+  height: 48px;
+  min-height: 48px;
   border: 1px solid #ecedec;
-  border-radius: 6px;
-  padding: 10px 12px;
+  border-radius: 12px;
+  padding: 0 12px;
   font-size: 13px;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  resize: vertical;
+  line-height: 48px;
+  resize: none;
+  overflow: hidden;
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+  &::-webkit-scrollbar { /* Chrome, Safari, Opera */
+    display: none;
+  }
 
   &:focus {
     outline: none;
@@ -373,7 +375,8 @@ const CharacterCounter = styled.div`
   text-align: right;
   font-size: 12px;
   color: #999999;
-  margin-top: 5px;
+  margin-top: 2px;
+  margin-bottom: 16px; /* add more space above divider */
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 `;
 
@@ -382,6 +385,7 @@ const EmailInputContainer = styled.div`
   gap: 10px;
   align-items: center;
   flex: 1;
+  width: 100%;
 `;
 
 const EmailSeparator = styled.span`
@@ -390,27 +394,6 @@ const EmailSeparator = styled.span`
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 `;
 
-const StyledDropdown = styled.select`
-  height: 40px;
-  border: 1px solid #ecedec;
-  border-radius: 6px;
-  padding: 0 12px;
-  font-size: 13px;
-  background-color: white;
-  cursor: pointer;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  flex: 1;
-  min-width: 0;
-
-  &:focus {
-    outline: none;
-    border-color: #2d79f3;
-  }
-
-  &::placeholder {
-    color: #999999;
-  }
-`;
 
 const VerificationButton = styled.button`
   height: 40px;
@@ -460,28 +443,72 @@ const ArrowIcon = styled.span`
   color: #999999;
   font-size: 14px;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-`;
-
-const SubmitButton = styled.button`
-  width: 686px;
-  height: 80px;
-  border: none;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
   cursor: pointer;
-  background-color: #2d79f3;
-  color: white;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-
-  &:hover {
-    background-color: #1a5fd9;
-  }
 `;
+
+// Modal for consent details
+const ModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+`;
+
+const ModalContent = styled.div`
+  width: 640px;
+  max-width: 90vw;
+  max-height: 80vh;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+`;
+
+const ModalHeader = styled.div`
+  padding: 16px 20px;
+  border-bottom: 1px solid #ecedec;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const ModalTitle = styled.h3`
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+`;
+
+const ModalClose = styled.button`
+  border: none;
+  background: transparent;
+  font-size: 18px;
+  cursor: pointer;
+`;
+
+const ModalBody = styled.div`
+  padding: 16px 20px;
+  overflow-y: auto;
+  line-height: 1.6;
+  color: #333333;
+  font-size: 14px;
+`;
+
 
 const CheckIcon = styled.span`
   color: #28a745;
   font-size: 16px;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+`;
+
+const CrossIcon = styled.span`
+  color: #ff0000;
+  font-size: 16px;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 `;
 
 export const SignupPage: React.FC = () => {
@@ -515,6 +542,18 @@ export const SignupPage: React.FC = () => {
   const [agreeAll, setAgreeAll] = useState(false);
   const [emailDomains] = useState(['gmail.com', 'naver.com', 'daum.net', 'kakao.com']);
 
+  // ID / Nickname duplication check states
+  const [idCheckStatus, setIdCheckStatus] = useState<'idle' | 'available' | 'taken'>('idle');
+  const [nicknameCheckStatus, setNicknameCheckStatus] = useState<'idle' | 'available' | 'taken'>('idle');
+  const [showPersonalModal, setShowPersonalModal] = useState(false);
+  const [showThirdPartyModal, setShowThirdPartyModal] = useState(false);
+
+  // Keep '필수 약관에 모두 동의' in sync with the two required consents
+  useEffect(() => {
+    setAgreeAll(agreePersonalInfo && agreeThirdParty);
+  }, [agreePersonalInfo, agreeThirdParty]);
+  const [qualificationFields, setQualificationFields] = useState<string[]>(['']);
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
@@ -523,6 +562,26 @@ export const SignupPage: React.FC = () => {
       const confirm = field === 'confirmPassword' ? value : formData.confirmPassword;
       setPasswordMatch(password !== '' && confirm !== '' && password === confirm);
     }
+
+    // 입력이 바뀌면 중복결과 초기화
+    if (field === 'userId') setIdCheckStatus('idle');
+    if (field === 'nickname') setNicknameCheckStatus('idle');
+  };
+
+  // 임시 중복 확인 로직 (화면 작업용). 실제 API 연결 시 대체하세요
+  const isTaken = (value: string) => {
+    const blacklist = ['admin', 'test', 'user', 'guest', 'root'];
+    return blacklist.includes(value.trim().toLowerCase());
+  };
+
+  const handleCheckUserId = () => {
+    if (!formData.userId.trim()) return;
+    setIdCheckStatus(isTaken(formData.userId) ? 'taken' : 'available');
+  };
+
+  const handleCheckNickname = () => {
+    if (!formData.nickname.trim()) return;
+    setNicknameCheckStatus(isTaken(formData.nickname) ? 'taken' : 'available');
   };
 
   const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -546,20 +605,11 @@ export const SignupPage: React.FC = () => {
   };
 
   const handleAddQualification = () => {
-    if (formData.qualificationInput.trim()) {
-      setFormData(prev => ({
-        ...prev,
-        qualifications: [...prev.qualifications, prev.qualificationInput.trim()],
-        qualificationInput: '',
-      }));
-    }
+    setQualificationFields(prev => [...prev, '']);
   };
 
   const handleRemoveQualification = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      qualifications: prev.qualifications.filter((_, i) => i !== index),
-    }));
+    setQualificationFields(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleAgreeAll = (checked: boolean) => {
@@ -650,74 +700,105 @@ export const SignupPage: React.FC = () => {
           <FormColumn>
             <FormField>
               <FormLabel>아이디</FormLabel>
-              <InputWithButton>
-                <StyledInput
-                  type="text"
-                  placeholder="아이디를 입력하세요"
-                  value={formData.userId}
-                  onChange={(e) => handleInputChange('userId', e.target.value)}
-                />
-                <SmallButton type="button">중복확인</SmallButton>
-              </InputWithButton>
+              <FieldColumn>
+                <InputWithButton>
+                  <Input
+                    type="text"
+                    placeholder="아이디를 입력하세요"
+                    value={formData.userId}
+                    onChange={(e) => handleInputChange('userId', e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  <SmallButton type="button" onClick={handleCheckUserId}>중복확인</SmallButton>
+                </InputWithButton>
+                {idCheckStatus === 'available' && (
+                  <PasswordMatchIndicator style={{ marginLeft: '0' }}>
+                    <CheckIcon>✓</CheckIcon>
+                    사용 가능한 아이디입니다.
+                  </PasswordMatchIndicator>
+                )}
+                {idCheckStatus === 'taken' && (
+                  <ErrorIndicator style={{ marginLeft: '0' }}>
+                    <CrossIcon>✕</CrossIcon>
+                    이미 사용중인 아이디입니다.
+                  </ErrorIndicator>
+                )}
+              </FieldColumn>
             </FormField>
 
             <FormField>
               <FormLabel>이름</FormLabel>
-              <StyledInput
-              type="text"
+              <Input
+                type="text"
                 placeholder="이름을 입력해주세요."
-              value={formData.name}
-              onChange={(e) => handleInputChange('name', e.target.value)}
+                value={formData.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+                style={{ flex: 1 }}
               />
             </FormField>
 
             <FormField>
               <FormLabel>닉네임</FormLabel>
-              <InputWithButton>
-                <StyledInput
-                  type="text"
-                  placeholder="닉네임을 입력하세요"
-                  value={formData.nickname}
-                  onChange={(e) => handleInputChange('nickname', e.target.value)}
-                />
-                <SmallButton type="button">중복확인</SmallButton>
-              </InputWithButton>
+              <FieldColumn>
+                <InputWithButton>
+                  <Input
+                    type="text"
+                    placeholder="닉네임을 입력하세요"
+                    value={formData.nickname}
+                    onChange={(e) => handleInputChange('nickname', e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  <SmallButton type="button" onClick={handleCheckNickname}>중복확인</SmallButton>
+                </InputWithButton>
+                {nicknameCheckStatus === 'available' && (
+                  <PasswordMatchIndicator style={{ marginLeft: '0' }}>
+                    <CheckIcon>✓</CheckIcon>
+                    사용 가능한 닉네임입니다.
+                  </PasswordMatchIndicator>
+                )}
+                {nicknameCheckStatus === 'taken' && (
+                  <ErrorIndicator style={{ marginLeft: '0' }}>
+                    <CrossIcon>✕</CrossIcon>
+                    이미 사용중인 닉네임입니다.
+                  </ErrorIndicator>
+                )}
+              </FieldColumn>
             </FormField>
 
             <FormField>
               <FormLabel>비밀번호</FormLabel>
               <PasswordInputContainer>
-                <StyledInput
-              type={showPassword ? 'text' : 'password'}
+                <Input
+                  type={showPassword ? 'text' : 'password'}
                   placeholder="비밀번호를 입력해주세요."
-              value={formData.password}
-              onChange={(e) => handleInputChange('password', e.target.value)}
-                  style={{ paddingRight: '40px' }}
-            />
+                  value={formData.password}
+                  onChange={(e) => handleInputChange('password', e.target.value)}
+                  style={{ paddingRight: '40px', flex: 1 }}
+                />
                 <PasswordToggleButton
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-            >
-              <img 
-                src={showPassword ? visibilityIcon : visibilityOffIcon} 
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  <img 
+                    src={showPassword ? visibilityIcon : visibilityOffIcon} 
                     alt={showPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
-                width="20" 
-                height="20" 
-              />
+                    width="20" 
+                    height="20" 
+                  />
                 </PasswordToggleButton>
               </PasswordInputContainer>
             </FormField>
 
-            <FormField>
-              <FormLabel>비밀번호 확인</FormLabel>
+            <FormField style={{ alignItems: 'flex-start' }}>
+              <FormLabel style={{ marginTop: '12px' }}>비밀번호 확인</FormLabel>
               <PasswordConfirmWrapper>
                 <PasswordInputContainer>
-                  <StyledInput
+                  <Input
                     type={showConfirmPassword ? 'text' : 'password'}
                     placeholder="비밀번호를 한 번 더 입력해주세요."
                     value={formData.confirmPassword}
                     onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                    style={{ paddingRight: '40px' }}
+                    style={{ paddingRight: '40px', flex: 1 }}
                   />
                   <PasswordToggleButton
                     type="button"
@@ -736,6 +817,12 @@ export const SignupPage: React.FC = () => {
                     <CheckIcon>✓</CheckIcon>
                     입력한 비밀번호와 일치합니다.
                   </PasswordMatchIndicator>
+                )}
+                {!passwordMatch && formData.password !== '' && formData.confirmPassword !== '' && (
+                  <ErrorIndicator style={{ marginLeft: '0' }}>
+                    <CrossIcon>✕</CrossIcon>
+                    입력한 비밀번호가 일치하지 않습니다.
+                  </ErrorIndicator>
                 )}
               </PasswordConfirmWrapper>
             </FormField>
@@ -768,158 +855,140 @@ export const SignupPage: React.FC = () => {
 
             <FormField>
               <FormLabel>생년월일</FormLabel>
-              <StyledInput
+              <Input
                 type="text"
                 placeholder="YYYY.MM.DD"
                 value={formData.birthDate}
                 onChange={(e) => handleInputChange('birthDate', e.target.value)}
+                style={{ flex: 1 }}
               />
             </FormField>
 
-            <FormField>
-              <FormLabel>자격</FormLabel>
-              <QualificationInput>
-                <FormLabel style={{ fontSize: '12px', fontWeight: 400 }}>
-                  취득한 자격증을 입력해 주세요.
-                </FormLabel>
-                <InputWithButton>
-                  <StyledInput
-                    type="text"
-                    placeholder="자격증 명을 입력해 주세요."
-                    value={formData.qualificationInput}
-                    onChange={(e) => handleInputChange('qualificationInput', e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddQualification();
-                      }
-                    }}
-                  />
-                  <AddButton type="button" onClick={handleAddQualification}>
-                    추가 +
-                  </AddButton>
-                </InputWithButton>
-                {formData.qualifications.length > 0 && (
-                  <QualificationList>
-                    {formData.qualifications.map((qual, index) => (
-                      <QualificationItem key={index}>
-                        <span>{qual}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveQualification(index)}
-                          style={{
-                            marginLeft: 'auto',
-                            background: 'none',
-                            border: 'none',
-                            color: '#dc3545',
-                            cursor: 'pointer',
-                            fontSize: '14px',
-                            fontFamily: "'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-                          }}
-                        >
-                          삭제
-                        </button>
-                      </QualificationItem>
-                    ))}
-                  </QualificationList>
-                )}
-              </QualificationInput>
-            </FormField>
-
-            <FormField>
-              <FormLabel>소개</FormLabel>
-              <div style={{ flex: 1 }}>
-                <FormLabel style={{ fontSize: '12px', fontWeight: 400, marginBottom: '8px', display: 'block' }}>
-                  회원들에게 코치님을 소개하는 글을 입력해 주세요.
-                </FormLabel>
-                <TextArea
-                  placeholder="소개 글을 입력해 주세요."
-                  value={formData.introduction}
-                  onChange={(e) => handleInputChange('introduction', e.target.value)}
-                  maxLength={50}
-                />
-                <CharacterCounter>{characterCount}/50</CharacterCounter>
-              </div>
-            </FormField>
+            
           </FormColumn>
 
           <FormColumn>
-            <FormField>
-              <FormLabel>연락처</FormLabel>
-              <StyledInput
+            <FormField style={{ gap: '0px' }}>
+              <FormLabel style={{ width: '90px' }}>연락처</FormLabel>
+              <Input
                 type="tel"
                 placeholder="연락처를 입력해주세요."
                 value={formData.contact}
                 onChange={(e) => handleInputChange('contact', e.target.value)}
+                style={{ flex: 1 }}
               />
             </FormField>
 
-            <FormField>
-              <FormLabel>이메일</FormLabel>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <EmailInputContainer>
-                  <StyledInput
+            <FormField style={{ alignItems: 'flex-start', gap: '0px' }}>
+              <FormLabel style={{ marginTop: '17px', width: '90px' }}>이메일</FormLabel>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
+                <EmailInputContainer style={{ width: '100%' }}>
+                  <Input
                     type="text"
-                    placeholder="이메일을 입력하세요"
+                    placeholder="이메일을 입력하세요."
                     value={formData.emailId}
                     onChange={(e) => handleInputChange('emailId', e.target.value)}
+                    style={{ flex: 1 }}
                   />
-                  <EmailSeparator>@</EmailSeparator>
-                  <StyledDropdown
-                    value={formData.emailDomain}
-                    onChange={(e) => handleInputChange('emailDomain', e.target.value)}
-                  >
-                    <option value="" disabled>이메일 주소를 입력하세요</option>
-                    {emailDomains.map((domain) => (
-                      <option key={domain} value={domain}>
-                        {domain}
-                      </option>
-                    ))}
-                  </StyledDropdown>
+                  <EmailSeparator style={{ marginLeft: '6px' }}>@</EmailSeparator>
                 </EmailInputContainer>
+                <Dropdown
+                  value={formData.emailDomain}
+                  onChange={(e) => handleInputChange('emailDomain', e.target.value)}
+                  options={emailDomains.map(domain => ({ value: domain, label: domain }))}
+                  placeholder="이메일 주소를 입력하세요."
+                  style={{ width: '100%' }}
+                />
                 <VerificationButton type="button">인증번호 보내기</VerificationButton>
               </div>
             </FormField>
 
-            <FormField>
-              <FormLabel>인증하기</FormLabel>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <StyledInput
+            <FormField style={{ alignItems: 'flex-start', gap: '0px' }}>
+              <FormLabel style={{ marginTop: '17px', width: '90px' }}>인증하기</FormLabel>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
+                <Input
                   type="text"
-                  placeholder="6자리 인증번호"
+                  placeholder="인증번호를 입력하세요."
                   value={formData.verificationCode}
                   onChange={(e) => handleInputChange('verificationCode', e.target.value)}
                   maxLength={6}
+                  style={{ width: '100%' }}
                 />
                 <VerificationButton type="button">인증하기</VerificationButton>
               </div>
             </FormField>
 
-            <FormField>
-              <FormLabel>소속</FormLabel>
-              <StyledInput
+            <FormField style={{ gap: '0px' }}>
+              <FormLabel style={{ width: '90px' }}>소속</FormLabel>
+              <Input
                 type="text"
                 placeholder="소속을 입력해 주세요."
                 value={formData.affiliation}
                 onChange={(e) => handleInputChange('affiliation', e.target.value)}
+                style={{ flex: 1 }}
               />
             </FormField>
 
-            <FormField>
-              <FormLabel>직무</FormLabel>
-              <StyledDropdown
+            <FormField style={{ gap: '0px' }}>
+              <FormLabel style={{ width: '90px' }}>직무</FormLabel>
+              <Dropdown
                 value={formData.job}
                 onChange={(e) => handleInputChange('job', e.target.value)}
-              >
-                <option value="" disabled>코칭할 분야를 선택해 주세요.</option>
-                <option value="exercise-fitness">운동/피트니스</option>
-                <option value="diet-nutrition">식단/영양</option>
-                <option value="physical-health">신체건강/통증 관리</option>
-                <option value="mental-health">정신건강/멘탈케어</option>
-              </StyledDropdown>
+                options={[
+                  { value: 'exercise-fitness', label: '운동/피트니스' },
+                  { value: 'diet-nutrition', label: '식단/영양' },
+                  { value: 'physical-health', label: '신체건강/통증 관리' },
+                  { value: 'mental-health', label: '정신건강/멘탈케어' }
+                ]}
+                placeholder="코칭할 분야를 선택해 주세요."
+                style={{ flex: 1 }}
+              />
             </FormField>
           </FormColumn>
         </FormGrid>
+
+        {/* Full-width sections: Qualification and Introduction */}
+        <FormField style={{ alignItems: 'flex-start' }}>
+          <div style={{ width: '120px', flexShrink: 0 }}>
+            <FormLabel style={{ marginLeft: 0 }}>자격</FormLabel>
+            <div style={{ fontSize: '10px', color: '#666666', marginTop: '0px', marginLeft: 0, whiteSpace: 'nowrap' }}>
+              취득한 자격증을 입력해 주세요.
+            </div>
+          </div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', position: 'relative' }}>
+            {qualificationFields.map((value, index) => (
+              <Input
+                key={index}
+                type="text"
+                placeholder="자격증 명을 입력해 주세요."
+                value={value}
+                onChange={(e) =>
+                  setQualificationFields(prev => prev.map((v, i) => (i === index ? e.target.value : v)))
+                }
+                style={{ flex: 1 }}
+              />
+            ))}
+            <AddButton type="button" onClick={handleAddQualification}>추가 +</AddButton>
+          </div>
+        </FormField>
+
+        <FormField style={{ alignItems: 'flex-start' }}>
+          <div style={{ width: '120px', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+            <FormLabel style={{ marginLeft: 0, marginBottom: '0px' }}>소개</FormLabel>
+            <div style={{ fontSize: '10px', color: '#666666', marginLeft: 0, lineHeight: '1.2', marginTop: '0px' }}>
+              회원들에게 코치님을<br />소개하는 글을 입력해 주세요.
+            </div>
+          </div>
+          <div style={{ flex: 1, alignSelf: 'flex-start' }}>
+            <TextArea
+              placeholder="소개 글을 입력해 주세요."
+              value={formData.introduction}
+              onChange={(e) => handleInputChange('introduction', e.target.value)}
+              maxLength={50}
+            />
+            <CharacterCounter>{characterCount}/50</CharacterCounter>
+          </div>
+        </FormField>
 
         <ConsentSection>
           <ConsentItem>
@@ -929,7 +998,12 @@ export const SignupPage: React.FC = () => {
               onChange={(e) => setAgreePersonalInfo(e.target.checked)}
             />
             개인정보 수집·이용 동의
-            <ArrowIcon>→</ArrowIcon>
+            <ArrowIcon
+              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowPersonalModal(true); }}
+            >
+              →
+            </ArrowIcon>
           </ConsentItem>
           <ConsentItem>
             <ConsentCheckbox
@@ -938,7 +1012,12 @@ export const SignupPage: React.FC = () => {
               onChange={(e) => setAgreeThirdParty(e.target.checked)}
             />
             개인정보 제3자 제공 동의
-            <ArrowIcon>→</ArrowIcon>
+            <ArrowIcon
+              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowThirdPartyModal(true); }}
+            >
+              →
+            </ArrowIcon>
           </ConsentItem>
           <ConsentItem>
             <ConsentCheckbox
@@ -950,8 +1029,49 @@ export const SignupPage: React.FC = () => {
           </ConsentItem>
         </ConsentSection>
 
+      {showPersonalModal && (
+        <ModalOverlay onClick={() => setShowPersonalModal(false)}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <ModalTitle>개인정보 수집·이용 동의</ModalTitle>
+              <ModalClose onClick={() => setShowPersonalModal(false)}>✕</ModalClose>
+            </ModalHeader>
+            <ModalBody>
+              <p>서비스 제공을 위해 다음의 개인정보를 수집·이용합니다.</p>
+              <ul>
+                <li>수집 항목: 이름, 연락처, 이메일, 생년월일, 서비스 이용 기록</li>
+                <li>수집 목적: 회원 식별, 서비스 제공 및 문의 응대, 공지 전달</li>
+                <li>보유 기간: 회원 탈퇴 시까지 또는 관련 법령에 따른 보관 기간</li>
+              </ul>
+              <p>사용자는 동의를 거부할 권리가 있으며, 동의 거부 시 일부 서비스 이용이 제한될 수 있습니다.</p>
+            </ModalBody>
+          </ModalContent>
+        </ModalOverlay>
+      )}
+
+      {showThirdPartyModal && (
+        <ModalOverlay onClick={() => setShowThirdPartyModal(false)}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <ModalTitle>개인정보 제3자 제공 동의</ModalTitle>
+              <ModalClose onClick={() => setShowThirdPartyModal(false)}>✕</ModalClose>
+            </ModalHeader>
+            <ModalBody>
+              <p>서비스 운영 및 고객 지원을 위해 아래와 같이 제3자에게 개인정보를 제공합니다.</p>
+              <ul>
+                <li>제공 받는 자: 서비스 제공사, 고객지원 대행사</li>
+                <li>제공 항목: 이름, 연락처, 이메일, 상담 관련 정보(필요 시)</li>
+                <li>제공 목적: 결제 처리, 알림 발송, 고객 문의 처리</li>
+                <li>보유 기간: 제공 목적 달성 시까지 또는 관련 법령에 따른 보관 기간</li>
+              </ul>
+              <p>사용자는 동의를 거부할 권리가 있으며, 동의 거부 시 해당 목적의 서비스 이용이 제한될 수 있습니다.</p>
+            </ModalBody>
+          </ModalContent>
+        </ModalOverlay>
+      )}
+
         <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-          <SubmitButton type="submit">회원가입 완료</SubmitButton>
+          <Button type="submit" variant="submit">회원가입 완료</Button>
         </div>
         </form>
       </SignupContentWrapper>

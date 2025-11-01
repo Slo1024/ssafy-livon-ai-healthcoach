@@ -33,7 +33,6 @@ fun StreamingCamera(
                 modifier = Modifier.fillMaxSize(),
                 factory = { context ->
                     SurfaceViewRenderer(context).apply {
-                        // Room을 통해 렌더러 초기화 (튜토리얼 방식)
                         if (room != null) {
                             try {
                                 room.initVideoRenderer(this)
@@ -47,19 +46,16 @@ fun StreamingCamera(
                         setMirror(isLocalTrack)
                         setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
                         Log.d("StreamingCamera", "Creating SurfaceViewRenderer for track: ${track.sid}, isLocal=$isLocalTrack")
-                        
-                        // 트랙에 렌더러 추가
+
                         track.addRenderer(this)
                         Log.d("StreamingCamera", "Renderer added to track: ${track.sid}")
-                        
-                        // 렌더러가 프레임을 받는지 확인하기 위해 약간의 delay 후 상태 확인
+
                         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                             Log.d("StreamingCamera", "Renderer state after 1s - width: ${width}, height: ${height}, visibility: ${visibility}")
                         }, 1000)
                     }
                 },
                 update = { renderer ->
-                    // track이 변경되면 렌더러 재연결
                     if (track != null) {
                         try {
                             track.removeRenderer(renderer)

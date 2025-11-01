@@ -1,10 +1,5 @@
 package com.s406.livon.domain.goodsChat.service;
 
-import com.s406.livon.domain.goodsChat.entity.GoodsChatMessage;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.stereotype.Component;
-
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -12,6 +7,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+
+import com.s406.livon.domain.goodsChat.document.GoodsChatMessage;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Component;
 
 @Component
 public class GoodsChatCacheManager {

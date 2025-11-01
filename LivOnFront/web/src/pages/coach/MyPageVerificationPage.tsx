@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../constants/routes';
 import styled from 'styled-components';
+import { SegmentedTabs } from '../../components/common/Button';
 import coachverification1 from '../../assets/images/coachverification1.png';
 import coachverification2 from '../../assets/images/coachverification2.png';
 
@@ -39,45 +41,6 @@ const PageTitle = styled.h1`
   margin: 0;
 `;
 
-const TabContainer = styled.div`
-  display: flex;
-  gap: 0;
-  margin-bottom: 0;
-`;
-
-const TabButton = styled.button<{ active: boolean }>`
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-weight: 500;
-  font-size: 16px;
-  width: 100px;
-  height: 48px;
-  border: 1px solid #4965f6;
-  background-color: ${props => props.active ? '#4965f6' : '#ffffff'};
-  color: ${props => props.active ? '#ffffff' : '#4965f6'};
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border-radius: 0;
-  
-  &:first-child {
-    border-radius: 6px 0 0 6px;
-  }
-  
-  &:last-child {
-    border-radius: 0 6px 6px 0;
-    border-left: none;
-  }
-
-  &:hover {
-    background-color: ${props => props.active ? '#4965f6' : '#f7fafc'};
-  }
-`;
-
-const DividerLine = styled.div`
-  width: 100%;
-  height: 2px;
-  background-color: #4965f6;
-  margin: 0;
-`;
 
 const StatusMessage = styled.h2`
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -132,6 +95,7 @@ const ImageWrapper = styled.div`
 
 export const MyPageVerificationPage: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'info' | 'verification'>('verification');
   
   // 회원가입 시 전달된 데이터 가져오기 (실제로는 API에서 가져와야 함)
@@ -139,12 +103,12 @@ export const MyPageVerificationPage: React.FC = () => {
   const jobField = location.state?.job || '운동/피트니스';
   const isVerified = location.state?.isVerified || false; // 실제로는 API에서 가져와야 함
 
-  const handleTabClick = (tab: 'info' | 'verification') => {
-    setActiveTab(tab);
-    if (tab === 'info') {
-      // MyPageInfoPage로 이동
-      window.location.href = '/mypage/coach-info';
-    }
+  const handleInfoClick = () => {
+    navigate(ROUTES.COACH_MYPAGE_INFO);
+  };
+
+  const handleVerificationClick = () => {
+    // 이미 verification 페이지에 있으므로 아무 동작 안함
   };
 
   return (
@@ -152,22 +116,14 @@ export const MyPageVerificationPage: React.FC = () => {
       <MainContent>
         <PageTitle>{nickname} 코치님 마이페이지</PageTitle>
         
-        <TabContainer>
-          <TabButton 
-            active={activeTab === 'info'} 
-            onClick={() => handleTabClick('info')}
-          >
-            코치님 정보
-          </TabButton>
-          <TabButton 
-            active={activeTab === 'verification'} 
-            onClick={() => handleTabClick('verification')}
-          >
-            코치 인증 여부
-          </TabButton>
-        </TabContainer>
-        
-        <DividerLine />
+        <SegmentedTabs
+          leftLabel="코치님 정보"
+          rightLabel="코치 인증 여부"
+          active="right"
+          onLeftClick={handleInfoClick}
+          onRightClick={handleVerificationClick}
+          tabWidth={120}
+        />
         
         {isVerified ? (
           <>

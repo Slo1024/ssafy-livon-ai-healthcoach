@@ -1,15 +1,21 @@
 package com.s406.livon.domain.user.service;
 
 
-
 import com.s406.livon.domain.user.dto.JwtToken;
 import com.s406.livon.domain.user.dto.request.*;
 import com.s406.livon.domain.user.dto.response.HealthSurveyResponseDto;
 import com.s406.livon.domain.user.dto.response.MyInfoResponseDto;
 import com.s406.livon.domain.user.dto.response.OrganizationsResponseDto;
 import com.s406.livon.domain.user.dto.response.UserDto;
-import com.s406.livon.domain.user.entity.*;
-import com.s406.livon.domain.user.repository.*;
+import com.s406.livon.domain.user.entity.CoachInfo;
+import com.s406.livon.domain.user.entity.HealthSurvey;
+import com.s406.livon.domain.user.entity.Organizations;
+import com.s406.livon.domain.user.entity.User;
+import com.s406.livon.domain.user.repository.CoachInfoRepository;
+import com.s406.livon.domain.user.repository.HealthSurveyRepository;
+import com.s406.livon.domain.user.repository.OrganizationsRepository;
+import com.s406.livon.domain.user.repository.UserRepository;
+import com.s406.livon.global.error.handler.CoachHandler;
 import com.s406.livon.global.error.handler.TokenHandler;
 import com.s406.livon.global.error.handler.UserHandler;
 import com.s406.livon.global.security.jwt.JwtTokenProvider;
@@ -140,7 +146,7 @@ public class UserService {
     @Transactional(readOnly = true)
     public MyInfoResponseDto myInfo(UUID userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
+                        .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
 
         // User와 연관된 HealthSurvey 조회 (없을 수 있음)
         HealthSurvey healthSurvey = user.getHealthSurvey();
@@ -148,13 +154,19 @@ public class UserService {
         // HealthSurveyResponseDto 생성 (없으면 기본값)
         HealthSurveyResponseDto healthSurveyDto = HealthSurveyResponseDto.toDTO(healthSurvey);
 
+        String organizationName = null;
+        if (user.getOrganizations() != null) {
+            organizationName = user.getOrganizations().getName();
+        }
+
         return MyInfoResponseDto.builder()
-                .nickname(user.getNickname())
-                .profileImage(user.getProfileImage())
-                .gender(user.getGender())
-                .birthdate(user.getBirthdate())
-                .healthSurvey(healthSurveyDto)
-                .build();
+                        .nickname(user.getNickname())
+                        .profileImage(user.getProfileImage())
+                        .organizations(organizationName)
+                        .gender(user.getGender())
+                        .birthdate(user.getBirthdate())
+                        .healthSurvey(healthSurveyDto)
+                        .build();
     }
 
     @Transactional
@@ -308,9 +320,15 @@ public class UserService {
 
     @Transactional
     public String coachInfo(UUID userId, CoachInfoRequestDto coachInfoRequestDto) {
-        User user = userRepository.findById(userId)
+        User coach = userRepository.findById(userId)
                 .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
-        CoachInfo coachInfo = coachInfoRequestDto.toEntity(user);
+
+        // 코치가 아닌 경우 예외 처리
+        if (!coach.isCoach()) {
+            throw new CoachHandler(ErrorStatus.USER_NOT_COACH);
+        }
+
+        CoachInfo coachInfo = coachInfoRequestDto.toEntity(coach);
         coachInfoRepository.save(coachInfo);
         return "코치 정보가 저장되었습니다.";
     }

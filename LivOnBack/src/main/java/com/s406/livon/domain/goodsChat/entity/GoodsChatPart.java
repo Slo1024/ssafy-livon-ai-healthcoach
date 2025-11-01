@@ -6,8 +6,6 @@ import com.s406.livon.domain.user.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @IdClass(GoodsChatPartId.class)
@@ -28,16 +26,12 @@ public class GoodsChatPart {
     @JoinColumn(name = "chat_room_id")
     private GoodsChatRoom goodsChatRoom;
 
-    @Enumerated(EnumType.STRING)
-    private Role role;
+//    @Enumerated(EnumType.STRING)
+//    private Role role;
 
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true;
-
-    @OneToMany(mappedBy = "goodsChatPart", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    List<GoodsChatMessage> goodsChatMessages = new ArrayList<>();
 
     public boolean leaveAndCheckRoomStatus() {
         if (!goodsChatRoom.isRoomActive()) {

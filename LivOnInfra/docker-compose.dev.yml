@@ -1,5 +1,4 @@
 services:
-
   livon-be:
     container_name: livon-be-dev
     build:
@@ -32,14 +31,15 @@ services:
 
   nginx:
     container_name: nginx-dev
-    image: nginx:latest
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile.dev
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     ports:
       - "8443:443"
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    volumes:
-      - ./nginx.dev.d:/etc/nginx/conf.d
-      - /etc/letsencrypt:/etc/letsencrypt
     depends_on:
       - livon-fe
     networks:
@@ -48,4 +48,3 @@ services:
 networks:
   livon-dev-net:
     external: true
-

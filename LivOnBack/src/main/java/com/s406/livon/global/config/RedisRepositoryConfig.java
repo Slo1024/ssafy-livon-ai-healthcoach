@@ -4,7 +4,7 @@ package com.s406.livon.global.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.s406.livon.domain.goodsChat.entity.GoodsChatMessage;
+import com.s406.livon.domain.goodsChat.document.GoodsChatMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
 import org.springframework.context.annotation.Bean;

@@ -65,9 +65,6 @@ pipeline {
                     def CONTAINER = IS_PROD ? 'livon-fe-prod' : 'livon-fe-dev'
                     def PROJECT = IS_PROD ? 'livon-prod' : 'livon-dev'
                     def NGINX_CONTAINER = IS_PROD ? 'nginx-prod' : 'nginx-dev'
-                    def NGINX_CONFIG_DIR = IS_PROD ? 'LivOnInfra/nginx.prod' : 'LivOnInfra/nginx.dev'
-                    def NGINX_CONFIG_SRC = IS_PROD ? 'LivOnInfra/nginx.prod.default.conf' : 'LivOnInfra/nginx.dev.default.conf'
-                    def NGINX_CONFIG_DEST = "${NGINX_CONFIG_DIR}/default.conf"
 
                     withCredentials([file(credentialsId: ENV_ID, variable: 'ENV_FILE')]) {
                         dir('LivOnFront/web') {
@@ -85,13 +82,6 @@ pipeline {
 
                         echo "🚀 Running docker compose for FE (${COMPOSE_FILE})..."
                         docker compose -p ${PROJECT} -f ${COMPOSE_FILE} up -d --build livon-fe
-
-                        echo "📁 Preparing Nginx config (${NGINX_CONFIG_SRC} -> ${NGINX_CONFIG_DEST})"
-                        rm -rf ${NGINX_CONFIG_DIR}
-                        mkdir -p ${NGINX_CONFIG_DIR}
-                        touch ${NGINX_CONFIG_DEST}
-                        cp -f ${NGINX_CONFIG_SRC} ${NGINX_CONFIG_DEST}
-                        ls -l ${NGINX_CONFIG_DIR}
 
                         echo "🗑️ Removing existing Nginx container (${NGINX_CONTAINER}) if present..."
                         docker rm -f ${NGINX_CONTAINER} || true

@@ -41,12 +41,12 @@ public class GoodsChatRoomController {
     TODO: @RequestParam Long memberId -> @AuthenticationPrincipal 로 변경
     */
     @GetMapping("/{chatRoomId}/message")
-    public ResponseEntity<ApiResponse<List<GoodsChatMessage>>> getGoodsChatRoomMessages(
+    public ResponseEntity<ApiResponse<List<GoodsChatMessageResponse>>> getGoodsChatRoomMessages(
             @PathVariable Long chatRoomId,
             @RequestParam Long userId,
             @RequestParam(required = false) LocalDateTime lastSentAt
     ) {
-        List<GoodsChatMessage> response = goodsChatService.getChatRoomMessages(chatRoomId, userId, lastSentAt);
+        List<GoodsChatMessageResponse> response = goodsChatService.getChatRoomMessages(chatRoomId, userId, lastSentAt);
         return ResponseEntity.ok(ApiResponse.onSuccess(response));
     }
 

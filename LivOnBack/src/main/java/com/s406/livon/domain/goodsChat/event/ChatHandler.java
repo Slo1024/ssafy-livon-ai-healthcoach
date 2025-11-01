@@ -1,10 +1,11 @@
 package com.s406.livon.domain.goodsChat.event;
 
 
+import com.s406.livon.domain.goodsChat.repository.GoodsChatPartRepository;
+import com.s406.livon.domain.user.entity.User;
 import com.s406.livon.global.error.handler.TokenHandler;
 import com.s406.livon.global.security.jwt.JwtTokenProvider;
 import com.s406.livon.global.web.response.code.ErrorReasonDTO;
-import com.s406.livon.global.web.response.code.status.ErrorStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
@@ -20,7 +21,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Objects;
 
 @Order(Ordered.HIGHEST_PRECEDENCE + 99)
 @RequiredArgsConstructor
@@ -29,7 +29,7 @@ import java.util.Objects;
 public class ChatHandler implements ChannelInterceptor {
 
     private final JwtTokenProvider tokenProvider;
-
+    private final GoodsChatPartRepository goodsChatPartRepository;
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
 
@@ -100,7 +100,50 @@ public class ChatHandler implements ChannelInterceptor {
                 log.error("STOMP CONNECT 인증 실패: [General Error] {}", e.getMessage(), e);
                 throw new AccessDeniedException("STOMP 인증에 실패했습니다.", e);
             }
+        }else if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
+            try {
+                // (1) 사용자 정보 가져오기
+                Authentication auth = (Authentication) accessor.getUser();
+                if (auth == null || !(auth.getPrincipal() instanceof User)) {
+                    log.warn("STOMP SUBSCRIBE: 인증되지 않은 사용자입니다.");
+                    throw new AccessDeniedException("사용자 정보가 없습니다.");
+                }
+                User user = (User) auth.getPrincipal();
+
+                // (2) 목적지(채팅방) 정보 가져오기
+                String destination = accessor.getDestination();
+                if (destination == null) { /* ... */ }
+
+                // (3) 목적지에서 채팅방 ID 추출
+                Long roomId = parseRoomIdFromDestination(destination);
+
+                // ★ 4. 권한 검사 (가장 중요) ★
+                // GoodsChatPart 테이블을 조회하여 이 사용자가 이 채팅방의 참여자인지 확인
+                boolean isParticipant = goodsChatPartRepository.existsByUserIdAndGoodsChatRoomId(user.getId(), roomId);
+
+                // (5) 참여자가 아닐 경우 접근 거부
+                if (!isParticipant) {
+                    log.warn("STOMP SUBSCRIBE: 접근 거부. User {} -> Room {}", user.getId(), roomId);
+                    throw new AccessDeniedException("해당 채팅방에 접근할 권한이 없습니다.");
+                }
+
+                log.info("STOMP SUBSCRIBE 승인: User {} -> Room {}", user.getId(), roomId);
+
+            } catch (Exception e) {
+                log.error("STOMP SUBSCRIBE 인가 실패: {}", e.getMessage(), e);
+                throw new AccessDeniedException("구독 인가에 실패했습니다.", e);
+            }
         }
         return message;
+    }
+    private Long parseRoomIdFromDestination(String destination) {
+        // WebSocketConfig에서 설정한 prefix가 "/sub/chat/goods/"
+        try {
+            String[] parts = destination.split("/");
+            return Long.parseLong(parts[parts.length - 1]);
+        } catch (Exception e) {
+            log.error("채팅방 ID 파싱 실패: {}", destination, e);
+            throw new IllegalArgumentException("유효하지 않은 채팅방 구독 주소입니다.");
+        }
     }
 }

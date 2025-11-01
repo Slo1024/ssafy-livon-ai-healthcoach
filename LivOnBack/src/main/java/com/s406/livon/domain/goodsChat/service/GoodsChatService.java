@@ -101,8 +101,8 @@ public class GoodsChatService {
 
     //
     @Transactional(readOnly = true)
-//    public List<GoodsChatMessageResponse> getChatRoomMessages(Long chatRoomId, Long memberId, LocalDateTime lastSentAt) {
-    public List<GoodsChatMessage> getChatRoomMessages(Long chatRoomId, Long memberId, LocalDateTime lastSentAt) {
+    public List<GoodsChatMessageResponse> getChatRoomMessages(Long chatRoomId, Long memberId, LocalDateTime lastSentAt) {
+//    public List<GoodsChatMessage> getChatRoomMessages(Long chatRoomId, Long memberId, LocalDateTime lastSentAt) {
 //        validateMemberInChatRoom(memberId, chatRoomId);
         StopWatch stopWatch = new StopWatch(); // (1) 스톱워치 생성
 
@@ -117,8 +117,8 @@ public class GoodsChatService {
 //        }
 //        stopWatch.stop(); // (3) 타이머 중지
 //        System.out.println(stopWatch.prettyPrint());
-//        return mapMessagesToResponses(chatMessages);
-        return chatMessages;
+        return mapMessagesToResponses(chatMessages);
+//        return chatMessages;
     }
 
     // 채팅 내역 조회

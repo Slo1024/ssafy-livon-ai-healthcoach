@@ -27,6 +27,9 @@ public interface GoodsChatRoomRepository extends JpaRepository<GoodsChatRoom, Lo
     Optional<GoodsChatRoom> findExistingChatRoom(@Param("consultationId") Long consultationId, @Param("buyerId") UUID buyerId,
                                                  @Param("role") Role role);
 
+
+
+
 //    @Query("""
 //            SELECT cr
 //            FROM GoodsChatRoom cr
@@ -43,7 +46,7 @@ public interface GoodsChatRoomRepository extends JpaRepository<GoodsChatRoom, Lo
 //            ORDER BY cr.lastChatSentAt DESC
 //            """)
 //    Page<GoodsChatRoom> findChatRoomPageByMemberId(@Param("memberId") Long memberId, Pageable pageable);
-
+//
 //    @Query("""
 //            SELECT cr
 //            FROM GoodsChatRoom cr

@@ -22,10 +22,6 @@ public class GoodsChatMessageController {
     public void handleMessage(Authentication authentication, @Payload GoodsChatMessageRequest message) {
 
         User sender = (User) authentication.getPrincipal();
-        System.out.println(sender.getNickname());
-//        System.out.println(sender.getNickname());
-//        log.info("User: {}", user);
-
         goodsChatMessageService.sendMessage(message,sender);
     }
 }

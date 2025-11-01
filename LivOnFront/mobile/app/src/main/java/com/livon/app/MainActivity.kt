@@ -45,5 +45,3 @@ fun GreetingPreview() {
         Greeting("Android")
     }
 }
-
-// Android Build Type: APK Release Test Annotation

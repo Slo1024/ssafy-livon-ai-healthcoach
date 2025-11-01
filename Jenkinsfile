@@ -90,6 +90,13 @@ pipeline {
                         }
                     }
 
+                    sh """
+                        echo "현재 디렉터리:"
+                        pwd
+                        echo "현재 디렉터리 내용:"
+                        ls -al
+                    """
+
                     // Docker Compose 실행
                     sh """
                         echo "🗑️ 기존 FE 컨테이너 직접 삭제 (${CONTAINER})..."
@@ -97,8 +104,6 @@ pipeline {
 
                         echo "🚀 FE docker-compose 실행 중 (${COMPOSE_FILE})..."
                         docker compose -p ${PROJECT} -f ${COMPOSE_FILE} up -d --build livon-fe
-
-                        sh -c 'echo "[pwd] $(pwd)"'
 
                         echo "🗑️ 기존 Nginx 컨테이너 삭제 (${NGINX_CONTAINER})..."
                         docker rm -f ${NGINX_CONTAINER} || true

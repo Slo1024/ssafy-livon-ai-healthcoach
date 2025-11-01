@@ -98,7 +98,7 @@ pipeline {
                         echo "🚀 FE docker-compose 실행 중 (${COMPOSE_FILE})..."
                         docker compose -p ${PROJECT} -f ${COMPOSE_FILE} up -d --build livon-fe
 
-                        echo "[pwd] $(pwd)"
+                        sh -c 'echo "[pwd] $(pwd)"'
 
                         echo "🗑️ 기존 Nginx 컨테이너 삭제 (${NGINX_CONTAINER})..."
                         docker rm -f ${NGINX_CONTAINER} || true

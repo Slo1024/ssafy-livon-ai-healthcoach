@@ -5,11 +5,14 @@ import com.s406.livon.domain.goodsChat.document.GoodsChatMessage;
 import com.s406.livon.domain.goodsChat.dto.response.GoodsChatMessageResponse;
 import com.s406.livon.domain.goodsChat.dto.response.GoodsChatRoomResponse;
 import com.s406.livon.domain.goodsChat.service.GoodsChatService;
+import com.s406.livon.domain.user.entity.User;
 import com.s406.livon.global.web.response.ApiResponse;
 import com.s406.livon.global.web.response.PageResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Pageable;
 
@@ -36,17 +39,21 @@ public class GoodsChatRoomController {
         return ResponseEntity.ok(ApiResponse.onSuccess(response));
     }
 
-    /*
-    굿즈거래 채팅방 페이지 - 채팅 내역 조회
-    TODO: @RequestParam Long memberId -> @AuthenticationPrincipal 로 변경
-    */
+
+    /**
+     * 채팅방 채팅내용 보기
+     * @param chatRoomId
+     * @param user
+     * @param lastSentAt
+     * @return
+     */
     @GetMapping("/{chatRoomId}/message")
-    public ResponseEntity<ApiResponse<List<GoodsChatMessageResponse>>> getGoodsChatRoomMessages(
+    public ResponseEntity<ApiResponse<List<GoodsChatMessage>>> getGoodsChatRoomMessages(
             @PathVariable Long chatRoomId,
-            @RequestParam Long userId,
+            @AuthenticationPrincipal User user,
             @RequestParam(required = false) LocalDateTime lastSentAt
     ) {
-        List<GoodsChatMessageResponse> response = goodsChatService.getChatRoomMessages(chatRoomId, userId, lastSentAt);
+        List<GoodsChatMessage> response = goodsChatService.getChatRoomMessages(chatRoomId, user.getId(), lastSentAt);
         return ResponseEntity.ok(ApiResponse.onSuccess(response));
     }
 

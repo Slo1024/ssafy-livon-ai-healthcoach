@@ -7,10 +7,13 @@ import com.s406.livon.domain.goodsChat.dto.response.GoodsChatMessageResponse;
 import com.s406.livon.domain.goodsChat.entity.*;
 import com.s406.livon.domain.goodsChat.event.GoodsChatEvent;
 import com.s406.livon.domain.goodsChat.repository.GoodsChatMessageRepository;
+import com.s406.livon.domain.goodsChat.repository.GoodsChatPartRepository;
 import com.s406.livon.domain.goodsChat.repository.GoodsChatRoomRepository;
 import com.s406.livon.domain.user.entity.User;
+import com.s406.livon.domain.user.enums.Role;
 import com.s406.livon.domain.user.repository.UserRepository;
 import com.s406.livon.global.error.exception.GeneralException;
+import com.s406.livon.global.error.handler.ChatHandler;
 import com.s406.livon.global.error.handler.UserHandler;
 import com.s406.livon.global.web.response.code.status.ErrorStatus;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -33,22 +37,27 @@ public class GoodsChatMessageService {
     private final SimpMessagingTemplate messagingTemplate;
     private final TransactionTemplate mongoTransactionTemplate;
     private final GoodsChatCacheManager goodsChatCacheManager;
-
+    private final GoodsChatPartRepository goodsChatPartRepository;
     private static final String MEMBER_ENTER_MESSAGE = "님이 채팅방에 입장하셨습니다.";
     private static final String MEMBER_LEAVE_MESSAGE = "님이 채팅방을 떠나셨습니다.";
 
 
     public void sendMessage(GoodsChatMessageRequest message,User sender) {
         GoodsChatRoom chatRoom = findByChatRoomById(message.getRoomId());
+
+        // 채팅방에 참여자가 아닐경우
+        if(!goodsChatPartRepository.existsByUserIdAndGoodsChatRoomId(sender.getId(), chatRoom.getId())){
+            throw new ChatHandler(ErrorStatus.USER_NOT_SEND_VALID);
+        };
+
         saveAndSendMessage(chatRoom, sender, message.getMessage(), message.getType());
     }
 
     private void saveAndSendMessage(GoodsChatRoom chatRoom, User user, String message, MessageType type) {
         // 채팅 도큐먼트 생성
-        GoodsChatMessage chatMessage = createChatMessage(chatRoom.getId(), user.getId(), message, type);
-
-        // 최신 채팅 내역 업데이트
-        chatRoom.updateLastChat(message, chatMessage.getSentAt());
+        GoodsChatMessage chatMessage = createChatMessage(chatRoom.getId(), user.getId(), message, user.getRoles() ,type);
+        // 최근메세지 불필요
+//        chatRoom.updateLastChat(message, chatMessage.getSentAt());
 
         // MongoDB 트랜잭션
         try {
@@ -75,9 +84,7 @@ public class GoodsChatMessageService {
     // 입장 및 퇴장 메시지 전송
     public void sendChatEventMessage(GoodsChatEvent event) {
         User user = event.user();
-        Long chatRoomId = event.chatRoomId();
         Long roomId = event.chatRoomId();
-
         GoodsChatRoom chatRoom = findByChatRoomById(roomId);
 
         // 메시지 생성
@@ -88,23 +95,18 @@ public class GoodsChatMessageService {
         }
 
         // Message DB에 저장
-        GoodsChatMessage chatMessage = createChatMessage(chatRoomId, user.getId(), message, event.type());
+        saveAndSendMessage(chatRoom, user, message, event.type());
 
-        GoodsChatMessage savedMessage = messageRepository.save(chatMessage);
-        chatRoom.updateLastChat(message, chatMessage.getSentAt());
-
-
-        // 이벤트 메시지 전송
-        sendToSubscribers(chatRoomId, GoodsChatMessageResponse.of(savedMessage, user));
     }
 
-    private GoodsChatMessage createChatMessage(Long chatRoomId, UUID userId, String message, MessageType type) {
+    private GoodsChatMessage createChatMessage(Long chatRoomId, UUID userId, String message, List<Role> role , MessageType type) {
         return GoodsChatMessage.builder()
                 .chatRoomId(chatRoomId)
                 .userId(userId)
                 .sentAt(LocalDateTime.now())
                 .content(message)
                 .messageType(type)
+                .role(role)
                 .build();
     }
 

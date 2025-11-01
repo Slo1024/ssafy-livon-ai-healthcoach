@@ -6,16 +6,19 @@ import com.s406.livon.domain.coach.repository.ConsultationRepository;
 import com.s406.livon.domain.goodsChat.document.GoodsChatMessage;
 import com.s406.livon.domain.goodsChat.dto.response.GoodsChatMessageResponse;
 import com.s406.livon.domain.goodsChat.dto.response.GoodsChatRoomResponse;
+import com.s406.livon.domain.goodsChat.entity.GoodsChatPartId;
 import com.s406.livon.domain.goodsChat.entity.GoodsChatRoom;
 import com.s406.livon.domain.goodsChat.entity.MessageType;
 import com.s406.livon.domain.goodsChat.event.GoodsChatEvent;
 import com.s406.livon.domain.goodsChat.event.GoodsChatEventPublisher;
 import com.s406.livon.domain.goodsChat.repository.GoodsChatMessageRepository;
+import com.s406.livon.domain.goodsChat.repository.GoodsChatPartRepository;
 import com.s406.livon.domain.goodsChat.repository.GoodsChatRoomRepository;
 import com.s406.livon.domain.user.entity.User;
 import com.s406.livon.domain.user.enums.Role;
 import com.s406.livon.domain.user.repository.UserRepository;
 import com.s406.livon.global.error.exception.GeneralException;
+import com.s406.livon.global.error.handler.ChatHandler;
 import com.s406.livon.global.error.handler.UserHandler;
 import com.s406.livon.global.web.response.PageResponse;
 import com.s406.livon.global.web.response.code.status.ErrorStatus;
@@ -40,7 +43,7 @@ public class GoodsChatService {
 //    private final GoodsPostRepository goodsPostRepository;
     private final UserRepository userRepository;
     private final GoodsChatRoomRepository chatRoomRepository;
-    //    private final GoodsChatPartRepository partRepository;
+    private final GoodsChatPartRepository partRepository;
     private final GoodsChatMessageRepository messageRepository;
     private final GoodsChatEventPublisher eventPublisher;
     private final ConsultationRepository consultationRepository;
@@ -101,9 +104,8 @@ public class GoodsChatService {
 
     //
     @Transactional(readOnly = true)
-    public List<GoodsChatMessageResponse> getChatRoomMessages(Long chatRoomId, Long memberId, LocalDateTime lastSentAt) {
-//    public List<GoodsChatMessage> getChatRoomMessages(Long chatRoomId, Long memberId, LocalDateTime lastSentAt) {
-//        validateMemberInChatRoom(memberId, chatRoomId);
+    public List<GoodsChatMessage> getChatRoomMessages(Long chatRoomId, UUID userId, LocalDateTime lastSentAt) {
+//        validateMemberInChatRoom(userId, chatRoomId);
         StopWatch stopWatch = new StopWatch(); // (1) 스톱워치 생성
 
 
@@ -117,9 +119,16 @@ public class GoodsChatService {
 //        }
 //        stopWatch.stop(); // (3) 타이머 중지
 //        System.out.println(stopWatch.prettyPrint());
-        return mapMessagesToResponses(chatMessages);
+        return chatMessages;
 //        return chatMessages;
     }
+
+    private void validateMemberInChatRoom(UUID userId, Long chatRoomId) {
+        if (!partRepository.existsByUserIdAndGoodsChatRoomId(userId,chatRoomId)) {
+            throw new ChatHandler(ErrorStatus.USER_NOT_SELECT_VALID);
+        }
+    }
+
 
     // 채팅 내역 조회
     private List<GoodsChatMessage> fetchMessagesFromCacheOrDB(Long chatRoomId, LocalDateTime lastSentAt, int size) {
@@ -152,16 +161,16 @@ public class GoodsChatService {
     }
 
     // 메시지 발신자 정보 조회 및 DTO 매핑
-    private List<GoodsChatMessageResponse> mapMessagesToResponses(List<GoodsChatMessage> chatMessages) {
-        List<GoodsChatMessageResponse> goodsChatMessageResponses = new ArrayList<>();
-
-        for (GoodsChatMessage chatMessage : chatMessages) {
-            UUID userId = chatMessage.getUserId();
-            User user = findUserById(userId);
-            goodsChatMessageResponses.add(GoodsChatMessageResponse.of(chatMessage, user));
-        }
-        return goodsChatMessageResponses;
-    }
+//    private List<GoodsChatMessageResponse> mapMessagesToResponses(List<GoodsChatMessage> chatMessages) {
+//        List<GoodsChatMessageResponse> goodsChatMessageResponses = new ArrayList<>();
+//
+//        for (GoodsChatMessage chatMessage : chatMessages) {
+//            UUID userId = chatMessage.getUserId();
+//            User user = findUserById(userId);
+//            goodsChatMessageResponses.add(GoodsChatMessageResponse.of(chatMessage, user));
+//        }
+//        return goodsChatMessageResponses;
+//    }
 
 //
 //    private void validateMemberParticipation(Long memberId, Long chatRoomId) {

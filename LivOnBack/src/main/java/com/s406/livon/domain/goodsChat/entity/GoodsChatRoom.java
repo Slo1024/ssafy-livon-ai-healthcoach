@@ -20,12 +20,12 @@ import java.util.List;
 public class GoodsChatRoom {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "consultation_id", nullable = false)
-    private Consultation consultation;  // 예약으로 변경
+    @MapsId
+    @JoinColumn(name = "consultation_id")
+    private Consultation consultation;
 
     @Column(name = "last_chat_content", columnDefinition = "TEXT")
     private String lastChatContent;
@@ -51,10 +51,10 @@ public class GoodsChatRoom {
         chatParts.add(chatPart);
     }
 
-    public void updateLastChat(String lastChatContent, LocalDateTime lastChatSentAt) {
-        this.lastChatContent = lastChatContent;
-        this.lastChatSentAt = lastChatSentAt;
-    }
+//    public void updateLastChat(String lastChatContent, LocalDateTime lastChatSentAt) {
+//        this.lastChatContent = lastChatContent;
+//        this.lastChatSentAt = lastChatSentAt;
+//    }
 
 
     public void deactivateRoom() {

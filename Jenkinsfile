@@ -20,7 +20,7 @@ pipeline {
             }
             steps {
                 script {
-                    echo 'BE changes detected. Deploying backend services.'
+                    echo '✅BE changes detected. Deploying backend services.'
 
                     def IS_PROD = BRANCH_NAME == 'master'
                     def COMPOSE_FILE = IS_PROD ? 'LivOnInfra/docker-compose.prod.yml' : 'LivOnInfra/docker-compose.dev.yml'

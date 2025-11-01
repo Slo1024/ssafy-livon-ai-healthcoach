@@ -37,19 +37,18 @@ public class GoodsChatRoom {
     @Builder.Default
     private Boolean isActive = true;
 
-    @OneToMany(mappedBy = "goodsChatRoom", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "goodsChatRoom", cascade = CascadeType.REMOVE, orphanRemoval = true)
     @Builder.Default
     private List<GoodsChatPart> chatParts = new ArrayList<>();
 
-    public void addChatParticipant(User user, Role role) {
-        GoodsChatPart chatPart = GoodsChatPart.builder()
-                .goodsChatRoom(this)
-                .user(user)
-                .role(role)
-                .build();
-
-        chatParts.add(chatPart);
-    }
+//    public void addChatParticipant(User user) {
+//        GoodsChatPart chatPart = GoodsChatPart.builder()
+//                .goodsChatRoom(this)
+//                .user(user)
+//                .build();
+//
+//        chatParts.add(chatPart);
+//    }
 
 //    public void updateLastChat(String lastChatContent, LocalDateTime lastChatSentAt) {
 //        this.lastChatContent = lastChatContent;

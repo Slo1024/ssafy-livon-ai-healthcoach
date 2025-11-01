@@ -27,15 +27,10 @@ public class GoodsChatRoomController {
 
     private final GoodsChatService goodsChatService;
 
-    /*
-    굿즈거래 상세 페이지 - 채팅방 입장
-    TODO: @RequestParam Long memberId -> @AuthenticationPrincipal 로 변경
-    "/api/goods/chat" 로 변경 예정
-    */
     @PostMapping
-    public ResponseEntity<ApiResponse<GoodsChatRoomResponse>> createGoodsChatRoom(@RequestParam UUID buyerId,
+    public ResponseEntity<ApiResponse<GoodsChatRoomResponse>> createGoodsChatRoom(  @AuthenticationPrincipal User user,
                                                                                   @RequestParam Long consultationId) {
-        GoodsChatRoomResponse response = goodsChatService.getOrCreateGoodsChatRoom(buyerId, consultationId);
+        GoodsChatRoomResponse response = goodsChatService.getOrCreateGoodsChatRoom(user, consultationId);
         return ResponseEntity.ok(ApiResponse.onSuccess(response));
     }
 

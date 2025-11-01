@@ -3,10 +3,10 @@ package com.s406.livon.domain.goodsChat.service;
 
 import com.s406.livon.domain.coach.entity.Consultation;
 import com.s406.livon.domain.coach.repository.ConsultationRepository;
+import com.s406.livon.domain.coach.repository.ParticipantRepository;
 import com.s406.livon.domain.goodsChat.document.GoodsChatMessage;
-import com.s406.livon.domain.goodsChat.dto.response.GoodsChatMessageResponse;
 import com.s406.livon.domain.goodsChat.dto.response.GoodsChatRoomResponse;
-import com.s406.livon.domain.goodsChat.entity.GoodsChatPartId;
+import com.s406.livon.domain.goodsChat.entity.GoodsChatPart;
 import com.s406.livon.domain.goodsChat.entity.GoodsChatRoom;
 import com.s406.livon.domain.goodsChat.entity.MessageType;
 import com.s406.livon.domain.goodsChat.event.GoodsChatEvent;
@@ -17,20 +17,15 @@ import com.s406.livon.domain.goodsChat.repository.GoodsChatRoomRepository;
 import com.s406.livon.domain.user.entity.User;
 import com.s406.livon.domain.user.enums.Role;
 import com.s406.livon.domain.user.repository.UserRepository;
-import com.s406.livon.global.error.exception.GeneralException;
 import com.s406.livon.global.error.handler.ChatHandler;
 import com.s406.livon.global.error.handler.UserHandler;
-import com.s406.livon.global.web.response.PageResponse;
 import com.s406.livon.global.web.response.code.status.ErrorStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.util.StopWatch;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -48,44 +43,54 @@ public class GoodsChatService {
     private final GoodsChatEventPublisher eventPublisher;
     private final ConsultationRepository consultationRepository;
     private final GoodsChatCacheManager goodsChatCacheManager;
+    private final ParticipantRepository participantRepository;
+    private final GoodsChatPartRepository goodsChatPartRepository;
 
+    @Transactional
+    public GoodsChatRoomResponse getOrCreateGoodsChatRoom(User user, Long consultationId) {
+        Consultation consultation = findConsultationId(consultationId);
+        //ParticipantRepositoy에 해당 방과 해당유저가 있으면 참
+        boolean isParticipant = participantRepository.existsByUserIdAndConsultationId(user.getId(), consultationId);
+        if (!isParticipant) {
+            // 참여자가 아니면 권한 없음
 
-    public GoodsChatRoomResponse getOrCreateGoodsChatRoom(UUID buyerId, Long consultationId) {
-        User buyer = findUserById(buyerId);
-        Consultation consultation = findConsultationId(consultationId); //todo
+            throw new ChatHandler(ErrorStatus.USER_NOT_PARTICIPANT_VALID); // (적절한 ErrorStatus로 변경)
+        }
 
-        User seller = findUserById(consultation.getCoach().getId());
+        // 기존 채팅방이 있으면 그냥참여 아니면 채팅방 만든 후 참여
 
+        GoodsChatRoom chatRoom = chatRoomRepository.findByConsultationId(consultationId)
+                .orElseGet(() -> createChatRoom(consultation, user));
+        boolean userInRoom = goodsChatPartRepository.existsByUserIdAndGoodsChatRoomId(user.getId(), chatRoom.getId());
+        if (!userInRoom) {
+//            chatRoom.addChatParticipant(user); 안됌이거 영속성 에러
+            goodsChatPartRepository.save(GoodsChatPart.builder()
+                    .goodsChatRoom(chatRoom)
+                    .user(user)
+                    .isActive(true)
+                    .build());
+            eventPublisher.publish(GoodsChatEvent.from(chatRoom.getId(), user, MessageType.ENTER));
+        }
 
-//        validateCreateChatRoom(consultation, buyer, seller);
-
-        // 구매자가 채팅방이 존재하면 기존 채팅방을 반환하고, 없다면 새로 생성하여 반환
-        GoodsChatRoom goodsChatRoom = chatRoomRepository.findExistingChatRoom(consultationId, buyerId, Role.COACH)
-                .orElseGet(() -> createChatRoom(consultation, buyer, seller));
-
-        return GoodsChatRoomResponse.of(goodsChatRoom);
+        return GoodsChatRoomResponse.of(chatRoom);
     }
 
-//    private void validateCreateChatRoom(GoodsPost goodsPost, Member seller, Member buyer) {
-//        if (goodsPost.getStatus() == Status.CLOSED) {
-//            throw new CustomException(ErrorCode.GOODS_CHAT_CLOSED_POST);
-//        }
-//        if (seller == buyer) {
-//            throw new CustomException(ErrorCode.GOODS_CHAT_SELLER_CANNOT_START);
-//        }
-//    }
-
-    private GoodsChatRoom createChatRoom(Consultation consultation, User buyer, User seller) {
+    @Transactional
+    public GoodsChatRoom createChatRoom(Consultation consultation, User user) {
         GoodsChatRoom goodsChatRoom = GoodsChatRoom.builder()
                 .consultation(consultation)
                 .build();
-
+//        goodsChatRoom.addChatParticipant(user);
         GoodsChatRoom savedChatRoom = chatRoomRepository.save(goodsChatRoom);
-        savedChatRoom.addChatParticipant(buyer, Role.MEMBER);
-        savedChatRoom.addChatParticipant(seller, Role.COACH);
+//        savedChatRoom.addChatParticipant(user);
+        goodsChatPartRepository.save(GoodsChatPart.builder()
+                        .goodsChatRoom(savedChatRoom)
+                        .user(user)
+                        .isActive(true)
+                .build());
 
         // 새로운 채팅방 생성 - 입장 메시지 전송
-        eventPublisher.publish(GoodsChatEvent.from(goodsChatRoom.getId(), buyer, MessageType.ENTER));
+        eventPublisher.publish(GoodsChatEvent.from(goodsChatRoom.getId(), user, MessageType.ENTER));
 
         return savedChatRoom;
     }
@@ -99,13 +104,13 @@ public class GoodsChatService {
     //
     private Consultation findConsultationId(Long goodsPostId) {
         return consultationRepository.findById(goodsPostId).orElseThrow(() ->
-                new GeneralException(ErrorStatus._INTERNAL_SERVER_ERROR)); //todo
+                new ChatHandler(ErrorStatus.CONSULTATION_NOT_FOUND));
     }
 
     //
     @Transactional(readOnly = true)
     public List<GoodsChatMessage> getChatRoomMessages(Long chatRoomId, UUID userId, LocalDateTime lastSentAt) {
-//        validateMemberInChatRoom(userId, chatRoomId);
+        validateMemberInChatRoom(userId, chatRoomId);
         StopWatch stopWatch = new StopWatch(); // (1) 스톱워치 생성
 
 

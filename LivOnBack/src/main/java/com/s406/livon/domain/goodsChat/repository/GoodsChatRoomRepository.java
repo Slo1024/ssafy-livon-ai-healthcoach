@@ -20,14 +20,12 @@ public interface GoodsChatRoomRepository extends JpaRepository<GoodsChatRoom, Lo
             FROM GoodsChatRoom cr
             JOIN cr.chatParts cp
             WHERE cr.consultation.id = :consultationId
-            AND cp.user.id = :buyerId
-            AND cp.role = :role
+            AND cp.user.id = :user
             AND cp.isActive = true
             """)
-    Optional<GoodsChatRoom> findExistingChatRoom(@Param("consultationId") Long consultationId, @Param("buyerId") UUID buyerId,
-                                                 @Param("role") Role role);
+    Optional<GoodsChatRoom> findExistingChatRoom(@Param("consultationId") Long consultationId, @Param("user") UUID user);
 
-
+    Optional<GoodsChatRoom> findByConsultationId(Long consultationId);
 
 
 //    @Query("""

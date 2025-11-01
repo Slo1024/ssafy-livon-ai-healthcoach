@@ -65,7 +65,7 @@ pipeline {
                     def CONTAINER = IS_PROD ? 'livon-fe-prod' : 'livon-fe-dev'
                     def PROJECT = IS_PROD ? 'livon-prod' : 'livon-dev'
                     def NGINX_CONTAINER = IS_PROD ? 'nginx-prod' : 'nginx-dev'
-                    def NGINX_CONFIG_SRC = IS_PROD ? 'LivOnInfra/nginx.prod.default.conf' : 'LivOnInfra/nginx.dev.default.conf'
+                    def NGINX_CONFIG_SRC = IS_PROD ? 'LivOnInfra/nginx.prod/default.conf' : 'LivOnInfra/nginx.dev/default.conf'
                     def NGINX_CONFIG_DEST = IS_PROD ? 'LivOnInfra/nginx.prod/default.conf' : 'LivOnInfra/nginx.dev/default.conf'
 
                     withCredentials([file(credentialsId: ENV_ID, variable: 'ENV_FILE')]) {

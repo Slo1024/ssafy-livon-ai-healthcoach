@@ -82,17 +82,13 @@ pipeline {
 
                         echo "🚀 Running docker compose for FE (${COMPOSE_FILE})..."
                         docker compose -p ${PROJECT} -f ${COMPOSE_FILE} up -d --build livon-fe
+
+                        echo "🗑️ Removing existing Nginx container (${NGINX_CONTAINER}) if present..."
+                        docker rm -f ${NGINX_CONTAINER} || true
+
+                        echo "🌐 Running docker compose for Nginx (${COMPOSE_FILE})..."
+                        docker compose -p ${PROJECT} -f ${COMPOSE_FILE} up -d --build nginx
                     """
-
-                    dir('LivOnInfra') {
-                        sh """
-                            echo "🗑️ Removing existing Nginx container (${NGINX_CONTAINER}) if present..."
-                            docker rm -f ${NGINX_CONTAINER} || true
-
-                            echo "🌐 Running docker compose for Nginx (${COMPOSE_FILE})..."
-                            docker compose -p ${PROJECT} -f ${COMPOSE_FILE} up -d --build nginx
-                        """
-                    }
                 }
             }
         }

@@ -93,44 +93,90 @@ pipeline {
             }
         }
 
+        /* =========================
+         *  Mobile APK 빌드
+         * ========================= */
         stage('Build Mobile APK') {
             when {
-                changeset pattern: 'LivOnFront/mobile/**', comparator: 'ANT'
-            }
-            agent {
-                docker {
-                    // 안드로이드 SDK와 JDK 17이 설치된 이미지 사용
-                    image 'reactivecircus/android-sdk:android-34-jdk17'
-                    // (중요!) 이 컨테이너에도 'apk_storage' 볼륨을 연결해야 합니다.
-                    args '-v apk_storage:/var/apk_storage' 
+                anyOf {
+                    changeset pattern: 'LivOnFront/mobile/**', comparator: 'ANT'
                 }
             }
             steps {
                 script {
-                    echo "✅Mobile changes detected. Building APK for branch ${BRANCH_NAME}."
-                    
-                    // 1. 모바일 프로젝트 폴더로 이동
+                    echo '📱 Mobile changes detected. Building APK...'
+
+                    def IS_PROD = BRANCH_NAME == 'master'
+                    def TASK    = IS_PROD ? 'assembleRelease' : 'assembleDebug'
+
                     dir('LivOnFront/mobile') {
-                        
-                        // 2. gradlew 스크립트에 실행 권한 부여
-                        // (빌드 스크립트를 실행 가능하게 만듭니다)
-                        sh 'chmod +x ./gradlew'
-                        
-                        // 3. Gradle을 사용해 APK 빌드 (Debug 빌드 예시)
-                        // 'assembleRelease'를 사용할 수도 있습니다.
-                        echo 'Starting Gradle build...'
-                        sh './gradlew assembleDebug' 
-                        
-                        // 4. 빌드된 APK 파일을 공유 볼륨으로 복사
-                        // (주의!) 안드로이드 프로젝트 설정에 따라 이 경로는 다를 수 있습니다.
-                        // 보통 'app/build/outputs/apk/debug/app-debug.apk' 입니다.
-                        echo 'Copying APK to shared volume...'
-                        sh 'cp app/build/outputs/apk/debug/app-debug.apk /var/apk_storage/livon-${BRANCH_NAME}-build-${BUILD_NUMBER}.apk'
-                        
-                        echo "APK successfully built and copied."
-                        echo "Download at: /download/livon-${BRANCH_NAME}-build-${BUILD_NUMBER}.apk"
+                        sh """
+                            chmod +x ./gradlew || true
+                        """
+                        sh "./gradlew clean ${TASK}"
                     }
+
+                    // Jenkins 내 아티팩트 보관(선택)
+                    archiveArtifacts artifacts: 'LivOnFront/mobile/**/build/outputs/apk/**/*.apk', fingerprint: true
                 }
+            }
+        }
+
+        /* =========================
+         *  APK 공개(/download)
+         * ========================= */
+        stage('Publish APK to /download') {
+            when {
+                anyOf {
+                    changeset pattern: 'LivOnFront/mobile/**', comparator: 'ANT'
+                }
+            }
+            steps {
+                script {
+                    def IS_PROD = BRANCH_NAME == 'master'
+                    def BASEURL = IS_PROD ? 'https://k13s406.p.ssafy.io' : 'https://k13s406.p.ssafy.io:8443'
+
+                    // 최신 산출물 1개
+                    def apk = sh(
+                        script: "ls -1 LivOnFront/mobile/**/build/outputs/apk/**/*.apk | tail -n 1",
+                        returnStdout: true
+                    ).trim()
+                    if (!apk) {
+                        error "⚠️ APK 파일을 찾지 못했습니다. 빌드 산출물 경로를 확인하세요."
+                    }
+
+                    def shortSha = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+                    def stamp    = sh(script: "date +%Y%m%d-%H%M%S", returnStdout: true).trim()
+                    def outName  = "livon-${BRANCH_NAME}-${stamp}-${shortSha}.apk"
+
+                    // Jenkins 컨테이너에 /downloads 마운트 필요!
+                    sh """
+                        echo "📤 Publishing APK to /downloads..."
+                        cp -f "${apk}" "/downloads/${outName}"
+                        ln -sfn "/downloads/${outName}" "/downloads/latest.apk"  # 최신 고정 링크
+                        ls -lh "/downloads/${outName}"
+                    """
+
+                    echo "📎 Download URL : ${BASEURL}/download/${outName}"
+                    echo "📎 Latest Link  : ${BASEURL}/download/latest.apk"
+                }
+            }
+        }
+
+        /* =========================
+         *  오래된 APK 정리 (최신 5개 유지)
+         * ========================= */
+        stage('Prune Old APKs (optional)') {
+            when {
+                anyOf {
+                    changeset pattern: 'LivOnFront/mobile/**', comparator: 'ANT'
+                }
+            }
+            steps {
+                sh """
+                    echo "🧹 Pruning old APKs (keep 5 latest)..."
+                    ls -tp /downloads/*.apk 2>/dev/null | grep -v '/$' | tail -n +6 | xargs -r rm --
+                """
             }
         }
     }

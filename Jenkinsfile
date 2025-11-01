@@ -6,17 +6,13 @@ pipeline {
     }
 
     stages {
-        // 코드 체크아웃 (필수)
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
-        // BE / FE 순차 배포
-        // --- BE 배포 스테이지 (먼저 실행) ---
         stage('Deploy BE') {
-            // when: 'LivOnBack/' 경로에 변경 사항이 있을 때만 이 스테이지를 실행
             when {
                 anyOf {
                     changeset pattern: 'LivOnBack/**', comparator: 'ANT'
@@ -24,45 +20,36 @@ pipeline {
             }
             steps {
                 script {
-                    echo "✅ BE 디렉토리 변경 감지 → 배포 시작"
-                    
+                    echo 'BE changes detected. Deploying backend services.'
+
                     def IS_PROD = BRANCH_NAME == 'master'
                     def COMPOSE_FILE = IS_PROD ? 'LivOnInfra/docker-compose.prod.yml' : 'LivOnInfra/docker-compose.dev.yml'
                     def PROPERTIES_ID = IS_PROD ? 'yml-prod' : 'yml-dev'
                     def CONTAINER = IS_PROD ? 'livon-be-prod' : 'livon-be-dev'
                     def PROJECT = IS_PROD ? 'livon-prod' : 'livon-dev'
-                    
-                    // application.yml 파일 주입
-                    withCredentials([
-                        file(credentialsId: PROPERTIES_ID, variable: 'APP_PROPS_FILE'),
-                        // file(credentialsId: 'gcp-key', variable: 'GCP_KEY_FILE')
-                    ]) {
+
+                    withCredentials([file(credentialsId: PROPERTIES_ID, variable: 'APP_PROPS_FILE')]) {
                         dir('LivOnBack') {
-                            sh """
-                                echo "📦 application.yml 복사 중..."
+                            sh '''
+                                echo "📦 Copying application.yml..."
                                 rm -f application.yml
                                 cp -f "$APP_PROPS_FILE" application.yml
-                            """
+                            '''
                         }
 
-                        // ... (주석 처리된 GCP 키 복사 로직) ...
-
-                        // Docker Compose 실행
                         sh """
-                            echo "🗑️ 기존 BE 컨테이너 삭제 (${CONTAINER})..."
+                            echo "🗑️ Removing existing BE container (${CONTAINER}) if present..."
                             docker rm -f ${CONTAINER} || true
 
-                            echo "🚀 도커 컴포즈로 빌드 및 실행..."
+                            echo "🚀 Running docker compose for BE (${COMPOSE_FILE})..."
                             docker compose --project-directory LivOnInfra -p ${PROJECT} -f ${COMPOSE_FILE} up -d --build livon-be
                         """
                     }
                 }
             }
-        } // End stage('Deploy BE')
+        }
 
-        // --- FE 배포 스테이지 (BE 실행 후 실행) ---
         stage('Deploy FE') {
-            // when: 'LivOnFront/web/' 경로에 변경 사항이 있을 때만 이 스테이지를 실행
             when {
                 anyOf {
                     changeset pattern: 'LivOnFront/web/**', comparator: 'ANT'
@@ -70,50 +57,46 @@ pipeline {
             }
             steps {
                 script {
-                    echo "✅ FE 디렉토리 변경 감지 → 배포 시작"
-                    
+                    echo '✅FE changes detected. Deploying frontend and nginx.'
+
                     def IS_PROD = BRANCH_NAME == 'master'
                     def COMPOSE_FILE = IS_PROD ? 'LivOnInfra/docker-compose.prod.yml' : 'LivOnInfra/docker-compose.dev.yml'
                     def ENV_ID = IS_PROD ? 'frontend-env-prod' : 'frontend-env-dev'
                     def CONTAINER = IS_PROD ? 'livon-fe-prod' : 'livon-fe-dev'
                     def PROJECT = IS_PROD ? 'livon-prod' : 'livon-dev'
                     def NGINX_CONTAINER = IS_PROD ? 'nginx-prod' : 'nginx-dev'
+                    def NGINX_CONFIG_SRC = IS_PROD ? 'LivOnInfra/nginx.prod.default.conf' : 'LivOnInfra/nginx.dev.default.conf'
+                    def NGINX_CONFIG_DEST = IS_PROD ? 'LivOnInfra/nginx.prod/default.conf' : 'LivOnInfra/nginx.dev/default.conf'
 
-                    // .env 파일 주입
                     withCredentials([file(credentialsId: ENV_ID, variable: 'ENV_FILE')]) {
                         dir('LivOnFront/web') {
-                            sh """
-                                echo "🔒 .env 파일 복사 중..."
+                            sh '''
+                                echo "🔒 Copying .env..."
                                 rm -f .env
                                 cp "$ENV_FILE" .env
-                            """
+                            '''
                         }
                     }
 
                     sh """
-                        echo "현재 디렉터리:"
-                        pwd
-                        echo "현재 디렉터리 내용:"
-                        ls -al
-                    """
-
-                    // Docker Compose 실행
-                    sh """
-                        echo "🗑️ 기존 FE 컨테이너 직접 삭제 (${CONTAINER})..."
+                        echo "🗑️ Removing existing FE container (${CONTAINER}) if present..."
                         docker rm -f ${CONTAINER} || true
 
-                        echo "🚀 FE docker-compose 실행 중 (${COMPOSE_FILE})..."
+                        echo "🚀 Running docker compose for FE (${COMPOSE_FILE})..."
                         docker compose -p ${PROJECT} -f ${COMPOSE_FILE} up -d --build livon-fe
 
-                        echo "🗑️ 기존 Nginx 컨테이너 삭제 (${NGINX_CONTAINER})..."
+                        echo "📁 Preparing Nginx config (${NGINX_CONFIG_SRC} -> ${NGINX_CONFIG_DEST})"
+                        install -D ${NGINX_CONFIG_SRC} ${NGINX_CONFIG_DEST}
+                        ls -l \$(dirname ${NGINX_CONFIG_DEST})
+
+                        echo "🗑️ Removing existing Nginx container (${NGINX_CONTAINER}) if present..."
                         docker rm -f ${NGINX_CONTAINER} || true
 
-                        echo "🌐 Nginx 프록시 기동 (${COMPOSE_FILE})..."
+                        echo "🌐 Running docker compose for Nginx (${COMPOSE_FILE})..."
                         docker compose -p ${PROJECT} -f ${COMPOSE_FILE} up -d --build nginx
                     """
                 }
             }
-        } // End stage('Deploy FE')
-                
-    } // End stages
+        }
+    }
 }

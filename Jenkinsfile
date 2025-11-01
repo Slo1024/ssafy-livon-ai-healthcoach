@@ -100,7 +100,7 @@ pipeline {
             agent {
                 docker {
                     // 안드로이드 SDK와 JDK 17이 설치된 이미지 사용
-                    image 'reactivecircus/android-sdk:17-latest' 
+                    image 'reactivecircus/android-sdk:jdk17-latest' 
                     // (중요!) 이 컨테이너에도 'apk_storage' 볼륨을 연결해야 합니다.
                     args '-v apk_storage:/var/apk_storage' 
                 }

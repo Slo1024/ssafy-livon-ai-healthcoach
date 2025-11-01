@@ -20,7 +20,9 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Order(Ordered.HIGHEST_PRECEDENCE + 99)
 @RequiredArgsConstructor
@@ -30,6 +32,21 @@ public class ChatHandler implements ChannelInterceptor {
 
     private final JwtTokenProvider tokenProvider;
     private final GoodsChatPartRepository goodsChatPartRepository;
+
+    private final Map<String, UUID> userBySessionId = new ConcurrentHashMap<>();
+    private final Map<Long, Set<String>> sessionsByRoomId = new ConcurrentHashMap<>();
+
+    public Set<UUID> getConnectedUsers(Long roomId) {
+        // 1. 채팅방에 구독 중인 세션 ID 목록을 가져옵니다.
+        Set<String> sessionIds = sessionsByRoomId.getOrDefault(roomId, Collections.emptySet());
+
+        // 2. 세션 ID 목록을 실제 사용자 ID(UUID) 목록으로 변환합니다.
+        return sessionIds.stream()
+                .map(userBySessionId::get) // 세션ID -> 유저ID
+                .filter(Objects::nonNull)    // DISCONNECT 처리 중인 유저 제외
+                .collect(Collectors.toSet());
+    }
+
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
 
@@ -80,7 +97,10 @@ public class ChatHandler implements ChannelInterceptor {
 
                 // 6. STOMP 세션에 사용자 정보(Authentication) 저장
                 accessor.setUser(auth);
-                log.info("STOMP CONNECT 인증 성공: {}", auth.getName());
+                String sessionId = accessor.getSessionId();
+                UUID userId = ((User) auth.getPrincipal()).getId();
+                userBySessionId.put(sessionId, userId);
+                log.info("STOMP CONNECT: 세션 등록. SessionID: {}, UserID: {}", sessionId, userId);
 
             }
             // 7. TokenHandler 예외 처리 (validateToken 실패 시)
@@ -127,11 +147,33 @@ public class ChatHandler implements ChannelInterceptor {
                     throw new AccessDeniedException("해당 채팅방에 접근할 권한이 없습니다.");
                 }
 
+                String sessionId = accessor.getSessionId();
+                sessionsByRoomId.computeIfAbsent(roomId, k -> ConcurrentHashMap.newKeySet()).add(sessionId);
+
+
+
                 log.info("STOMP SUBSCRIBE 승인: User {} -> Room {}", user.getId(), roomId);
 
             } catch (Exception e) {
                 log.error("STOMP SUBSCRIBE 인가 실패: {}", e.getMessage(), e);
                 throw new AccessDeniedException("구독 인가에 실패했습니다.", e);
+            }
+        }else if (StompCommand.DISCONNECT.equals(accessor.getCommand())) {
+            String sessionId = accessor.getSessionId();
+            if (sessionId == null) {
+                return message;
+            }
+
+            // (1) userBySessionId 맵에서 사용자 제거
+            UUID userId = userBySessionId.remove(sessionId);
+
+            if (userId != null) {
+                log.info("STOMP DISCONNECT: 세션 종료. SessionID: {}, UserID: {}", sessionId, userId);
+
+                // (2) sessionsByRoomId 맵을 순회하며 이 세션을 모든 방에서 제거
+                sessionsByRoomId.values().forEach(sessions -> sessions.remove(sessionId));
+            } else {
+                log.debug("STOMP DISCONNECT: 추적되지 않는 세션 종료. SessionID: {}", sessionId);
             }
         }
         return message;

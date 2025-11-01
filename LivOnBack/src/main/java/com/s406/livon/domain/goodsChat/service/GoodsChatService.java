@@ -45,6 +45,7 @@ public class GoodsChatService {
     private final GoodsChatCacheManager goodsChatCacheManager;
     private final ParticipantRepository participantRepository;
     private final GoodsChatPartRepository goodsChatPartRepository;
+    private final com.s406.livon.domain.goodsChat.event.ChatHandler chatHandler;
 
     @Transactional
     public GoodsChatRoomResponse getOrCreateGoodsChatRoom(User user, Long consultationId) {
@@ -163,6 +164,10 @@ public class GoodsChatService {
             System.out.println("사이즈가 없는만큼 mongodb저장 및 조회");
         }
         return chatMessages;
+    }
+
+    public void getChatUsersInfo(Long chatRoomId, User user) {
+        System.out.println(chatHandler.getConnectedUsers(3L));
     }
 
     // 메시지 발신자 정보 조회 및 DTO 매핑

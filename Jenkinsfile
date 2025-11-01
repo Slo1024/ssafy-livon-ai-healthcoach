@@ -20,7 +20,7 @@ pipeline {
             }
             steps {
                 script {
-                    echo 'BE changes detected. Deploying backend services.'
+                    echo '✅BE changes detected. Deploying backend services.'
 
                     def IS_PROD = BRANCH_NAME == 'master'
                     def COMPOSE_FILE = IS_PROD ? 'LivOnInfra/docker-compose.prod.yml' : 'LivOnInfra/docker-compose.dev.yml'
@@ -90,6 +90,55 @@ pipeline {
                         docker compose -p ${PROJECT} -f ${COMPOSE_FILE} up -d --build nginx
                     """
                 }
+            }
+        }
+
+        stage('Publish APK') {
+            when {
+                anyOf {
+                    changeset pattern: 'LivOnFront/mobile/**', comparator: 'ANT'
+                }
+            }
+            steps {
+                script {
+                    echo '✅Mobile changes detected. Building and publishing APK.'
+
+                    def IS_PROD = BRANCH_NAME == 'master'
+                    def VARIANT = IS_PROD ? 'Release' : 'Debug'
+                    def SUFFIX = VARIANT.toLowerCase()
+                    def SAFE_BRANCH = (IS_PROD ? 'prod' : BRANCH_NAME.replaceAll('[^A-Za-z0-9-]', '-'))
+                    def APK_NAME = "livon-${SAFE_BRANCH}-${env.BUILD_NUMBER}.apk"
+                    def COMPOSE_FILE = IS_PROD ? 'LivOnInfra/docker-compose.prod.yml' : 'LivOnInfra/docker-compose.dev.yml'
+                    def PROJECT = IS_PROD ? 'livon-prod' : 'livon-dev'
+
+                    env.LIVON_APK_VARIANT = VARIANT
+                    env.LIVON_APK_SUFFIX = SUFFIX
+                    env.LIVON_APK_NAME = APK_NAME
+                    env.LIVON_COMPOSE_FILE = COMPOSE_FILE
+                    env.LIVON_PROJECT = PROJECT
+                }
+
+                dir('LivOnFront/mobile') {
+                    sh '''
+                        chmod +x gradlew
+                        ./gradlew clean assemble${LIVON_APK_VARIANT}
+                    '''
+                }
+
+                sh '''
+                    mkdir -p LivOnInfra/downloads
+                    SOURCE_APK="LivOnFront/mobile/app/build/outputs/apk/${LIVON_APK_SUFFIX}/app-${LIVON_APK_SUFFIX}.apk"
+                    if [ ! -f "$SOURCE_APK" ]; then
+                        echo "APK not found at $SOURCE_APK"
+                        exit 1
+                    fi
+                    cp "$SOURCE_APK" "LivOnInfra/downloads/${LIVON_APK_NAME}"
+                    cp "$SOURCE_APK" "LivOnInfra/downloads/livon-${LIVON_APK_SUFFIX}-latest.apk"
+                '''
+
+                sh '''
+                    docker compose -p ${LIVON_PROJECT} -f ${LIVON_COMPOSE_FILE} up -d nginx
+                '''
             }
         }
     }

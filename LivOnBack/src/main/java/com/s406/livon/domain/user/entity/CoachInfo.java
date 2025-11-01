@@ -3,7 +3,7 @@ package com.s406.livon.domain.user.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.ArrayList;   // ✅ 추가
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -36,5 +36,5 @@ public class CoachInfo {
             nullable = false
     )
     @Builder.Default
-    private List<CoachCertificates> coachCertificatesList = new ArrayList<>(); // ✅ 기본값
+    private List<CoachCertificates> coachCertificatesList = new ArrayList<>();
 }

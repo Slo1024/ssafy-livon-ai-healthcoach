@@ -3,6 +3,7 @@ package com.s406.livon.domain.user.dto.response;
 import com.s406.livon.domain.user.enums.Gender;
 import lombok.*;
 
+import java.time.LocalDate;
 import java.util.Date;
 
 @Getter
@@ -13,7 +14,8 @@ import java.util.Date;
 public class MyInfoResponseDto {
     private String nickname;
     private String profileImage;
+    private String organizations;
     private Gender gender;
-    private Date birthdate;
+    private LocalDate birthdate;
     private HealthSurveyResponseDto healthSurvey;
 }

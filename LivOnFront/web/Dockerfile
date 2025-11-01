@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -9,6 +9,8 @@ COPY . .
 
 RUN npm run build
 
+FROM node:20-alpine 
+WORKDIR /app
 # 정적 파일 서버 설치
 RUN npm install -g serve --omit=dev
 

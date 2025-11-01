@@ -86,7 +86,9 @@ pipeline {
                         docker compose -p ${PROJECT} -f ${COMPOSE_FILE} up -d --build livon-fe
 
                         echo "📁 Preparing Nginx config (${NGINX_CONFIG_SRC} -> ${NGINX_CONFIG_DEST})"
+                        rm -rf ${NGINX_CONFIG_DEST}
                         install -D ${NGINX_CONFIG_SRC} ${NGINX_CONFIG_DEST}
+                        stat -c '%F %n' ${NGINX_CONFIG_DEST}
                         ls -l \$(dirname ${NGINX_CONFIG_DEST})
 
                         echo "🗑️ Removing existing Nginx container (${NGINX_CONTAINER}) if present..."

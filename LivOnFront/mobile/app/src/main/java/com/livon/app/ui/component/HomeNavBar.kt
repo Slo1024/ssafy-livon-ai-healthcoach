@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Home
@@ -32,8 +33,6 @@ import androidx.compose.ui.unit.sp
 import com.livon.app.R // 아이콘 리소스 참조를 위해 import
 import com.livon.app.ui.theme.LivonTheme
 
-// --- 수정된 부분 1: iconFilled 프로퍼티 제거 ---
-// 이제 각 항목은 아이콘 리소스를 하나만 참조합니다.
 enum class BottomNavRoute(
     val routeName: String,
     val title: String,
@@ -72,7 +71,7 @@ fun HomeNavBar(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .height(50.dp),
+            .height(68.dp), // 높이 증가
         shadowElevation = 8.dp, // 약간의 그림자 효과
         color = MaterialTheme.colorScheme.surface // 기본 흰색 배경
     ) {
@@ -98,13 +97,12 @@ private fun RowScope.BottomNavItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    // --- 수정된 부분 2: iconRes 로직 변경 ---
-    // 이제 isSelected 여부와 상관없이 항상 item.icon을 사용합니다.
     val iconRes = item.icon
     val contentColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Black
 
     Column(
         modifier = Modifier
+            .padding(top = 8.dp) // 아이콘 위 여백 추가
             .fillMaxHeight()
             .weight(1f) // 모든 아이템이 동일한 너비를 갖도록 설정
             .clickable(onClick = onClick),
@@ -150,7 +148,7 @@ private fun TestNavBarNoResources(currentRoute: String?, onNavigate: (String) ->
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(50.dp),
+            .height(68.dp), // 테스트용도도 동일 높이
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -164,6 +162,7 @@ private fun TestNavBarNoResources(currentRoute: String?, onNavigate: (String) ->
             val selected = currentRoute == route
             Column(
                 modifier = Modifier
+                    .padding(top = 8.dp) // 아이콘 위 여백 추가
                     .weight(1f)
                     .fillMaxHeight()
                     .clickable { onNavigate(route) },
@@ -180,6 +179,3 @@ private fun TestNavBarNoResources(currentRoute: String?, onNavigate: (String) ->
         }
     }
 }
-
-
-

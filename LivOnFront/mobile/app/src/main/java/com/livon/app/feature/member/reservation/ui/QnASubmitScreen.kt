@@ -34,7 +34,6 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import com.livon.app.ui.component.navbar.HomeNavBar
 
-
 @Composable
 fun QnASubmitScreen(
     coachName: String,
@@ -71,7 +70,7 @@ fun QnASubmitScreen(
                 HomeNavBar(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp), // 고정 높이로 Scaffold가 innerPadding을 계산하게 함
+                        .height(56.dp),
                     currentRoute = null,
                     onNavigate = { route ->
                         when (route) {
@@ -83,17 +82,76 @@ fun QnASubmitScreen(
             }
         }
     ) { innerPadding ->
-        // body가 bottomBar 높이를 고려하도록 Column + weight 사용
+        // body - 상단고정(TopBar) / 하단고정(bottomBar) 사이에서 스크롤 가능 영역
         Column(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
                 modifier = Modifier
                     .weight(1f) // 하단 바를 위해 공간을 남김
                     .fillMaxWidth()
-                    .padding(innerPadding) // Scaffold가 제공하는 패딩 적용
+                    .padding(innerPadding)
                     .padding(horizontal = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // 기존 LazyColumn 내용(아이템들)을 여기 그대로 유지하세요.
+                // 헤더: 코치명, 날짜
+                item {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "$coachName 코치",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 20.sp),
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Start
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = formattedDate,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, color = Color.Gray),
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Start
+                    )
+                    Spacer(Modifier.height(12.dp))
+                }
+
+                // 질문 입력 리스트
+                itemsIndexed(questions) { index, question ->
+                    QnaInputItem(
+                        question = question,
+                        onValueChange = { new ->
+                            questions = questions.toMutableList().also { it[index] = new }
+                        },
+                        onDelete = {
+                            questions = questions.toMutableList().also { it.removeAt(index) }
+                        }
+                    )
+                }
+
+                // 질문 추가 버튼
+                item {
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Text(
+                            text = "질문 추가",
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .clickable {
+                                    questions = questions + ""
+                                }
+                                .padding(8.dp),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
+
+                // 여유 공간 (하단 버튼 가림 방지)
+                item {
+                    Spacer(Modifier.height(64.dp))
+                }
             }
         }
     }
@@ -120,7 +178,8 @@ private fun QnaInputItem(
     onValueChange: (String) -> Unit,
     onDelete: () -> Unit
 ) {
-    Column(modifier = Modifier.padding(top = 25.dp)) {
+    // 상단 패딩 축소(시각적으로 여유 줄임)
+    Column(modifier = Modifier.padding(top = 12.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -172,34 +231,43 @@ fun ReservationCompleteDialog(
 ) {
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        // 플랫폼 기본 너비 사용 (다이얼로그 잘림 방지)
+        properties = DialogProperties(usePlatformDefaultWidth = true)
     ) {
         Card(
             shape = RoundedCornerShape(10.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .height(160.dp),
+                .padding(horizontal = 24.dp)
+                .wrapContentHeight(),
             colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
             Column(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp, horizontal = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceAround
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Spacer(Modifier.height(16.dp))
-                Text("예약이 완료 되었습니다.", style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp))
+                Text(
+                    "예약이 완료 되었습니다.",
+                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
+                    textAlign = TextAlign.Center
+                )
                 Text(
                     text = "내 건강 정보를 바꾸고 싶으신가요?",
                     style = TextStyle(
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                         color = LiveRed,
                         textDecoration = TextDecoration.Underline
                     ),
-                    modifier = Modifier.clickable(onClick = onChangeHealthInfo)
+                    modifier = Modifier
+                        .clickable(onClick = onChangeHealthInfo)
+                        .padding(horizontal = 8.dp),
+                    textAlign = TextAlign.Center
                 )
-                HorizontalDivider(color = Gray, thickness = 1.dp)
+                Divider(color = Gray, thickness = 1.dp)
                 Text(
                     text = "확인",
                     modifier = Modifier

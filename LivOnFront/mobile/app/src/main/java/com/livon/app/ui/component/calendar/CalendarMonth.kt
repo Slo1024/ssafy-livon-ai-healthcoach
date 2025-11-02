@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import java.time.LocalDate
 import java.time.YearMonth
 import kotlin.math.ceil
+import com.livon.app.ui.theme.LivonTheme
 
 @Composable
 fun MonthNavigator(
@@ -104,10 +105,12 @@ fun CalendarMonth(
 @Preview(showBackground = true)
 @Composable
 private fun PreviewCalendarMonth() {
-    val ym = YearMonth.now()
-    CalendarMonth(
-        yearMonth = ym,
-        selected = ym.atDay(15),
-        onSelect = {}
-    )
+    LivonTheme {
+        val ym = YearMonth.now()
+        CalendarMonth(
+            yearMonth = ym,
+            selected = ym.atDay(15),
+            onSelect = {}
+        )
+    }
 }

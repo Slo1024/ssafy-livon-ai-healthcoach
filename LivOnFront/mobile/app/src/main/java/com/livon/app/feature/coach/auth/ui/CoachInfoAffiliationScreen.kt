@@ -2,6 +2,7 @@
 package com.livon.app.feature.coach.auth.ui
 
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -23,6 +24,7 @@ fun CoachInfoAffiliationScreen() {
     ) {
         Spacer(Modifier.height(60.dp))
         RequirementText("소속을 입력해 주세요")
+        Spacer(Modifier.height(120.dp))
         LivonTextField(
             value = "",
             onValueChange = {},

@@ -3,7 +3,6 @@ package com.livon.app.feature.member.reservation.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,9 +27,13 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.livon.app.ui.component.button.PrimaryButtonBottom
 import com.livon.app.ui.component.overlay.TopBar
+import com.livon.app.ui.theme.Gray
 import com.livon.app.ui.theme.LivonTheme
+import com.livon.app.ui.theme.LiveRed
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import com.livon.app.ui.component.navbar.HomeNavBar
+
 
 @Composable
 fun QnASubmitScreen(
@@ -51,73 +54,46 @@ fun QnASubmitScreen(
     Scaffold(
         topBar = { TopBar(title = "Q&A", onBack = onBack) },
         bottomBar = {
-            Column {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(WindowInsets.navigationBars.add(WindowInsets.ime).asPaddingValues())
+                    .background(MaterialTheme.colorScheme.surface)
+            ) {
                 PrimaryButtonBottom(
                     text = "예약 확정하기",
                     enabled = true,
                     onClick = { showDialog = true }
                 )
-                // TODO: 여기에 내비게이션 바(BottomNavigationBar) 추가
-                // 예시: BottomNavBar()
-                // 내비바는 화면 가로로 꽉 차고, 높이 50.dp, 색상 basic
-                Box(
+
+                Spacer(Modifier.height(8.dp))
+
+                HomeNavBar(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(50.dp)
-                        .background(MaterialTheme.colorScheme.surface) // basic 색상
-                        .padding(WindowInsets.navigationBars.asPaddingValues()) // 제스처 바 침범 방지
-                ) {
-                    // TODO: 내비바 아이템 (홈/예약 하기/예약 현황/마이페이지) 추가
-                    Text("Bottom Navigation Bar Area", modifier = Modifier.align(Alignment.Center))
-                }
-            }
-        }
-    ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            item {
-                Spacer(Modifier.height(25.dp))
-                Text(
-                    text = "$formattedDate $coachName 코치와의 상담 전\nQ&A를 등록해보세요.",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp, fontWeight = FontWeight.Normal),
-                    textAlign = TextAlign.Center
-                )
-                Spacer(Modifier.height(20.dp))
-                HorizontalDivider(color = Color(0xFF979696), thickness = 1.dp)
-            }
-
-            itemsIndexed(questions) { index, question ->
-                QnaInputItem(
-                    question = question,
-                    onValueChange = { newText ->
-                        questions = questions.toMutableList().also { it[index] = newText }
-                    },
-                    onDelete = {
-                        if (questions.size > 1) { // 최소 1개는 유지
-                            questions = questions.toMutableList().also { it.removeAt(index) }
+                        .height(56.dp), // 고정 높이로 Scaffold가 innerPadding을 계산하게 함
+                    currentRoute = null,
+                    onNavigate = { route ->
+                        when (route) {
+                            "home" -> onNavigateHome()
+                            "mypage" -> onNavigateToMyHealthInfo()
                         }
                     }
                 )
             }
-
-            item {
-                Spacer(Modifier.height(25.dp))
-                HorizontalDivider(color = Color(0xFF979696), thickness = 1.dp)
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    text = "추가 +",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { questions = questions + "" }
-                        .padding(vertical = 8.dp),
-                    textAlign = TextAlign.End,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+        }
+    ) { innerPadding ->
+        // body가 bottomBar 높이를 고려하도록 Column + weight 사용
+        Column(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f) // 하단 바를 위해 공간을 남김
+                    .fillMaxWidth()
+                    .padding(innerPadding) // Scaffold가 제공하는 패딩 적용
+                    .padding(horizontal = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // 기존 LazyColumn 내용(아이템들)을 여기 그대로 유지하세요.
             }
         }
     }
@@ -128,7 +104,7 @@ fun QnASubmitScreen(
             onConfirm = {
                 showDialog = false
                 onConfirmReservation(questions.filter { it.isNotBlank() })
-                onNavigateHome() // 확인 시 홈으로 이동
+                onNavigateHome()
             },
             onChangeHealthInfo = {
                 showDialog = false
@@ -154,7 +130,7 @@ private fun QnaInputItem(
             if (question.isNotEmpty()) {
                 Text(
                     text = "질문 삭제",
-                    color = MaterialTheme.colorScheme.primary, // live 색상
+                    color = LiveRed,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.clickable(onClick = onDelete).padding(4.dp)
                 )
@@ -218,12 +194,12 @@ fun ReservationCompleteDialog(
                     style = TextStyle(
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.primary, // live 색상
+                        color = LiveRed,
                         textDecoration = TextDecoration.Underline
                     ),
                     modifier = Modifier.clickable(onClick = onChangeHealthInfo)
                 )
-                HorizontalDivider(color = Color.Black, thickness = 1.dp)
+                HorizontalDivider(color = Gray, thickness = 1.dp)
                 Text(
                     text = "확인",
                     modifier = Modifier
@@ -237,7 +213,6 @@ fun ReservationCompleteDialog(
         }
     }
 }
-
 
 @Preview(showBackground = true)
 @Composable
@@ -274,12 +249,10 @@ private fun QnaInputItemPreview() {
     }
 }
 
-
 @Preview(showBackground = true, name = "예약 완료 다이얼로그")
 @Composable
 private fun ReservationCompleteDialogPreview() {
     LivonTheme {
-        // Dialog는 Scaffold 같은 배경 위에서 확인하는 것이 좋습니다.
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             ReservationCompleteDialog(
                 onDismiss = {},

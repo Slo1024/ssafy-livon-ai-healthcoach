@@ -2,13 +2,19 @@ package com.livon.app.ui.component.navbar
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -22,39 +28,36 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+//import androidx.compose.material.icons.filled.Event
 import com.livon.app.R // 아이콘 리소스 참조를 위해 import
 import com.livon.app.ui.theme.LivonTheme
 
-// 내비게이션 라우트와 리소스를 정의하는 enum 클래스
+// --- 수정된 부분 1: iconFilled 프로퍼티 제거 ---
+// 이제 각 항목은 아이콘 리소스를 하나만 참조합니다.
 enum class BottomNavRoute(
     val routeName: String,
     val title: String,
-    val icon: Int,
-    val iconFilled: Int
+    val icon: Int
 ) {
     HOME(
         routeName = "home",
         title = "홈",
-        icon = R.drawable.ic_home,
-        iconFilled = R.drawable.ic_homefilled
+        icon = R.drawable.ic_home
     ),
     BOOKING(
         routeName = "booking",
         title = "예약하기",
-        icon = R.drawable.ic_reservation,
-        iconFilled = R.drawable.ic_reservationfilled
+        icon = R.drawable.ic_reservation
     ),
     RESERVATIONS(
         routeName = "reservations",
         title = "예약현황",
-        icon = R.drawable.ic_check,
-        iconFilled = R.drawable.ic_checkfilled
+        icon = R.drawable.ic_check
     ),
     MY_PAGE(
         routeName = "mypage",
         title = "마이페이지",
-        icon = R.drawable.ic_personblack,
-        iconFilled = R.drawable.ic_personblackfilled
+        icon = R.drawable.ic_personblack
     )
 }
 
@@ -79,7 +82,6 @@ fun HomeNavBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             navItems.forEach { item ->
-                // RowScope의 확장 함수로 각 아이템을 구현
                 BottomNavItem(
                     item = item,
                     isSelected = currentRoute == item.routeName,
@@ -90,14 +92,15 @@ fun HomeNavBar(
     }
 }
 
-// RowScope 내에서만 사용되도록 확장 함수로 정의
 @Composable
 private fun RowScope.BottomNavItem(
     item: BottomNavRoute,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val iconRes = if (isSelected) item.iconFilled else item.icon
+    // --- 수정된 부분 2: iconRes 로직 변경 ---
+    // 이제 isSelected 여부와 상관없이 항상 item.icon을 사용합니다.
+    val iconRes = item.icon
     val contentColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Black
 
     Column(
@@ -127,7 +130,6 @@ private fun RowScope.BottomNavItem(
 @Composable
 private fun HomeNavBarPreview() {
     LivonTheme {
-        // "예약하기" 탭이 선택된 상태를 미리보기
         HomeNavBar(currentRoute = BottomNavRoute.BOOKING.routeName) {
             // Preview에서는 클릭 동작을 확인할 필요 없음
         }
@@ -138,7 +140,46 @@ private fun HomeNavBarPreview() {
 @Composable
 private fun HomeNavBarHomeSelectedPreview() {
     LivonTheme {
-        // "홈" 탭이 선택된 상태를 미리보기
         HomeNavBar(currentRoute = BottomNavRoute.HOME.routeName) {}
     }
 }
+
+
+@Composable
+private fun TestNavBarNoResources(currentRoute: String?, onNavigate: (String) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(50.dp),
+        horizontalArrangement = Arrangement.SpaceAround,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val items = listOf(
+            Triple("home", "홈", Icons.Default.Home),
+//            Triple("booking", "예약하기", Icons.Default.Event),
+            Triple("reservations", "예약현황", Icons.Default.Check),
+            Triple("mypage", "마이페이지", Icons.Default.Person)
+        )
+        items.forEach { (route, title, icon) ->
+            val selected = currentRoute == route
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clickable { onNavigate(route) },
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(imageVector = icon, contentDescription = title)
+                Text(
+                    text = title,
+                    fontSize = 10.sp,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                )
+            }
+        }
+    }
+}
+
+
+

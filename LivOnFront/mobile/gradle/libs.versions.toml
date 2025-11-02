@@ -28,6 +28,7 @@ identityDoctypesJvm = "202411.1"
 roomGradlePlugin = "2.8.3"
 
 navCompose = "2.8.3"
+transportApi = "4.0.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -76,6 +77,7 @@ identity-doctypes-jvm = { group = "com.android.identity", name = "identity-docty
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navCompose" }
 
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version = "2.6.0" }
+transport-api = { group = "com.google.android.datatransport", name = "transport-api", version.ref = "transportApi" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

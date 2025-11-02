@@ -70,6 +70,7 @@ dependencies {
 
 
     implementation(libs.identity.doctypes.jvm)
+    implementation(libs.transport.api)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

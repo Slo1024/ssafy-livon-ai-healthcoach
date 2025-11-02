@@ -76,7 +76,7 @@ fun CalendarMonth(
                             Modifier
                                 .weight(1f)
                                 .height(40.dp)
-                                .clip(RoundedCornerShape(20.dp))
+                                .clip(RoundedCornerShape(40.dp))
                                 .background(
                                     if (isSelected)
                                         MaterialTheme.colorScheme.primary.copy(alpha = 0.20f)

@@ -67,7 +67,7 @@ fun CoachListScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
-//                        .aspectRatio(288f / 30f)
+                        .aspectRatio(288f / 30f)
                 )
                 Spacer(Modifier.height(12.dp))
             }

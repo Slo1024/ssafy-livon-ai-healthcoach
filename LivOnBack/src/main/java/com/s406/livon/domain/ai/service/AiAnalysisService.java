@@ -16,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -25,7 +24,6 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class AiAnalysisService {
 
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final String DEVELOPER_INSTRUCTION = """
             너는 건강 데이터를 분석하는 전문가이자 건강 코치야.
             다음 지침을 반드시 지켜서 한국어로 일관된 답변을 만들어.
@@ -84,8 +82,6 @@ public class AiAnalysisService {
     }
 
     private String buildUserPrompt(User user, HealthSurvey survey) {
-        String gender = user.getGender() != null ? user.getGender().name() : "미기재";
-        String birthdate = user.getBirthdate() != null ? user.getBirthdate().format(DATE_FORMATTER) : "미기재";
 
         return String.format(Locale.KOREA, """
                 다음은 한 사용자의 기본 정보와 건강 설문 데이터야.
@@ -114,8 +110,8 @@ public class AiAnalysisService {
                 위 데이터를 참고하여 이해하기 쉬운 언어로 요약해줘.
                 """,
                 user.getNickname(),
-                gender,
-                birthdate,
+                user.getGender(),
+                user.getBirthdate(),
                 survey.getAvgSleepHours(),
                 survey.getSleepTime(),
                 survey.getSteps(),

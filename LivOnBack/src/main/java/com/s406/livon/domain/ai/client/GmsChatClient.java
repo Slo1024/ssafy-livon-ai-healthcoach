@@ -10,10 +10,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
-import java.time.Duration;
 import java.util.List;
 import java.net.URI;
 
@@ -78,18 +76,7 @@ public class GmsChatClient {
                 .bodyToMono(GmsChatCompletionResponse.class);
 
         GmsChatCompletionResponse response = responseMono.block();
-
-        if (response == null || response.getChoices() == null || response.getChoices().isEmpty()) {
-            log.warn("GMS response is empty or null for prompt: {}", userPrompt);
-            return null;
-        }
-
         GmsChatCompletionResponse.Choice firstChoice = response.getChoices().get(0);
-        if (firstChoice.getMessage() == null) {
-            log.warn("GMS response choice has no message for prompt: {}", userPrompt);
-            return null;
-        }
-
         return firstChoice.getMessage().getContent();
     }
 }

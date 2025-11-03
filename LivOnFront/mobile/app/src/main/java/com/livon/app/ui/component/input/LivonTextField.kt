@@ -19,6 +19,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.livon.app.ui.theme.LivonTheme
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 
 @Composable
 fun LivonTextField(
@@ -28,6 +30,7 @@ fun LivonTextField(
     placeholder: String? = null,
     modifier: Modifier = Modifier,
     maxLength: Int? = null,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default, // ← 추가(선택)
     textStyle: TextStyle = MaterialTheme.typography.titleMedium.copy(
         fontWeight = FontWeight.Normal,
         color = Color(0xFF000000)
@@ -74,6 +77,7 @@ fun LivonTextField(
                 singleLine = true,
                 textStyle = textStyle,
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                keyboardOptions = keyboardOptions,
                 modifier = Modifier.fillMaxWidth(),
                 decorationBox = { inner ->
                     Row(

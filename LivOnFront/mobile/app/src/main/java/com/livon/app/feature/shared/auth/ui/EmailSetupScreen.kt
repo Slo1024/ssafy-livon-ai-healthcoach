@@ -22,7 +22,6 @@ fun EmailSetupScreen(
     modifier: Modifier = Modifier
 ) {
     var email by remember { mutableStateOf("") }
-    val maxLength = 30
     val isValidEmail = email.contains("@") && email.contains(".")
 
     CommonSignUpScreenA(
@@ -48,7 +47,7 @@ fun EmailSetupScreen(
             onValueChange = { email = it },
             label = "이메일",
             placeholder = "example@example.com",
-            maxLength = maxLength
+            maxLength = 30
         )
     }
 }

@@ -20,14 +20,12 @@ fun NicknameScreen(
     modifier: Modifier = Modifier
 ) {
     var nickname by remember { mutableStateOf("") }
-    val isValid = nickname.length in 1..10
 
     CommonSignUpScreenA(
         topBar = { TopBar(title = "회원가입", onBack = {}) },
         bottomBar = { 
             PrimaryButtonBottom(
                 text = "다음",
-                enabled = isValid,
                 onClick = { /* TODO: Navigate to next screen */ }
             ) 
         }
@@ -39,22 +37,16 @@ fun NicknameScreen(
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onBackground
                 )
-                Spacer(Modifier.height(Spacing.DescToContent))
+                Spacer(Modifier.height(150.dp))
                 LivonTextField(
                     value = nickname,
                     onValueChange = { nickname = it },
                     label = "닉네임",
-                    placeholder = "닉네임을 입력해주세요"
+                    placeholder = "닉네임을 입력해주세요",
+                    maxLength = 10
                 )
             }
-            Text(
-                text = "${nickname.length}/10",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(8.dp)
-            )
+
         }
     }
 }

@@ -22,4 +22,14 @@ public interface HealthSurveyRepository extends JpaRepository<HealthSurvey, UUID
 
     @Query("SELECT ROUND(AVG(h.weight), 2) FROM HealthSurvey h WHERE h.weight IS NOT NULL")
     Double calculateAverageWeight();
+
+    @Query("""
+        SELECT 
+            AVG(hs.steps),
+            AVG(hs.sleepTime),
+            AVG(hs.height),
+            AVG(hs.weight)
+        FROM HealthSurvey hs
+        """)
+    Object[] calculateAllAverages();
 }

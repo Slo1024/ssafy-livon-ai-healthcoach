@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
+import { InquirySuccessModal } from '../../components/common/Modal';
 
 const PageContainer = styled.div`
   min-height: 100vh;
@@ -165,10 +166,69 @@ const SubmitButton = styled.button`
 export const InquiryPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'faq' | 'inquiry'>('inquiry');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    content: '',
+    agree: false,
+  });
 
   const goFAQ = () => {
     setActiveTab('faq');
     navigate('/support/faq');
+  };
+
+  const handleInputChange = (field: string, value: string | boolean) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // 필수 입력사항 검증
+    if (!formData.name.trim()) {
+      alert('이름을 입력해주세요.');
+      return;
+    }
+
+    if (!formData.email.trim()) {
+      alert('이메일을 입력해주세요.');
+      return;
+    }
+
+    if (!formData.content.trim()) {
+      alert('문의 내용을 입력해주세요.');
+      return;
+    }
+
+    if (!formData.agree) {
+      alert('개인 정보 수집 및 이용에 동의해주세요.');
+      return;
+    }
+
+    // 이메일 형식 검증 (간단한 검증)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      alert('올바른 이메일 형식을 입력해주세요.');
+      return;
+    }
+
+    // 모달 표시
+    setShowSuccessModal(true);
+  };
+
+  const handleModalConfirm = () => {
+    // 폼 초기화
+    setFormData({
+      name: '',
+      email: '',
+      phone: '',
+      content: '',
+      agree: false,
+    });
+    setShowSuccessModal(false);
   };
 
   return (
@@ -183,28 +243,49 @@ export const InquiryPage: React.FC = () => {
 
         <Divider />
 
-        <Form onSubmit={(e) => e.preventDefault()}>
+        <Form onSubmit={handleSubmit}>
           <FieldRow>
             <FieldLabel>이름<Required>*</Required></FieldLabel>
-            <LineInput placeholder="이름" />
+            <LineInput 
+              placeholder="이름" 
+              value={formData.name}
+              onChange={(e) => handleInputChange('name', e.target.value)}
+            />
           </FieldRow>
           <FieldRow>
             <FieldLabel>이메일<Required>*</Required></FieldLabel>
-            <LineInput placeholder="이메일" />
+            <LineInput 
+              placeholder="이메일" 
+              type="email"
+              value={formData.email}
+              onChange={(e) => handleInputChange('email', e.target.value)}
+            />
           </FieldRow>
           <FieldRow>
             <FieldLabel>연락처</FieldLabel>
-            <LineInput placeholder="연락 받을실 연락처(선택사항)" />
+            <LineInput 
+              placeholder="연락 받을실 연락처(선택사항)" 
+              value={formData.phone}
+              onChange={(e) => handleInputChange('phone', e.target.value)}
+            />
           </FieldRow>
           <FieldRow>
             <FieldLabel>문의 내용<Required>*</Required></FieldLabel>
-            <TextArea placeholder="문의 내용을 입력해 주세요." />
+            <TextArea 
+              placeholder="문의 내용을 입력해 주세요." 
+              value={formData.content}
+              onChange={(e) => handleInputChange('content', e.target.value)}
+            />
           </FieldRow>
 
           <div>
             <FieldLabel style={{ width: 180 }}>개인 정보 수집 및 이용 동의<Required>*</Required></FieldLabel>
             <AgreeRow>
-              <input type="checkbox" />
+              <input 
+                type="checkbox" 
+                checked={formData.agree}
+                onChange={(e) => handleInputChange('agree', e.target.checked)}
+              />
               <span>개인 정보 수집 및 이용에 동의합니다.</span>
             </AgreeRow>
           </div>
@@ -213,6 +294,13 @@ export const InquiryPage: React.FC = () => {
             <SubmitButton type="submit">보내기</SubmitButton>
           </SubmitWrap>
         </Form>
+
+        {/* 문의 사항 전달 완료 모달 */}
+        <InquirySuccessModal
+          open={showSuccessModal}
+          onClose={() => setShowSuccessModal(false)}
+          onConfirm={handleModalConfirm}
+        />
       </ContentWrapper>
     </PageContainer>
   );

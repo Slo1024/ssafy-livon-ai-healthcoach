@@ -22,7 +22,13 @@ import com.livon.app.R
 import com.livon.app.ui.theme.*
 
 @Composable
-fun CoachStreamingHeader(roomName: String, onLeaveRoom: () -> Unit, modifier: Modifier = Modifier) {
+fun CoachStreamingHeader(
+    roomName: String,
+    onLeaveRoom: () -> Unit,
+    onPersonClick: () -> Unit = {},
+    onChatClick: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
     Surface(
         color = Basic,
         modifier = Modifier.fillMaxWidth(),
@@ -46,13 +52,15 @@ fun CoachStreamingHeader(roomName: String, onLeaveRoom: () -> Unit, modifier: Mo
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CustomHeaderIcon(
                     iconResId = R.drawable.person,
-                    contentDescription = "참가자"
+                    contentDescription = "참가자",
+                    onClick = onPersonClick
                 )
                 Spacer(Modifier.width(8.dp))
 
                 CustomHeaderIcon(
                     iconResId = R.drawable.chat,
-                    contentDescription = "채팅"
+                    contentDescription = "채팅",
+                    onClick = onChatClick
                 )
             }
         }

@@ -15,7 +15,9 @@ export const ROUTES = {
   
   // 코치 관련
   COACH_DASHBOARD: '/coach/dashboard',
+  CLASS_LIST: '/classes',
   CLASS_SETUP: '/coach/class-setup',
+  RESERVATION_LIST: '/reservations',
   RESERVATION_MANAGE: '/coach/reservation-manage',
   PAST_RESERVATION: '/coach/past-reservation',
   STREAMING: '/coach/streaming',

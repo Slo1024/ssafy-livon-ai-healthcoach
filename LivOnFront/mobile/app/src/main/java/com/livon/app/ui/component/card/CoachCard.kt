@@ -36,8 +36,8 @@ fun CoachCard(
 
     Card(
         onClick = onClick,
-        modifier = modifier
-            .height(153.dp),
+        modifier = modifier,
+//            .height(153.dp),
         shape = RoundedCornerShape(0.dp),
         colors = CardDefaults.cardColors(containerColor = Basic) // 흰 배경
     ) {
@@ -100,7 +100,7 @@ fun CoachCard(
                         }
                     }
 
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(10.dp))
 
                     Text(
                         text = intro,

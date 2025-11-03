@@ -5,10 +5,12 @@ interface InputProps {
   type?: 'text' | 'email' | 'password' | 'number' | 'tel';
   placeholder?: string;
   value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   error?: string;
   disabled?: boolean;
   required?: boolean;
+  readOnly?: boolean;
+  onClick?: () => void;
   className?: string;
   style?: React.CSSProperties;
   maxLength?: number;
@@ -50,6 +52,8 @@ export const Input: React.FC<InputProps> = ({
   error,
   disabled = false,
   required = false,
+  readOnly = false,
+  onClick,
   className = '',
   style,
   maxLength,
@@ -63,6 +67,8 @@ export const Input: React.FC<InputProps> = ({
         onChange={onChange}
         disabled={disabled}
         required={required}
+        readOnly={readOnly}
+        onClick={onClick}
         className={className}
         style={style}
         maxLength={maxLength}

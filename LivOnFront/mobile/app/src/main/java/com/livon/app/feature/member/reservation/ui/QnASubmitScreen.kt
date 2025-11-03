@@ -9,13 +9,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -25,14 +25,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.livon.app.R
 import com.livon.app.ui.component.button.PrimaryButtonBottom
+import com.livon.app.ui.component.navbar.HomeNavBar
 import com.livon.app.ui.component.overlay.TopBar
 import com.livon.app.ui.theme.Gray
 import com.livon.app.ui.theme.LivonTheme
 import com.livon.app.ui.theme.LiveRed
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import com.livon.app.ui.component.navbar.HomeNavBar
 
 @Composable
 fun QnASubmitScreen(
@@ -43,30 +44,37 @@ fun QnASubmitScreen(
     onNavigateHome: () -> Unit,
     onNavigateToMyHealthInfo: () -> Unit,
 ) {
-    var questions by remember { mutableStateOf(listOf("", "")) }
-    var showDialog by remember { mutableStateOf(false) }
+    var questions by rememberSaveable { mutableStateOf(listOf("", "")) }
+    var showDialog by rememberSaveable { mutableStateOf(false) }
 
     val formattedDate = remember(selectedDate) {
         selectedDate.format(DateTimeFormatter.ofPattern("M월 d일"))
     }
 
     Scaffold(
-        topBar = { TopBar(title = "Q&A", onBack = onBack) },
+        contentWindowInsets = WindowInsets(0),
+        topBar = {
+            // 상단 안전영역(상태바)
+            Box(Modifier.windowInsetsPadding(WindowInsets.statusBars)) {
+                TopBar(title = "Q&A", onBack = onBack)
+            }
+        },
         bottomBar = {
+            // 하단 안전영역(제스처바/IME)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(WindowInsets.navigationBars.add(WindowInsets.ime).asPaddingValues())
                     .background(MaterialTheme.colorScheme.surface)
+                    .padding(WindowInsets.navigationBars.add(WindowInsets.ime).asPaddingValues())
             ) {
+                // 버튼-내비바 ‘붙이기’: 내부 navPadding 끄고, bottomMargin=0
                 PrimaryButtonBottom(
                     text = "예약 확정하기",
                     enabled = true,
-                    onClick = { showDialog = true }
+                    onClick = { showDialog = true },
+                    bottomMargin = 0.dp,
+                    applyNavPadding = false
                 )
-
-                Spacer(Modifier.height(8.dp))
-
                 HomeNavBar(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -82,80 +90,90 @@ fun QnASubmitScreen(
             }
         }
     ) { innerPadding ->
-        // body - 상단고정(TopBar) / 하단고정(bottomBar) 사이에서 스크롤 가능 영역
-        Column(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f) // 하단 바를 위해 공간을 남김
-                    .fillMaxWidth()
-                    .padding(innerPadding)
-                    .padding(horizontal = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // 헤더: 코치명, 날짜
-                item {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = "$coachName 코치",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 20.sp),
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Start
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = formattedDate,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, color = Color.Gray),
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Start
-                    )
-                    Spacer(Modifier.height(12.dp))
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                top = innerPadding.calculateTopPadding() + 8.dp,
+                bottom = innerPadding.calculateBottomPadding(),
+                start = 16.dp,
+                end = 16.dp
+            ),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // 중앙 정렬 헤더
+            item {
+                Spacer(Modifier.height(8.dp))
+
+                val headerText = buildString {
+                    append(formattedDate)
+                    append(" ")
+                    append(coachName)
+                    append(" 코치와의 상담 전\nQ&A를 등록해보세요.")
                 }
 
-                // 질문 입력 리스트
-                itemsIndexed(questions) { index, question ->
-                    QnaInputItem(
-                        question = question,
-                        onValueChange = { new ->
-                            questions = questions.toMutableList().also { it[index] = new }
-                        },
-                        onDelete = {
-                            questions = questions.toMutableList().also { it.removeAt(index) }
-                        }
-                    )
-                }
+                Text(
+                    text = headerText,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
 
-                // 질문 추가 버튼
-                item {
-                    Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(12.dp))
+            }
+
+            // 질문 입력 리스트
+            itemsIndexed(questions, key = { idx, _ -> idx }) { index, question ->
+                QnaInputItem(
+                    question = question,
+                    onValueChange = { new ->
+                        questions = questions.toMutableList().also { it[index] = new }
+                    },
+                    onDelete = {
+                        questions = questions.toMutableList().also { it.removeAt(index) }
+                    }
+                )
+            }
+
+            // “추가 +” ( + 는 아이콘 )
+            item {
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Row(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        horizontalArrangement = Arrangement.End
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { questions = questions + "" }
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "질문 추가",
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier
-                                .clickable {
-                                    questions = questions + ""
-                                }
-                                .padding(8.dp),
-                            style = MaterialTheme.typography.bodyMedium
+                            text = "추가",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_add),
+                            contentDescription = "추가",
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
-                    Spacer(Modifier.height(8.dp))
-                }
-
-                // 여유 공간 (하단 버튼 가림 방지)
-                item {
-                    Spacer(Modifier.height(64.dp))
                 }
             }
         }
     }
 
+    // 다이얼로그는 LazyColumn 밖
     if (showDialog) {
         ReservationCompleteDialog(
             onDismiss = { showDialog = false },
@@ -178,20 +196,25 @@ private fun QnaInputItem(
     onValueChange: (String) -> Unit,
     onDelete: () -> Unit
 ) {
-    // 상단 패딩 축소(시각적으로 여유 줄임)
     Column(modifier = Modifier.padding(top = 12.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("Q", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(
+                "Q",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
             if (question.isNotEmpty()) {
                 Text(
                     text = "질문 삭제",
                     color = LiveRed,
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.clickable(onClick = onDelete).padding(4.dp)
+                    modifier = Modifier
+                        .clickable(onClick = onDelete)
+                        .padding(4.dp)
                 )
             }
         }
@@ -231,7 +254,6 @@ fun ReservationCompleteDialog(
 ) {
     Dialog(
         onDismissRequest = onDismiss,
-        // 플랫폼 기본 너비 사용 (다이얼로그 잘림 방지)
         properties = DialogProperties(usePlatformDefaultWidth = true)
     ) {
         Card(

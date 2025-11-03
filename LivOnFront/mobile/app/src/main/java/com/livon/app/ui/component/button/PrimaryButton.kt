@@ -64,7 +64,7 @@ fun PrimaryButtonBottom(
 //    targetWidth: Dp = 288.dp,
     targetWidth: Dp? = null,
     height: Dp = 44.dp,
-
+    applyNavPadding: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     // bottomBar는 "세로 wrap"이어야 함
@@ -74,9 +74,10 @@ fun PrimaryButtonBottom(
     ) {
         Box(
             modifier = modifier
-                .fillMaxWidth()                 // 가로만 꽉
-                .wrapContentHeight()            // ★ 세로는 wrap
-                .navigationBarsPadding()        // 하단 시스템바 피하기
+                .fillMaxWidth()
+                .wrapContentHeight()
+                // ✅ 선택적으로만 적용
+                .then(if (applyNavPadding) Modifier.navigationBarsPadding() else Modifier)
                 .padding(
                     start = horizontalMargin,
                     end = horizontalMargin,

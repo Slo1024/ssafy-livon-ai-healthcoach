@@ -37,19 +37,12 @@ public class GmsChatClient {
     private String model;
 
     @Value("${gms.api.key}")
-   private String apiKey;
+    private String apiKey;
 
     private URI chatCompletionUri;
 
     @PostConstruct
     void init() {
-        if (!StringUtils.hasText(baseUrl)) {
-            throw new IllegalStateException("gms.api.base-url 설정이 비어 있습니다.");
-        }
-        if (!StringUtils.hasText(chatCompletionsPath)) {
-            throw new IllegalStateException("gms.api.chat-completions-path 설정이 비어 있습니다.");
-        }
-
         String normalizedBase = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
         String normalizedPath = chatCompletionsPath.startsWith("/") ? chatCompletionsPath : "/" + chatCompletionsPath;
 

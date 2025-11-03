@@ -19,6 +19,12 @@ export const CONFIG = {
     AUDIO_SAMPLE_RATE: 44100,
   },
   
+  // LiveKit 설정 (OpenVidu 3.4.1)
+  LIVEKIT: {
+    SERVER_URL: process.env.REACT_APP_LIVEKIT_URL || 'ws://localhost:7880',
+    APPLICATION_SERVER_URL: process.env.REACT_APP_API_BASE_URL || 'http://localhost:6080',
+  },
+  
   // 페이지네이션 설정
   PAGINATION: {
     DEFAULT_PAGE_SIZE: 10,

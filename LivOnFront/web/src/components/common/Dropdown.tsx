@@ -17,14 +17,14 @@ interface DropdownProps {
   style?: React.CSSProperties;
 }
 
-const StyledDropdown = styled.select<{ isPlaceholder?: boolean }>`
+const StyledDropdown = styled.select<{ $isPlaceholder?: boolean }>`
   height: 48px;
   line-height: 48px;
   border: 1px solid #ecedec;
   border-radius: 12px;
   padding: 0 12px;
   font-size: 13px;
-  color: ${props => (props.isPlaceholder ? '#999999' : '#000000')};
+  color: ${props => (props.$isPlaceholder ? '#999999' : '#000000')};
   background-color: white;
   /* custom caret */
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%23999999' d='M1 0l4 4 4-4 1 1-5 5-5-5z'/></svg>");
@@ -85,7 +85,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
         disabled={disabled}
         className={className}
         style={style}
-        isPlaceholder={isPlaceholder}
+        $isPlaceholder={isPlaceholder}
       >
         {placeholder && (
           <option value="" disabled>

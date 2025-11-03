@@ -13,9 +13,9 @@ const fadeInUp = keyframes`
   }
 `;
 
-const AnimatedText = styled.p<{ visible: boolean }>`
+const AnimatedText = styled.p<{ $visible: boolean }>`
   opacity: 0;
-  animation: ${props => props.visible ? fadeInUp : 'none'} 0.8s ease-out forwards;
+  animation: ${props => props.$visible ? fadeInUp : 'none'} 0.8s ease-out forwards;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 40px;
   color: #374151;
@@ -113,13 +113,13 @@ export const AboutPage: React.FC = () => {
           </h1>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <AnimatedText visible={firstVisible} style={{ fontWeight: 400 }}>
+            <AnimatedText $visible={firstVisible} style={{ fontWeight: 400 }}>
               실시간 스트리밍으로 코치와 참여자가 연결되어,<br />
               개인의 건강 데이터를 기반으로<br />
               맞춤형 상담과 코칭을 제공합니다.
             </AnimatedText>
             
-            <AnimatedText visible={secondVisible} style={{ fontWeight: 500 }}>
+            <AnimatedText $visible={secondVisible} style={{ fontWeight: 500 }}>
               운동, 영양, 통증, 멘탈케어까지,<br />
               당신에게 전문 코칭이 필요한 순간,<br />
               언제 어디서나 리브온이 함께합니다.

@@ -16,10 +16,10 @@ public class HealthStatisticsScheduler {
     /**
      * 매일 새벽 2시에 건강 통계 평균값 계산
      */
-    @Scheduled(cron = "*/10 * * * * *")
+    @Scheduled(cron = "0 0 2 * * *")
     public void calculateHealthStatistics() {
         log.info("건강 통계 평균값 계산 시작");
-        
+
         try {
             healthStatisticsService.updateHealthStatistics();
             log.info("건강 통계 평균값 계산 완료");

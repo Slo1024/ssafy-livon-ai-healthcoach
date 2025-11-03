@@ -2,24 +2,75 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../constants/routes';
 import styled from 'styled-components';
-import { SegmentedTabs } from '../../components/common/Button';
 import coachverification1 from '../../assets/images/coachverification1.png';
 import coachverification2 from '../../assets/images/coachverification2.png';
 
 const PageContainer = styled.div`
-  width: 100%;
-  max-width: 1080px;
+  min-height: 100vh;
+  background-color: #ffffff;
+  padding: 40px 20px;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+`;
+
+const ContentWrapper = styled.div`
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 30px 20px 60px;
-  box-sizing: border-box;
 `;
 
 const PageTitle = styled.h1`
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-weight: 700;
   font-size: 40px;
-  color: #000;
-  margin: 0 0 16px 0;
+  color: #000000;
+  margin: 0 0 24px 0;
+`;
+
+const Tabs = styled.div`
+  display: flex;
+  gap: 0;
+  
+  /* 두 버튼이 맞닿도록 인접 모서리 처리 */
+  button {
+    border-radius: 6px;
+  }
+  button:last-child {
+    margin-left: -1px; /* 테두리 겹치기 */
+  }
+`;
+
+const PrimaryTabButton = styled.button`
+  width: 120px;
+  height: 48px;
+  border: 1px solid #4965f6;
+  background-color: #4965f6;
+  color: #ffffff;
+  font-weight: 500; /* Pretendard Medium */
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 6px;
+  white-space: nowrap;
+`;
+
+const OutlineTabButton = styled.button`
+  width: 120px;
+  height: 48px;
+  border: 1px solid #4965f6;
+  background-color: #ffffff;
+  color: #4965f6;
+  font-weight: 500; /* Pretendard Medium */
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 6px;
+  white-space: nowrap;
+`;
+
+const Divider = styled.div`
+  width: 100vw; /* 화면 전체 폭 */
+  height: 2px;
+  background-color: #4965f6;
+  margin: 0;
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%); /* 중앙 기준으로 좌우 끝까지 */
 `;
 
 
@@ -101,16 +152,13 @@ export const MyPageVerificationPage: React.FC = () => {
 
   return (
     <PageContainer>
-      <PageTitle>{nickname ? `${nickname} 코치님 마이페이지` : '코치님 마이페이지'}</PageTitle>
-      
-      <SegmentedTabs
-        leftLabel="코치님 정보"
-        rightLabel="코치 인증 여부"
-        active="right"
-        onLeftClick={handleInfoClick}
-        onRightClick={handleVerificationClick}
-        tabWidth={120}
-      />
+      <ContentWrapper>
+        <PageTitle>{nickname ? `${nickname} 코치님 마이페이지` : '코치님 마이페이지'}</PageTitle>
+        <Tabs>
+          <OutlineTabButton onClick={handleInfoClick}>코치님 정보</OutlineTabButton>
+          <PrimaryTabButton onClick={handleVerificationClick}>코치 인증 여부</PrimaryTabButton>
+        </Tabs>
+        <Divider />
       
       <StatusMessage>
         코치님의 전문가 인증이<br />
@@ -129,6 +177,7 @@ export const MyPageVerificationPage: React.FC = () => {
           <img src={coachverification2} alt="코치 인증 일러스트 2" />
         </ImageWrapper>
       </ImageContainer>
+      </ContentWrapper>
     </PageContainer>
   );
 };

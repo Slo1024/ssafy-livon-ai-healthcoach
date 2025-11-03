@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
+import { Room, RoomEvent, LocalVideoTrack, RemoteVideoTrack, RemoteAudioTrack, RemoteTrackPublication, RemoteParticipant, RemoteTrack, Track, DataPacket_Kind } from 'livekit-client';
 import { StreamingEndModal } from '../../components/common/Modal';
 import { ROUTES } from '../../constants/routes';
+import { CONFIG } from '../../constants/config';
 import { useAuth } from '../../hooks/useAuth';
+import { VideoComponent } from '../../components/streaming/VideoComponent';
+import { AudioComponent } from '../../components/streaming/AudioComponent';
 import videoOffIcon from '../../assets/images/video_off.png';
 
 const StreamingContainer = styled.div`
@@ -477,12 +481,10 @@ const LeaveButton = styled.button`
   }
 `;
 
-interface Participant {
-  id: string;
-  name: string;
-  isVideoEnabled: boolean;
-  isAudioEnabled: boolean;
-  stream?: MediaStream | null;
+interface RemoteTrackInfo {
+  trackPublication: RemoteTrackPublication;
+  participantIdentity: string;
+  participant: RemoteParticipant;
 }
 
 interface ChatMessage {
@@ -496,6 +498,9 @@ export const StreamingPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const [room, setRoom] = useState<Room | undefined>(undefined);
+  const [localTrack, setLocalTrack] = useState<LocalVideoTrack | undefined>(undefined);
+  const [remoteTracks, setRemoteTracks] = useState<RemoteTrackInfo[]>([]);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
@@ -503,64 +508,204 @@ export const StreamingPage: React.FC = () => {
   const [showParticipants, setShowParticipants] = useState(false);
   const [showEndModal, setShowEndModal] = useState(false);
   const [viewMode, setViewMode] = useState<'gallery' | 'speaker' | 'shared'>('gallery');
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-  const [participants, setParticipants] = useState<Participant[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [sharedContent, setSharedContent] = useState<{
     type: 'ai-analysis';
     memberName: string;
   } | null>(null);
+  const [participantName] = useState(`${user?.nickname || '코치'} 코치님`);
+  const [roomName] = useState(() => {
+    // 예약 ID 또는 세션 식별자 생성 (location.state에서 가져오거나 자동 생성)
+    return location.state?.reservationId || `room-${Date.now()}`;
+  });
 
-  const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
-
-  // 더미 참가자 데이터 (실제로는 스트리밍 연결에서 받아옴)
-  useEffect(() => {
-    // 더미 참가자 초기화
-    const dummyParticipants: Participant[] = [
-      { id: 'coach', name: `${user?.nickname || '코치'} 코치님`, isVideoEnabled: true, isAudioEnabled: false },
-      { id: 'member1', name: '차민규 회원님', isVideoEnabled: true, isAudioEnabled: true },
-    ];
-    setParticipants(dummyParticipants);
-
-    // 로컬 비디오 스트림 가져오기 (실제 구현 시)
-    // navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-    //   .then(stream => setLocalStream(stream));
-  }, [user]);
-
-  const handleToggleVideo = () => {
-    setIsVideoEnabled(prev => !prev);
-    if (localStream) {
-      const videoTrack = localStream.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.enabled = !isVideoEnabled;
-      }
-    }
-  };
-
-  const handleToggleAudio = () => {
-    setIsAudioEnabled(prev => !prev);
-    if (localStream) {
-      const audioTrack = localStream.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = !isAudioEnabled;
-      }
-    }
-  };
-
-  const handleShareScreen = () => {
-    if (!isScreenSharing) {
-      // AI 분석본 공유
-      setSharedContent({
-        type: 'ai-analysis',
-        memberName: '김싸피',
+  // 토큰 발급 API 호출
+  const getToken = async (): Promise<string> => {
+    try {
+      const response = await fetch(`${CONFIG.LIVEKIT.APPLICATION_SERVER_URL}/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          roomName,
+          participantName,
+          role: 'coach',
+        }),
       });
-      setIsScreenSharing(true);
-      setViewMode('shared');
+
+      if (!response.ok) {
+        throw new Error('토큰 발급 실패');
+      }
+
+      const data = await response.json();
+      return data.token;
+    } catch (error) {
+      console.error('토큰 발급 오류:', error);
+      // 개발 환경에서는 백엔드 서버가 실행되지 않았을 수 있음
+      // 실제 배포 환경에서는 백엔드 API가 필수입니다
+      const errorMessage = error instanceof Error ? error.message : '토큰 발급 실패';
+      throw new Error(`토큰 발급에 실패했습니다. 백엔드 서버(${CONFIG.LIVEKIT.APPLICATION_SERVER_URL})가 실행 중인지 확인해주세요. 오류: ${errorMessage}`);
+    }
+  };
+
+  // 방 입장 로직
+  useEffect(() => {
+    let newRoom: Room | undefined;
+    
+    const joinRoom = async () => {
+      try {
+        // Room 객체 생성
+        newRoom = new Room();
+        setRoom(newRoom);
+
+        // 이벤트 리스너 등록
+        newRoom.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
+          if (track.kind === Track.Kind.Video || track.kind === Track.Kind.Audio) {
+            setRemoteTracks((prev) => {
+              // 중복 체크 - track.sid 사용
+              const trackSid = track.sid;
+              const participantId = participant.identity || participant.name || 'Unknown';
+              const exists = prev.some(
+                (item) => {
+                  const itemTrackSid = item.trackPublication.track?.sid;
+                  return itemTrackSid === trackSid && item.participantIdentity === participantId;
+                }
+              );
+              if (!exists) {
+                return [
+                  ...prev,
+                  {
+                    trackPublication: publication,
+                    participantIdentity: participantId,
+                    participant,
+                  },
+                ];
+              }
+              return prev;
+            });
+          }
+        });
+
+        newRoom.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
+          const trackSid = track.sid;
+          const participantId = participant.identity || participant.name || 'Unknown';
+          setRemoteTracks((prev) =>
+            prev.filter(
+              (item) => {
+                const itemTrackSid = item.trackPublication.track?.sid;
+                return !(itemTrackSid === trackSid && item.participantIdentity === participantId);
+              }
+            )
+          );
+        });
+
+        newRoom.on(RoomEvent.DataReceived, (payload: Uint8Array, participant?: RemoteParticipant, kind?: DataPacket_Kind) => {
+          try {
+            const decoder = new TextDecoder();
+            const message = JSON.parse(decoder.decode(payload));
+            const newMessage: ChatMessage = {
+              id: Date.now().toString(),
+              sender: participant?.identity || participant?.name || 'Unknown',
+              message: message.text || message.message || '',
+              timestamp: new Date(),
+            };
+            setChatMessages((prev) => [...prev, newMessage]);
+          } catch (error) {
+            console.error('채팅 메시지 파싱 오류:', error);
+          }
+        });
+
+        // 토큰 발급
+        const token = await getToken();
+
+        // 방 연결
+        await newRoom.connect(CONFIG.LIVEKIT.SERVER_URL, token);
+
+        // 로컬 비디오/오디오 활성화
+        await newRoom.localParticipant.enableCameraAndMicrophone();
+
+        // 로컬 비디오 트랙 가져오기
+        const videoTrack = newRoom.localParticipant.videoTrackPublications.values().next().value?.track as LocalVideoTrack;
+        if (videoTrack) {
+          setLocalTrack(videoTrack);
+        }
+
+        // 초기 상태 설정
+        setIsVideoEnabled(true);
+        setIsAudioEnabled(true);
+      } catch (error) {
+        console.error('방 입장 오류:', error);
+        // 에러 메시지 표시 (사용자에게 알림)
+        const errorMessage = error instanceof Error ? error.message : '방 입장에 실패했습니다.';
+        alert(errorMessage);
+      }
+    };
+
+    joinRoom();
+
+    // 정리 함수
+    return () => {
+      if (newRoom) {
+        newRoom.disconnect();
+        setRoom(undefined);
+        setLocalTrack(undefined);
+        setRemoteTracks([]);
+      }
+    };
+  }, [roomName, participantName]);
+
+  const handleToggleVideo = async () => {
+    if (!room) return;
+    
+    const newState = !isVideoEnabled;
+    await room.localParticipant.setCameraEnabled(newState);
+    setIsVideoEnabled(newState);
+    
+    if (newState) {
+      const videoTrack = room.localParticipant.videoTrackPublications.values().next().value?.track as LocalVideoTrack;
+      if (videoTrack) {
+        setLocalTrack(videoTrack);
+      }
     } else {
-      setSharedContent(null);
-      setIsScreenSharing(false);
-      setViewMode('gallery');
+      setLocalTrack(undefined);
+    }
+  };
+
+  const handleToggleAudio = async () => {
+    if (!room) return;
+    
+    const newState = !isAudioEnabled;
+    await room.localParticipant.setMicrophoneEnabled(newState);
+    setIsAudioEnabled(newState);
+  };
+
+  const handleShareScreen = async () => {
+    if (!room) return;
+    
+    if (!isScreenSharing) {
+      try {
+        await room.localParticipant.setScreenShareEnabled(true);
+        // AI 분석본 공유
+        setSharedContent({
+          type: 'ai-analysis',
+          memberName: '김싸피',
+        });
+        setIsScreenSharing(true);
+        setViewMode('shared');
+      } catch (error) {
+        console.error('화면 공유 오류:', error);
+      }
+    } else {
+      try {
+        await room.localParticipant.setScreenShareEnabled(false);
+        setSharedContent(null);
+        setIsScreenSharing(false);
+        setViewMode('gallery');
+      } catch (error) {
+        console.error('화면 공유 중지 오류:', error);
+      }
     }
   };
 
@@ -568,28 +713,46 @@ export const StreamingPage: React.FC = () => {
     setIsChatOpen(prev => !prev);
   };
 
-  const handleSendMessage = () => {
-    if (!chatInput.trim()) return;
+  const handleSendMessage = async () => {
+    if (!chatInput.trim() || !room) return;
 
-    const newMessage: ChatMessage = {
-      id: Date.now().toString(),
-      sender: `${user?.nickname || '코치'} 코치님`,
-      message: chatInput,
-      timestamp: new Date(),
-    };
+    try {
+      const encoder = new TextEncoder();
+      const message = {
+        text: chatInput,
+        sender: participantName,
+        timestamp: new Date().toISOString(),
+      };
+      
+      await room.localParticipant.publishData(encoder.encode(JSON.stringify(message)), {
+        reliable: true,
+      });
 
-    setChatMessages(prev => [...prev, newMessage]);
-    setChatInput('');
+      // 로컬 메시지 추가 (즉시 표시)
+      const newMessage: ChatMessage = {
+        id: Date.now().toString(),
+        sender: participantName,
+        message: chatInput,
+        timestamp: new Date(),
+      };
+      setChatMessages((prev) => [...prev, newMessage]);
+      setChatInput('');
+    } catch (error) {
+      console.error('메시지 전송 오류:', error);
+    }
   };
 
   const handleLeave = () => {
     setShowEndModal(true);
   };
 
-  const handleEndModalConfirm = () => {
-    // 스트림 정리
-    if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
+  const handleEndModalConfirm = async () => {
+    // 방 나가기 및 정리
+    if (room) {
+      await room.disconnect();
+      setRoom(undefined);
+      setLocalTrack(undefined);
+      setRemoteTracks([]);
     }
     setShowEndModal(false);
     navigate(ROUTES.RESERVATION_LIST);
@@ -667,39 +830,45 @@ export const StreamingPage: React.FC = () => {
               </SharedContentCard>
             </SharedContentPanel>
           ) : (
-            participants.map((participant) => (
-              <VideoTileWrapper key={participant.id} $isMain={viewMode === 'speaker' && participant.id === 'coach'}>
-                {participant.isVideoEnabled ? (
-                  <VideoElement
-                    ref={(el) => {
-                      if (el) {
-                        videoRefs.current.set(participant.id, el);
-                        if (participant.stream) {
-                          el.srcObject = participant.stream;
-                        }
-                      }
-                    }}
-                    autoPlay
-                    playsInline
-                    muted={participant.id === 'coach'}
+            <>
+              {/* 로컬 비디오 */}
+              {localTrack && isVideoEnabled && (
+                <VideoTileWrapper $isMain={viewMode === 'speaker'}>
+                  <VideoComponent
+                    track={localTrack}
+                    participantIdentity={participantName}
+                    local={true}
                   />
-                ) : (
-                  <VideoPlaceholder>
-                    <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                    </svg>
-                  </VideoPlaceholder>
-                )}
-                <ParticipantName>{participant.name}</ParticipantName>
-                {!participant.isAudioEnabled && (
-                  <AudioIndicator>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-                      <path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z"/>
-                    </svg>
-                  </AudioIndicator>
-                )}
-              </VideoTileWrapper>
-            ))
+                </VideoTileWrapper>
+              )}
+              
+              {/* 원격 비디오 */}
+              {remoteTracks
+                .filter((item) => item.trackPublication.track?.kind === Track.Kind.Video)
+                .map((item) => {
+                  const track = item.trackPublication.track as RemoteVideoTrack;
+                  return (
+                    <VideoTileWrapper key={item.trackPublication.track?.sid || `video-${item.participantIdentity}-${item.participant.sid}`} $isMain={viewMode === 'speaker'}>
+                      <VideoComponent
+                        track={track}
+                        participantIdentity={item.participantIdentity}
+                        local={false}
+                      />
+                    </VideoTileWrapper>
+                  );
+                })}
+              
+              {/* 원격 오디오만 있는 경우 */}
+              {remoteTracks
+                .filter((item) => item.trackPublication.track?.kind === Track.Kind.Audio)
+                .map((item) => {
+                  const track = item.trackPublication.track;
+                  if (track && track.kind === Track.Kind.Audio) {
+                    return <AudioComponent key={item.trackPublication.track?.sid || `audio-${item.participantIdentity}-${item.participant.sid}`} track={track as RemoteAudioTrack} />;
+                  }
+                  return null;
+                })}
+            </>
           )}
         </VideoGrid>
 

@@ -14,9 +14,9 @@ const fadeInUp = keyframes`
   }
 `;
 
-const AnimatedText = styled.div<{ visible: boolean }>`
+const AnimatedText = styled.div<{ $visible: boolean }>`
   opacity: 0;
-  animation: ${props => props.visible ? fadeInUp : 'none'} 0.8s ease-out forwards;
+  animation: ${props => props.$visible ? fadeInUp : 'none'} 0.8s ease-out forwards;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-weight: 700;
   font-size: 32px;
@@ -51,10 +51,10 @@ export const HomePage: React.FC = () => {
       <div className="flex-1 flex items-center justify-center" style={{ paddingTop: '80px', paddingBottom: '40px' }}>
         <div className="text-center w-full" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <h1 className="mb-4" style={{ fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', fontWeight: 700, fontSize: '32px', color: '#1f2937', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <AnimatedText visible={firstVisible}>
+            <AnimatedText $visible={firstVisible}>
               오늘도 당신 곁에서, 건강을 코칭합니다.
             </AnimatedText>
-            <AnimatedText visible={secondVisible}>
+            <AnimatedText $visible={secondVisible}>
               실시간 맞춤형 헬스 케어{' '}
               <HighlightText>리브온</HighlightText>
             </AnimatedText>

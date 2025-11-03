@@ -34,7 +34,7 @@ fun AiResultScreen(
         topBar = { TopBar(title = "AI 분석 결과", onBack = onBack) }
     ) {
         // ColumnScope receiver: CommonScreenC이 좌우 패딩을 적용하므로 내부에서는 추가 horizontal padding 불필요
-        Spacer(modifier = Modifier.height(30.dp))
+        Spacer(modifier = Modifier.height(50.dp))
 
         // 날짜 + 상담명 (semibold 12)
         Text(
@@ -44,7 +44,7 @@ fun AiResultScreen(
                 fontWeight = FontWeight.SemiBold
             )
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(5.dp))
 
         // 소개 문구 (semibold 12)
         Text(
@@ -54,7 +54,7 @@ fun AiResultScreen(
                 fontWeight = FontWeight.SemiBold
             )
         )
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(40.dp))
 
         // AI 요약 박스: 가로는 패딩 제외 꽉 채움, 높이 약 300, radius 10, bg F5F7FA, border 1
         Box(
@@ -103,7 +103,7 @@ fun AiResultScreen(
             )
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(14.dp))
     }
 }
 

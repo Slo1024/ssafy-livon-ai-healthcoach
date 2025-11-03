@@ -15,17 +15,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.livon.app.R
 import com.livon.app.ui.theme.Gray2   // 프로젝트 테마에 맞춰주세요
 import com.livon.app.ui.theme.Main   // main 색상
-import androidx.compose.ui.composed
 
 @Composable
 private fun PillOutlineButton(
@@ -255,14 +256,103 @@ fun ReservationCard(
     }
 }
 
-/* ─────────────────────────────────────────────
-   Ripple 없는 Click (⚠️ @Composable 필요)
-───────────────────────────────────────────── */
-private fun Modifier.noRippleClickable(onClick: () -> Unit): Modifier = composed {
-    val interactionSource = remember { MutableInteractionSource() }
+
+fun Modifier.noRippleClickable(onClick: () -> Unit): Modifier = composed {
     clickable(
         indication = null,
-        interactionSource = interactionSource,
+        interactionSource = remember { MutableInteractionSource() },
         onClick = onClick
+    )
+}
+
+
+
+/* ─────────────────────────────────────────────
+    #1 현재 예약 – 일반 (n일 후 상담 + 취소 가능)
+───────────────────────────────────────────── */
+@Preview(showBackground = true, name = "현재 예약 – 일반")
+@Composable
+private fun Preview_ReservationCard_Current_Normal() {
+    ReservationCard(
+        headerLeft = "10.20 (금)",
+        headerRight = "3일 후 상담",
+        headerRightIsLive = false,
+        className = "체형 교정",
+        coachName = "이싸피",
+        coachRole = "PT",
+        coachIntro = "자세 교정 전문",
+        timeText = "오전 9:00 ~ 10:00",
+        classIntro = "자세 교정 중심 클래스",
+        onDetail = {},
+        onCancel = {},
+        showCancel = true,
+        dividerBold = true
+    )
+}
+
+/* ─────────────────────────────────────────────
+    #2 현재 예약 – 진행중 (임박, Join 버튼)
+───────────────────────────────────────────── */
+@Preview(showBackground = true, name = "현재 예약 – 진행중")
+@Composable
+private fun Preview_ReservationCard_Current_Live() {
+    ReservationCard(
+        headerLeft = "10.20 (금)",
+        headerRight = "진행중",
+        headerRightIsLive = true,
+        className = "저녁 스트레칭",
+        coachName = "김싸피",
+        coachRole = "트레이너",
+        coachIntro = "근골격 교정",
+        timeText = "오후 4:00 ~ 5:00",
+        classIntro = "통증 완화 · 심폐기능 향상",
+        onDetail = {},
+        onJoin = {},
+        showJoin = true,
+        dividerBold = true
+    )
+}
+
+/* ─────────────────────────────────────────────
+    #3 지난 예약 – 개인 상담 + AI분석
+───────────────────────────────────────────── */
+@Preview(showBackground = true, name = "지난 예약 – 개인상담 + AI")
+@Composable
+private fun Preview_ReservationCard_Past_Personal_AI() {
+    ReservationCard(
+        headerLeft = "10.10 (토)",
+        headerRight = "개인 상담",
+        headerRightIsLive = false,
+        className = "코어 트레이닝",
+        coachName = "최코치",
+        coachRole = "코치",
+        coachIntro = "코어 · 자세 전문가",
+        timeText = "오전 10:00 ~ 11:00",
+        classIntro = "개인 집중 코어 트레이닝",
+        onDetail = {},
+        onAiAnalyze = {},
+        showAiButton = true,
+        dividerBold = false
+    )
+}
+
+/* ─────────────────────────────────────────────
+    #4 지난 예약 – 그룹 상담 (AI 없음)
+───────────────────────────────────────────── */
+@Preview(showBackground = true, name = "지난 예약 – 그룹 상담")
+@Composable
+private fun Preview_ReservationCard_Past_Group() {
+    ReservationCard(
+        headerLeft = "09.02 (월)",
+        headerRight = "그룹 상담",
+        headerRightIsLive = false,
+        className = "모닝 필라테스",
+        coachName = "박코치",
+        coachRole = "필라테스",
+        coachIntro = "스트레칭 중심",
+        timeText = "오전 8:00 ~ 9:00",
+        classIntro = "부드러운 모닝 스트레칭",
+        onDetail = {},
+        dividerBold = false
     )
 }

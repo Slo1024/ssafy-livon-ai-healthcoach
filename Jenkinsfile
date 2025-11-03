@@ -260,7 +260,7 @@ pipeline {
                 def feContainer    = isProd ? 'livon-fe-prod'    : 'livon-fe-dev'
                 def nginxContainer = isProd ? 'nginx-prod'       : 'nginx-dev'
 
-                def headerText = isProd ? '### :crown: Backend Deployed! :crown:' : '### :pepe_jam: Dev Updated! :pepe_jam:'
+                def headerText = isProd ? '### :crown: Production Deployed! :crown:' : '### :pepe_jam: Dev Updated! :pepe_jam:'
                 def baseUrl   = isProd ? 'https://k13s406.p.ssafy.io' : 'https://k13s406.p.ssafy.io:8443'
 
                 // APK 최신 링크가 있으면 알림에 포함
@@ -315,6 +315,88 @@ pipeline {
                 def payloadObj = [
                     text       : '@channel',
                     attachments: attachments
+                ]
+
+                def json   = groovy.json.JsonOutput.toJson(payloadObj)
+                def pretty = groovy.json.JsonOutput.prettyPrint(json)
+
+                withCredentials([string(credentialsId: 'livon-mattermost-webhook-url', variable: 'MM_WEBHOOK')]) {
+                    sh """
+                        curl -s -X POST -H 'Content-Type: application/json' \
+                            -d '${pretty.replace("'", "'\\''")}' "$MM_WEBHOOK" >/dev/null || true
+                    """
+                }
+            }
+        }
+        failure {
+            script {
+                def branch    = env.BRANCH_NAME ?: "${env.GIT_BRANCH}".replaceAll(".*/", "")
+                def shortSha  = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+                def epochTs   = sh(script: "date +%s", returnStdout: true).trim()
+                def isProd    = (branch == 'master')
+
+                def headerText = isProd ? '### :x: Production Deploy Failed!' : '### :x: Build Failed!'
+
+                def attachment = [
+                    fallback : "Build 실패 - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                    color    : "#E74C3C",
+                    pretext  : headerText,
+                    title    : "${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                    title_link: "${env.BUILD_URL}console",
+                    fields   : [
+                        [title: 'Job',    value: env.JOB_NAME,           short: true],
+                        [title: 'Build',  value: "#${env.BUILD_NUMBER}", short: true],
+                        [title: 'Branch', value: branch,                  short: true],
+                        [title: 'Commit', value: shortSha,                short: true]
+                    ],
+                    footer   : 'Jenkins',
+                    ts       : (epochTs as Long)
+                ]
+
+                def payloadObj = [
+                    text       : '@channel',
+                    attachments: [attachment]
+                ]
+
+                def json   = groovy.json.JsonOutput.toJson(payloadObj)
+                def pretty = groovy.json.JsonOutput.prettyPrint(json)
+
+                withCredentials([string(credentialsId: 'livon-mattermost-webhook-url', variable: 'MM_WEBHOOK')]) {
+                    sh """
+                        curl -s -X POST -H 'Content-Type: application/json' \
+                            -d '${pretty.replace("'", "'\\''")}' "$MM_WEBHOOK" >/dev/null || true
+                    """
+                }
+            }
+        }
+        unstable {
+            script {
+                def branch    = env.BRANCH_NAME ?: "${env.GIT_BRANCH}".replaceAll(".*/", "")
+                def shortSha  = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+                def epochTs   = sh(script: "date +%s", returnStdout: true).trim()
+                def isProd    = (branch == 'master')
+
+                def headerText = isProd ? '### :warning: Production Deploy Unstable!' : '### :warning: Build Unstable!'
+
+                def attachment = [
+                    fallback : "Build 불안정 - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                    color    : "#F1C40F",
+                    pretext  : headerText,
+                    title    : "${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                    title_link: "${env.BUILD_URL}console",
+                    fields   : [
+                        [title: 'Job',    value: env.JOB_NAME,           short: true],
+                        [title: 'Build',  value: "#${env.BUILD_NUMBER}", short: true],
+                        [title: 'Branch', value: branch,                  short: true],
+                        [title: 'Commit', value: shortSha,                short: true]
+                    ],
+                    footer   : 'Jenkins',
+                    ts       : (epochTs as Long)
+                ]
+
+                def payloadObj = [
+                    text       : '@channel',
+                    attachments: [attachment]
                 ]
 
                 def json   = groovy.json.JsonOutput.toJson(payloadObj)

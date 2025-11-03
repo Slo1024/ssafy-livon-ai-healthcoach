@@ -23,20 +23,24 @@ fun EmailSetupScreen(
 
     CommonSignUpScreenA(
         topBar = { TopBar(title = "회원가입", onBack = {}) },
-        bottomBar = { 
+        bottomBar = {
             PrimaryButtonBottom(
                 text = "다음",
                 enabled = isValidEmail,
                 onClick = { /* TODO: Navigate to next screen */ }
-            ) 
+            )
         }
-    ) {
+
+
+    )
+
+    {
         Text(
             text = "만나서 반가워요\n이메일을 입력해주세요!",
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground
         )
-        Spacer(Modifier.height(Spacing.DescToContent))
+        Spacer(Modifier.height(150.dp))
         LivonTextField(
             value = email,
             onValueChange = { email = it },
@@ -63,12 +67,12 @@ fun EmailSetupScreenPreview_Valid() {
 
         CommonSignUpScreenA(
             topBar = { TopBar(title = "회원가입", onBack = {}) },
-            bottomBar = { 
+            bottomBar = {
                 PrimaryButtonBottom(
                     text = "다음",
                     enabled = isValidEmail,
                     onClick = {}
-                ) 
+                )
             }
         ) {
             Text(

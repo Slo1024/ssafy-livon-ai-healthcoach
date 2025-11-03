@@ -68,6 +68,10 @@ public enum ErrorStatus implements BaseErrorCode {
     CONSULTATION_NOT_FOUND(HttpStatus.BAD_REQUEST, "CHAT4002", "해당 코칭을 찾을수 없어 채팅방에 입장 불가합니다."),
     USER_NOT_PARTICIPANT_VALID(HttpStatus.BAD_REQUEST, "CHAT4003", "해당유저는 채팅 참여 권한이 없습니다."),
 
+    // AI 관련
+    AI_SUMMARY_NOT_FOUND(HttpStatus.NOT_FOUND, "AI4000", "생성된 AI 요약이 존재하지 않습니다."),
+    AI_SUMMARY_REQUEST_FAILED(HttpStatus.BAD_GATEWAY, "AI5000", "AI 요약 생성에 실패했습니다."),
+
 
     ;
 

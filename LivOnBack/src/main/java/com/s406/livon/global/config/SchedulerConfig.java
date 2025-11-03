@@ -1,0 +1,22 @@
+package com.s406.livon.global.config;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.SchedulingConfigurer;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+import org.springframework.scheduling.config.ScheduledTaskRegistrar;
+
+@Configuration
+@EnableScheduling
+public class SchedulerConfig implements SchedulingConfigurer {
+
+    @Override
+    public void configureTasks(ScheduledTaskRegistrar taskRegistrar) {
+        ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
+        taskScheduler.setPoolSize(5);  // 동시에 실행 가능한 스케줄러 개수
+        taskScheduler.setThreadNamePrefix("scheduled-task-");
+        taskScheduler.initialize();
+
+        taskRegistrar.setTaskScheduler(taskScheduler);
+    }
+}

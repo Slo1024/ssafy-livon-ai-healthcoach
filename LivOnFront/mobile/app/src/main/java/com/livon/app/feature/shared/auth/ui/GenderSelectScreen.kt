@@ -5,8 +5,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -43,27 +46,50 @@ fun GenderSelectScreen(modifier: Modifier = Modifier) {
             CaptionText("입력하신 정보는 공개되지 않습니다.\n코칭 맞춤 분석을 위해 필요합니다.")
         }
 
+        Spacer(
+            Modifier
+                .height(100.dp)
+        )
         // 가운데 높이에 2개 카드가 양옆으로 배치되도록 Box 사용
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 30.dp),
+                .padding(top = 50.dp),
             contentAlignment = Alignment.Center
         ) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.Center)
+                    .offset(y = (-40).dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
             ) {
-                ChoiceButtonCard(
-                    text = "남성",
-                    selected = selectedGender == "M",
-                    onClick = { selectedGender = "M" }
-                )
-                ChoiceButtonCard(
-                    text = "여성",
-                    selected = selectedGender == "F",
-                    onClick = { selectedGender = "F" }
-                )
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    ChoiceButtonCard(
+                        text = "남성",
+                        selected = selectedGender == "M",
+                        onClick = { selectedGender = "M" },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(135f / 160f) // 비율 유지
+                    )
+                }
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    ChoiceButtonCard(
+                        text = "여성",
+                        selected = selectedGender == "F",
+                        onClick = { selectedGender = "F" },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(135f / 160f) // 비율 유지
+                    )
+                }
             }
         }
     }

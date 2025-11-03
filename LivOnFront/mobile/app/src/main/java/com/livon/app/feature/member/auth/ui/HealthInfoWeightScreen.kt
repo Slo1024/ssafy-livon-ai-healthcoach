@@ -1,4 +1,4 @@
-// com/livon/app/feature/shared/auth/ui/HealthInfoWeightScreen.kt
+// com/livon/app/feature/shared/auth/ui/HealthInfoHeightScreen.kt
 package com.livon.app.feature.shared.auth.ui
 
 import androidx.compose.foundation.layout.Spacer
@@ -20,14 +20,15 @@ fun HealthInfoWeightScreen() {
         onBack = {},
         bottomBar = { PrimaryButtonBottom(text = "다음", onClick = {}) }
     ) {
-        RequirementText("몸무게를 입력해 주세요")
-        Spacer(Modifier.height(105.dp))
+        // 요구사항 텍스트 (TopBar2 아래 15, 좌측 25)
+        RequirementText(" 현재 몸무게를 입력해 주세요")
+        Spacer(Modifier.height(200.dp))
         LivonTextField(
             value = "",
             onValueChange = {},
             label = "몸무게",
-            placeholder = "예: 70",
-            modifier = Modifier.padding(start = 25.dp)
+            placeholder = "몸무게를 입력해주세요",
+//            modifier = Modifier.padding(start = 25.dp)
         )
     }
 }

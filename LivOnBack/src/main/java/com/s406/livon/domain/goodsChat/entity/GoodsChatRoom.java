@@ -20,12 +20,12 @@ import java.util.List;
 public class GoodsChatRoom {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "consultation_id", nullable = false)
-    private Consultation consultation;  // 예약으로 변경
+    @MapsId
+    @JoinColumn(name = "consultation_id")
+    private Consultation consultation;
 
     @Column(name = "last_chat_content", columnDefinition = "TEXT")
     private String lastChatContent;
@@ -37,24 +37,23 @@ public class GoodsChatRoom {
     @Builder.Default
     private Boolean isActive = true;
 
-    @OneToMany(mappedBy = "goodsChatRoom", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "goodsChatRoom", cascade = CascadeType.REMOVE, orphanRemoval = true)
     @Builder.Default
     private List<GoodsChatPart> chatParts = new ArrayList<>();
 
-    public void addChatParticipant(User user, Role role) {
-        GoodsChatPart chatPart = GoodsChatPart.builder()
-                .goodsChatRoom(this)
-                .user(user)
-                .role(role)
-                .build();
+//    public void addChatParticipant(User user) {
+//        GoodsChatPart chatPart = GoodsChatPart.builder()
+//                .goodsChatRoom(this)
+//                .user(user)
+//                .build();
+//
+//        chatParts.add(chatPart);
+//    }
 
-        chatParts.add(chatPart);
-    }
-
-    public void updateLastChat(String lastChatContent, LocalDateTime lastChatSentAt) {
-        this.lastChatContent = lastChatContent;
-        this.lastChatSentAt = lastChatSentAt;
-    }
+//    public void updateLastChat(String lastChatContent, LocalDateTime lastChatSentAt) {
+//        this.lastChatContent = lastChatContent;
+//        this.lastChatSentAt = lastChatSentAt;
+//    }
 
 
     public void deactivateRoom() {

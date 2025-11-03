@@ -1,6 +1,9 @@
 package com.s406.livon.global.config;
 
+import com.s406.livon.domain.goodsChat.event.ChatHandler;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
@@ -8,8 +11,9 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 
 @Configuration
 @EnableWebSocketMessageBroker // WebSocket 메시지 브로커 활성화
+@RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
-
+    private final ChatHandler chatHandler;
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry){
         // 구독 경로 설정 - 클라이언트가 구독할 수 있는 endpoint 설정
@@ -36,5 +40,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .withSockJS();
         registry.addEndpoint("/ws/chat")
                 .setAllowedOriginPatterns("*");
+    }
+    @Override
+    public void configureClientInboundChannel(ChannelRegistration registration) {
+        registration.interceptors(chatHandler);
     }
 }

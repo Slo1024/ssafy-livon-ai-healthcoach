@@ -40,12 +40,13 @@ fun CompanySelectScreen(
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onBackground
             )
+            Spacer(Modifier.height(20.dp))
             Text(
                 text = "무직도 가능해요!",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onBackground
             )
-            Spacer(Modifier.height(Spacing.DescToContent))
+            Spacer(Modifier.height(40.dp))
             LivonTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
@@ -53,9 +54,11 @@ fun CompanySelectScreen(
                 placeholder = "회사명을 입력하세요"
             )
             Spacer(Modifier.height(12.dp))
+
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 companies.forEach { company ->
                     CompanySelectCard(
+                        modifier = modifier.fillMaxWidth(),
                         text = company,
                         selected = selectedCompany == company,
                         onClick = { selectedCompany = company }

@@ -7,7 +7,6 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 
 @SpringBootApplication
-
 public class LivOnApplication {
     public static void main(String[] args) {
         SpringApplication.run(LivOnApplication.class, args);

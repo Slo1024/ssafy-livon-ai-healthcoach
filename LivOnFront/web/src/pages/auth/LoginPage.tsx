@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import googleIcon from '../../assets/images/google-icon.png';
 import kakaoIcon from '../../assets/images/Kakao.png';
@@ -193,14 +193,28 @@ const SignUpSpan = styled.span`
 `;
 
 export const LoginPage: React.FC = () => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [keepLoggedIn, setKeepLoggedIn] = useState(false);
 
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Login attempt:', { email, password, keepLoggedIn });
+  };
+
+  const handleGoogleLogin = () => {
+    // 보류 중
+  };
+
+  const handleKakaoLogin = () => {
+    // 보류 중
+  };
+
+  const handleNaverLogin = () => {
+    // 보류 중
   };
 
   return (
@@ -258,17 +272,17 @@ export const LoginPage: React.FC = () => {
           <ButtonSubmit type="submit">로그인</ButtonSubmit>
         </form>
 
-        <GoogleButton type="button">
+        <GoogleButton type="button" onClick={handleGoogleLogin}>
           <img src={googleIcon} alt="Google" width="20" height="20" />
           구글 로그인
         </GoogleButton>
 
-        <KakaoButton type="button">
+        <KakaoButton type="button" onClick={handleKakaoLogin}>
           <img src={kakaoIcon} alt="Kakao" width="20" height="20" />
           카카오 로그인
         </KakaoButton>
 
-        <NaverButton type="button">
+        <NaverButton type="button" onClick={handleNaverLogin}>
           <img src={naverIcon} alt="Naver" width="20" height="20" />
           네이버 로그인
         </NaverButton>

@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import profilePictureIcon from '../../assets/images/profile_picture.png';
+import { SegmentedTabs } from '../common/Button';
 
 interface BaseModalProps {
   open: boolean;
@@ -19,39 +21,39 @@ const Overlay = styled.div`
 `;
 
 const Card = styled.div`
-  width: 820px;
+  width: 420px;
   max-width: 90vw;
   background: #ffffff;
-  border-radius: 24px;
-  padding: 48px 40px 32px;
+  border-radius: 16px;
+  padding: 32px 24px 24px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
   text-align: center;
 `;
 
 const Title = styled.h2`
-  margin: 0 0 8px 0;
+  margin: 0 0 24px 0;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-weight: 800;
-  font-size: 40px;
+  font-weight: 600;
+  font-size: 18px;
   color: #111827;
   line-height: 1.3;
   white-space: pre-line; /* 줄바꿈 지원 */
 `;
 
 const ConfirmButton = styled.button`
-  margin-top: 24px;
+  margin-top: 0;
   width: 100%;
-  height: 64px;
-  background-color: #5b77f6; /* 이미지 속 파랑과 유사 */
+  height: 48px;
+  background-color: #4965f6;
   color: #ffffff;
   border: none;
   border-radius: 12px;
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
-  &:hover { background-color: #4965f6; }
+  &:hover { background-color: #3b5dd8; }
 `;
 
 export interface ConfirmModalProps extends BaseModalProps {
@@ -83,6 +85,1732 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 };
 
 export default ConfirmModal;
+
+// =====================
+// 클래스 정보 수정 모달
+// =====================
+
+const EditModalCard = styled.div`
+  width: 680px;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 40px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+`;
+
+const EditModalTitle = styled.h2`
+  margin: 0 0 32px 0;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  color: #111827;
+  text-align: left;
+`;
+
+const FormField = styled.div`
+  margin-bottom: 24px;
+`;
+
+const FormLabel = styled.label`
+  display: block;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 8px;
+`;
+
+const FormInput = styled.input`
+  width: 100%;
+  height: 48px;
+  border: 1px solid #4965f6;
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 14px;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  &:focus {
+    outline: none;
+    border-color: #3b5dd8;
+  }
+`;
+
+const FormTextArea = styled.textarea`
+  width: 100%;
+  min-height: 120px;
+  border: 2px dashed #4965f6;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 14px;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  resize: vertical;
+  
+  &:focus {
+    outline: none;
+    border-color: #3b5dd8;
+  }
+`;
+
+const FormDropdown = styled.select`
+  width: 100%;
+  height: 48px;
+  border: 1px solid #4965f6;
+  border-radius: 8px;
+  padding: 0 12px;
+  padding-right: 36px;
+  font-size: 14px;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: white;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%234965f6' d='M1 0l4 4 4-4 1 1-5 5-5-5z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 10px 6px;
+  cursor: pointer;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  
+  &:focus {
+    outline: none;
+    border-color: #3b5dd8;
+  }
+`;
+
+const ButtonRow = styled.div`
+  display: flex;
+  gap: 12px;
+  margin-top: 32px;
+  justify-content: flex-end;
+`;
+
+const SaveButton = styled.button`
+  padding: 12px 24px;
+  background-color: #4965f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  &:hover {
+    background-color: #3b5dd8;
+  }
+`;
+
+const CloseButton = styled.button`
+  padding: 12px 24px;
+  background-color: #ffffff;
+  color: #4965f6;
+  border: 1px solid #4965f6;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  &:hover {
+    background-color: #f7fafc;
+  }
+`;
+
+export interface ClassEditModalProps extends BaseModalProps {
+  classNameData?: {
+    name: string;
+    description: string;
+    targetMember: string;
+    dateTime: string;
+    file?: string;
+  };
+  onSave: (data: {
+    name: string;
+    description: string;
+    targetMember: string;
+    dateTime: string;
+    file?: string;
+  }) => void;
+}
+
+export const ClassEditModal: React.FC<ClassEditModalProps> = ({
+  open,
+  onClose,
+  classNameData,
+  onSave,
+  className,
+  style,
+}) => {
+  const [formData, setFormData] = useState({
+    name: classNameData?.name || '',
+    description: classNameData?.description || '',
+    targetMember: classNameData?.targetMember || '',
+    dateTime: classNameData?.dateTime || '',
+    file: classNameData?.file || '',
+  });
+  const [showDateTimeModal, setShowDateTimeModal] = useState(false);
+  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+  const [selectedTimes, setSelectedTimes] = useState<string[]>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (classNameData) {
+      setFormData({
+        name: classNameData.name || '',
+        description: classNameData.description || '',
+        targetMember: classNameData.targetMember || '',
+        dateTime: classNameData.dateTime || '',
+        file: classNameData.file || '',
+      });
+    }
+  }, [classNameData]);
+
+  useEffect(() => {
+    if (!open) {
+      // 모달이 닫힐 때 상태 초기화
+      setSelectedDates([]);
+      setSelectedTimes([]);
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  }, [open]);
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleDateTimeClick = () => {
+    setShowDateTimeModal(true);
+  };
+
+  const handleDateTimeSelect = (dates: Date[], times: string[]) => {
+    setSelectedDates(dates);
+    setSelectedTimes(times);
+    
+    // 날짜와 시간을 문자열로 포맷팅
+    if (dates.length > 0 && times.length > 0) {
+      const dateStr = dates.map(date => 
+        `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`
+      ).join(', ');
+      const timeStr = times.map(t => {
+        if (t.startsWith('AM ')) {
+          return `오전 ${t.replace('AM ', '')}`;
+        } else if (t.startsWith('PM ')) {
+          return `오후 ${t.replace('PM ', '')}`;
+        }
+        return t;
+      }).join(', ');
+      handleInputChange('dateTime', `${dateStr} ${timeStr}`);
+    } else if (dates.length > 0) {
+      const dateStr = dates.map(date => 
+        `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`
+      ).join(', ');
+      handleInputChange('dateTime', dateStr);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      handleInputChange('file', file.name);
+    }
+  };
+
+  const handleSave = () => {
+    onSave(formData);
+    onClose();
+  };
+
+  if (!open) return null;
+
+  return (
+    <Overlay onClick={onClose}>
+      <EditModalCard className={className} style={style} onClick={(e) => e.stopPropagation()}>
+        <EditModalTitle>클래스 정보 및 수정</EditModalTitle>
+        
+        <FormField>
+          <FormLabel>클래스 명</FormLabel>
+          <FormInput
+            type="text"
+            value={formData.name}
+            onChange={(e) => handleInputChange('name', e.target.value)}
+            placeholder="클래스 명을 입력하세요"
+          />
+        </FormField>
+
+        <FormField>
+          <FormLabel>클래스 정보</FormLabel>
+          <FormTextArea
+            value={formData.description}
+            onChange={(e) => handleInputChange('description', e.target.value)}
+            placeholder="클래스 정보를 입력하세요"
+          />
+        </FormField>
+
+        <FormField>
+          <FormLabel>코칭 대상 회원 선택</FormLabel>
+          <FormDropdown
+            value={formData.targetMember}
+            onChange={(e) => handleInputChange('targetMember', e.target.value)}
+          >
+            <option value="" disabled>클래스가 일반 개인 회원 대상인지, 기업 소속 회원 대상인지 선택해 주세요.</option>
+            <option value="기업 클래스">기업 클래스</option>
+            <option value="일반 클래스">일반 클래스</option>
+            <option value="개인 상담 / 코칭">개인 상담 / 코칭</option>
+          </FormDropdown>
+        </FormField>
+
+        <FormField>
+          <FormLabel>날짜 / 시간 선택</FormLabel>
+          <FormInput
+            type="text"
+            value={formData.dateTime}
+            onChange={(e) => handleInputChange('dateTime', e.target.value)}
+            placeholder="날짜 / 시간을 선택하세요"
+            readOnly
+            onClick={handleDateTimeClick}
+            style={{ cursor: 'pointer' }}
+          />
+        </FormField>
+
+        <FormField>
+          <FormLabel>파일 첨부</FormLabel>
+          <input
+            ref={fileInputRef}
+            type="file"
+            style={{ display: 'none' }}
+            onChange={handleFileChange}
+            accept="*/*"
+          />
+          <FormDropdown
+            value={formData.file || ''}
+            onChange={() => {}}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              fileInputRef.current?.click();
+            }}
+            onFocus={(e) => e.target.blur()}
+            style={{ cursor: 'pointer' }}
+            tabIndex={0}
+          >
+            <option value="">파일 찾기</option>
+            {selectedFile && <option value={selectedFile.name}>{selectedFile.name}</option>}
+          </FormDropdown>
+        </FormField>
+
+        <ButtonRow>
+          <SaveButton onClick={handleSave}>저장</SaveButton>
+          <CloseButton onClick={onClose}>닫기</CloseButton>
+        </ButtonRow>
+      </EditModalCard>
+
+      {/* 날짜/시간 선택 모달 */}
+      <DateTimePickerModal
+        open={showDateTimeModal}
+        onClose={() => setShowDateTimeModal(false)}
+        onSelect={handleDateTimeSelect}
+        initialDates={selectedDates}
+        initialTimes={selectedTimes}
+      />
+    </Overlay>
+  );
+};
+
+// =====================
+// 삭제 확인 모달 (삭제/취소 버튼)
+// =====================
+
+const DeleteConfirmCard = styled.div`
+  width: 420px;
+  max-width: 90vw;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px 24px 24px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  text-align: center;
+`;
+
+const DeleteConfirmTitle = styled.h2`
+  margin: 0 0 24px 0;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 600;
+  font-size: 18px;
+  color: #111827;
+`;
+
+const DeleteConfirmButtonRow = styled.div`
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+`;
+
+const DeleteButton = styled.button`
+  padding: 12px 24px;
+  background-color: #ffffff;
+  color: #ff0000;
+  border: 1px solid #ff0000;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  &:hover {
+    background-color: #fef2f2;
+  }
+`;
+
+const CancelButton = styled.button`
+  padding: 12px 24px;
+  background-color: #4965f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  &:hover {
+    background-color: #3b5dd8;
+  }
+`;
+
+export interface DeleteConfirmModalProps extends BaseModalProps {
+  onConfirm: () => void;
+}
+
+export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
+  open,
+  onClose,
+  onConfirm,
+  className,
+  style,
+}) => {
+  const handleConfirm = () => {
+    onConfirm();
+    onClose();
+  };
+
+  if (!open) return null;
+
+  return (
+    <Overlay onClick={onClose}>
+      <DeleteConfirmCard className={className} style={style} onClick={(e) => e.stopPropagation()}>
+        <DeleteConfirmTitle>클래스를 삭제하시겠습니까?</DeleteConfirmTitle>
+        <DeleteConfirmButtonRow>
+          <DeleteButton onClick={handleConfirm}>삭제</DeleteButton>
+          <CancelButton onClick={onClose}>취소</CancelButton>
+        </DeleteConfirmButtonRow>
+      </DeleteConfirmCard>
+    </Overlay>
+  );
+};
+
+// =====================
+// 저장 확인 모달 (저장/취소 버튼)
+// =====================
+
+const SaveConfirmCard = styled.div`
+  width: 420px;
+  max-width: 90vw;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px 24px 24px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  text-align: center;
+`;
+
+const SaveConfirmTitle = styled.h2`
+  margin: 0 0 24px 0;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 600;
+  font-size: 18px;
+  color: #111827;
+`;
+
+const SaveConfirmButtonRow = styled.div`
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+`;
+
+const SaveConfirmButton = styled.button`
+  padding: 12px 24px;
+  background-color: #4965f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  &:hover {
+    background-color: #3b5dd8;
+  }
+`;
+
+const SaveCancelButton = styled.button`
+  padding: 12px 24px;
+  background-color: #4965f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  &:hover {
+    background-color: #3b5dd8;
+  }
+`;
+
+export interface SaveConfirmModalProps extends BaseModalProps {
+  onConfirm: () => void;
+}
+
+export const SaveConfirmModal: React.FC<SaveConfirmModalProps> = ({
+  open,
+  onClose,
+  onConfirm,
+  className,
+  style,
+}) => {
+  const handleConfirm = () => {
+    onConfirm();
+    onClose();
+  };
+
+  if (!open) return null;
+
+  return (
+    <Overlay onClick={onClose}>
+      <SaveConfirmCard className={className} style={style} onClick={(e) => e.stopPropagation()}>
+        <SaveConfirmTitle>신규 클래스를 저장하시겠습니까?</SaveConfirmTitle>
+        <SaveConfirmButtonRow>
+          <SaveConfirmButton onClick={handleConfirm}>저장</SaveConfirmButton>
+          <SaveCancelButton onClick={onClose}>취소</SaveCancelButton>
+        </SaveConfirmButtonRow>
+      </SaveConfirmCard>
+    </Overlay>
+  );
+};
+
+// =====================
+// 클래스 개설 완료 모달
+// =====================
+
+const ClassCreatedCard = styled.div`
+  width: 420px;
+  max-width: 90vw;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px 24px 24px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  text-align: center;
+`;
+
+const ClassCreatedTitle = styled.h2`
+  margin: 0 0 24px 0;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 600;
+  font-size: 18px;
+  color: #111827;
+`;
+
+const ClassListButton = styled.button`
+  width: 100%;
+  padding: 12px 24px;
+  background-color: #4965f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  &:hover {
+    background-color: #3b5dd8;
+  }
+`;
+
+export interface ClassCreatedModalProps extends BaseModalProps {
+  onGoToList: () => void;
+}
+
+export const ClassCreatedModal: React.FC<ClassCreatedModalProps> = ({
+  open,
+  onClose,
+  onGoToList,
+  className,
+  style,
+}) => {
+  const handleGoToList = () => {
+    onGoToList();
+    onClose();
+  };
+
+  if (!open) return null;
+
+  return (
+    <Overlay onClick={onClose}>
+      <ClassCreatedCard className={className} style={style} onClick={(e) => e.stopPropagation()}>
+        <ClassCreatedTitle>신규 클래스를 개설되었습니다.</ClassCreatedTitle>
+        <ClassListButton onClick={handleGoToList}>클래스 목록으로</ClassListButton>
+      </ClassCreatedCard>
+    </Overlay>
+  );
+};
+
+// =====================
+// 회원 정보 모달
+// =====================
+
+const MemberInfoCard = styled.div`
+  width: 600px;
+  max-width: 90vw;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+`;
+
+const MemberInfoTitle = styled.h2`
+  margin: 0 0 8px 0;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  color: #111827;
+`;
+
+const MemberInfoDescription = styled.p`
+  margin: 0 0 24px 0;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.5;
+`;
+
+const MemberContentContainer = styled.div`
+  display: flex;
+  gap: 24px;
+  margin-bottom: 24px;
+`;
+
+const ProfileIconContainer = styled.div`
+  width: 120px;
+  height: 160px;
+  background-color: #f3f4f6;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+`;
+
+const ProfileImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+`;
+
+const MemberDataContainer = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const MemberDataItem = styled.div`
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  color: #111827;
+`;
+
+const QASection = styled.div`
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #e5e7eb;
+`;
+
+const QATitle = styled.h3`
+  margin: 0 0 12px 0;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  color: #111827;
+`;
+
+const QAQuestion = styled.div`
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.5;
+`;
+
+const MemberInfoConfirmButton = styled.button`
+  width: 100%;
+  padding: 12px 24px;
+  background-color: #4965f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  margin-top: 24px;
+  
+  &:hover {
+    background-color: #3b5dd8;
+  }
+`;
+
+export interface MemberInfoModalProps extends BaseModalProps {
+  memberName: string;
+  memberData?: {
+    height?: number;
+    weight?: number;
+    sleepTime?: number;
+  };
+  question?: string;
+}
+
+export const MemberInfoModal: React.FC<MemberInfoModalProps> = ({
+  open,
+  onClose,
+  memberName,
+  memberData,
+  question,
+  className,
+  style,
+}) => {
+  if (!open) return null;
+
+  const height = memberData?.height || 170;
+  const weight = memberData?.weight || 50;
+  const sleepTime = memberData?.sleepTime || 7;
+  const qaQuestion = question || '전완근을 키우고 싶어요';
+
+  return (
+    <Overlay onClick={onClose}>
+      <MemberInfoCard className={className} style={style} onClick={(e) => e.stopPropagation()}>
+        <MemberInfoTitle>{memberName} 회원님 정보</MemberInfoTitle>
+        <MemberInfoDescription>
+          회원님의 신체 데이터를 AI로 분석한 결과를 확인할 수 있습니다.
+        </MemberInfoDescription>
+        
+        <MemberContentContainer>
+          <ProfileIconContainer>
+            <ProfileImage src={profilePictureIcon} alt="회원 프로필" />
+          </ProfileIconContainer>
+          
+          <MemberDataContainer>
+            <MemberDataItem>신장 {height}cm</MemberDataItem>
+            <MemberDataItem>체중 {weight}kg</MemberDataItem>
+            <MemberDataItem>수면 시간 {sleepTime}시간</MemberDataItem>
+          </MemberDataContainer>
+        </MemberContentContainer>
+
+        <QASection>
+          <QATitle>Q&A</QATitle>
+          <QAQuestion>Q. {qaQuestion}</QAQuestion>
+        </QASection>
+
+        <MemberInfoConfirmButton onClick={onClose}>확인</MemberInfoConfirmButton>
+      </MemberInfoCard>
+    </Overlay>
+  );
+};
+
+// =====================
+// 신청 회원 예약 승인 모달
+// =====================
+
+const ApplicationApprovalCard = styled.div`
+  width: 680px;
+  max-width: 90vw;
+  max-height: 80vh;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  display: flex;
+  flex-direction: column;
+`;
+
+const ApplicationApprovalTitle = styled.h2`
+  margin: 0 0 24px 0;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  color: #111827;
+`;
+
+const ApplicationTabsContainer = styled.div`
+  margin-bottom: 24px;
+`;
+
+const ApplicationMemberList = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 24px;
+  max-height: 400px;
+`;
+
+const ApplicationMemberItem = styled.div`
+  display: flex;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid #e5e7eb;
+  
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const ApplicationProfileImage = styled.img`
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  margin-right: 16px;
+  background-color: #f3f4f6;
+`;
+
+const ApplicationMemberName = styled.div`
+  flex: 1;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  color: #111827;
+`;
+
+const ApplicationButtonContainer = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+const ApplicationMemberInfoButton = styled.button`
+  padding: 8px 16px;
+  background-color: #ffffff;
+  color: #4965f6;
+  border: 1px solid #4965f6;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  white-space: nowrap;
+  
+  &:hover {
+    background-color: #f7fafc;
+  }
+`;
+
+const ApplicationApproveButton = styled.button`
+  padding: 8px 16px;
+  background-color: #ffffff;
+  color: #4965f6;
+  border: 1px solid #4965f6;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  white-space: nowrap;
+  
+  &:hover {
+    background-color: #f7fafc;
+  }
+`;
+
+const ApplicationCancelApprovalButton = styled.button`
+  padding: 8px 16px;
+  background-color: #ffffff;
+  color: #4965f6;
+  border: 1px solid #4965f6;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  white-space: nowrap;
+  
+  &:hover {
+    background-color: #f7fafc;
+  }
+`;
+
+const ApplicationConfirmButton = styled.button`
+  width: 100%;
+  padding: 12px 24px;
+  background-color: #4965f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  &:hover {
+    background-color: #3b5dd8;
+  }
+`;
+
+export interface ApplicationMember {
+  id: string;
+  name: string;
+}
+
+export interface ApplicationApprovalModalProps extends BaseModalProps {
+  members?: ApplicationMember[];
+  onMemberInfoClick?: (memberName: string) => void;
+}
+
+// =====================
+// 예약 취소 확인 모달
+// =====================
+
+const ReservationCancelConfirmCard = styled.div`
+  width: 420px;
+  max-width: 90vw;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px 24px 24px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  text-align: center;
+`;
+
+const ReservationCancelConfirmTitle = styled.h2`
+  margin: 0 0 24px 0;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 600;
+  font-size: 18px;
+  color: #111827;
+  line-height: 1.3;
+  white-space: pre-line;
+`;
+
+const ReservationCancelConfirmButtonContainer = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-top: 0;
+`;
+
+const ReservationCancelConfirmButton = styled.button`
+  flex: 1;
+  height: 48px;
+  background-color: #4965f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  &:hover {
+    background-color: #3b5dd8;
+  }
+`;
+
+export interface ReservationCancelConfirmModalProps extends BaseModalProps {
+  onConfirm: () => void;
+  onCancel?: () => void;
+}
+
+export const ReservationCancelConfirmModal: React.FC<ReservationCancelConfirmModalProps> = ({
+  open,
+  onClose,
+  onConfirm,
+  onCancel,
+  className,
+  style,
+}) => {
+  if (!open) return null;
+
+  const handleConfirm = () => {
+    onConfirm();
+    onClose();
+  };
+
+  const handleCancel = () => {
+    if (onCancel) {
+      onCancel();
+    }
+    onClose();
+  };
+
+  return (
+    <Overlay onClick={handleCancel}>
+      <ReservationCancelConfirmCard className={className} style={style} onClick={(e) => e.stopPropagation()}>
+        <ReservationCancelConfirmTitle>예약을 취소하시겠습니까?</ReservationCancelConfirmTitle>
+        <ReservationCancelConfirmButtonContainer>
+          <ReservationCancelConfirmButton onClick={handleConfirm}>네</ReservationCancelConfirmButton>
+          <ReservationCancelConfirmButton onClick={handleCancel}>아니오</ReservationCancelConfirmButton>
+        </ReservationCancelConfirmButtonContainer>
+      </ReservationCancelConfirmCard>
+    </Overlay>
+  );
+};
+
+// =====================
+// 예약 취소 완료 모달
+// =====================
+
+const ReservationCancelSuccessCard = styled.div`
+  width: 420px;
+  max-width: 90vw;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px 24px 24px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  text-align: center;
+`;
+
+const ReservationCancelSuccessTitle = styled.h2`
+  margin: 0 0 24px 0;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 600;
+  font-size: 18px;
+  color: #111827;
+  line-height: 1.3;
+  white-space: pre-line;
+`;
+
+const ReservationCancelSuccessButton = styled.button`
+  margin-top: 0;
+  width: 100%;
+  height: 48px;
+  background-color: #4965f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  &:hover {
+    background-color: #3b5dd8;
+  }
+`;
+
+export interface ReservationCancelSuccessModalProps extends BaseModalProps {
+  onConfirm?: () => void;
+}
+
+export const ReservationCancelSuccessModal: React.FC<ReservationCancelSuccessModalProps> = ({
+  open,
+  onClose,
+  onConfirm,
+  className,
+  style,
+}) => {
+  if (!open) return null;
+
+  const handleConfirm = () => {
+    if (onConfirm) {
+      onConfirm();
+    }
+    onClose();
+  };
+
+  return (
+    <Overlay onClick={onClose}>
+      <ReservationCancelSuccessCard className={className} style={style} onClick={(e) => e.stopPropagation()}>
+        <ReservationCancelSuccessTitle>예약이 취소되었습니다.</ReservationCancelSuccessTitle>
+        <ReservationCancelSuccessButton onClick={handleConfirm}>확인</ReservationCancelSuccessButton>
+      </ReservationCancelSuccessCard>
+    </Overlay>
+  );
+};
+
+// =====================
+// 상담 요약본 모달
+// =====================
+
+const ConsultationSummaryCard = styled.div`
+  width: 600px;
+  max-width: 90vw;
+  max-height: 80vh;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  display: flex;
+  flex-direction: column;
+`;
+
+const ConsultationSummaryTitle = styled.h2`
+  margin: 0 0 24px 0;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  color: #111827;
+`;
+
+const ConsultationSummaryDate = styled.div`
+  margin-bottom: 8px;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  color: #6b7280;
+`;
+
+const ConsultationSummaryTime = styled.div`
+  margin-bottom: 24px;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  color: #6b7280;
+`;
+
+const ConsultationSummaryContent = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 24px;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.8;
+  
+  p {
+    margin: 0 0 16px 0;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+`;
+
+const ConsultationSummaryConfirmButton = styled.button`
+  width: 100%;
+  padding: 12px 24px;
+  background-color: #4965f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  &:hover {
+    background-color: #3b5dd8;
+  }
+`;
+
+export interface ConsultationSummaryModalProps extends BaseModalProps {
+  memberName: string;
+  reservationId: number;
+  date: string;
+  startTime: string;
+  endTime: string;
+}
+
+export const ConsultationSummaryModal: React.FC<ConsultationSummaryModalProps> = ({
+  open,
+  onClose,
+  memberName,
+  reservationId,
+  date,
+  startTime,
+  endTime,
+  className,
+  style,
+}) => {
+  if (!open) return null;
+
+  return (
+    <Overlay onClick={onClose}>
+      <ConsultationSummaryCard className={className} style={style} onClick={(e) => e.stopPropagation()}>
+        <ConsultationSummaryTitle>{memberName} 회원님 상담 요약본</ConsultationSummaryTitle>
+        <ConsultationSummaryDate>{date}</ConsultationSummaryDate>
+        <ConsultationSummaryTime>{startTime} 시작 {endTime} 종료</ConsultationSummaryTime>
+        <ConsultationSummaryContent>
+          <p>
+            {memberName} 코치님은 이번 상담에서 {memberName} 회원님에게 ~~~이 ~~~하므로 ~~~~을 ~~~~해서 ~~~할 것을 권장하셨고,
+          </p>
+          <p>
+            {memberName} 회원님은 ~~~ 동안 ~~~해서 ~~~할 것이라고 얘기하였습니다.
+          </p>
+        </ConsultationSummaryContent>
+        <ConsultationSummaryConfirmButton onClick={onClose}>확인</ConsultationSummaryConfirmButton>
+      </ConsultationSummaryCard>
+    </Overlay>
+  );
+};
+
+// =====================
+// 신청 회원 정보 모달 (승인 기능 없음)
+// =====================
+
+const ApplicationMemberInfoCard = styled.div`
+  width: 680px;
+  max-width: 90vw;
+  max-height: 80vh;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  display: flex;
+  flex-direction: column;
+`;
+
+const ApplicationMemberInfoTitle = styled.h2`
+  margin: 0 0 24px 0;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  color: #111827;
+`;
+
+const ApplicationMemberInfoList = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 24px;
+  max-height: 400px;
+`;
+
+const ApplicationMemberInfoItem = styled.div`
+  display: flex;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid #e5e7eb;
+  
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const ApplicationMemberInfoProfileImage = styled.img`
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  margin-right: 16px;
+  background-color: #f3f4f6;
+`;
+
+const ApplicationMemberInfoName = styled.div`
+  flex: 1;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  color: #111827;
+`;
+
+const ApplicationMemberInfoButtonContainer = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+const ApplicationMemberInfoMemberInfoButton = styled.button`
+  padding: 8px 16px;
+  background-color: #ffffff;
+  color: #4965f6;
+  border: 1px solid #4965f6;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  white-space: nowrap;
+  
+  &:hover {
+    background-color: #f7fafc;
+  }
+`;
+
+const ApplicationMemberInfoDeleteButton = styled.button`
+  padding: 8px 16px;
+  background-color: #ffffff;
+  color: #4965f6;
+  border: 1px solid #4965f6;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  white-space: nowrap;
+  
+  &:hover {
+    background-color: #f7fafc;
+  }
+`;
+
+const ApplicationMemberInfoConfirmButton = styled.button`
+  width: 100%;
+  padding: 12px 24px;
+  background-color: #4965f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  &:hover {
+    background-color: #3b5dd8;
+  }
+`;
+
+export interface ApplicationMemberInfoModalProps extends BaseModalProps {
+  members?: ApplicationMember[];
+}
+
+export const ApplicationMemberInfoModal: React.FC<ApplicationMemberInfoModalProps> = ({
+  open,
+  onClose,
+  members = [],
+  className,
+  style,
+}) => {
+  const [memberList, setMemberList] = useState<ApplicationMember[]>(members);
+  const [showMemberInfoModal, setShowMemberInfoModal] = useState(false);
+  const [selectedMemberName, setSelectedMemberName] = useState<string>('');
+
+  useEffect(() => {
+    if (open) {
+      setMemberList(members);
+    }
+  }, [open, members]);
+
+  const handleMemberInfoClick = (memberName: string) => {
+    setSelectedMemberName(memberName);
+    setShowMemberInfoModal(true);
+  };
+
+  const handleDeleteMember = (memberId: string) => {
+    setMemberList(prev => prev.filter(m => m.id !== memberId));
+  };
+
+  const handleConfirm = () => {
+    onClose();
+  };
+
+  if (!open) return null;
+
+  return (
+    <>
+      <Overlay onClick={onClose}>
+        <ApplicationMemberInfoCard className={className} style={style} onClick={(e) => e.stopPropagation()}>
+          <ApplicationMemberInfoTitle>신청 회원 정보</ApplicationMemberInfoTitle>
+
+          <ApplicationMemberInfoList>
+            {memberList.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: '#6b7280', fontSize: '14px' }}>
+                신청 회원이 없습니다.
+              </div>
+            ) : (
+              memberList.map((member) => (
+                <ApplicationMemberInfoItem key={member.id}>
+                  <ApplicationMemberInfoProfileImage src={profilePictureIcon} alt={member.name} />
+                  <ApplicationMemberInfoName>{member.name} 회원님</ApplicationMemberInfoName>
+                  <ApplicationMemberInfoButtonContainer>
+                    <ApplicationMemberInfoMemberInfoButton onClick={() => handleMemberInfoClick(member.name)}>
+                      회원 정보
+                    </ApplicationMemberInfoMemberInfoButton>
+                    <ApplicationMemberInfoDeleteButton onClick={() => handleDeleteMember(member.id)}>
+                      회원 삭제
+                    </ApplicationMemberInfoDeleteButton>
+                  </ApplicationMemberInfoButtonContainer>
+                </ApplicationMemberInfoItem>
+              ))
+            )}
+          </ApplicationMemberInfoList>
+
+          <ApplicationMemberInfoConfirmButton onClick={handleConfirm}>확인</ApplicationMemberInfoConfirmButton>
+        </ApplicationMemberInfoCard>
+      </Overlay>
+
+      {/* 회원 정보 모달 */}
+      <MemberInfoModal
+        open={showMemberInfoModal}
+        onClose={() => setShowMemberInfoModal(false)}
+        memberName={selectedMemberName}
+        memberData={{
+          height: 170,
+          weight: 50,
+          sleepTime: 7,
+        }}
+        question="전완근을 키우고 싶어요"
+      />
+    </>
+  );
+};
+
+// =====================
+// FAQ 답변 모달
+// =====================
+
+const FAQAnswerCard = styled.div`
+  width: 600px;
+  max-width: 90vw;
+  max-height: 80vh;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  display: flex;
+  flex-direction: column;
+`;
+
+const FAQAnswerTitle = styled.h2`
+  margin: 0 0 24px 0;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  color: #111827;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+`;
+
+const FAQAnswerQuestion = styled.span`
+  font-weight: 700;
+  color: #111827;
+`;
+
+const FAQAnswerContent = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 24px;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.8;
+  white-space: pre-line;
+`;
+
+const FAQAnswerConfirmButton = styled.button`
+  width: 100%;
+  padding: 12px 24px;
+  background-color: #4965f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  &:hover {
+    background-color: #3b5dd8;
+  }
+`;
+
+export interface FAQAnswerModalProps extends BaseModalProps {
+  question: string;
+  answer: string;
+}
+
+export const FAQAnswerModal: React.FC<FAQAnswerModalProps> = ({
+  open,
+  onClose,
+  question,
+  answer,
+  className,
+  style,
+}) => {
+  if (!open) return null;
+
+  return (
+    <Overlay onClick={onClose}>
+      <FAQAnswerCard className={className} style={style} onClick={(e) => e.stopPropagation()}>
+        <FAQAnswerTitle>
+          <FAQAnswerQuestion>Q.</FAQAnswerQuestion>
+          <span>{question}</span>
+        </FAQAnswerTitle>
+        <FAQAnswerContent>{answer}</FAQAnswerContent>
+        <FAQAnswerConfirmButton onClick={onClose}>확인</FAQAnswerConfirmButton>
+      </FAQAnswerCard>
+    </Overlay>
+  );
+};
+
+// =====================
+// 문의 사항 전달 완료 모달
+// =====================
+
+const InquirySuccessCard = styled.div`
+  width: 420px;
+  max-width: 90vw;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px 24px 24px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  text-align: center;
+`;
+
+const InquirySuccessTitle = styled.h2`
+  margin: 0 0 24px 0;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 600;
+  font-size: 18px;
+  color: #111827;
+  line-height: 1.3;
+  white-space: pre-line;
+`;
+
+const InquirySuccessButton = styled.button`
+  margin-top: 0;
+  width: 100%;
+  height: 48px;
+  background-color: #4965f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  &:hover {
+    background-color: #3b5dd8;
+  }
+`;
+
+export interface InquirySuccessModalProps extends BaseModalProps {
+  onConfirm?: () => void;
+}
+
+export const InquirySuccessModal: React.FC<InquirySuccessModalProps> = ({
+  open,
+  onClose,
+  onConfirm,
+  className,
+  style,
+}) => {
+  if (!open) return null;
+
+  const handleConfirm = () => {
+    if (onConfirm) {
+      onConfirm();
+    }
+    onClose();
+  };
+
+  return (
+    <Overlay onClick={onClose}>
+      <InquirySuccessCard className={className} style={style} onClick={(e) => e.stopPropagation()}>
+        <InquirySuccessTitle>문의 사항이 전달되었습니다.</InquirySuccessTitle>
+        <InquirySuccessButton onClick={handleConfirm}>확인</InquirySuccessButton>
+      </InquirySuccessCard>
+    </Overlay>
+  );
+};
+
+// =====================
+// 스트리밍 종료 모달
+// =====================
+
+const StreamingEndCard = styled.div`
+  width: 600px;
+  max-width: 90vw;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px 24px 24px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  text-align: center;
+`;
+
+const StreamingEndTitle = styled.h2`
+  margin: 0 0 16px 0;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  color: #111827;
+`;
+
+const StreamingEndMessage = styled.p`
+  margin: 0 0 24px 0;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  color: #6b7280;
+  line-height: 1.6;
+`;
+
+const StreamingEndButton = styled.button`
+  width: 100%;
+  padding: 12px 24px;
+  background-color: #4965f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  &:hover {
+    background-color: #3b5dd8;
+  }
+`;
+
+export interface StreamingEndModalProps extends BaseModalProps {
+  onConfirm?: () => void;
+}
+
+export const StreamingEndModal: React.FC<StreamingEndModalProps> = ({
+  open,
+  onClose,
+  onConfirm,
+  className,
+  style,
+}) => {
+  if (!open) return null;
+
+  const handleConfirm = () => {
+    if (onConfirm) {
+      onConfirm();
+    }
+    onClose();
+  };
+
+  return (
+    <Overlay onClick={onClose}>
+      <StreamingEndCard className={className} style={style} onClick={(e) => e.stopPropagation()}>
+        <StreamingEndTitle>상담이 종료되었습니다.</StreamingEndTitle>
+        <StreamingEndMessage>
+          AI를 통한 상담 내용 요약본은{'\n'}잠시 후 '지난 예약 현황 - 상담 요약본'에서 확인하실 수 있습니다.
+        </StreamingEndMessage>
+        <StreamingEndButton onClick={handleConfirm}>확인</StreamingEndButton>
+      </StreamingEndCard>
+    </Overlay>
+  );
+};
+
+export const ApplicationApprovalModal: React.FC<ApplicationApprovalModalProps> = ({
+  open,
+  onClose,
+  members = [],
+  onMemberInfoClick,
+  className,
+  style,
+}) => {
+  const [activeTab, setActiveTab] = useState<'pending' | 'approved'>('pending');
+  const [pendingMembers, setPendingMembers] = useState<ApplicationMember[]>([]);
+  const [approvedMembers, setApprovedMembers] = useState<ApplicationMember[]>([]);
+  const [showMemberInfoModal, setShowMemberInfoModal] = useState(false);
+  const [selectedMemberName, setSelectedMemberName] = useState<string>('');
+
+  // 초기 회원 목록 설정
+  useEffect(() => {
+    if (open) {
+      setPendingMembers(members);
+      setApprovedMembers([]);
+      setActiveTab('pending');
+    }
+  }, [open, members]);
+
+  const handleApprove = (member: ApplicationMember) => {
+    setPendingMembers(prev => prev.filter(m => m.id !== member.id));
+    setApprovedMembers(prev => [...prev, member]);
+  };
+
+  const handleCancelApproval = (member: ApplicationMember) => {
+    setApprovedMembers(prev => prev.filter(m => m.id !== member.id));
+    setPendingMembers(prev => [...prev, member]);
+  };
+
+  const handleMemberInfoClick = (memberName: string) => {
+    setSelectedMemberName(memberName);
+    setShowMemberInfoModal(true);
+    if (onMemberInfoClick) {
+      onMemberInfoClick(memberName);
+    }
+  };
+
+  const handleConfirm = () => {
+    onClose();
+  };
+
+  if (!open) return null;
+
+  const currentMembers = activeTab === 'pending' ? pendingMembers : approvedMembers;
+
+  return (
+    <>
+      <Overlay onClick={onClose}>
+        <ApplicationApprovalCard className={className} style={style} onClick={(e) => e.stopPropagation()}>
+          <ApplicationApprovalTitle>신청 회원 예약 승인</ApplicationApprovalTitle>
+          
+          <ApplicationTabsContainer>
+            <SegmentedTabs
+              leftLabel="승인 대기"
+              rightLabel="승인 완료"
+              active={activeTab === 'pending' ? 'left' : 'right'}
+              onLeftClick={() => setActiveTab('pending')}
+              onRightClick={() => setActiveTab('approved')}
+              tabWidth={120}
+              showDivider={false}
+            />
+          </ApplicationTabsContainer>
+
+          <ApplicationMemberList>
+            {currentMembers.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: '#6b7280', fontSize: '14px' }}>
+                {activeTab === 'pending' ? '승인 대기 중인 회원이 없습니다.' : '승인 완료된 회원이 없습니다.'}
+              </div>
+            ) : (
+              currentMembers.map((member) => (
+                <ApplicationMemberItem key={member.id}>
+                  <ApplicationProfileImage src={profilePictureIcon} alt={member.name} />
+                  <ApplicationMemberName>{member.name} 회원님</ApplicationMemberName>
+                  <ApplicationButtonContainer>
+                    {activeTab === 'pending' ? (
+                      <ApplicationApproveButton onClick={() => handleApprove(member)}>
+                        승인
+                      </ApplicationApproveButton>
+                    ) : (
+                      <>
+                        <ApplicationMemberInfoButton onClick={() => handleMemberInfoClick(member.name)}>
+                          회원 정보
+                        </ApplicationMemberInfoButton>
+                        <ApplicationCancelApprovalButton onClick={() => handleCancelApproval(member)}>
+                          승인 취소
+                        </ApplicationCancelApprovalButton>
+                      </>
+                    )}
+                  </ApplicationButtonContainer>
+                </ApplicationMemberItem>
+              ))
+            )}
+          </ApplicationMemberList>
+
+          <ApplicationConfirmButton onClick={handleConfirm}>확인</ApplicationConfirmButton>
+        </ApplicationApprovalCard>
+      </Overlay>
+
+      {/* 회원 정보 모달 */}
+      <MemberInfoModal
+        open={showMemberInfoModal}
+        onClose={() => setShowMemberInfoModal(false)}
+        memberName={selectedMemberName}
+        memberData={{
+          height: 170,
+          weight: 50,
+          sleepTime: 7,
+        }}
+        question="전완근을 키우고 싶어요"
+      />
+    </>
+  );
+};
 
 interface ModalProps {
   isOpen: boolean;
@@ -138,5 +1866,360 @@ export const Modal: React.FC<ModalProps> = ({
         </div>
       </div>
     </div>
+  );
+};
+
+// 날짜/시간 선택 모달 스타일
+const DateTimeModalCard = styled.div`
+  width: 520px;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 24px 20px 20px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+`;
+
+const DateTimeTitle = styled.h2`
+  margin: 0 0 16px 0;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  color: #111827;
+  text-align: center;
+`;
+
+const MonthNavigation = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+`;
+
+const MonthButton = styled.button`
+  border: none;
+  background: transparent;
+  font-size: 18px;
+  cursor: pointer;
+  color: #374151;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  padding: 4px 8px;
+
+  &:hover {
+    color: #111827;
+  }
+`;
+
+const MonthText = styled.span`
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  color: #111827;
+`;
+
+const WeekDays = styled.div`
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+`;
+
+const WeekDay = styled.div<{ $isSunday?: boolean; $isSaturday?: boolean }>`
+  text-align: center;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: ${props => {
+    if (props.$isSunday) return '#ef4444';
+    if (props.$isSaturday) return '#3b82f6';
+    return '#6b7280';
+  }};
+`;
+
+const CalendarGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-bottom: 16px;
+`;
+
+const CalendarDay = styled.button<{ $isOtherMonth?: boolean; $isSelected?: boolean }>`
+  aspect-ratio: 1;
+  border: ${props => props.$isSelected ? '2px solid #5b77f6' : '1px solid transparent'};
+  border-radius: ${props => props.$isSelected ? '50%' : '8px'};
+  background: ${props => props.$isSelected ? '#5b77f6' : 'transparent'};
+  color: ${props => {
+    if (props.$isSelected) return '#ffffff';
+    if (props.$isOtherMonth) return '#d1d5db';
+    return '#111827';
+  }};
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: ${props => props.$isSelected ? '600' : '400'};
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: ${props => props.$isSelected ? '#4965f6' : '#f3f4f6'};
+  }
+`;
+
+const TimeSection = styled.div`
+  margin-bottom: 16px;
+`;
+
+const TimeLabel = styled.div`
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 8px;
+`;
+
+const TimeButtons = styled.div`
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+`;
+
+const TimeButton = styled.button<{ $isSelected?: boolean }>`
+  padding: 8px 16px;
+  border: ${props => props.$isSelected ? 'none' : '1px solid #e5e7eb'};
+  border-radius: 8px;
+  background: ${props => props.$isSelected ? '#5b77f6' : '#ffffff'};
+  color: ${props => props.$isSelected ? '#ffffff' : '#374151'};
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  font-weight: ${props => props.$isSelected ? '600' : '400'};
+  cursor: pointer;
+
+  &:hover {
+    background: ${props => props.$isSelected ? '#4965f6' : '#f3f4f6'};
+  }
+`;
+
+const SelectButton = styled.button`
+  width: 100%;
+  height: 48px;
+  background-color: #5b77f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  &:hover {
+    background-color: #4965f6;
+  }
+
+  &:disabled {
+    background-color: #d1d5db;
+    cursor: not-allowed;
+  }
+`;
+
+export interface DateTimePickerModalProps extends BaseModalProps {
+  onSelect: (dates: Date[], times: string[]) => void;
+  initialDates?: Date[];
+  initialTimes?: string[];
+}
+
+export const DateTimePickerModal: React.FC<DateTimePickerModalProps> = ({
+  open,
+  onClose,
+  onSelect,
+  initialDates = [],
+  initialTimes = [],
+  className,
+  style,
+}) => {
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const date = initialDates[0] || new Date();
+    return new Date(date.getFullYear(), date.getMonth(), 1);
+  });
+  
+  const [selectedDates, setSelectedDates] = useState<Date[]>(initialDates);
+  const [selectedTimes, setSelectedTimes] = useState<string[]>(initialTimes);
+
+  const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
+  const amTimes = ['8:00', '9:00', '10:00', '11:00'];
+  const pmTimes = ['12:00', '1:00', '2:00', '3:00', '4:00', '5:00', '6:00', '7:00', '8:00', '9:00', '10:00'];
+
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+
+    const days: { day: number; isOtherMonth: boolean }[] = [];
+    
+    // 이전 달의 마지막 날들
+    const prevMonthLastDay = new Date(year, month, 0).getDate();
+    for (let i = startingDayOfWeek - 1; i >= 0; i--) {
+      days.push({ day: prevMonthLastDay - i, isOtherMonth: true });
+    }
+
+    // 현재 달의 날들
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push({ day: i, isOtherMonth: false });
+    }
+
+    // 다음 달의 첫 날들 (6주를 채우기 위해)
+    const remainingDays = 42 - days.length;
+    for (let i = 1; i <= remainingDays; i++) {
+      days.push({ day: i, isOtherMonth: true });
+    }
+
+    return days;
+  };
+
+  const handlePrevMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+  };
+
+  const handleDayClick = (day: number, isOtherMonth: boolean) => {
+    if (isOtherMonth) return;
+    
+    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+    
+    setSelectedDates(prev => {
+      const exists = prev.some(d => 
+        d.getFullYear() === date.getFullYear() &&
+        d.getMonth() === date.getMonth() &&
+        d.getDate() === date.getDate()
+      );
+      
+      if (exists) {
+        return prev.filter(d => 
+          !(d.getFullYear() === date.getFullYear() &&
+            d.getMonth() === date.getMonth() &&
+            d.getDate() === date.getDate())
+        );
+      } else {
+        return [...prev, date];
+      }
+    });
+  };
+
+  const handleTimeClick = (time: string, period: 'AM' | 'PM') => {
+    const timeKey = `${period} ${time}`;
+    setSelectedTimes(prev => {
+      if (prev.includes(timeKey)) {
+        return prev.filter(t => t !== timeKey);
+      } else {
+        return [...prev, timeKey];
+      }
+    });
+  };
+
+  const handleSelect = () => {
+    if (selectedDates.length > 0) {
+      onSelect(selectedDates, selectedTimes);
+      onClose();
+    }
+  };
+
+  const days = getDaysInMonth(currentMonth);
+  const monthYear = `${currentMonth.getMonth() + 1}월`;
+
+  const isSelected = (day: number, isOtherMonth: boolean) => {
+    if (isOtherMonth) return false;
+    return selectedDates.some(date =>
+      date.getDate() === day &&
+      date.getMonth() === currentMonth.getMonth() &&
+      date.getFullYear() === currentMonth.getFullYear()
+    );
+  };
+
+  const hasSelectedDate = selectedDates.length > 0;
+
+  if (!open) return null;
+
+  return (
+    <Overlay onClick={onClose}>
+      <DateTimeModalCard className={className} style={style} onClick={(e) => e.stopPropagation()}>
+        <DateTimeTitle>날짜 / 시간 선택</DateTimeTitle>
+        
+        <MonthNavigation>
+          <MonthButton onClick={handlePrevMonth}>&lt;</MonthButton>
+          <MonthText>{monthYear}</MonthText>
+          <MonthButton onClick={handleNextMonth}>&gt;</MonthButton>
+        </MonthNavigation>
+
+        <WeekDays>
+          {weekDays.map((day, index) => (
+            <WeekDay key={index} $isSunday={index === 0} $isSaturday={index === 6}>
+              {day}
+            </WeekDay>
+          ))}
+        </WeekDays>
+
+        <CalendarGrid>
+          {days.map(({ day, isOtherMonth }, index) => {
+            const selected = isSelected(day, isOtherMonth);
+            return (
+              <CalendarDay
+                key={index}
+                $isOtherMonth={isOtherMonth}
+                $isSelected={selected}
+                onClick={() => handleDayClick(day, isOtherMonth)}
+              >
+                {day}
+              </CalendarDay>
+            );
+          })}
+        </CalendarGrid>
+
+        {hasSelectedDate && (
+          <TimeSection>
+            <TimeLabel>오전</TimeLabel>
+            <TimeButtons>
+              {amTimes.map((time) => {
+                const timeKey = `AM ${time}`;
+                return (
+                  <TimeButton
+                    key={time}
+                    $isSelected={selectedTimes.includes(timeKey)}
+                    onClick={() => handleTimeClick(time, 'AM')}
+                  >
+                    {time}
+                  </TimeButton>
+                );
+              })}
+            </TimeButtons>
+            <TimeLabel style={{ marginTop: '12px' }}>오후</TimeLabel>
+            <TimeButtons>
+              {pmTimes.map((time) => {
+                const timeKey = `PM ${time}`;
+                return (
+                  <TimeButton
+                    key={time}
+                    $isSelected={selectedTimes.includes(timeKey)}
+                    onClick={() => handleTimeClick(time, 'PM')}
+                  >
+                    {time}
+                  </TimeButton>
+                );
+              })}
+            </TimeButtons>
+          </TimeSection>
+        )}
+
+        <SelectButton onClick={handleSelect} disabled={!hasSelectedDate}>
+          선택
+        </SelectButton>
+      </DateTimeModalCard>
+    </Overlay>
   );
 };

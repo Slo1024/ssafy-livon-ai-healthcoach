@@ -13,6 +13,11 @@ import { TermsPage } from '../pages/main/TermsPage';
 import { SignupCompletePage } from '../pages/auth/SignupCompletePage';
 import { MyPageVerificationPage } from '../pages/coach/MyPageVerificationPage';
 import { MyPageInfoPage } from '../pages/coach/MyPageInfoPage';
+import { ClassListPage } from '../pages/coach/ClassListPage';
+import { ClassSetupPage } from '../pages/coach/ClassSetupPage';
+import { ReservationListPage } from '../pages/coach/ReservationListPage';
+import { PastReservationPage } from '../pages/coach/PastReservationPage';
+import { StreamingPage } from '../pages/coach/StreamingPage';
 import { NotFoundPage } from '../pages/notfound/NotFoundPage';
 import { FAQPage } from '../pages/support/FAQPage';
 import { InquiryPage } from '../pages/support/InquiryPage';
@@ -50,10 +55,18 @@ export const AppRouter: React.FC = () => {
           }
         />
         <Route
+          path={ROUTES.CLASS_LIST}
+          element={
+            <ProtectedRoute requiredRole="coach">
+              <ClassListPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path={ROUTES.CLASS_SETUP}
           element={
             <ProtectedRoute requiredRole="coach">
-              <div>클래스 개설 페이지</div>
+              <ClassSetupPage />
             </ProtectedRoute>
           }
         />
@@ -77,7 +90,7 @@ export const AppRouter: React.FC = () => {
           path={ROUTES.PAST_RESERVATION}
           element={
             <ProtectedRoute requiredRole="coach">
-              <div>지난 예약 페이지</div>
+              <PastReservationPage />
             </ProtectedRoute>
           }
         />
@@ -85,7 +98,7 @@ export const AppRouter: React.FC = () => {
           path={ROUTES.STREAMING}
           element={
             <ProtectedRoute requiredRole="coach">
-              <div>스트리밍 페이지</div>
+              <StreamingPage />
             </ProtectedRoute>
           }
         />
@@ -102,6 +115,16 @@ export const AppRouter: React.FC = () => {
           element={
             <ProtectedRoute requiredRole="coach">
               <MyPageInfoPage />
+            </ProtectedRoute>
+          }
+        />
+        
+        {/* 예약 현황 라우트 */}
+        <Route
+          path={ROUTES.RESERVATION_LIST}
+          element={
+            <ProtectedRoute requiredRole="coach">
+              <ReservationListPage />
             </ProtectedRoute>
           }
         />

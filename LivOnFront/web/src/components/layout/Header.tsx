@@ -262,12 +262,12 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   const navItems = [
-    { path: '/about', label: '서비스 소개' },
-    { path: '/reservations', label: '예약 현황' },
-    { path: '/classes', label: '나의 클래스' },
-    { path: '/support/faq', label: '고객센터' },
-    { path: '/download', label: '앱 다운로드' },
-    { path: '/coach/mypage/info', label: '마이페이지' },
+    { path: '/about', label: '서비스 소개', activePaths: ['/about'] },
+    { path: '/reservations', label: '예약 현황', activePaths: ['/reservations', '/coach/past-reservation'] },
+    { path: '/classes', label: '나의 클래스', activePaths: ['/classes', '/coach/class-setup'] },
+    { path: '/support/faq', label: '고객센터', activePaths: ['/support/faq', '/support/inquiry'] },
+    { path: '/download', label: '앱 다운로드', activePaths: ['/download'] },
+    { path: '/coach/mypage/info', label: '마이페이지', activePaths: ['/coach/mypage/info', '/mypage/coach-verification'] },
   ];
 
   return (
@@ -296,15 +296,18 @@ export const Header: React.FC<HeaderProps> = ({
         
         {/* Desktop Navigation */}
         <DesktopNav>
-          {navItems.map((item) => (
-            <DesktopNavLink
-              key={item.path}
-              to={item.path}
-              className={location.pathname === item.path ? 'active' : ''}
-            >
-              {item.label}
-            </DesktopNavLink>
-          ))}
+          {navItems.map((item) => {
+            const isActive = item.activePaths?.includes(location.pathname) || location.pathname === item.path;
+            return (
+              <DesktopNavLink
+                key={item.path}
+                to={item.path}
+                className={isActive ? 'active' : ''}
+              >
+                {item.label}
+              </DesktopNavLink>
+            );
+          })}
         </DesktopNav>
 
         {/* Right Section - Mobile Menu + User Menu */}

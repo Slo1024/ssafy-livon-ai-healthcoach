@@ -69,7 +69,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
   options,
   value,
   onChange,
-  placeholder = '선택하세요',
+  placeholder = undefined,
   error,
   disabled = false,
   className = '',

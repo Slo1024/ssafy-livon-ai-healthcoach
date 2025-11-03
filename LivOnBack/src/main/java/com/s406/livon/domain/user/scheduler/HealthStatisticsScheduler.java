@@ -21,7 +21,7 @@ public class HealthStatisticsScheduler {
         log.info("건강 통계 평균값 계산 시작");
 
         try {
-            healthStatisticsService.updateHealthStatistics();
+            healthStatisticsService.updateHealthStatisticsOptimized();
             log.info("건강 통계 평균값 계산 완료");
         } catch (Exception e) {
             log.error("건강 통계 평균값 계산 중 오류 발생", e);

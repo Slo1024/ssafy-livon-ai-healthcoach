@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StopWatch;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -62,7 +64,10 @@ public class HealthStatisticsService {
         sw.start();
 
         // 1. 한 번의 쿼리로 모든 평균값 계산
-        Object[] averages = healthSurveyRepository.calculateAllAverages();
+        List<Object[]> result = healthSurveyRepository.calculateAllAverages();
+
+        // ✅ 수정: List에서 첫 번째 행 가져오기
+        Object[] averages = result.get(0);
 
         Double avgSteps = (Double) averages[0];
         Double avgSleepTime = (Double) averages[1];

@@ -9,6 +9,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 checkout scm
+                sh 'rm -f .apk_built .apk_latest_url || true'
             }
         }
 
@@ -222,6 +223,10 @@ pipeline {
 
                     echo "📎 Download URL : ${BASEURL}/download/${outName}"
                     echo "📎 Latest Link  : ${BASEURL}/download/latest.apk"
+
+                    // post 단계에서 APK 알림을 보내기 위한 플래그 및 URL 기록
+                    writeFile file: '.apk_built', text: '1'
+                    writeFile file: '.apk_latest_url', text: "${BASEURL}/download/${outName}\n"
                 }
             }
         }
@@ -240,6 +245,87 @@ pipeline {
                     echo "🧹 Pruning old APKs (keep 5 latest)..."
                     ls -tp /downloads/*.apk 2>/dev/null | grep -v '/$' | tail -n +6 | xargs -r rm --
                 '''
+            }
+        }
+    }
+    post {
+        success {
+            script {
+                def branch    = env.BRANCH_NAME ?: "${env.GIT_BRANCH}".replaceAll(".*/", "")
+                def shortSha  = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+                def epochTs   = sh(script: "date +%s", returnStdout: true).trim()
+                def isProd    = (branch == 'master')
+
+                def beContainer    = isProd ? 'livon-be-prod'    : 'livon-be-dev'
+                def feContainer    = isProd ? 'livon-fe-prod'    : 'livon-fe-dev'
+                def nginxContainer = isProd ? 'nginx-prod'       : 'nginx-dev'
+
+                def headerText = isProd ? '### :crown: Backend Deployed! :crown:' : '### :pepe_jam: Dev Updated! :pepe_jam:'
+                def baseUrl   = isProd ? 'https://k13s406.p.ssafy.io' : 'https://k13s406.p.ssafy.io:8443'
+
+                // APK 최신 링크가 있으면 알림에 포함
+                def apkLatestUrl = null
+                def hasLatest = sh(script: '[ -f /downloads/latest.apk ] && echo yes || echo no', returnStdout: true).trim() == 'yes'
+                if (hasLatest) {
+                    apkLatestUrl = "${baseUrl}/download/latest.apk"
+                }
+
+                def attachment = [
+                    fallback : "Build 성공 - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                    color    : "#2ECC71",
+                    pretext  : headerText,
+                    title    : "${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                    title_link: "${env.BUILD_URL}",
+                    fields   : [
+                        [title: 'Job',          value: env.JOB_NAME,             short: true],
+                        [title: 'Build',        value: "#${env.BUILD_NUMBER}",   short: true],
+                        [title: 'Branch',       value: branch,                    short: true],
+                        [title: 'Commit',       value: shortSha,                  short: true],
+                        [title: 'Docker BE',    value: beContainer,               short: true],
+                        [title: 'Docker FE',    value: feContainer,               short: true],
+                        [title: 'Docker Nginx', value: nginxContainer,            short: true]
+                    ],
+                    footer   : 'Jenkins',
+                    ts       : (epochTs as Long)
+                ]
+
+                if (apkLatestUrl) {
+                    attachment.fields << [title: 'Latest APK', value: apkLatestUrl, short: false]
+                }
+
+                def attachments = [attachment]
+
+                // APK가 이번 빌드에서 업데이트되었다면, 별도의 카드 추가
+                if (fileExists('.apk_built')) {
+                    def apkUrl = (fileExists('.apk_latest_url') ? readFile('.apk_latest_url').trim() : (apkLatestUrl ?: "${baseUrl}/download/latest.apk"))
+                    def apkAttachment = [
+                        color   : '#A4C639',
+                        pretext : '### :android: New APK Build Ready!',
+                        fields  : [
+                            [title: 'Latest APK', value: apkUrl, short: false],
+                            [title: 'Branch',     value: branch, short: true],
+                            [title: 'Commit',     value: shortSha, short: true]
+                        ],
+                        footer  : 'Jenkins',
+                        ts      : (epochTs as Long)
+                    ]
+                    attachments << apkAttachment
+                }
+
+                def payloadObj = [
+                    text       : '@channel',
+                    attachments: attachments
+                ]
+
+                def json   = groovy.json.JsonOutput.toJson(payloadObj)
+                def pretty = groovy.json.JsonOutput.prettyPrint(json)
+
+                withCredentials([string(credentialsId: 'livon-mattermost-webhook-url', variable: 'MM_WEBHOOK')]) {
+                    sh """
+                        curl -s -X POST -H 'Content-Type: application/json' \
+                            -d '${pretty.replace("'", "'\\''")}' "$MM_WEBHOOK" >/dev/null || true
+                    """
+                }
             }
         }
     }

@@ -8,6 +8,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.livon.app.feature.coach.streaming.ui.ConfigureUrlsScreen
+import com.livon.app.feature.shared.streaming.ui.StreamingCheating
+import com.livon.app.feature.shared.streaming.ui.StreamingParticipant
 import com.livon.app.ui.theme.LivonTheme
 
 @Preview(showBackground = true)
@@ -55,5 +57,13 @@ fun PreviewHeaderBarComponent() {
 //            bottomText = "혈압약 복용 중이므로 격렬한 운동은 피하세요",
 //            qaList = sampleQA
 //        )
+//        StreamingParticipant(
+//            onBackClick = { /* 뒤로가기 처리 */ },
+//            onSearch = { query -> /* 검색 처리 */ }
+//        )
+        StreamingCheating(
+            onBackClick = { /* 뒤로가기 처리 */ },
+            onSearch = { query -> /* 검색 처리 */ }
+        )
     }
 }

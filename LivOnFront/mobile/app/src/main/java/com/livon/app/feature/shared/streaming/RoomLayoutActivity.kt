@@ -2,11 +2,16 @@ package io.openvidu.android
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.app.Activity
+import android.app.NotificationManager
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import android.media.projection.MediaProjectionManager
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.CircularProgressIndicator
@@ -70,6 +75,23 @@ class RoomLayoutActivity : AppCompatActivity() {
             Toast.makeText(this, "카메라/마이크 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
         }
     }
+    private val screenCaptureLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            lifecycleScope.launch {
+                try {
+                    room.localParticipant.setScreenShareEnabled(true, result.data)
+                    isScreenSharing = true
+                } catch (e: Exception) {
+                    Log.e("LiveKitDebug", "Start screen share failed: ${e.message}", e)
+                    Toast.makeText(this@RoomLayoutActivity, "화면 공유 시작 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } else {
+            Toast.makeText(this, "화면 공유 권한이 거부되었습니다.", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -97,7 +119,8 @@ class RoomLayoutActivity : AppCompatActivity() {
                     room = roomState,
                     onConnect = ::checkAndRequestPermissions,
                     onToggleCamera = ::toggleCamera,
-                    onToggleMic = ::toggleMicrophone
+                        onToggleMic = ::toggleMicrophone,
+                        onShareScreen = ::toggleScreenShare
                 )
             } else {
                 Box(Modifier.fillMaxSize(), Alignment.Center) {
@@ -151,17 +174,19 @@ class RoomLayoutActivity : AppCompatActivity() {
                 // 로컬 비디오 트랙을 flow로 모니터링 (튜토리얼 방식)
                 launch {
                     localParticipant::videoTrackPublications.flow.collect { publications ->
-                        val videoTrack = publications.firstOrNull()?.second as? VideoTrack
-                        Log.d("LiveKitDebug", "Video track publications updated: ${publications.size}, videoTrack: $videoTrack")
+                        val screenShareTrack = publications.firstOrNull { it.first.source == Track.Source.SCREEN_SHARE }?.second as? VideoTrack
+                        val cameraTrackPub = publications.firstOrNull { it.first.source == Track.Source.CAMERA }
+                        val selectedTrack = screenShareTrack ?: (cameraTrackPub?.second as? VideoTrack)
+                        Log.d("LiveKitDebug", "Video track publications updated: ${publications.size}, selected: $selectedTrack, hasScreenShare=${screenShareTrack != null}")
                         
-                        if (videoTrack != null) {
+                        if (selectedTrack != null) {
                             val participantName = localParticipant.identity?.value ?: "Participant"
                             _participantTracks.update { currentTracks ->
                                 val updatedTracks = currentTracks.filter { !it.isLocal }.toMutableList()
                                 updatedTracks.add(
                                     0,
                                     TrackInfo(
-                                        track = videoTrack,
+                                        track = selectedTrack,
                                         participantIdentity = participantName,
                                         isLocal = true,
                                         isCameraEnabled = localParticipant.isCameraEnabled(),
@@ -170,7 +195,7 @@ class RoomLayoutActivity : AppCompatActivity() {
                                 )
                                 updatedTracks.toList()
                             }
-                            Log.d("LiveKitDebug", "Local video track added: ${videoTrack.sid}")
+                            Log.d("LiveKitDebug", "Local selected video track added: ${selectedTrack.sid}")
                         }
                     }
                 }
@@ -198,8 +223,30 @@ class RoomLayoutActivity : AppCompatActivity() {
                 is RoomEvent.TrackPublished -> {
                     Log.d("LiveKitDebug", "Track published by ${event.participant.identity?.value}: ${event.publication.sid}")
                 }
-                is RoomEvent.TrackSubscribed -> onTrackSubscribed(event)
+                    is RoomEvent.TrackSubscribed -> onTrackSubscribed(event)
                 is RoomEvent.TrackUnsubscribed -> onTrackUnsubscribed(event)
+                    is RoomEvent.TrackMuted -> {
+                        val pub = event.publication
+                        if (pub.source == Track.Source.CAMERA) {
+                            val pid = event.participant.identity?.value
+                            if (pid != null) {
+                                _participantTracks.update { list ->
+                                    list.map { if (!it.isLocal && it.participantIdentity == pid) it.copy(isCameraEnabled = false) else it }
+                                }
+                            }
+                        }
+                    }
+                    is RoomEvent.TrackUnmuted -> {
+                        val pub = event.publication
+                        if (pub.source == Track.Source.CAMERA) {
+                            val pid = event.participant.identity?.value
+                            if (pid != null) {
+                                _participantTracks.update { list ->
+                                    list.map { if (!it.isLocal && it.participantIdentity == pid) it.copy(isCameraEnabled = true) else it }
+                                }
+                            }
+                        }
+                    }
                 else -> {}
             }
         }
@@ -268,6 +315,26 @@ class RoomLayoutActivity : AppCompatActivity() {
             val localParticipant = room.localParticipant
             localParticipant.setMicrophoneEnabled(!localParticipant.isMicrophoneEnabled())
             updateLocalParticipantInfo()
+        }
+    }
+
+    private var isScreenSharing = false
+    private fun toggleScreenShare() {
+        lifecycleScope.launch {
+            val localParticipant = room.localParticipant
+            try {
+                if (!isScreenSharing) {
+                    val mpm = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+                    val intent = mpm.createScreenCaptureIntent()
+                    screenCaptureLauncher.launch(intent)
+                } else {
+                    localParticipant.setScreenShareEnabled(false)
+                    isScreenSharing = false
+                }
+            } catch (e: Exception) {
+                Log.e("LiveKitDebug", "Screen share toggle failed: ${e.message}", e)
+                Toast.makeText(this@RoomLayoutActivity, "화면 공유 토글 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

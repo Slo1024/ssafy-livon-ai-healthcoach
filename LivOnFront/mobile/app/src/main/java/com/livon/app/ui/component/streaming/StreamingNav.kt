@@ -27,7 +27,15 @@ import com.livon.app.ui.theme.*
 import com.livon.app.ui.theme.Pretendard
 
 @Composable
-fun StreamingNav() {
+fun StreamingNav(
+    isMicEnabled: Boolean = true,
+    isCameraEnabled: Boolean = true,
+    onToggleMic: () -> Unit = {},
+    onToggleCamera: () -> Unit = {},
+    onShare: () -> Unit = {},
+    onMore: () -> Unit = {},
+    onExit: () -> Unit = {},
+) {
     Surface(
         color = Basic,
         modifier = Modifier.fillMaxWidth(),
@@ -41,31 +49,33 @@ fun StreamingNav() {
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val micIcon = if (isMicEnabled) R.drawable.on_mic else R.drawable.mic
             NavButtonWithText(
-                iconResId = R.drawable.mic,
+                iconResId = micIcon,
                 text = "마이크",
-                onClick = { /* 마이크 토글 로직 */ }
+                onClick = { onToggleMic() }
             )
             Spacer(Modifier.width(50.dp))
 
+            val videoIcon = if (isCameraEnabled) R.drawable.on_video else R.drawable.video
             NavButtonWithText(
-                iconResId = R.drawable.video,
+                iconResId = videoIcon,
                 text = "비디오",
-                onClick = { /* 비디오 토글 로직 */ }
+                onClick = { onToggleCamera() }
             )
             Spacer(Modifier.width(50.dp))
 
             NavButtonWithText(
                 iconResId = R.drawable.share,
                 text = "공유",
-                onClick = { /* 화면 공유 로직 */ }
+                onClick = { onShare() }
             )
             Spacer(Modifier.width(50.dp))
 
             NavButtonWithText(
                 iconResId = R.drawable.more,
                 text = "기능",
-                onClick = { /* 더보기 메뉴 로직 */ }
+                onClick = { onMore() }
             )
             Spacer(Modifier.width(50.dp))
 
@@ -73,7 +83,7 @@ fun StreamingNav() {
                 iconResId = R.drawable.exit,
                 text = "나가기",
                 iconTint = Color.Red,
-                onClick = { /* 나가기 로직 */ }
+                onClick = { onExit() }
             )
         }
     }

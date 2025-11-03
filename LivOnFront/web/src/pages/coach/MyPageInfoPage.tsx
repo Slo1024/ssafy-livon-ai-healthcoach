@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Input as CommonInput } from '../../components/common/Input';
 import { Dropdown as CommonDropdown } from '../../components/common/Dropdown';
 import { SegmentedTabs } from '../../components/common/Button';
+import { DateTimePickerModal } from '../../components/common/Modal';
 import profilePictureIcon from '../../assets/images/profile_picture.png';
 import { ROUTES } from '../../constants/routes';
 
@@ -341,6 +342,9 @@ export const MyPageInfoPage: React.FC = () => {
   });
   const [qualificationFields, setQualificationFields] = useState<string[]>(['']);
   const [introductionCount, setIntroductionCount] = useState(0);
+  const [showDateTimeModal, setShowDateTimeModal] = useState(false);
+  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+  const [selectedTimes, setSelectedTimes] = useState<string[]>([]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -348,8 +352,8 @@ export const MyPageInfoPage: React.FC = () => {
 
   const handleAddQualification = () => setQualificationFields(prev => [...prev, '']);
 
-  const nickname = user?.nickname || '코치님';
   const isInfoPage = location.pathname.includes('/coach/mypage/info');
+  const nickname = user?.nickname;
 
   const handleInfoClick = () => {
     navigate(ROUTES.COACH_MYPAGE_INFO);
@@ -361,7 +365,7 @@ export const MyPageInfoPage: React.FC = () => {
 
   return (
     <PageContainer>
-      <Title>{nickname} 코치님 마이페이지</Title>
+      <Title>{nickname ? `${nickname} 코치님 마이페이지` : '코치님 마이페이지'}</Title>
       <SegmentedTabs
         leftLabel="코치님 정보"
         rightLabel="코치 인증 여부"
@@ -606,19 +610,33 @@ export const MyPageInfoPage: React.FC = () => {
       </FormField>
 
       {/* 예약 받지 않는 날 */}
-      <div style={{ marginTop: '18px' }}>
-        <Label>예약 받지 않는 날</Label>
-        <select style={{ width: '100%', height: '40px', borderRadius: '12px', border: '1px solid #ecedec', padding: '0 12px' }}>
-          <option value="" disabled selected>클릭하여 선택</option>
-          <option>매주 월요일</option>
-          <option>매주 화요일</option>
-          <option>매주 수요일</option>
-          <option>매주 목요일</option>
-          <option>매주 금요일</option>
-          <option>매주 토요일</option>
-          <option>매주 일요일</option>
-        </select>
-      </div>
+      <FormField style={{ marginTop: '18px' }}>
+        <FormLabel>예약 받지 않는 날</FormLabel>
+        <CommonInput
+          placeholder="클릭하여 선택"
+          value={
+            selectedDates.length > 0
+              ? selectedDates.map(date => 
+                  `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`
+                ).join(', ') + (selectedTimes.length > 0 ? ` (${selectedTimes.filter(t => t.startsWith('AM ') || t.startsWith('PM ')).map(t => t.replace('AM ', '오전 ').replace('PM ', '오후 ')).join(', ')})` : '')
+              : ''
+          }
+          readOnly
+          onClick={() => setShowDateTimeModal(true)}
+          style={{ flex: 1, cursor: 'pointer' }}
+        />
+      </FormField>
+
+      <DateTimePickerModal
+        open={showDateTimeModal}
+        onClose={() => setShowDateTimeModal(false)}
+        onSelect={(dates, times) => {
+          setSelectedDates(dates);
+          setSelectedTimes(times);
+        }}
+        initialDates={selectedDates}
+        initialTimes={selectedTimes}
+      />
 
       <div style={{ marginTop: '24px' }}>
         <SubmitButton onClick={() => setShowModal(true)}>정보 수정</SubmitButton>

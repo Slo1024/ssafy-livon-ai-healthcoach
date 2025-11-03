@@ -5,14 +5,14 @@ interface ButtonProps {
   children: React.ReactNode;
   onClick?: () => void;
   type?: 'button' | 'submit' | 'reset';
-  variant?: 'primary' | 'secondary' | 'outline' | 'submit';
+  variant?: 'primary' | 'secondary' | 'outline' | 'submit' | 'info-edit' | 'delete';
   size?: 'small' | 'medium' | 'large';
   disabled?: boolean;
   className?: string;
   style?: React.CSSProperties;
 }
 
-const StyledButton = styled.button<{ variant?: string; size?: string }>`
+const StyledButton = styled.button<{ $variant?: string; $size?: string }>`
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -20,7 +20,7 @@ const StyledButton = styled.button<{ variant?: string; size?: string }>`
   outline: none;
 
   ${props => {
-    switch (props.variant) {
+    switch (props.$variant) {
       case 'primary':
         return `
           background-color: #2d79f3;
@@ -67,6 +67,41 @@ const StyledButton = styled.button<{ variant?: string; size?: string }>`
             background-color: #1a5fd9;
           }
         `;
+      case 'info-edit':
+        return `
+          width: 120px;
+          height: 60px;
+          background-color: transparent;
+          border: 1px solid #4965f6;
+          color: #4965f6;
+          font-weight: 500;
+          font-size: 12px;
+          border-radius: 20px;
+          transition: all 0.3s ease;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          &:hover {
+            background-color: #4965f6;
+            color: #ffffff;
+          }
+        `;
+      case 'delete':
+        return `
+          width: 120px;
+          height: 60px;
+          background-color: transparent;
+          border: 1px solid #ff0000;
+          color: #ff0000;
+          font-weight: 500;
+          font-size: 14px;
+          border-radius: 20px;
+          transition: all 0.3s ease;
+          &:hover {
+            background-color: #ff0000;
+            color: #ffffff;
+          }
+        `;
       default:
         return `
           background-color: #2d79f3;
@@ -80,7 +115,7 @@ const StyledButton = styled.button<{ variant?: string; size?: string }>`
   }}
 
   ${props => {
-    switch (props.size) {
+    switch (props.$size) {
       case 'small':
         return `
           padding: 0 16px;
@@ -89,7 +124,7 @@ const StyledButton = styled.button<{ variant?: string; size?: string }>`
           border-radius: 6px;
         `;
       case 'medium':
-        if (props.variant === 'outline') {
+        if (props.$variant === 'outline') {
           return `
             width: 87px;
             height: 42px;
@@ -142,8 +177,8 @@ export const Button: React.FC<ButtonProps> = ({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      variant={variant}
-      size={size}
+      $variant={variant}
+      $size={size}
       className={className}
       style={style}
     >
@@ -188,9 +223,14 @@ const TabButtonBase = styled.button<{ $active?: boolean; $width: number }>`
   border-radius: 6px;
   white-space: nowrap;
   transition: background-color 0.2s ease;
+  outline: none;
 
   &:hover {
     background-color: ${p => (p.$active ? '#4965f6' : '#f7fafc')};
+  }
+
+  &:focus {
+    outline: none;
   }
 `;
 

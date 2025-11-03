@@ -1,5 +1,7 @@
-// com/livon/app/feature/shared/auth/ui/EmailSetupScreen.kt
+// app/src/main/java/com/livon/app/feature/shared/auth/ui/EmailSetupScreen.kt
 package com.livon.app.feature.shared.auth.ui
+
+import com.livon.app.feature.shared.auth.ui.CommonSignUpScreenA
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
@@ -8,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.livon.app.ui.component.button.PrimaryButtonBottom
 import com.livon.app.ui.component.input.LivonTextField
 import com.livon.app.ui.component.overlay.TopBar
@@ -19,6 +22,7 @@ fun EmailSetupScreen(
     modifier: Modifier = Modifier
 ) {
     var email by remember { mutableStateOf("") }
+    val maxLength = 30
     val isValidEmail = email.contains("@") && email.contains(".")
 
     CommonSignUpScreenA(
@@ -30,22 +34,21 @@ fun EmailSetupScreen(
                 onClick = { /* TODO: Navigate to next screen */ }
             )
         }
-
-
-    )
-
-    {
+    ) {
         Text(
             text = "만나서 반가워요\n이메일을 입력해주세요!",
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground
         )
-        Spacer(Modifier.height(150.dp))
+        Spacer(Modifier.height(140.dp))
+
         LivonTextField(
+            modifier = Modifier.fillMaxWidth(),
             value = email,
             onValueChange = { email = it },
             label = "이메일",
-            placeholder = "example@example.com"
+            placeholder = "example@example.com",
+            maxLength = maxLength
         )
     }
 }
@@ -63,6 +66,7 @@ fun EmailSetupScreenPreview_Empty() {
 fun EmailSetupScreenPreview_Valid() {
     LivonTheme {
         var email by remember { mutableStateOf("user@example.com") }
+        val maxLength = 30
         val isValidEmail = email.contains("@") && email.contains(".")
 
         CommonSignUpScreenA(
@@ -80,12 +84,14 @@ fun EmailSetupScreenPreview_Valid() {
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onBackground
             )
-            Spacer(Modifier.height(Spacing.DescToContent))
+            Spacer(Modifier.height(140.dp))
             LivonTextField(
+                modifier = Modifier.fillMaxWidth(),
                 value = email,
                 onValueChange = { email = it },
                 label = "이메일",
-                placeholder = "example@example.com"
+                placeholder = "example@example.com",
+                maxLength = maxLength
             )
         }
     }

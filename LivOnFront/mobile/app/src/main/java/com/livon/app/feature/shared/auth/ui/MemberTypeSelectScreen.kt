@@ -42,7 +42,7 @@ fun MemberTypeSelectScreen(
                     .align(Alignment.TopStart)
                     .fillMaxWidth()
             ) {
-                RequirementText("어떤 포지션으로 참여하나요?")
+                RequirementText("소속된 기업이 있으신가요?")
             }
 
             // 2) 화면(TopBar~BottomBar 사이) 전체 기준 '진짜 중앙'에 카드 2개

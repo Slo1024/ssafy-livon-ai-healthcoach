@@ -9,7 +9,7 @@ COPY . .
 RUN gradle clean bootJar --no-daemon
 
 # --------- 실행용 이미지 구성 ---------
-FROM oeclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
 # 빌드된 JAR만 복사

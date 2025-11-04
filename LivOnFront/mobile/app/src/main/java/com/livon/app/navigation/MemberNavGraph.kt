@@ -68,18 +68,17 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             showLoadMore = loadMore,
             onLoadMore = {},
             // navigate with coach id so detail can receive which coach to show
-            onCoachClick = { coach -> nav.navigate("coach_detail/${coach.id}") }
+            onCoachClick = { coach -> nav.navigate("coach_detail/${coach.id}/personal") }
         )
     }
 
-    // coach_detail now accepts a coachId argument and looks up the coach from devMockCoaches
-    composable("coach_detail/{coachId}") { backStackEntry ->
+    // coach_detail accepts coachId and mode (personal/group)
+    composable("coach_detail/{coachId}/{mode}") { backStackEntry ->
         val coachId = backStackEntry.arguments?.getString("coachId")
+        val mode = backStackEntry.arguments?.getString("mode") ?: "personal"
         val coach = if (useDevMocks) devMockCoaches.find { it.id == coachId } else null
-        CoachDetailScreen(
-            navController = nav,
-            coach = coach
-        )
+        val showSchedule = mode == "personal"
+        CoachDetailScreenNav(nav = nav, coach = coach, showSchedule = showSchedule)
     }
 
     // New navigable route that accepts coachName and date as path params (date: ISO yyyy-MM-dd)
@@ -95,7 +94,8 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             onBack = { nav.popBackStack() },
             onConfirmReservation = { _ -> nav.navigate("reservations") },
             onNavigateHome = { nav.navigate("member_home") },
-            onNavigateToMyHealthInfo = { /* noop */ }
+            onNavigateToMyHealthInfo = { /* noop */ },
+            navController = nav
         )
     }
 
@@ -103,11 +103,12 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
     composable("qna_submit") {
         QnASubmitScreen(
             coachName = "코치",
-            selectedDate = java.time.LocalDate.now(),
+            selectedDate = LocalDate.now(),
             onBack = { nav.popBackStack() },
             onConfirmReservation = { _ -> nav.navigate("reservations") },
             onNavigateHome = { nav.navigate("member_home") },
-            onNavigateToMyHealthInfo = { /* noop */ }
+            onNavigateToMyHealthInfo = { /* noop */ },
+            navController = nav
         )
     }
 
@@ -117,7 +118,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             SampleClassInfo(
                 id = "1",
                 coachId = "c1",
-                date = java.time.LocalDate.now(),
+                date = LocalDate.now(),
                 time = "11:00 ~ 12:00",
                 type = "일반 클래스",
                 imageUrl = null,
@@ -130,7 +131,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             SampleClassInfo(
                 id = "2",
                 coachId = "c2",
-                date = java.time.LocalDate.now().plusDays(1),
+                date = LocalDate.now().plusDays(1),
                 time = "19:00 ~ 20:00",
                 type = "기업 클래스",
                 imageUrl = null,
@@ -138,6 +139,110 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 coachName = "박생존 코치",
                 description = "힐링 스트레칭.",
                 currentParticipants = 10,
+                maxParticipants = 10
+            ),
+            SampleClassInfo(
+                id = "3",
+                coachId = "c3",
+                date = LocalDate.now().plusDays(2),
+                time = "09:00 ~ 10:00",
+                type = "일반 클래스",
+                imageUrl = null,
+                className = "모닝 요가",
+                coachName = "이영희 코치",
+                description = "하루를 상쾌하게 시작하는 요가 클래스",
+                currentParticipants = 5,
+                maxParticipants = 12
+            ),
+            SampleClassInfo(
+                id = "4",
+                coachId = "c4",
+                date = LocalDate.now().plusDays(3),
+                time = "12:30 ~ 13:10",
+                type = "단기 클래스",
+                imageUrl = null,
+                className = "점심 필라테스",
+                coachName = "최민수 코치",
+                description = "점심시간 짧고 굵게 스트레칭",
+                currentParticipants = 8,
+                maxParticipants = 15
+            ),
+            SampleClassInfo(
+                id = "5",
+                coachId = "c5",
+                date = LocalDate.now().plusDays(4),
+                time = "18:00 ~ 19:00",
+                type = "그룹 클래스",
+                imageUrl = null,
+                className = "저녁 힐링 스트레칭",
+                coachName = "한지은 코치",
+                description = "하루 피로를 풀어주는 스트레칭",
+                currentParticipants = 6,
+                maxParticipants = 12
+            ),
+            SampleClassInfo(
+                id = "6",
+                coachId = "c6",
+                date = LocalDate.now().plusDays(5),
+                time = "20:00 ~ 21:00",
+                type = "심화 클래스",
+                imageUrl = null,
+                className = "심화 근력 트레이닝",
+                coachName = "박태환 코치",
+                description = "근력과 코어를 동시에 강화하는 심화 수업",
+                currentParticipants = 3,
+                maxParticipants = 8
+            ),
+            SampleClassInfo(
+                id = "7",
+                coachId = "c7",
+                date = LocalDate.now().plusDays(6),
+                time = "07:30 ~ 08:10",
+                type = "아침 클래스",
+                imageUrl = null,
+                className = "모닝 런",
+                coachName = "김철수 코치",
+                description = "출근 전 가볍게 달리기",
+                currentParticipants = 9,
+                maxParticipants = 20
+            ),
+            SampleClassInfo(
+                id = "8",
+                coachId = "c8",
+                date = LocalDate.now().plusDays(7),
+                time = "15:00 ~ 16:00",
+                type = "커뮤니티 클래스",
+                imageUrl = null,
+                className = "주말 필라테스",
+                coachName = "오승환 코치",
+                description = "주말에 즐기는 필라테스로 몸과 마음을 케어",
+                currentParticipants = 12,
+                maxParticipants = 12
+            ),
+            SampleClassInfo(
+                id = "9",
+                coachId = "c9",
+                date = LocalDate.now().plusDays(8),
+                time = "14:00 ~ 15:00",
+                type = "특별 클래스",
+                imageUrl = null,
+                className = "체형 교정 클래스",
+                coachName = "정하영 코치",
+                description = "전문가의 체형 교정 가이드",
+                currentParticipants = 2,
+                maxParticipants = 6
+            ),
+            SampleClassInfo(
+                id = "10",
+                coachId = "c10",
+                date = LocalDate.now().plusDays(9),
+                time = "17:30 ~ 18:30",
+                type = "그룹 클래스",
+                imageUrl = null,
+                className = "저녁 근력 회복",
+                coachName = "이수진 코치",
+                description = "저녁 시간대 근력 회복을 위한 클래스",
+                currentParticipants = 4,
                 maxParticipants = 10
             )
         )
@@ -147,7 +252,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         ClassReservationScreen(
             classes = classesToShow,
             onCardClick = { /* noop or nav to class_detail with id */ },
-            onCoachClick = { coachId -> nav.navigate("coach_detail/$coachId") }
+            onCoachClick = { coachId -> nav.navigate("coach_detail/$coachId/group") }
         )
     }
 
@@ -159,7 +264,8 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             onBack = { nav.popBackStack() },
             onReserveClick = { /* noop */ },
             onNavigateHome = { nav.navigate("member_home") },
-            onNavigateToMyPage = { /* noop */ }
+            onNavigateToMyPage = { /* noop */ },
+            navController = nav
         )
     }
 

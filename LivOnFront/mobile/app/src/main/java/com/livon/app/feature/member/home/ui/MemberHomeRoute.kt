@@ -71,7 +71,15 @@ fun MemberHomeRoute(
             HomeNavBar(
                 modifier = Modifier.navigationBarsPadding(),
                 currentRoute = BottomNavRoute.HOME.routeName,
-                onNavigate = { /* nav */ }
+                onNavigate = { route ->
+                    when (route) {
+                        BottomNavRoute.BOOKING.routeName -> onTapBooking()
+                        BottomNavRoute.RESERVATIONS.routeName -> onTapReservations()
+                        BottomNavRoute.HOME.routeName -> { /* already on home */ }
+                        BottomNavRoute.MY_PAGE.routeName -> { /* handle if needed */ }
+                        else -> { /* noop */ }
+                    }
+                }
             )
         }
     ) { innerPadding ->

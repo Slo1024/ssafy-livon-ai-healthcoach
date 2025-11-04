@@ -1,6 +1,7 @@
 package com.livon.app.feature.member.reservation.ui
 
 import android.net.Uri
+import androidx.navigation.NavHostController
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -22,13 +23,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.livon.app.R
 import com.livon.app.feature.shared.auth.ui.CommonSignUpScreenA
 import com.livon.app.ui.component.button.PrimaryButtonBottom
 import com.livon.app.ui.component.overlay.TopBar
 import com.livon.app.ui.component.calendar.CalendarMonth
+import com.livon.app.ui.component.navbar.HomeNavBar
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -38,7 +39,7 @@ import com.livon.app.feature.member.reservation.model.CoachUIModel
 
 @Composable
 fun CoachDetailScreen(
-    navController: NavController,
+    navController: NavHostController,
     coach: CoachUIModel? = null,
     coachName: String = "코치 홍길동",
     jobLabel: String = "직무",
@@ -47,7 +48,7 @@ fun CoachDetailScreen(
     certValue: String = "상담사 1급",
     introLabel: String = "소개",
     introValue: String = "따뜻하고 전문적인 상담을 제공합니다.",
-    onReserve: (selectedDate: String, selectedTime: String) -> Unit = { _, _ -> }
+    showSchedule: Boolean = true
 ) {
     // Prefer values from coach model when provided
     val displayName = coach?.name ?: coachName
@@ -68,18 +69,27 @@ fun CoachDetailScreen(
     CommonSignUpScreenA(
         topBar = { TopBar(title = "코치 예약", onBack = { navController.popBackStack() }) },
         bottomBar = {
-            PrimaryButtonBottom(
-                text = "예약하기",
-                onClick = {
-                    // Navigate to QnASubmitScreen with coach name and selected date (ISO format)
-                    val dateStr = selectedDate?.format(DateTimeFormatter.ISO_LOCAL_DATE) ?: ""
-                    val encodedCoach = Uri.encode(displayName)
-                    if (selectedDate != null && selectedTime != null) {
-                        navController.navigate("qna_submit/$encodedCoach/$dateStr")
-                    }
-                },
-                enabled = selectedTime != null
-            )
+            if (showSchedule) {
+                PrimaryButtonBottom(
+                    text = "예약하기",
+                    onClick = {
+                        val dateStr = selectedDate?.format(DateTimeFormatter.ISO_LOCAL_DATE) ?: ""
+                        val encodedCoach = Uri.encode(displayName)
+                        if (selectedDate != null && selectedTime != null) {
+                            navController.navigate("qna_submit/$encodedCoach/$dateStr")
+                        }
+                    },
+                    enabled = selectedTime != null
+                )
+            } else {
+                // For group mode, show only HomeNavBar
+                HomeNavBar(
+                    modifier = Modifier.fillMaxWidth(),
+                    currentRoute = null,
+                    navController = navController,
+                    onNavigate = { /* fallback noop */ }
+                )
+            }
         }
     ) {
         Column(
@@ -118,54 +128,56 @@ fun CoachDetailScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Month selector header with prev/next
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                TextButton(onClick = { yearMonth = yearMonth.minusMonths(1) }) {
-                    Text(text = "<")
+            if (showSchedule) {
+                // Month selector header with prev/next
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    TextButton(onClick = { yearMonth = yearMonth.minusMonths(1) }) {
+                        Text(text = "<")
+                    }
+                    Text(
+                        text = yearMonth.format(DateTimeFormatter.ofPattern("yyyy년 MM월", Locale.KOREA)),
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    TextButton(onClick = { yearMonth = yearMonth.plusMonths(1) }) {
+                        Text(text = ">")
+                    }
                 }
-                Text(
-                    text = yearMonth.format(DateTimeFormatter.ofPattern("yyyy년 MM월", Locale.KOREA)),
-                    style = MaterialTheme.typography.titleSmall
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // CalendarMonth component to pick a date
+                CalendarMonth(
+                    yearMonth = yearMonth,
+                    selected = selectedDate,
+                    onSelect = { date ->
+                        selectedDate = date
+                        selectedTime = null
+                    },
+                    modifier = Modifier.fillMaxWidth()
                 )
-                TextButton(onClick = { yearMonth = yearMonth.plusMonths(1) }) {
-                    Text(text = ">")
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // If a date is selected, show AM/PM time pickers
+                if (selectedDate != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(text = "오전", style = MaterialTheme.typography.titleSmall, modifier = Modifier.align(Alignment.Start))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TimeGrid(times = amTimes, selectedTime = selectedTime) { t -> selectedTime = t }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(text = "오후", style = MaterialTheme.typography.titleSmall, modifier = Modifier.align(Alignment.Start))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TimeGrid(times = pmTimes, selectedTime = selectedTime) { t -> selectedTime = t }
+
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // CalendarMonth component to pick a date (if exists), otherwise simple grid could be used
-            CalendarMonth(
-                yearMonth = yearMonth,
-                selected = selectedDate,
-                onSelect = { date ->
-                    selectedDate = date
-                    selectedTime = null
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // If a date is selected, show AM/PM time pickers
-            if (selectedDate != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(text = "오전", style = MaterialTheme.typography.titleSmall, modifier = Modifier.align(Alignment.Start))
-                Spacer(modifier = Modifier.height(8.dp))
-                TimeGrid(times = amTimes, selectedTime = selectedTime) { t -> selectedTime = t }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(text = "오후", style = MaterialTheme.typography.titleSmall, modifier = Modifier.align(Alignment.Start))
-                Spacer(modifier = Modifier.height(8.dp))
-                TimeGrid(times = pmTimes, selectedTime = selectedTime) { t -> selectedTime = t }
-
-                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }
@@ -233,6 +245,11 @@ private fun InfoRow(label: String, value: String, isMultiline: Boolean = false) 
             style = if (isMultiline) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge
         )
     }
+}
+
+@Composable
+fun CoachDetailScreenNav(nav: NavHostController, coach: CoachUIModel?, showSchedule: Boolean) {
+    CoachDetailScreen(navController = nav, coach = coach, showSchedule = showSchedule)
 }
 
 @Preview(showBackground = true)

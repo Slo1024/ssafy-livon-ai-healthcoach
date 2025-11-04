@@ -18,6 +18,7 @@ import com.s406.livon.domain.user.repository.UserRepository;
 import com.s406.livon.global.error.handler.CoachHandler;
 import com.s406.livon.global.error.handler.TokenHandler;
 import com.s406.livon.global.error.handler.UserHandler;
+import com.s406.livon.global.s3.S3Service;
 import com.s406.livon.global.security.jwt.JwtTokenProvider;
 import com.s406.livon.global.web.response.code.status.ErrorStatus;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -47,6 +49,7 @@ public class UserService {
     private final HealthSurveyRepository healthSurveyRepository;
     private final OrganizationsRepository organizationsRepository;
     private final CoachInfoRepository coachInfoRepository;
+    private final S3Service S3service;
 
 
 
@@ -83,7 +86,7 @@ public class UserService {
 
 
     @Transactional
-    public UserDto signUp(SignUpDto signUpDto) {
+    public UserDto signUp(SignUpDto signUpDto, MultipartFile imageFile) {
         log.info("[signUp] 회원가입 요청: email = {}", signUpDto.getEmail());
 
         // 중복 검증
@@ -103,7 +106,13 @@ public class UserService {
             log.info("[signUp] 개인 회원 가입");
         }
 
-        User savedUser = userRepository.save(signUpDto.toEntity(encodedPassword, organizations));
+        // 만약 imageFile을 받았다면 S3에 저장
+        String Url = "";
+        if (imageFile != null && !imageFile.isEmpty()) {
+            Url = S3service.uploadProfileImage(imageFile);
+        }
+
+        User savedUser = userRepository.save(signUpDto.toEntity(encodedPassword, organizations, Url));
         return UserDto.toDto(savedUser);
     }
 

@@ -10,6 +10,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -24,7 +25,7 @@ public class SignUpDto {
     private String email;
     private String password;
     private String nickname;
-    private String profileImage;
+    private MultipartFile profileImage;
     private List<Role> roles = new ArrayList<>();
     private Gender gender;
 
@@ -34,14 +35,14 @@ public class SignUpDto {
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd", timezone = "Asia/Seoul")
     private LocalDate birthdate;
 
-    public User toEntity(String encodedPassword, Organizations organizations){
+    public User toEntity(String encodedPassword, Organizations organizations, String imageUrl){
         return User.builder()
                 .email(this.email)
                 .password(encodedPassword)
                 .nickname(this.nickname)
-                .profileImage(this.profileImage)
                 .roles(roles)
                 .organizations(organizations)  // null 가능
+                .profileImage(imageUrl)
                 .gender(this.gender)
                 .birthdate(this.birthdate)
                 .build();

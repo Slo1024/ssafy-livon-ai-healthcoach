@@ -2,6 +2,7 @@ package com.s406.livon.domain.user.dto.request;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 프로필 이미지 변경 요청 DTO

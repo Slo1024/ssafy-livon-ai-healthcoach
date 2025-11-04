@@ -3,9 +3,7 @@ package com.s406.livon.domain.user.controller;
 
 import com.s406.livon.domain.user.dto.JwtToken;
 import com.s406.livon.domain.user.dto.request.*;
-import com.s406.livon.domain.user.dto.response.OrganizationsResponseDto;
 import com.s406.livon.domain.user.dto.response.UserDto;
-import com.s406.livon.domain.user.entity.CoachInfo;
 import com.s406.livon.domain.user.service.UserService;
 import com.s406.livon.global.security.jwt.JwtTokenProvider;
 import com.s406.livon.global.web.response.ApiResponse;
@@ -14,8 +12,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -92,12 +90,14 @@ public class UserController {
      */
     @PostMapping("/sign-up")
     @Operation(summary = "회원가입 API", description = "회원가입을 합니다.")
-    public ResponseEntity<?> signUp(@RequestBody SignUpDto signUpDto) {
+    public ResponseEntity<?> signUp(
+            @RequestPart("data") SignUpDto signUpDto,
+            @RequestPart(value = "file", required = false) MultipartFile imageFile
+    ) {
         // 회원가입 처리
-        UserDto savedMemberDto = userService.signUp(signUpDto);
+        UserDto savedMemberDto = userService.signUp(signUpDto, imageFile);
         return ResponseEntity.ok().body(ApiResponse.onSuccess(savedMemberDto));
     }
-
 
 
 

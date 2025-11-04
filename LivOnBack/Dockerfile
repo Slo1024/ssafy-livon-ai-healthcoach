@@ -11,23 +11,18 @@ RUN gradle --version
 COPY . .
 RUN gradle clean bootJar --no-daemon
 
-# ---------- runtime ----------
-# JDK 대신 JRE - 가벼움
+# --------- 실행용 이미지 구성 ---------
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
-# non-root 실행 / -S는 시스템 계정/그룹(가벼움).
 RUN addgroup -S app && adduser -S app -G app
-USER app
+RUN mkdir -p /app/config && chown -R app:app /app
 
 # 빌드 산출물 복사
-# 빌더 스테이지의 산출물(실행 JAR)만 가져와서 /app/app.jar로 배치.
 COPY --from=builder /workspace/build/libs/*.jar /app/app.jar
-
-# 외부 설정
+# application.yml 복사 (JAR 안에서 참조될 위치로)
 COPY application.yml /app/config/application.yml
 
+USER app
 EXPOSE 8081
-
-# 기본 경로는 유지 + 추가 경로만 보강
-ENTRYPOINT ["java","-jar","/app/app.jar","--spring.config.additional-location=file:/app/config/"]
+ENTRYPOINT ["java", "-jar", "/app/app.jar", "--spring.config.location=file:/app/config/application.yml"]

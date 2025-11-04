@@ -139,8 +139,8 @@ fun ReservationModeSelectScreen(
     }
 }
 
-@Preview(showBackground = true, showSystemUi = true, name = "ReservationModeSelectScreen")
-@Composable
-private fun PreviewReservationModeSelectScreen() {
-    LivonTheme { ReservationModeSelectScreen() }
-}
+//@Preview(showBackground = true, showSystemUi = true, name = "ReservationModeSelectScreen")
+//@Composable
+//private fun PreviewReservationModeSelectScreen() {
+//    LivonTheme { ReservationModeSelectScreen() }
+//}

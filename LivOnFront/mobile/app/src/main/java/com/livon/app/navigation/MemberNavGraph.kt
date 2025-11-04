@@ -7,6 +7,9 @@ import androidx.navigation.compose.composable
 import com.livon.app.feature.member.home.ui.MemberHomeRoute
 import com.livon.app.feature.member.reservation.ui.*
 import com.livon.app.feature.member.reservation.model.CoachUIModel
+import com.livon.app.feature.member.my.MyInfoUiState
+import com.livon.app.feature.member.my.MyInfoScreen
+import com.livon.app.feature.member.my.MyPageScreen
 import com.livon.app.feature.shared.auth.ui.ReservationModeSelectScreen
 import java.net.URLDecoder
 import java.time.LocalDate
@@ -45,8 +48,59 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
     composable("member_home") {
         MemberHomeRoute(
             onTapBooking = { nav.navigate("reservation_model_select") },
-            onTapReservations = { nav.navigate("reservations") }
+            onTapReservations = { nav.navigate("reservations") },
+            onTapMyPage = { nav.navigate("mypage") }
         )
+    }
+
+    // MyPage route: shows user's profile/settings page
+    composable("mypage") {
+        MyPageScreen(
+            onBack = { nav.popBackStack() },
+            onClickHealthInfo = { nav.navigate("myinfo") },
+            onClickFaq = { /* TODO: navigate to FAQ */ }
+        )
+    }
+
+    // MyInfo route: personal health info screen
+    composable("myinfo") {
+        // Safe conditional branch for MyInfo feature
+        // Try to read a compile-time feature flag BuildConfig.FEATURE_MYINFO via reflection.
+        // If it's not present, default to enabling in debug builds and disabling in release.
+        val featureMyInfoEnabled: Boolean = try {
+            val cls = Class.forName("com.livon.app.BuildConfig")
+            val f = cls.getField("FEATURE_MYINFO")
+            f.getBoolean(null)
+        } catch (t: Throwable) {
+            // No explicit flag: enable on debug builds to aid development, disable otherwise
+            isDebugBuild()
+        }
+
+        if (featureMyInfoEnabled) {
+            // Provide a minimal default state here; in real app this should come from ViewModel or nav arguments
+            val defaultState = MyInfoUiState(
+                nickname = "",
+                gender = null,
+                birthday = null,
+                profileImageUri = null,
+                heightCm = null,
+                weightKg = null,
+                condition = null,
+                sleepQuality = null,
+                medication = null,
+                painArea = null,
+                stress = null,
+                smoking = null,
+                alcohol = null,
+                sleepHours = null,
+                activityLevel = null,
+                caffeine = null
+            )
+            MyInfoScreen(state = defaultState, onBack = { nav.popBackStack() })
+        } else {
+            // Fallback UI when feature disabled: redirect back to MyPage (or show a disabled screen)
+            MyPageScreen(onBack = { nav.popBackStack() })
+        }
     }
 
     composable("reservation_model_select") {
@@ -273,7 +327,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         // dev mock reservations
         val today = LocalDate.now()
         val devCurrent = listOf(
-            com.livon.app.feature.member.reservation.ui.ReservationUi(
+            ReservationUi(
                 id = "r1",
                 date = today.plusDays(1),
                 className = "개인 상담",
@@ -285,7 +339,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 imageResId = null,
                 isLive = false
             ),
-            com.livon.app.feature.member.reservation.ui.ReservationUi(
+            ReservationUi(
                 id = "r2",
                 date = today,
                 className = "필라테스",
@@ -300,7 +354,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         )
 
         val devPast = listOf(
-            com.livon.app.feature.member.reservation.ui.ReservationUi(
+            ReservationUi(
                 id = "p1",
                 date = today.minusDays(5),
                 className = "개인 상담",
@@ -313,7 +367,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 sessionTypeLabel = "개인 상담",
                 hasAiReport = true
             ),
-            com.livon.app.feature.member.reservation.ui.ReservationUi(
+            ReservationUi(
                 id = "p2",
                 date = today.minusDays(10),
                 className = "모닝 요가",
@@ -351,7 +405,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         // Find in dev lists (recreate same lists)
         val today = LocalDate.now()
         val all = listOf(
-            com.livon.app.feature.member.reservation.ui.ReservationUi(
+            ReservationUi(
                 id = "r1",
                 date = today.plusDays(1),
                 className = "개인 상담",
@@ -363,7 +417,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 imageResId = null,
                 isLive = false
             ),
-            com.livon.app.feature.member.reservation.ui.ReservationUi(
+            ReservationUi(
                 id = "r2",
                 date = today,
                 className = "필라테스",
@@ -375,7 +429,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 imageResId = null,
                 isLive = true
             ),
-            com.livon.app.feature.member.reservation.ui.ReservationUi(
+            ReservationUi(
                 id = "p1",
                 date = today.minusDays(5),
                 className = "개인 상담",
@@ -388,7 +442,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 sessionTypeLabel = "개인 상담",
                 hasAiReport = true
             ),
-            com.livon.app.feature.member.reservation.ui.ReservationUi(
+            ReservationUi(
                 id = "p2",
                 date = today.minusDays(10),
                 className = "모닝 요가",
@@ -406,19 +460,19 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         val item = all.find { it.id == resId } ?: all.first()
         val type = when {
             // current if date >= today
-            item.date >= today -> com.livon.app.feature.member.reservation.ui.ReservationDetailType.Current
-            item.sessionTypeLabel == "개인 상담" -> com.livon.app.feature.member.reservation.ui.ReservationDetailType.PastPersonal
-            else -> com.livon.app.feature.member.reservation.ui.ReservationDetailType.PastGroup
+            item.date >= today -> ReservationDetailType.Current
+            item.sessionTypeLabel == "개인 상담" -> ReservationDetailType.PastPersonal
+            else -> ReservationDetailType.PastGroup
         }
 
         // create coach and session models
-        val coachMini = com.livon.app.feature.member.reservation.ui.CoachMini(
+        val coachMini = CoachMini(
             name = item.coachName,
             title = item.coachRole,
             specialties = item.coachIntro,
             workplace = "연결된 직장"
         )
-        val session = com.livon.app.feature.member.reservation.ui.SessionInfo(
+        val session = SessionInfo(
             dateText = "${item.date.monthValue}월 ${item.date.dayOfMonth}일",
             timeText = item.timeText,
             modelText = item.className,
@@ -446,7 +500,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
     composable("ai_result/{resId}") { backStackEntry ->
         val resId = backStackEntry.arguments?.getString("resId") ?: ""
         val today = LocalDate.now()
-        val item = com.livon.app.feature.member.reservation.ui.ReservationUi(
+        val item = ReservationUi(
             id = resId,
             date = today.minusDays(5),
             className = "개인 상담",

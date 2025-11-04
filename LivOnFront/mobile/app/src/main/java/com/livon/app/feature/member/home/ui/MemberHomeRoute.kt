@@ -56,6 +56,7 @@ data class UpcomingItem(
 fun MemberHomeRoute(
     onTapBooking: () -> Unit,
     onTapReservations: () -> Unit,
+    onTapMyPage: () -> Unit,
     metrics: List<DataMetric> = emptyList(),
     upcoming: List<UpcomingItem> = emptyList(),
     companyName: String? = "ACME Corp.",
@@ -75,8 +76,8 @@ fun MemberHomeRoute(
                     when (route) {
                         BottomNavRoute.BOOKING.routeName -> onTapBooking()
                         BottomNavRoute.RESERVATIONS.routeName -> onTapReservations()
+                        BottomNavRoute.MY_PAGE.routeName -> onTapMyPage()
                         BottomNavRoute.HOME.routeName -> { /* already on home */ }
-                        BottomNavRoute.MY_PAGE.routeName -> { /* handle if needed */ }
                         else -> { /* noop */ }
                     }
                 }
@@ -424,6 +425,7 @@ private fun MemberHomeRoutePreview() {
         MemberHomeRoute(
             onTapBooking = {},
             onTapReservations = {},
+            onTapMyPage = {},
             metrics = dummyMetrics,
             upcoming = dummyUpcoming,
             companyName = "회사이름"

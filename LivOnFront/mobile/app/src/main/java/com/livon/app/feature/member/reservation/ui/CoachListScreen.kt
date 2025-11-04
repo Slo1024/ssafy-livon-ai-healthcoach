@@ -89,14 +89,14 @@ fun CoachListScreen(
                 contentPadding = PaddingValues(bottom = 96.dp) // 하단 버튼 가려짐 방지
             ) {
                 items(filtered.take(10)) { coach ->
+                    // Pass click handler via CoachCard's onClick parameter (more reliable than modifier.clickable)
                     CoachCard(
                         name = coach.name,
                         job = coach.job,
                         intro = coach.intro,
                         avatarUrl = coach.avatarUrl,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onCoachClick(coach) }
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { onCoachClick(coach) }
                     )
                     Spacer(Modifier.height(8.dp))
                 }

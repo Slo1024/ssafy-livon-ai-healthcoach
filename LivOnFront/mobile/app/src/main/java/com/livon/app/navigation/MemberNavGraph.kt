@@ -270,27 +270,201 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
     }
 
     composable("reservations") {
+        // dev mock reservations
+        val today = LocalDate.now()
+        val devCurrent = listOf(
+            com.livon.app.feature.member.reservation.ui.ReservationUi(
+                id = "r1",
+                date = today.plusDays(1),
+                className = "개인 상담",
+                coachName = "김도윤",
+                coachRole = "임상심리사",
+                coachIntro = "마음 회복 전문",
+                timeText = "오전 10:00 ~ 11:00",
+                classIntro = "심리 상담 세션",
+                imageResId = null,
+                isLive = false
+            ),
+            com.livon.app.feature.member.reservation.ui.ReservationUi(
+                id = "r2",
+                date = today,
+                className = "필라테스",
+                coachName = "박지성",
+                coachRole = "트레이너",
+                coachIntro = "유연성 전문가",
+                timeText = "오후 3:00 ~ 4:00",
+                classIntro = "체형 개선 그룹 레슨",
+                imageResId = null,
+                isLive = true
+            )
+        )
+
+        val devPast = listOf(
+            com.livon.app.feature.member.reservation.ui.ReservationUi(
+                id = "p1",
+                date = today.minusDays(5),
+                className = "개인 상담",
+                coachName = "최코치",
+                coachRole = "코치",
+                coachIntro = "코어 전문가",
+                timeText = "오전 9:00 ~ 10:00",
+                classIntro = "개인 집중 코칭",
+                imageResId = null,
+                sessionTypeLabel = "개인 상담",
+                hasAiReport = true
+            ),
+            com.livon.app.feature.member.reservation.ui.ReservationUi(
+                id = "p2",
+                date = today.minusDays(10),
+                className = "모닝 요가",
+                coachName = "박코치",
+                coachRole = "요가",
+                coachIntro = "힐링 요가",
+                timeText = "오전 8:00 ~ 9:00",
+                classIntro = "편안한 요가",
+                imageResId = null,
+                sessionTypeLabel = "그룹 상담",
+                hasAiReport = false
+            )
+        )
+
         ReservationStatusScreen(
-            current = emptyList(),
-            past = emptyList(),
+            current = devCurrent,
+            past = devPast,
             onBack = { nav.popBackStack() },
-            onDetail = { /* noop */ },
-            onCancel = { /* noop */ },
-            onJoin = { /* noop */ },
-            onAiAnalyze = { /* noop */ }
+            onDetail = { item ->
+                // navigate to reservation detail route with id
+                nav.navigate("reservation_detail/${item.id}")
+            },
+            onCancel = { item -> /* TODO: cancel logic */ },
+            onJoin = { item -> /* TODO: join logic */ },
+            onAiAnalyze = { item ->
+                // navigate to AI result screen
+                nav.navigate("ai_result/${item.id}")
+            }
         )
     }
 
-    composable("reservation_detail_demo") {
-        // supply sample params matching ReservationDetailScreen signature
-        val sampleCoach = CoachMini(name = "코치", title = "PT", specialties = "체형 교정", workplace = "리본짐")
-        val sampleSession = SessionInfo(dateText = "10월 16일(수)", timeText = "오전 9:00 ~ 10:00", modelText = "개인 상담", appliedText = "신청 인원: 1/1")
+    // reservation detail route: show ReservationDetailScreen based on id
+    composable("reservation_detail/{resId}") { backStackEntry ->
+        val resId = backStackEntry.arguments?.getString("resId") ?: ""
+        // Find in dev lists (recreate same lists)
+        val today = LocalDate.now()
+        val all = listOf(
+            com.livon.app.feature.member.reservation.ui.ReservationUi(
+                id = "r1",
+                date = today.plusDays(1),
+                className = "개인 상담",
+                coachName = "김도윤",
+                coachRole = "임상심리사",
+                coachIntro = "마음 회복 전문",
+                timeText = "오전 10:00 ~ 11:00",
+                classIntro = "심리 상담 세션",
+                imageResId = null,
+                isLive = false
+            ),
+            com.livon.app.feature.member.reservation.ui.ReservationUi(
+                id = "r2",
+                date = today,
+                className = "필라테스",
+                coachName = "박지성",
+                coachRole = "트레이너",
+                coachIntro = "유연성 전문가",
+                timeText = "오후 3:00 ~ 4:00",
+                classIntro = "체형 개선 그룹 레슨",
+                imageResId = null,
+                isLive = true
+            ),
+            com.livon.app.feature.member.reservation.ui.ReservationUi(
+                id = "p1",
+                date = today.minusDays(5),
+                className = "개인 상담",
+                coachName = "최코치",
+                coachRole = "코치",
+                coachIntro = "코어 전문가",
+                timeText = "오전 9:00 ~ 10:00",
+                classIntro = "개인 집중 코칭",
+                imageResId = null,
+                sessionTypeLabel = "개인 상담",
+                hasAiReport = true
+            ),
+            com.livon.app.feature.member.reservation.ui.ReservationUi(
+                id = "p2",
+                date = today.minusDays(10),
+                className = "모닝 요가",
+                coachName = "박코치",
+                coachRole = "요가",
+                coachIntro = "힐링 요가",
+                timeText = "오전 8:00 ~ 9:00",
+                classIntro = "편안한 요가",
+                imageResId = null,
+                sessionTypeLabel = "그룹 상담",
+                hasAiReport = false
+            )
+        )
+
+        val item = all.find { it.id == resId } ?: all.first()
+        val type = when {
+            // current if date >= today
+            item.date >= today -> com.livon.app.feature.member.reservation.ui.ReservationDetailType.Current
+            item.sessionTypeLabel == "개인 상담" -> com.livon.app.feature.member.reservation.ui.ReservationDetailType.PastPersonal
+            else -> com.livon.app.feature.member.reservation.ui.ReservationDetailType.PastGroup
+        }
+
+        // create coach and session models
+        val coachMini = com.livon.app.feature.member.reservation.ui.CoachMini(
+            name = item.coachName,
+            title = item.coachRole,
+            specialties = item.coachIntro,
+            workplace = "연결된 직장"
+        )
+        val session = com.livon.app.feature.member.reservation.ui.SessionInfo(
+            dateText = "${item.date.monthValue}월 ${item.date.dayOfMonth}일",
+            timeText = item.timeText,
+            modelText = item.className,
+            appliedText = null
+        )
+
         ReservationDetailScreen(
-            type = ReservationDetailType.Current,
-            coach = sampleCoach,
-            session = sampleSession,
-            aiSummary = null,
-            qnas = listOf("Q1", "Q2"),
+            type = type,
+            coach = coachMini,
+            session = session,
+            aiSummary = if (item.hasAiReport) "AI 분석 결과 예시입니다." else null,
+            qnas = listOf("Q1 내용", "Q2 내용"),
+            onBack = { nav.popBackStack() },
+            onDelete = { /* TODO */ },
+            // NOTE (dev): 현재는 개발 편의상 하드코딩된 코치 id(1)로 '코치 보기' 네비게이션을 연결해 두었습니다.
+            // 실제 배포/연동 시에는 예약 데이터(item)에 포함된 실제 코치 id를 사용해야 합니다.
+            // 예시 변경: onSeeCoach = { nav.navigate("coach_detail/${item.coachId}/personal") }
+            // 필요하시면 제가 이 매핑을 자동으로 적용해 드리겠습니다.
+            onSeeCoach = { nav.navigate("coach_detail/1/personal") },
+            onSeeAiDetail = { nav.navigate("ai_result/${item.id}") }
+        )
+    }
+
+    // AI result route
+    composable("ai_result/{resId}") { backStackEntry ->
+        val resId = backStackEntry.arguments?.getString("resId") ?: ""
+        val today = LocalDate.now()
+        val item = com.livon.app.feature.member.reservation.ui.ReservationUi(
+            id = resId,
+            date = today.minusDays(5),
+            className = "개인 상담",
+            coachName = "최코치",
+            coachRole = "코치",
+            coachIntro = "코어 전문가",
+            timeText = "오전 9:00 ~ 10:00",
+            classIntro = "개인 집중 코칭",
+            imageResId = null,
+            sessionTypeLabel = "개인 상담",
+            hasAiReport = true
+        )
+
+        com.livon.app.feature.member.schedule.ui.AiResultScreen(
+            memberName = "김싸피",
+            counselingDateText = "${item.date.monthValue}월 ${item.date.dayOfMonth}일",
+            counselingName = item.className,
+            aiSummary = "AI 분석 결과 예시 텍스트입니다.",
             onBack = { nav.popBackStack() }
         )
     }

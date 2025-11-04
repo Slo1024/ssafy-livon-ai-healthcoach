@@ -17,6 +17,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.background
+import com.livon.app.ui.theme.Gray2
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,13 +36,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.rememberAsyncImagePainter
-import androidx.compose.ui.tooling.preview.Preview
 import com.livon.app.R
 import com.livon.app.feature.shared.auth.ui.CommonScreenC
 import com.livon.app.ui.component.overlay.TopBar
 import com.livon.app.ui.preview.PreviewSurface
 import com.livon.app.ui.theme.Spacing
+import coil.compose.rememberAsyncImagePainter
+import androidx.compose.ui.tooling.preview.Preview
 
 /** 회원가입 로직에서 모아둔 값을 화면에 전달하기 위한 UI 상태 */
 @Immutable
@@ -67,8 +74,13 @@ fun MyInfoScreen(
     state: MyInfoUiState,
     modifier: Modifier = Modifier,
     onBack: () -> Unit = {},
-    onEditClick: () -> Unit = {}         // 우상단 '수정'
+    onEditClick: () -> Unit = {},        // (legacy) 우상단 '수정' 클릭 콜백
+    onEditConfirm: () -> Unit = {},     // 확인을 눌렀을 때 실제 수정 흐름(네비게이션) 호출
+    showEditModalInitial: Boolean = false // preview helper: if true, modal is shown initially
 ) {
+    // modal visible state (initialized from preview parameter)
+    var showEditModal by remember { mutableStateOf(showEditModalInitial) }
+
     CommonScreenC(
         modifier = modifier,
         topBar = { m ->
@@ -79,7 +91,7 @@ fun MyInfoScreen(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
                         .padding(end = Spacing.Horizontal)
-                        .clickable { onEditClick() },
+                        .clickable { showEditModal = true; onEditClick() },
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontWeight = FontWeight.Normal,
                         fontSize = 16.sp,
@@ -188,6 +200,66 @@ fun MyInfoScreen(
         Spacer(Modifier.height(30.dp))
     }
 
+    // Confirmation modal overlay
+    if (showEditModal) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(color = Gray2.copy(alpha = 0.6f))
+        ) {
+            // Modal: full width except common horizontal padding, aspect ratio 275:160
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Spacing.Horizontal)
+                    .aspectRatio(275f / 160f)
+                    .align(Alignment.Center),
+                shape = RoundedCornerShape(10.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White)
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "건강정보를\n수정하시겠습니까?",
+                            style = MaterialTheme.typography.titleMedium,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+
+                    Row(modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)) {
+                        Text(
+                            text = "취소",
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { showEditModal = false }
+                                .padding(vertical = 16.dp),
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Normal)
+                        )
+
+                        Text(
+                            text = "확인",
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable {
+                                    showEditModal = false
+                                    onEditConfirm()
+                                }
+                                .padding(vertical = 16.dp),
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 /** 카드 하나(라운드+살짝 그림자) */
@@ -246,10 +318,10 @@ private fun String.withUnitIfMissing(unit: String): String {
     return if (trimmed.endsWith(unit)) trimmed else "$trimmed$unit"
 }
 
-/* ───────── Preview ───────── */
-@Preview(showBackground = true, showSystemUi = true, name = "MyInfoScreen")
+/* ───────── Previews ───────── */
+@Preview(showBackground = true, showSystemUi = true, name = "MyInfoScreen - Default")
 @Composable
-private fun PreviewMyInfoScreen() = PreviewSurface {
+private fun PreviewMyInfoScreen_Default() = PreviewSurface {
     MyInfoScreen(
         state = MyInfoUiState(
             nickname = "김싸피",
@@ -270,6 +342,36 @@ private fun PreviewMyInfoScreen() = PreviewSurface {
             caffeine = null
         ),
         onBack = {},
-        onEditClick = {}
+        onEditClick = {},
+        showEditModalInitial = false // default preview: modal closed
+    )
+}
+
+
+@Preview(showBackground = true, showSystemUi = true, name = "MyInfoScreen - Modal")
+@Composable
+private fun PreviewMyInfoScreen_Modal() = PreviewSurface {
+    MyInfoScreen(
+        state = MyInfoUiState(
+            nickname = "김싸피",
+            gender = "남성",
+            birthday = "20XX년 XX월 XX일",
+            profileImageUri = null,
+            heightCm = "170",
+            weightKg = "70",
+            condition = "고혈압",
+            sleepQuality = "자주 깨거나 뒤척임",
+            medication = "혈압약",
+            painArea = "허리",
+            stress = "거의 없음",
+            smoking = "비흡연",
+            alcohol = "하지 않음",
+            sleepHours = "6시간",
+            activityLevel = null,
+            caffeine = null
+        ),
+        onBack = {},
+        onEditClick = {},
+        showEditModalInitial = true // modal visible in this preview
     )
 }

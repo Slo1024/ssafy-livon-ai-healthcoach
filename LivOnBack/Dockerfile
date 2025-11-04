@@ -9,7 +9,7 @@ COPY . .
 RUN gradle clean bootJar --no-daemon
 
 # --------- 실행용 이미지 구성 ---------
-FROM openjdk:17-jdk-slim
+FROM openjdk:17-slim
 WORKDIR /app
 
 # 빌드된 JAR만 복사

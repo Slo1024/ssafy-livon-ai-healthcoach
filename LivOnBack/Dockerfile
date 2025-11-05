@@ -2,10 +2,11 @@
 FROM gradle:8.10.2-jdk17-alpine AS builder
 WORKDIR /workspace
 
-# (옵션) 캐시 최적화: 의존성 먼저 받기
-COPY build.gradle settings.gradle ./
-COPY gradle gradle
-RUN gradle --version
+# Gradle wrapper와 설정 먼저 복사 (캐시 최적화 + 권한/소유자 맞춤)
+COPY --chown=gradle:gradle gradle gradle
+COPY --chown=gradle:gradle gradlew settings.gradle build.gradle ./
+RUN chmod +x gradlew
+RUN ./gradlew --version
 
 # 실제 소스 복사 후 빌드
 COPY . .

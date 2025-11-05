@@ -72,6 +72,12 @@ public enum ErrorStatus implements BaseErrorCode {
     AI_SUMMARY_NOT_FOUND(HttpStatus.NOT_FOUND, "AI4000", "생성된 AI 요약이 존재하지 않습니다."),
     AI_SUMMARY_REQUEST_FAILED(HttpStatus.BAD_GATEWAY, "AI5000", "AI 요약 생성에 실패했습니다."),
 
+    // File 응답
+    FILE_NOT_FOUND(HttpStatus.BAD_REQUEST, "FILE4000", "파일이 존재하지 않습니다."),
+    FILE_SIZE_EXCEED(HttpStatus.BAD_REQUEST, "FILE4001", "파일 크기는 5MB를 초과할 수 없습니다."),
+    FILE_INVALID_EXTENSION(HttpStatus.BAD_REQUEST, "FILE4002", "지원하지 않는 파일 형식입니다. (jpg, jpeg, png, gif, webp만 가능)"),
+    FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE5000", "파일 업로드에 실패했습니다."),
+
 
     ;
 

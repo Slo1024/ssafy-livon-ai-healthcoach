@@ -3,9 +3,7 @@ package com.s406.livon.domain.user.controller;
 
 import com.s406.livon.domain.user.dto.JwtToken;
 import com.s406.livon.domain.user.dto.request.*;
-import com.s406.livon.domain.user.dto.response.OrganizationsResponseDto;
 import com.s406.livon.domain.user.dto.response.UserDto;
-import com.s406.livon.domain.user.entity.CoachInfo;
 import com.s406.livon.domain.user.service.UserService;
 import com.s406.livon.global.security.jwt.JwtTokenProvider;
 import com.s406.livon.global.web.response.ApiResponse;
@@ -14,8 +12,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -91,13 +89,22 @@ public class UserController {
      * @return
      */
     @PostMapping("/sign-up")
-    @Operation(summary = "회원가입 API", description = "회원가입을 합니다.")
-    public ResponseEntity<?> signUp(@RequestBody SignUpDto signUpDto) {
-        // 회원가입 처리
-        UserDto savedMemberDto = userService.signUp(signUpDto);
+    public ResponseEntity<?> signUp(
+            @RequestPart("data") SignUpDto signUpDto,
+            @RequestPart(value = "profileImage", required = false) MultipartFile profileImage
+    ) {
+        // 이미지 파일 정보 로그 추가
+        if (profileImage != null && !profileImage.isEmpty()) {
+            log.info("[signUp] 프로필 이미지: {}, 크기: {}bytes",
+                    profileImage.getOriginalFilename(),
+                    profileImage.getSize());
+        } else {
+            log.info("[signUp] 프로필 이미지 없음");
+        }
+
+        UserDto savedMemberDto = userService.signUp(signUpDto, profileImage);
         return ResponseEntity.ok().body(ApiResponse.onSuccess(savedMemberDto));
     }
-
 
 
 

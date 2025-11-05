@@ -50,6 +50,7 @@ dependencies {
     implementation 'io.netty:netty-resolver-dns-native-macos:4.1.109.Final:osx-aarch_64'
     implementation 'org.springframework.cloud:spring-cloud-starter-aws:2.2.6.RELEASE'
     implementation 'io.livekit:livekit-server:0.8.2'
+    implementation 'org.json:json:20240303'
 }
 
 tasks.named('test') {

@@ -8,6 +8,11 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig implements WebMvcConfigurer {
 
     @Override
+    public void configurePathMatch(PathMatchConfigurer c) {
+        c.addPathPrefix("/v1", HandlerTypePredicate.forAnnotation(RestController.class));
+    }
+    
+    @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**") // 👈 /api/v1/.. 등을 포함하도록 /api/** 설정
                 .allowedOrigins("*")   // 👈 모든 출처(file://, http://... 등)를 허용

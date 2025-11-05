@@ -112,14 +112,14 @@ public class GoodsChatService {
     @Transactional(readOnly = true)
     public List<GoodsChatMessage> getChatRoomMessages(Long chatRoomId, UUID userId, LocalDateTime lastSentAt) {
         validateMemberInChatRoom(userId, chatRoomId);
-        StopWatch stopWatch = new StopWatch(); // (1) 스톱워치 생성
-
-
+//        StopWatch stopWatch = new StopWatch(); // (1) 스톱워치 생성
+//
+//        System.out.println(chatRoomId+" "+ lastSentAt+ " ");
         List<GoodsChatMessage> chatMessages = fetchMessagesFromCacheOrDB(chatRoomId, lastSentAt, 20);
 
 //        stopWatch.start("데이터 변환 로직"); // (2) 타이머 시작 (작업 이름 지정)
 //        try {
-//            List<GoodsChatMessageResponse> test = mapMessagesToResponses(chatMessages);
+//            List<GoodsChatMessage> test = fetchMessagesFromCacheOrDB(chatRoomId, lastSentAt, 20);
 //        } catch (Exception e) {
 //            e.printStackTrace();
 //        }
@@ -137,7 +137,7 @@ public class GoodsChatService {
 
 
     // 채팅 내역 조회
-    private List<GoodsChatMessage> fetchMessagesFromCacheOrDB(Long chatRoomId, LocalDateTime lastSentAt, int size) {
+    public List<GoodsChatMessage> fetchMessagesFromCacheOrDB(Long chatRoomId, LocalDateTime lastSentAt, int size) {
 
         // 1. redis 캐싱 데이터 조회
 

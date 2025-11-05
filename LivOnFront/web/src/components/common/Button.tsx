@@ -242,6 +242,7 @@ const FullWidthDivider = styled.div`
   position: relative;
   left: 50%;
   transform: translateX(-50%);
+  margin-top: 0;
 `;
 
 export interface SegmentedTabsProps {
@@ -268,16 +269,18 @@ export const SegmentedTabs: React.FC<SegmentedTabsProps> = ({
   style,
 }) => {
   return (
-    <SegmentedContainer className={className} style={style}>
-      <TabsRow>
-        <TabButtonBase $active={active === 'left'} $width={tabWidth} onClick={onLeftClick}>
-          {leftLabel}
-        </TabButtonBase>
-        <TabButtonBase $active={active === 'right'} $width={tabWidth} onClick={onRightClick}>
-          {rightLabel}
-        </TabButtonBase>
-      </TabsRow>
+    <>
+      <SegmentedContainer className={className} style={style}>
+        <TabsRow>
+          <TabButtonBase $active={active === 'left'} $width={tabWidth} onClick={onLeftClick}>
+            {leftLabel}
+          </TabButtonBase>
+          <TabButtonBase $active={active === 'right'} $width={tabWidth} onClick={onRightClick}>
+            {rightLabel}
+          </TabButtonBase>
+        </TabsRow>
+      </SegmentedContainer>
       {showDivider && <FullWidthDivider />}
-    </SegmentedContainer>
+    </>
   );
 };

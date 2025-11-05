@@ -1,6 +1,7 @@
 // com/livon/app/feature/shared/auth/ui/HealthInfoHeightScreen.kt
 package com.livon.app.feature.shared.auth.ui
 
+import android.util.Log
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.text.KeyboardOptions
@@ -15,15 +16,22 @@ import com.livon.app.ui.component.text.RequirementText
 import com.livon.app.ui.preview.PreviewSurface
 
 @Composable
-fun HealthInfoHeightScreen() {
+fun HealthInfoHeightScreen(
+    onBack: () -> Unit = {},
+    onNext: (String) -> Unit = {}
+) {
+    Log.d("HealthInfoHeight", "entered HealthInfoHeightScreen")
     var height by remember { mutableStateOf("") }   // 🟢 상태는 화면 최상단에서
     val isNextEnabled = height.isNotBlank()   // ✅ 키가 입력되었는가?
     CommonSignUpScreenB(
         title = "건강 정보 입력",
-        onBack = {},
+        onBack = onBack,
         bottomBar = { PrimaryButtonBottom(
             text = "다음",
-            onClick = {},
+            onClick = {
+                Log.d("HealthInfoHeight", "Next clicked with height=$height")
+                onNext(height)
+            },
             enabled = isNextEnabled      // ✅ 여기!
         ) }
     ) {

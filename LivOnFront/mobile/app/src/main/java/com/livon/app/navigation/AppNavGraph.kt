@@ -18,14 +18,18 @@ import com.livon.app.feature.shared.auth.ui.HealthInfoHeightScreen
 import com.livon.app.feature.shared.auth.ui.HealthInfoWeightScreen
 import com.livon.app.feature.shared.auth.ui.LandingScreen
 import com.livon.app.feature.shared.auth.ui.MemberTypeSelectScreen
+import com.livon.app.feature.shared.auth.ui.PasswordSetupScreen
 import com.livon.app.feature.shared.auth.ui.ProfilePhotoSelectScreen
 import com.livon.app.feature.shared.auth.ui.RoleSelectScreen
 import com.livon.app.feature.shared.auth.ui.SignUpCompleteScreen
 import com.livon.app.feature.shared.auth.ui.TermOfUseScreen
+import com.livon.app.feature.shared.auth.ui.NicknameScreen
 import androidx.navigation.navArgument
 import androidx.navigation.NavType
-import com.livon.app.feature.shared.auth.ui.NicknameScreen
+import com.livon.app.feature.shared.auth.ui.HealthInfoConditionScreen
+import com.livon.app.feature.shared.auth.ui.LifestyleSmokingScreen
 import java.net.URLDecoder
+import java.net.URLEncoder
 
 object Routes {
     const val Landing = "landing"
@@ -34,6 +38,7 @@ object Routes {
     const val EmailLogin = "email_login"
     const val EmailSetup = "email_setup"
     const val EmailVerify = "email_verify"
+    const val PasswordSetup = "password_setup"
     const val NickName = "nickname"
     const val MemberTypeSelect = "member_type_select"
     const val CompanySelect = "company_select"
@@ -82,7 +87,11 @@ fun NavGraphBuilder.authNavGraph(navController: NavHostController) {
         RoleSelectScreen(
             modifier = androidx.compose.ui.Modifier,
             onBack = { navController.popBackStack() },
-            onComplete = { mode -> Log.d("AppNavGraph","RoleSelect -> EmailSetup"); navController.navigate(Routes.EmailSetup) }
+            onComplete = { mode ->
+                Log.d("AppNavGraph","RoleSelect -> EmailSetup (role=$mode)")
+                // pass role as query param
+                navController.navigate("${Routes.EmailSetup}?role=${URLEncoder.encode(mode, "UTF-8")}")
+            }
         )
     }
 
@@ -96,68 +105,163 @@ fun NavGraphBuilder.authNavGraph(navController: NavHostController) {
         )
     }
 
-    composable(Routes.EmailSetup) {
+    // EmailSetup accepts optional role
+    composable(route = "${Routes.EmailSetup}?role={role}", arguments = listOf(navArgument("role") { type = NavType.StringType; defaultValue = "member" })) { backStackEntry ->
+        val role = backStackEntry.arguments?.getString("role") ?: "member"
         EmailSetupScreen(
             modifier = androidx.compose.ui.Modifier,
             onBack = { navController.popBackStack() },
-            onNext = { email -> Log.d("AppNavGraph","EmailSetup -> EmailVerify (email=$email)"); navController.navigate(Routes.EmailVerify) }
+            onNext = { email -> Log.d("AppNavGraph","EmailSetup -> EmailVerify (email=$email,role=$role)"); navController.navigate("${Routes.EmailVerify}?role=${URLEncoder.encode(role, "UTF-8")}") }
         )
     }
-    composable(Routes.EmailVerify) {
+
+    // EmailVerify keeps role
+    composable(route = "${Routes.EmailVerify}?role={role}", arguments = listOf(navArgument("role") { type = NavType.StringType; defaultValue = "member" })) { backStackEntry ->
+        val role = backStackEntry.arguments?.getString("role") ?: "member"
         EmailVerifyScreen(
             modifier = androidx.compose.ui.Modifier,
             onBack = { navController.popBackStack() },
             onVerified = {
-                Log.d("AppNavGraph","EmailVerify -> NickName (verified)")
-                navController.navigate(Routes.NickName)
+                Log.d("AppNavGraph","EmailVerify -> PasswordSetup (role=$role)")
+                navController.navigate("${Routes.PasswordSetup}?role=${URLEncoder.encode(role, "UTF-8")}")
             }
         )
     }
 
-    composable(Routes.NickName) {
+    // PasswordSetup -> NickName
+    composable(route = "${Routes.PasswordSetup}?role={role}", arguments = listOf(navArgument("role") { type = NavType.StringType; defaultValue = "member" })) { backStackEntry ->
+        val role = backStackEntry.arguments?.getString("role") ?: "member"
+        PasswordSetupScreen(
+            modifier = androidx.compose.ui.Modifier,
+            onBack = { navController.popBackStack() },
+            onNext = { password ->
+                Log.d("AppNavGraph","PasswordSetup -> NickName (role=$role)")
+                navController.navigate("${Routes.NickName}?role=${URLEncoder.encode(role, "UTF-8")}")
+            }
+        )
+    }
+
+    // NickName: navigate from password to nickname, maintain role
+    composable(route = "${Routes.NickName}?role={role}", arguments = listOf(navArgument("role") { type = NavType.StringType; defaultValue = "member" })) { backStackEntry ->
+        val role = backStackEntry.arguments?.getString("role") ?: "member"
         NicknameScreen(
             onBack = { navController.popBackStack() },
             onNext = { nickname ->
-                Log.d("AppNavGraph","NickName -> MemberTypeSelect (nickname=$nickname)")
-                navController.navigate(Routes.MemberTypeSelect)
+                val enc = URLEncoder.encode(nickname, "UTF-8")
+                Log.d("AppNavGraph","NickName -> MemberTypeSelect (nickname=$nickname, role=$role)")
+                navController.navigate("${Routes.MemberTypeSelect}?role=${URLEncoder.encode(role, "UTF-8")}&nickname=$enc")
             }
         )
     }
 
-    composable(Routes.MemberTypeSelect) {
+    // MemberTypeSelect accepts role & nickname
+    composable(route = "${Routes.MemberTypeSelect}?role={role}&nickname={nickname}", arguments = listOf(navArgument("role") { type = NavType.StringType; defaultValue = "member" }, navArgument("nickname") { type = NavType.StringType; defaultValue = "" })) { backStackEntry ->
+        val role = backStackEntry.arguments?.getString("role") ?: "member"
+        val nickname = backStackEntry.arguments?.getString("nickname") ?: ""
         MemberTypeSelectScreen(
             onBack = { navController.popBackStack() },
-            onComplete = { mode -> Log.d("AppNavGraph","MemberTypeSelect -> next (mode=$mode)"); if (mode == "business") navController.navigate(Routes.CompanySelect) else navController.navigate(Routes.GenderSelect) }
+            onComplete = { mode -> Log.d("AppNavGraph","MemberTypeSelect -> next (mode=$mode, role=$role, nickname=$nickname)"); if (mode == "business") navController.navigate("${Routes.CompanySelect}?role=${URLEncoder.encode(role, "UTF-8")}&nickname=${URLEncoder.encode(nickname, "UTF-8")}") else navController.navigate("${Routes.GenderSelect}?role=${URLEncoder.encode(role, "UTF-8")}&nickname=${URLEncoder.encode(nickname, "UTF-8")}") }
         )
     }
 
-    composable(Routes.CompanySelect) { CompanySelectScreen(onBack = { navController.popBackStack() }, onNext = { Log.d("AppNavGraph","CompanySelect -> GenderSelect"); navController.navigate(Routes.GenderSelect) }) }
+    // CompanySelect keeps role & nickname
+    composable(route = "${Routes.CompanySelect}?role={role}&nickname={nickname}", arguments = listOf(navArgument("role") { type = NavType.StringType; defaultValue = "member" }, navArgument("nickname") { type = NavType.StringType; defaultValue = "" })) { backStackEntry ->
+        val role = backStackEntry.arguments?.getString("role") ?: "member"
+        val nickname = backStackEntry.arguments?.getString("nickname") ?: ""
+        CompanySelectScreen(
+            onBack = { navController.popBackStack() },
+            onNext = { navController.navigate("${Routes.GenderSelect}?role=${URLEncoder.encode(role, "UTF-8")}&nickname=${URLEncoder.encode(nickname, "UTF-8")}") }
+        )
+    }
 
-    composable(Routes.GenderSelect) {
+    // GenderSelect keeps role & nickname
+    composable(route = "${Routes.GenderSelect}?role={role}&nickname={nickname}", arguments = listOf(navArgument("role") { type = NavType.StringType; defaultValue = "member" }, navArgument("nickname") { type = NavType.StringType; defaultValue = "" })) { backStackEntry ->
+        val role = backStackEntry.arguments?.getString("role") ?: "member"
+        val nickname = backStackEntry.arguments?.getString("nickname") ?: ""
         GenderSelectScreen(
             onBack = { navController.popBackStack() },
-            onNext = { gender -> Log.d("AppNavGraph","GenderSelect -> Birthday (gender=$gender)"); navController.navigate(Routes.Birthday) }
+            onNext = { gender -> Log.d("AppNavGraph","GenderSelect -> Birthday (gender=$gender, role=$role, nickname=$nickname)"); navController.navigate("${Routes.Birthday}?role=${URLEncoder.encode(role, "UTF-8")}&nickname=${URLEncoder.encode(nickname, "UTF-8")}") }
         )
     }
-    composable(Routes.Birthday) {
+
+    // Birthday keeps role & nickname
+    composable(route = "${Routes.Birthday}?role={role}&nickname={nickname}", arguments = listOf(navArgument("role") { type = NavType.StringType; defaultValue = "member" }, navArgument("nickname") { type = NavType.StringType; defaultValue = "" })) { backStackEntry ->
+        val role = backStackEntry.arguments?.getString("role") ?: "member"
+        val nickname = backStackEntry.arguments?.getString("nickname") ?: ""
         BirthdayScreen(
             onBack = { navController.popBackStack() },
-            onNext = { year, month, day ->
-                Log.d("AppNavGraph","Birthday -> ProfilePhoto (y=$year,m=$month,d=$day)")
-                navController.navigate(Routes.ProfilePhoto)
+            onNext = { year, month, day -> Log.d("AppNavGraph","Birthday -> ProfilePhoto (y=$year,m=$month,d=$day, role=$role, nickname=$nickname)"); navController.navigate("${Routes.ProfilePhoto}?role=${URLEncoder.encode(role, "UTF-8")}&nickname=${URLEncoder.encode(nickname, "UTF-8")}") }
+        )
+    }
+
+    // ProfilePhoto keeps role & nickname; onComplete -> signup_complete with username & role
+    composable(route = "${Routes.ProfilePhoto}?role={role}&nickname={nickname}", arguments = listOf(navArgument("role") { type = NavType.StringType; defaultValue = "member" }, navArgument("nickname") { type = NavType.StringType; defaultValue = "" })) { backStackEntry ->
+        val role = backStackEntry.arguments?.getString("role") ?: "member"
+        val nickname = backStackEntry.arguments?.getString("nickname") ?: ""
+        ProfilePhotoSelectScreen(onBack = { navController.popBackStack() }, onComplete = {
+            val enc = URLEncoder.encode(nickname, "UTF-8")
+            Log.d("AppNavGraph","ProfilePhoto -> signup_complete (nickname=$nickname, role=$role)")
+            navController.navigate("signup_complete?username=$enc&role=${URLEncoder.encode(role, "UTF-8")}")
+        })
+    }
+
+    // SignUpComplete: accept username and role; decide next navigation based on role
+    composable(
+        route = "signup_complete?username={username}&role={role}",
+        arguments = listOf(navArgument("username") { type = NavType.StringType; defaultValue = "" }, navArgument("role") { type = NavType.StringType; defaultValue = "member" })
+    ) { backStackEntry ->
+        val encoded = backStackEntry.arguments?.getString("username") ?: ""
+        val username = try { URLDecoder.decode(encoded, "UTF-8") } catch (t: Throwable) { encoded }
+        val role = backStackEntry.arguments?.getString("role") ?: "member"
+        SignUpCompleteScreen(username = if (username.isBlank()) "회원" else username, onStart = {
+            Log.d("AppNavGraph","SignUpComplete onStart: role=$role")
+            if (role == "member") {
+                // member: go through health info sequence
+                navController.navigate(Routes.HealthHeight)
+            } else {
+                // coach: go to home
+                navController.navigate(Routes.MemberHome)
+            }
+        })
+    }
+
+    // Health flow
+    composable(Routes.HealthHeight) {
+        HealthInfoHeightScreen(
+            onBack = { navController.popBackStack() },
+            onNext = { height ->
+                Log.d("AppNavGraph", "HealthHeight -> HealthWeight (height=$height)")
+                navController.navigate(Routes.HealthWeight)
             }
         )
     }
-    composable(Routes.ProfilePhoto) { ProfilePhotoSelectScreen(onBack = { navController.popBackStack() }, onComplete = { Log.d("AppNavGraph","ProfilePhoto -> signup_complete"); navController.navigate("signup_complete?username=%EC%99%95%EB%9D%BC%EB%B9%84") }) }
-
-    composable(route = "signup_complete?username={username}", arguments = listOf(navArgument("username") { type = NavType.StringType; defaultValue = "" })) { backStackEntry ->
-        val encoded = backStackEntry.arguments?.getString("username") ?: ""
-        val username = try { URLDecoder.decode(encoded, "UTF-8") } catch (t: Throwable) { encoded }
-        SignUpCompleteScreen(username = if (username.isBlank()) "회원" else username, onStart = { Log.d("AppNavGraph","SignUpComplete -> MemberHome"); navController.navigate(Routes.MemberHome) })
+    composable(Routes.HealthWeight) {
+        HealthInfoWeightScreen(
+            onBack = { navController.popBackStack() },
+            onNext = { weight ->
+                Log.d("AppNavGraph", "HealthWeight -> HealthSurvey (weight=$weight)")
+                navController.navigate(Routes.HealthSurvey)
+            }
+        )
     }
-
-    composable(Routes.HealthHeight) { HealthInfoHeightScreen() }
-    composable(Routes.HealthWeight) { HealthInfoWeightScreen() }
-    composable(Routes.HealthSurvey) { HealthInfoHeightScreen() }
-    composable(Routes.LifeStyleSurvey) { HealthInfoHeightScreen() }
+    // Start of health survey sequence
+    composable(Routes.HealthSurvey) {
+        // Use first survey screen (condition) as entry point; it will navigate to lifestyle when done
+        HealthInfoConditionScreen(
+            onBack = { navController.popBackStack() },
+            onNext = { selected ->
+                Log.d("AppNavGraph", "HealthSurvey(condition) -> LifestyleSurvey (selected=$selected)")
+                navController.navigate(Routes.LifeStyleSurvey)
+            }
+        )
+    }
+    composable(Routes.LifeStyleSurvey) {
+        LifestyleSmokingScreen(
+            onBack = { navController.popBackStack() },
+            onNext = { selected ->
+                Log.d("AppNavGraph", "LifestyleSurvey(smoking) -> MemberHome (selected=$selected)")
+                navController.navigate(Routes.MemberHome)
+            }
+        )
+    }
 }

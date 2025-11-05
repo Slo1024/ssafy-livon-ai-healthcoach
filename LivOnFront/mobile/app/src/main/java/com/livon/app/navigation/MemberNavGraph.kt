@@ -1,6 +1,7 @@
 // com/livon/app/navigation/MemberNavGraph.kt
 package com.livon.app.navigation
 
+import com.livon.app.R
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
@@ -306,19 +307,55 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         ClassReservationScreen(
             classes = classesToShow,
             onCardClick = { /* noop or nav to class_detail with id */ },
-            onCoachClick = { coachId -> nav.navigate("coach_detail/$coachId/group") }
+            onCoachClick = { coachId -> nav.navigate("coach_detail/$coachId/group") },
+            navController = nav
         )
     }
 
-    composable("class_detail") {
+    // class_detail/{classId} route: show ClassDetailScreen for the selected class id
+    composable("class_detail/{classId}") { backStackEntry ->
+        val classId = backStackEntry.arguments?.getString("classId") ?: ""
+        // find in mockClasses; recreate the same list here or better: compute once above and reuse
+        val mockClasses = listOf(
+            SampleClassInfo(
+                id = "1",
+                coachId = "c1",
+                date = LocalDate.now(),
+                time = "11:00 ~ 12:00",
+                type = "일반 클래스",
+                imageUrl = null,
+                className = "직장인을 위한 코어 강화",
+                coachName = "김리본 코치",
+                description = "점심시간 30분 집중 코어 운동.",
+                currentParticipants = 7,
+                maxParticipants = 10
+            ),
+            SampleClassInfo(
+                id = "2",
+                coachId = "c2",
+                date = LocalDate.now().plusDays(1),
+                time = "19:00 ~ 20:00",
+                type = "기업 클래스",
+                imageUrl = null,
+                className = "퇴근 후 스트레칭",
+                coachName = "박생존 코치",
+                description = "힐링 스트레칭.",
+                currentParticipants = 10,
+                maxParticipants = 10
+            )
+            // Add other mocks if needed
+        )
+        val item = mockClasses.find { it.id == classId } ?: mockClasses.first()
+
         ClassDetailScreen(
-            className = "클래스",
-            coachName = "코치",
-            classInfo = "상세 정보",
+            className = item.className,
+            coachName = item.coachName,
+            classInfo = item.description,
             onBack = { nav.popBackStack() },
-            onReserveClick = { /* noop */ },
+            onReserveClick = { /* TODO */ },
             onNavigateHome = { nav.navigate(Routes.MemberHome) },
-            onNavigateToMyPage = { /* noop */ },
+            onNavigateToMyPage = { nav.navigate("mypage") },
+            imageResId = R.drawable.ic_classphoto,
             navController = nav
         )
     }

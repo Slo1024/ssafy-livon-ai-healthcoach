@@ -49,7 +49,7 @@ fun ClassReservationScreen(
     }
 
     CommonScreenC(
-        topBar = { TopBar(title = "예약하기", onBack = {}) },
+        topBar = { TopBar(title = "예약하기", onBack = { navController?.popBackStack() ?: Unit }) },
         modifier = modifier
     ) {
         // 메인 레이아웃

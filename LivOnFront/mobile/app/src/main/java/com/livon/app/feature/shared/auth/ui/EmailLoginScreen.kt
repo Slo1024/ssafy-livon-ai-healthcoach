@@ -44,7 +44,7 @@ fun EmailLoginScreen(
 
     CommonSignUpScreenA(
         topBar = { TopBar(title = "이메일 로그인", onBack = onBack) },
-        bottomBar = { _ -> }
+        bottomBar = { } // no-op bottomBar
 
     ) {
         Text(

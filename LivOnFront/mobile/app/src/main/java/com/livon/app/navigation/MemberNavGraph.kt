@@ -45,7 +45,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
 
     val useDevMocks = isDebugBuild()
 
-    composable("member_home") {
+    composable(Routes.MemberHome) {
         MemberHomeRoute(
             onTapBooking = { nav.navigate("reservation_model_select") },
             onTapReservations = { nav.navigate("reservations") },
@@ -147,7 +147,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             selectedDate = parsedDate,
             onBack = { nav.popBackStack() },
             onConfirmReservation = { _ -> nav.navigate("reservations") },
-            onNavigateHome = { nav.navigate("member_home") },
+            onNavigateHome = { nav.navigate(Routes.MemberHome) },
             onNavigateToMyHealthInfo = { /* noop */ },
             navController = nav
         )
@@ -160,7 +160,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             selectedDate = LocalDate.now(),
             onBack = { nav.popBackStack() },
             onConfirmReservation = { _ -> nav.navigate("reservations") },
-            onNavigateHome = { nav.navigate("member_home") },
+            onNavigateHome = { nav.navigate(Routes.MemberHome) },
             onNavigateToMyHealthInfo = { /* noop */ },
             navController = nav
         )
@@ -317,7 +317,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             classInfo = "상세 정보",
             onBack = { nav.popBackStack() },
             onReserveClick = { /* noop */ },
-            onNavigateHome = { nav.navigate("member_home") },
+            onNavigateHome = { nav.navigate(Routes.MemberHome) },
             onNavigateToMyPage = { /* noop */ },
             navController = nav
         )

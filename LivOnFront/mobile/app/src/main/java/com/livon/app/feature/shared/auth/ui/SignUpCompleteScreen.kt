@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.sp
 import com.livon.app.ui.component.button.PrimaryButtonBottom
 import com.livon.app.ui.preview.PreviewSurface
 import com.livon.app.ui.theme.Gray2
+import com.livon.app.ui.component.overlay.TopBar
 
 @Composable
 fun SignUpCompleteScreen(
@@ -25,7 +26,7 @@ fun SignUpCompleteScreen(
     val displayName = if (username.endsWith("님")) username else "${username}님"
 
     CommonSignUpScreenA(
-        topBar = { },   // top bar 제거
+        topBar = { TopBar(title = " ", onBack = {}) },   // 빈 텍스트 TopBar로 변경
         bottomBar = {
             PrimaryButtonBottom(
                 text = "시작하기",

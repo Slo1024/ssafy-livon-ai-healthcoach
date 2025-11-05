@@ -1,3 +1,4 @@
+// kotlin
 // com/livon/app/ui/component/button/CompanySelectCard.kt
 package com.livon.app.ui.component.button
 
@@ -22,7 +23,6 @@ import androidx.compose.ui.unit.sp
 import com.livon.app.ui.theme.Basic
 import com.livon.app.ui.theme.BorderBlack
 import com.livon.app.ui.theme.LivonTheme
-import com.livon.app.ui.theme.Main
 
 /**
  * 회사 선택 버튼
@@ -50,12 +50,12 @@ fun CompanySelectCard(
         border = borderStroke,
         modifier = modifier
             .width(276.dp)
-            .height(153.dp)
+            .height(53.dp) // 변경: 높이 53.dp
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .height(153.dp)
+                .height(53.dp) // 내부 컨텐츠 높이도 53.dp로 맞춤
                 .padding(start = 20.dp) // 텍스트 왼쪽 패딩 20
         ) {
             Text(

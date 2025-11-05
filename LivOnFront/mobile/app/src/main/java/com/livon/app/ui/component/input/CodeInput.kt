@@ -53,7 +53,7 @@ fun CodeInputField(
             keyboardType = KeyboardType.Number,
             imeAction = ImeAction.Done
         ),
-        modifier = modifier.padding(start = 20.dp),
+        modifier = modifier,
         decorationBox = {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(7.dp),

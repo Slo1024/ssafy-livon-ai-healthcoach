@@ -23,19 +23,24 @@ import com.livon.app.ui.component.text.CaptionText
 import com.livon.app.ui.component.text.RequirementText
 import com.livon.app.ui.preview.PreviewSurface
 import com.livon.app.ui.theme.Spacing
+import android.util.Log
 
 @Composable
-fun GenderSelectScreen(modifier: Modifier = Modifier) {
+fun GenderSelectScreen(
+    modifier: Modifier = Modifier,
+    onBack: () -> Unit = {},
+    onNext: (String) -> Unit = {}
+) {
     var selectedGender by remember { mutableStateOf<String?>(null) }
 
     CommonSignUpScreenB(
         title = "건강 정보 입력",
-        onBack = {},
+        onBack = onBack,
         bottomBar = {
             PrimaryButtonBottom(
                 text = "다음",
                 enabled = selectedGender != null,
-                onClick = {}
+                onClick = { selectedGender?.let { Log.d("GenderSelect","Next clicked with=$it"); onNext(it) } }
             )
         }
     ) {
@@ -97,4 +102,4 @@ fun GenderSelectScreen(modifier: Modifier = Modifier) {
 
 @Preview(showBackground = true)
 @Composable
-fun GenderSelectScreenPreview() = PreviewSurface { GenderSelectScreen() }
+fun GenderSelectScreenPreview() = PreviewSurface { GenderSelectScreen(onNext = {}) }

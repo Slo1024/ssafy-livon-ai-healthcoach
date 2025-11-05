@@ -1,6 +1,7 @@
 // com/livon/app/ui/component/overlay/TopBar.kt
 package com.livon.app.ui.component.overlay
 
+import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -40,7 +41,10 @@ fun TopBar(
         contentAlignment = Alignment.Center
     ) {
         IconButton(
-            onClick = onBack,
+            onClick = {
+                Log.d("TopBar", "Back clicked: invoking onBack")
+                onBack()
+            },
             modifier = Modifier.align(Alignment.CenterStart)
         ) {
             Icon(

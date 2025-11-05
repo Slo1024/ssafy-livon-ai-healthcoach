@@ -19,18 +19,20 @@ import com.livon.app.ui.theme.Spacing
 
 @Composable
 fun EmailSetupScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onBack: () -> Unit = {},
+    onNext: (String) -> Unit = {} // pass entered email when navigating
 ) {
     var email by remember { mutableStateOf("") }
     val isValidEmail = email.contains("@") && email.contains(".")
 
     CommonSignUpScreenA(
-        topBar = { TopBar(title = "회원가입", onBack = {}) },
+        topBar = { TopBar(title = "회원가입", onBack = onBack) },
         bottomBar = {
             PrimaryButtonBottom(
                 text = "다음",
                 enabled = isValidEmail,
-                onClick = { /* TODO: Navigate to next screen */ }
+                onClick = { if (isValidEmail) onNext(email) }
             )
         }
     ) {

@@ -17,17 +17,21 @@ import com.livon.app.ui.theme.Spacing
 
 @Composable
 fun NicknameScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onBack: () -> Unit = {},
+    onNext: (String) -> Unit = {}
 ) {
     var nickname by remember { mutableStateOf("") }
+    val isValid = nickname.length in 1..10
 
     CommonSignUpScreenA(
-        topBar = { TopBar(title = "회원가입", onBack = {}) },
-        bottomBar = { 
+        topBar = { TopBar(title = "회원가입", onBack = onBack) },
+        bottomBar = {
             PrimaryButtonBottom(
                 text = "다음",
-                onClick = { /* TODO: Navigate to next screen */ }
-            ) 
+                enabled = isValid,
+                onClick = { if (isValid) onNext(nickname) }
+            )
         }
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
@@ -55,7 +59,7 @@ fun NicknameScreen(
 @Composable
 fun NicknameScreenPreview_Empty() {
     LivonTheme {
-        NicknameScreen()
+        NicknameScreen(onNext = {})
     }
 }
 
@@ -68,12 +72,12 @@ fun NicknameScreenPreview_Filled() {
 
         CommonSignUpScreenA(
             topBar = { TopBar(title = "회원가입", onBack = {}) },
-            bottomBar = { 
+            bottomBar = {
                 PrimaryButtonBottom(
                     text = "다음",
                     enabled = isValid,
                     onClick = {}
-                ) 
+                )
             }
         ) {
             Box(modifier = Modifier.fillMaxWidth()) {

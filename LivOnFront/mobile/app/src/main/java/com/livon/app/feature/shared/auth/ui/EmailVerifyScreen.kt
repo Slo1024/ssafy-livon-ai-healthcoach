@@ -24,7 +24,9 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun EmailVerifyScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onBack: () -> Unit = {},
+    onVerified: () -> Unit = {}
 ) {
     var code by remember { mutableStateOf("") }
     var remainingSec by remember { mutableStateOf(180) } // 3분 = 180초
@@ -42,12 +44,12 @@ fun EmailVerifyScreen(
     val timeText = String.format("%02d:%02d", minutes, seconds)
 
     CommonSignUpScreenA(
-        topBar = { TopBar(title = "회원가입", onBack = {}) },
+        topBar = { TopBar(title = "회원가입", onBack = onBack) },
         bottomBar = {
             PrimaryButtonBottom(
                 text = "인증하기",
                 enabled = code.length == 4,
-                onClick = { /* TODO: Verify code */ }
+                onClick = { if (code.length == 4) onVerified() }
             )
         }
     ) {
@@ -82,7 +84,7 @@ fun EmailVerifyScreen(
                 .fillMaxWidth(),
             code = code,
             onCodeChange = { code = it },
-            onComplete = { /* TODO: Handle completion */ }
+            onComplete = { if (it.length == 4) onVerified() }
         )
 
         Spacer(Modifier.height(8.dp))
@@ -143,7 +145,7 @@ fun EmailVerifyScreenPreview_Partial() {
             CodeInputField(
                 code = code,
                 onCodeChange = { code = it },
-                onComplete = {}
+                onComplete = { }
             )
             Spacer(Modifier.height(8.dp))
             Text(

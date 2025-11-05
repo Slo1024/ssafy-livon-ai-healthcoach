@@ -1,29 +1,22 @@
 package com.livon.app.feature.shared.auth.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ScaffoldDefaults
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.livon.app.ui.component.button.PrimaryButtonBottom
-import com.livon.app.ui.component.button.SurveyOption
 import com.livon.app.ui.component.overlay.TopBar2
 import com.livon.app.ui.component.text.CaptionText
 import com.livon.app.ui.component.text.RequirementText
@@ -52,6 +45,7 @@ fun CommonSignUpScreenB(
                 Modifier
                     .fillMaxWidth()
                     .padding(top = Spacing.TopMargin)
+                    .zIndex(1f)
             ) {
                 TopBar2(
                     title = title,
@@ -64,7 +58,8 @@ fun CommonSignUpScreenB(
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.navigationBars) // ✅ 하단 인셋
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .zIndex(1f)
 
             ) { bottomBar() }
         }
@@ -108,5 +103,3 @@ private fun PreviewCommonSignUpScreenB() {
         }
     }
 }
-
-

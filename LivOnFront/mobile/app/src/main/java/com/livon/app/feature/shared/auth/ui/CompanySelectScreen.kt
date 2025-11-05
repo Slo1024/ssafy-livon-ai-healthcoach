@@ -17,7 +17,9 @@ import com.livon.app.ui.theme.Spacing
 
 @Composable
 fun CompanySelectScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onBack: () -> Unit = {},
+    onNext: () -> Unit = {}
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedCompany by remember { mutableStateOf<String?>(null) }
@@ -25,12 +27,12 @@ fun CompanySelectScreen(
     val companies = listOf("삼성전자", "무직")
 
     CommonSignUpScreenA(
-        topBar = { TopBar(title = "회원가입", onBack = {}) },
+        topBar = { TopBar(title = "회원가입", onBack = onBack) },
         bottomBar = {
             PrimaryButtonBottom(
                 text = "완료",
                 enabled = selectedCompany != null,
-                onClick = { /* TODO: Complete signup */ }
+                onClick = { onNext() }
             )
         }
     ) {

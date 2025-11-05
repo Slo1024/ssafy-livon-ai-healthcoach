@@ -1,6 +1,7 @@
 // com/livon/app/feature/shared/auth/ui/BirthdayScreen.kt
 package com.livon.app.feature.shared.auth.ui
 
+import android.util.Log
 import android.widget.NumberPicker
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -47,7 +48,10 @@ fun BirthdayScreen(
             PrimaryButtonBottom(
                 text = "다음",
                 enabled = isEnabled,
-                onClick = { onNext(year, month, day) }
+                onClick = {
+                    Log.d("BirthdayScreen", "Next clicked: y=$year m=$month d=$day")
+                    onNext(year, month, day)
+                }
             )
         }
     ) {

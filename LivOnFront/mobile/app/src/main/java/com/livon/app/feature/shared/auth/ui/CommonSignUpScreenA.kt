@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 
 /**
  * A그룹 화면 템플릿
@@ -38,7 +39,8 @@ fun CommonSignUpScreenA(
             Box(
                 Modifier
                     .padding(top = Spacing.TopMargin)
-                    .fillMaxWidth()                                 // 가로 꽉
+                    .fillMaxWidth()
+                    .zIndex(1f)                                 // ensure topBar is above content
             ) {
                 topBar()
             }
@@ -46,8 +48,9 @@ fun CommonSignUpScreenA(
         bottomBar = {
             Box(
                 Modifier
-                    .fillMaxWidth()                                 // 가로 꽉
+                    .fillMaxWidth()
                     .windowInsetsPadding(WindowInsets.navigationBars) // 제스처 바 겹침 방지
+                    .zIndex(1f)                                 // ensure bottomBar is above content
             ) {
                 bottomBar()
             }

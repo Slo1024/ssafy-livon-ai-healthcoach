@@ -1,15 +1,13 @@
 package com.livon.app.feature.shared.auth.ui
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -26,8 +24,6 @@ import com.livon.app.ui.preview.PreviewSurface
 import com.livon.app.ui.theme.Gray
 import com.livon.app.ui.theme.Gray2
 import com.livon.app.ui.theme.Main
-import com.livon.app.ui.theme.Sub2
-import com.livon.app.feature.shared.auth.ui.CommonSignUpScreenA
 
 @Composable
 fun TermOfUseScreen(
@@ -85,7 +81,7 @@ fun TermOfUseScreen(
                 )
             )
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(300.dp))
 
             // 약관 카드 (배경 살짝 구분)
             Column(
@@ -131,7 +127,7 @@ fun TermOfUseScreen(
                 fontSize = 13.sp
             )
 
-            Spacer(Modifier.height(60.dp)) // Primary 버튼과 체크 영역 사이를 약 60dp로 확보
+            Spacer(Modifier.height(2.dp)) // Primary 버튼과 체크 영역 사이를 약 60dp로 확보
         }
     }
 }
@@ -149,14 +145,13 @@ private fun TermsRow(
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Checkbox(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = CheckboxDefaults.colors(
-                checkedColor = Main,
-                uncheckedColor = Gray,
-                checkmarkColor = Color.White
-            )
+        // drawable 기반 체크박스(프리뷰와 동일하게 이미지로 표현)
+        Image(
+            painter = painterResource(id = if (checked) R.drawable.checkmark else R.drawable.graycheckbox),
+            contentDescription = null,
+            modifier = Modifier
+                .size(20.dp)
+                .clickable { onCheckedChange(!checked) }
         )
         Spacer(Modifier.width(6.dp))
         Row(
@@ -196,15 +191,12 @@ private fun TermsAllRow(
             .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 전체 약관에도 체크박스를 추가하고 체크 색상은 theme의 primary로 설정 (UI 구조 변경 없음)
-        Checkbox(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = CheckboxDefaults.colors(
-                checkedColor = MaterialTheme.colorScheme.primary,
-                uncheckedColor = Gray,
-                checkmarkColor = Color.White
-            )
+        Image(
+            painter = painterResource(id = if (checked) R.drawable.allchecked else R.drawable.grayallcheck),
+            contentDescription = null,
+            modifier = Modifier
+                .size(20.dp)
+                .clickable { onCheckedChange(!checked) }
         )
         Spacer(Modifier.width(6.dp))
         Text(
@@ -218,30 +210,7 @@ private fun TermsAllRow(
     }
 }
 
-/* ------------------------------
- * Previews (비활성 / 활성)
- * - 프리뷰 내부에서 이모지 대신 drawable 리소스를 사용하도록 변경
- * ------------------------------ */
 
-@Preview(showBackground = true)
-@Composable
-private fun PreviewTermOfUse_Disabled() = PreviewSurface {
-    TermOfUseScreenPreviewInternal(
-        agreeService = false,
-        agreePrivacy = false,
-        agreeMarketing = false
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun PreviewTermOfUse_Enabled() = PreviewSurface {
-    TermOfUseScreenPreviewInternal(
-        agreeService = true,
-        agreePrivacy = true,
-        agreeMarketing = false
-    )
-}
 
 @Composable
 private fun TermOfUseScreenPreviewInternal(

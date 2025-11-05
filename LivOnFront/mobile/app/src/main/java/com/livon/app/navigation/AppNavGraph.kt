@@ -1,6 +1,7 @@
 // kotlin
 package com.livon.app.navigation
 
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -10,6 +11,8 @@ import androidx.navigation.compose.rememberNavController
 import com.livon.app.feature.shared.auth.ui.BirthdayScreen
 import com.livon.app.feature.shared.auth.ui.CompanySelectScreen
 import com.livon.app.feature.shared.auth.ui.EmailLoginScreen
+import com.livon.app.feature.shared.auth.ui.EmailSetupScreen
+import com.livon.app.feature.shared.auth.ui.EmailVerifyScreen
 import com.livon.app.feature.shared.auth.ui.GenderSelectScreen
 import com.livon.app.feature.shared.auth.ui.HealthInfoHeightScreen
 import com.livon.app.feature.shared.auth.ui.HealthInfoWeightScreen
@@ -21,6 +24,7 @@ import com.livon.app.feature.shared.auth.ui.SignUpCompleteScreen
 import com.livon.app.feature.shared.auth.ui.TermOfUseScreen
 import androidx.navigation.navArgument
 import androidx.navigation.NavType
+import com.livon.app.feature.shared.auth.ui.NicknameScreen
 import java.net.URLDecoder
 
 object Routes {
@@ -39,10 +43,9 @@ object Routes {
     const val HealthHeight = "health_height"
     const val HealthWeight = "health_weight"
     const val HealthSurvey = "health_survey"
-    const val LifeStyleSurvey = "lifestyle_survey"
+    const val LifeStyleSurvey = "life_style_survey"
 
     const val MemberHome = "member_home"
-    // 예약 관련 라우트는 기존 reservation 그래프에서 관리해도 됩니다
 }
 
 @Composable
@@ -53,98 +56,108 @@ fun AppNavGraph() {
         startDestination = Routes.Landing
     ) {
         authNavGraph(nav)
-        memberNavGraph(nav)    // 기존에 구현된 그래프 사용
-        coachNavGraph(nav)     // 그대로 유지
-        // 필요하면 reservationNavGraph(nav) 등 추가
+        memberNavGraph(nav)
+        coachNavGraph(nav)
     }
 }
 
 fun NavGraphBuilder.authNavGraph(navController: NavHostController) {
     composable(Routes.Landing) {
-        // LandingScreen은 콜백들(기본값 존재)으로 구성되어 있으므로 nav로부터 필요한 동작만 전달
         LandingScreen(
             onKakaoLogin = {},
             onNaverLogin = {},
-            onEmailLogin = { navController.navigate(Routes.EmailLogin) },
-            onSignUp = { navController.navigate(Routes.Terms) }
+            onEmailLogin = { Log.d("AppNavGraph","navigate to EmailLogin"); navController.navigate(Routes.EmailLogin) },
+            onSignUp = { Log.d("AppNavGraph","navigate to Terms"); navController.navigate(Routes.Terms) }
         )
     }
+
     composable(Routes.Terms) {
         TermOfUseScreen(
-            onClickNext = { navController.navigate(Routes.RoleSelect) },
+            onClickNext = { Log.d("AppNavGraph","Terms -> RoleSelect"); navController.navigate(Routes.RoleSelect) },
             onClickBack = { navController.popBackStack() }
         )
     }
+
     composable(Routes.RoleSelect) {
         RoleSelectScreen(
             modifier = androidx.compose.ui.Modifier,
-            onComplete = { mode ->
-                // 임시: 회원가입 흐름 계속 (예: 이메일 설정)
-                navController.navigate(Routes.EmailSetup)
-            }
+            onBack = { navController.popBackStack() },
+            onComplete = { mode -> Log.d("AppNavGraph","RoleSelect -> EmailSetup"); navController.navigate(Routes.EmailSetup) }
         )
     }
+
     composable(Routes.EmailLogin) {
         EmailLoginScreen(
             onBack = { navController.popBackStack() },
-            onLogin = { email, pw -> /* TODO: 로그인 처리 */ },
-            onSignUp = { navController.navigate(Routes.Terms) },
+            onLogin = { email, pw -> /* TODO */ },
+            onSignUp = { Log.d("AppNavGraph","navigate to Terms"); navController.navigate(Routes.Terms) },
             onFindId = {},
             onFindPassword = {}
         )
     }
+
     composable(Routes.EmailSetup) {
-        // EmailSetUpScreen 함수가 프로젝트에 존재하지 않을 수 있으므로 안전하게 기본 화면 호출로 대체
-        // 만약 실제 EmailSetUpScreen.kt가 있다면 여기에 정확한 호출로 교체하세요.
-        // EmailVerifyScreen 대신 단순 Landing placeholder
-        LandingScreen()
+        EmailSetupScreen(
+            modifier = androidx.compose.ui.Modifier,
+            onBack = { navController.popBackStack() },
+            onNext = { email -> Log.d("AppNavGraph","EmailSetup -> EmailVerify (email=$email)"); navController.navigate(Routes.EmailVerify) }
+        )
     }
     composable(Routes.EmailVerify) {
-        LandingScreen()
+        EmailVerifyScreen(
+            modifier = androidx.compose.ui.Modifier,
+            onBack = { navController.popBackStack() },
+            onVerified = {
+                Log.d("AppNavGraph","EmailVerify -> NickName (verified)")
+                navController.navigate(Routes.NickName)
+            }
+        )
     }
+
     composable(Routes.NickName) {
-        // NickNameScreen 정의가 없으면 기본 동작으로 RoleSelect 화면으로 돌아가게 둠
-        // 실제 구현이 있으면 호출 시 nav 콜백을 전달하세요.
-        RoleSelectScreen()
+        NicknameScreen(
+            onBack = { navController.popBackStack() },
+            onNext = { nickname ->
+                Log.d("AppNavGraph","NickName -> MemberTypeSelect (nickname=$nickname)")
+                navController.navigate(Routes.MemberTypeSelect)
+            }
+        )
     }
+
     composable(Routes.MemberTypeSelect) {
-        MemberTypeSelectScreen()
+        MemberTypeSelectScreen(
+            onBack = { navController.popBackStack() },
+            onComplete = { mode -> Log.d("AppNavGraph","MemberTypeSelect -> next (mode=$mode)"); if (mode == "business") navController.navigate(Routes.CompanySelect) else navController.navigate(Routes.GenderSelect) }
+        )
     }
-    composable(Routes.CompanySelect) {
-        CompanySelectScreen()
-    }
+
+    composable(Routes.CompanySelect) { CompanySelectScreen(onBack = { navController.popBackStack() }, onNext = { Log.d("AppNavGraph","CompanySelect -> GenderSelect"); navController.navigate(Routes.GenderSelect) }) }
+
     composable(Routes.GenderSelect) {
-        GenderSelectScreen()
+        GenderSelectScreen(
+            onBack = { navController.popBackStack() },
+            onNext = { gender -> Log.d("AppNavGraph","GenderSelect -> Birthday (gender=$gender)"); navController.navigate(Routes.Birthday) }
+        )
     }
     composable(Routes.Birthday) {
-        BirthdayScreen(onBack = { navController.popBackStack() })
+        BirthdayScreen(
+            onBack = { navController.popBackStack() },
+            onNext = { year, month, day ->
+                Log.d("AppNavGraph","Birthday -> ProfilePhoto (y=$year,m=$month,d=$day)")
+                navController.navigate(Routes.ProfilePhoto)
+            }
+        )
     }
-    composable(Routes.ProfilePhoto) {
-        ProfilePhotoSelectScreen(onBack = { navController.popBackStack() }, onComplete = { navController.navigate("signup_complete?username=%EC%99%95%EB%9D%BC%EB%B9%84") })
-    }
+    composable(Routes.ProfilePhoto) { ProfilePhotoSelectScreen(onBack = { navController.popBackStack() }, onComplete = { Log.d("AppNavGraph","ProfilePhoto -> signup_complete"); navController.navigate("signup_complete?username=%EC%99%95%EB%9D%BC%EB%B9%84") }) }
 
-    // SignUpComplete expects a username string argument; create a route that accepts an optional query param
-    composable(
-        route = "signup_complete?username={username}",
-        arguments = listOf(navArgument("username") { type = NavType.StringType; defaultValue = "" })
-    ) { backStackEntry ->
+    composable(route = "signup_complete?username={username}", arguments = listOf(navArgument("username") { type = NavType.StringType; defaultValue = "" })) { backStackEntry ->
         val encoded = backStackEntry.arguments?.getString("username") ?: ""
         val username = try { URLDecoder.decode(encoded, "UTF-8") } catch (t: Throwable) { encoded }
-        SignUpCompleteScreen(username = if (username.isBlank()) "회원" else username, onStart = { navController.navigate(Routes.MemberHome) })
+        SignUpCompleteScreen(username = if (username.isBlank()) "회원" else username, onStart = { Log.d("AppNavGraph","SignUpComplete -> MemberHome"); navController.navigate(Routes.MemberHome) })
     }
 
-    composable(Routes.HealthHeight) {
-        // Health screens in this project take no args (based on get_errors), so call directly
-        HealthInfoHeightScreen()
-    }
-    composable(Routes.HealthWeight) {
-        HealthInfoWeightScreen()
-    }
-    composable(Routes.HealthSurvey) {
-        // placeholder: if HealthSurveyScreen exists, replace accordingly
-        HealthInfoHeightScreen()
-    }
-    composable(Routes.LifeStyleSurvey) {
-        HealthInfoHeightScreen()
-    }
+    composable(Routes.HealthHeight) { HealthInfoHeightScreen() }
+    composable(Routes.HealthWeight) { HealthInfoWeightScreen() }
+    composable(Routes.HealthSurvey) { HealthInfoHeightScreen() }
+    composable(Routes.LifeStyleSurvey) { HealthInfoHeightScreen() }
 }

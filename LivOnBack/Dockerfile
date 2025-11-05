@@ -2,22 +2,20 @@
 FROM gradle:8.10.2-jdk17-alpine AS builder
 WORKDIR /workspace
 
-# Gradle wrapper와 설정 먼저 복사 (캐시 최적화 + 권한/소유자 맞춤)
-COPY --chown=gradle:gradle gradle gradle
-COPY --chown=gradle:gradle gradlew settings.gradle build.gradle ./
-RUN chmod +x gradlew
-RUN ./gradlew --version
+# (옵션) 캐시 최적화: 의존성 먼저 받기
+COPY build.gradle settings.gradle ./
+COPY gradle gradle
+RUN gradle --version
 
-# 실제 소스 복사
-COPY --chown=gradle:gradle . .
-RUN chmod +x gradlew
-
-RUN ./gradlew clean bootJar --no-daemon --stacktrace
+# 실제 소스 복사 후 빌드
+COPY . .
+RUN gradle clean bootJar --no-daemon
 
 # --------- 실행용 이미지 구성 ---------
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
+# 보안상 root 대신 비루트 사용자(app) 생성. -S는 시스템 계정/그룹(가벼움)
 RUN addgroup -S app && adduser -S app -G app
 RUN mkdir -p /app/config && chown -R app:app /app
 

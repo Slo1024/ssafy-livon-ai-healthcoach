@@ -13,6 +13,7 @@ import com.s406.livon.domain.user.entity.User;
 import com.s406.livon.domain.user.enums.Role;
 import com.s406.livon.domain.user.repository.UserRepository;
 import com.s406.livon.global.error.handler.CoachHandler;
+import com.s406.livon.global.s3.S3Service;
 import com.s406.livon.global.web.response.code.status.ErrorStatus;
 import com.s406.livon.global.web.response.PaginatedResponse;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -36,6 +38,7 @@ public class GroupConsultationService {
     private final ConsultationRepository consultationRepository;
     private final ParticipantRepository participantRepository;
     private final UserRepository userRepository;
+    private final S3Service s3Service;
     
     /**
      * 클래스 생성
@@ -45,7 +48,7 @@ public class GroupConsultationService {
      * @return 생성된 클래스 ID
      */
     @Transactional
-    public Long createGroupConsultation(UUID coachId, GroupConsultationCreateRequestDto request) {
+    public Long createGroupConsultation(UUID coachId, GroupConsultationCreateRequestDto request, MultipartFile classImage) {
         // 1. 코치 권한 확인
         User coach = validateCoach(coachId);
 
@@ -68,12 +71,20 @@ public class GroupConsultationService {
         
         Consultation savedConsultation = consultationRepository.save(consultation);
         
-        // 4. GroupConsultation 생성
+        // 4. 클래스 이미지 저장
+        String Url = "";
+        if (classImage != null && !classImage.isEmpty()) {
+            System.out.println("프로필 이미지 저장");
+            Url = s3Service.uploadProfileImage(classImage);
+        }
+        System.out.println("Url = "+ Url);
+        
+        // 5. GroupConsultation 생성
         GroupConsultation groupConsultation = GroupConsultation.builder()
                 .consultation(savedConsultation)
                 .title(request.title())
                 .description(request.description())
-                .imageUrl(request.imageUrl())
+                .imageUrl(Url)
                 .build();
         
         GroupConsultation saved = groupConsultationRepository.save(groupConsultation);

@@ -35,9 +35,6 @@ export const AppRouter: React.FC = () => {
         <Route path={ROUTES.ABOUT} element={<AboutPage />} />
         <Route path={ROUTES.DOWNLOAD} element={<DownloadPage />} />
         
-        {/* 예외 처리: /dashboard 경로는 홈으로 리다이렉트 */}
-        <Route path="/dashboard" element={<Navigate to={ROUTES.HOME} replace />} />
-        
         {/* 인증 라우트 */}
         <Route path={ROUTES.LOGIN} element={<LoginPage />} />
         <Route path={ROUTES.SIGNUP} element={<SignupPage />} />
@@ -136,6 +133,9 @@ export const AppRouter: React.FC = () => {
         <Route path="/support" element={<Navigate to={ROUTES.FAQ} replace />} />
         <Route path={ROUTES.FAQ} element={<FAQPage />} />
         <Route path={ROUTES.INQUIRY} element={<InquiryPage />} />
+        
+        {/* 예외 처리: /dashboard 경로는 404로 리다이렉트하지 않음 */}
+        <Route path="/dashboard" element={null} />
         
         {/* 404 페이지 */}
         <Route path={ROUTES.NOT_FOUND} element={<NotFoundPage />} />

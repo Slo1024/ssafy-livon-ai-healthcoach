@@ -109,8 +109,10 @@ public class UserService {
         // 만약 imageFile을 받았다면 S3에 저장
         String Url = "";
         if (imageFile != null && !imageFile.isEmpty()) {
+            System.out.println("프로필 이미지 저장");
             Url = S3service.uploadProfileImage(imageFile);
         }
+        System.out.println("Url = "+ Url);
 
         User savedUser = userRepository.save(signUpDto.toEntity(encodedPassword, organizations, Url));
         return UserDto.toDto(savedUser);

@@ -89,13 +89,20 @@ public class UserController {
      * @return
      */
     @PostMapping("/sign-up")
-    @Operation(summary = "회원가입 API", description = "회원가입을 합니다.")
     public ResponseEntity<?> signUp(
             @RequestPart("data") SignUpDto signUpDto,
-            @RequestPart(value = "file", required = false) MultipartFile imageFile
+            @RequestPart(value = "profileImage", required = false) MultipartFile profileImage
     ) {
-        // 회원가입 처리
-        UserDto savedMemberDto = userService.signUp(signUpDto, imageFile);
+        // 이미지 파일 정보 로그 추가
+        if (profileImage != null && !profileImage.isEmpty()) {
+            log.info("[signUp] 프로필 이미지: {}, 크기: {}bytes",
+                    profileImage.getOriginalFilename(),
+                    profileImage.getSize());
+        } else {
+            log.info("[signUp] 프로필 이미지 없음");
+        }
+
+        UserDto savedMemberDto = userService.signUp(signUpDto, profileImage);
         return ResponseEntity.ok().body(ApiResponse.onSuccess(savedMemberDto));
     }
 

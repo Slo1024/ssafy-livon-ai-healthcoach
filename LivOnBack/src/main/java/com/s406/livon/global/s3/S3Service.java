@@ -71,8 +71,7 @@ public class S3Service {
             metadata.setContentLength(file.getSize());
             metadata.setContentType(file.getContentType());
 
-            amazonS3Client.putObject(new PutObjectRequest(bucket, fileName, inputStream, metadata)
-                    .withCannedAcl(CannedAccessControlList.PublicRead)); // 공개 읽기 권한 설정
+            amazonS3Client.putObject(new PutObjectRequest(bucket, fileName, inputStream, metadata));
 
             // 4. 업로드된 파일의 전체 URL 반환
             return amazonS3Client.getUrl(bucket, fileName).toString();

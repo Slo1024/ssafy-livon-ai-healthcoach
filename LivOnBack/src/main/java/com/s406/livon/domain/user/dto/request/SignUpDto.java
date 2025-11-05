@@ -25,7 +25,6 @@ public class SignUpDto {
     private String email;
     private String password;
     private String nickname;
-    private MultipartFile profileImage;
     private List<Role> roles = new ArrayList<>();
     private Gender gender;
 

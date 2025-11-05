@@ -5,6 +5,7 @@ import com.s406.livon.domain.coach.dto.request.GroupConsultationUpdateRequestDto
 import com.s406.livon.domain.coach.dto.response.GroupConsultationDetailResponseDto;
 import com.s406.livon.domain.coach.dto.response.GroupConsultationListResponseDto;
 import com.s406.livon.domain.coach.service.GroupConsultationService;
+import com.s406.livon.domain.user.dto.request.SignUpDto;
 import com.s406.livon.global.security.jwt.JwtTokenProvider;
 import com.s406.livon.global.web.response.ApiResponse;
 import com.s406.livon.global.web.response.PaginatedResponse;
@@ -19,6 +20,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
@@ -45,10 +47,11 @@ public class GroupConsultationController {
     @Operation(summary = "클래스 생성 API", description = "코치가 그룹 상담(클래스)을 생성합니다.")
     public ResponseEntity<ApiResponse<Long>> createGroupConsultation(
             @RequestHeader("Authorization") String token,
-            @Valid @RequestBody GroupConsultationCreateRequestDto request) {
+            @RequestPart("data") GroupConsultationCreateRequestDto request,
+            @RequestPart(value = "classImage", required = false) MultipartFile classImage) {
         
         UUID coachId = jwtTokenProvider.getUserId(token.substring(7));
-        Long classId = groupConsultationService.createGroupConsultation(coachId, request);
+        Long classId = groupConsultationService.createGroupConsultation(coachId, request, classImage);
         
         return ResponseEntity.ok()
                 .body(ApiResponse.of(SuccessStatus.INSERT_SUCCESS, classId));

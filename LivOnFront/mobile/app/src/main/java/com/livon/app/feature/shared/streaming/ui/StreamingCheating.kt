@@ -8,6 +8,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -27,13 +28,14 @@ fun StreamingCheating(
     onBackClick: () -> Unit,
     onSearch: (String) -> Unit = {},
     modifier: Modifier = Modifier,
-    viewModel: StreamingChatViewModel = viewModel()
+    viewModel: StreamingChatViewModel = viewModel(),
+    chatRoomId: Int = 3
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
     // 화면 진입 시 채팅 메시지 로드
     LaunchedEffect(Unit) {
-        viewModel.loadChatMessages()
+        viewModel.loadChatMessages(chatRoomId = chatRoomId)
     }
 
     LivonTheme {
@@ -43,7 +45,10 @@ fun StreamingCheating(
             },
             bottomBar = {
                 CheatingBar(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    onSend = { message ->
+                        viewModel.sendMessage(message, chatRoomId = chatRoomId)
+                    }
                 )
             }
         ) { paddingValues ->
@@ -51,7 +56,7 @@ fun StreamingCheating(
             when {
                 uiState.isLoading -> {
                     Box(
-                        modifier = modifier
+                        modifier = Modifier
                             .fillMaxSize()
                             .padding(paddingValues),
                         contentAlignment = Alignment.Center
@@ -61,7 +66,7 @@ fun StreamingCheating(
                 }
                 error != null -> {
                     Box(
-                        modifier = modifier
+                        modifier = Modifier
                             .fillMaxSize()
                             .padding(paddingValues),
                         contentAlignment = Alignment.Center
@@ -74,13 +79,13 @@ fun StreamingCheating(
                 }
                 else -> {
                     LazyColumn(
-                        modifier = modifier
+                        modifier = Modifier
                             .fillMaxSize()
                             .padding(paddingValues)
                     ) {
                         items(uiState.messages) { message ->
                             StreamingCheatingProfile(
-                                userName = message.userId, // userId를 이름으로 사용
+                                userName = message.userId,
                                 message = message.content,
                                 time = DateFormatter.formatToTime(message.sentAt)
                             )

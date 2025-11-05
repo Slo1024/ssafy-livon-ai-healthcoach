@@ -1,6 +1,7 @@
 
 package com.livon.app
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -8,24 +9,34 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import com.livon.app.navigation.AppNavGraph
+import com.livon.app.data.remote.socket.ChatStompManager
+import com.livon.app.feature.coach.streaming.ui.JoinRoomScreen
 import com.livon.app.ui.theme.LivonTheme
+import io.openvidu.android.RoomLayoutActivity
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            LivonTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    AppNavGraph()   // ✅ 네비게이션 시작점
+            JoinRoomScreen(
+                initialParticipantName = "User-${(0..99).random()}",
+                initialRoomName = "LiveKitRoom",
+                onJoinClicked = { roomName, participantName ->
+                    ChatStompManager.connect("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIzMmY2MWEyYS1hYTEzLTQxZWUtOTlkNS1hNjU0ZGJiMzViNjUiLCJhdXRoIjoiTUVNQkVSIiwiZXhwIjoxOTQyMTM0Mzg0fQ.0tOYhtcDx-eOzz4wKESq05E99tUfrMmWBrdcCh-1Krw")
+
+                    val intent = Intent(this, RoomLayoutActivity::class.java).apply {
+                        putExtra("roomName", roomName)
+                        putExtra("participantName", participantName)
+                    }
+
+                    startActivity(intent)
                 }
-            }
+            )
         }
     }
 }
@@ -45,5 +56,3 @@ fun GreetingPreview() {
         Greeting("Android")
     }
 }
-
-// Android Build Type: APK Release Test Annotation 

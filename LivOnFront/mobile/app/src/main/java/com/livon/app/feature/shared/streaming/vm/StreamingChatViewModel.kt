@@ -4,8 +4,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.livon.app.data.repository.ChatRepositoryImpl
+import com.livon.app.domain.model.ChatMessage
 import com.livon.app.domain.repository.ChatRepository
-import com.livon.app.feature.shared.streaming.data.ChatMessage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -31,9 +31,9 @@ class StreamingChatViewModel(
     val uiState: StateFlow<StreamingChatUiState> = _uiState
 
     fun loadChatMessages(
-        chatRoomId: Int = 0,
-        lastSentAt: String? = "",
-        accessToken: String? = ""
+        chatRoomId: Int = 3,
+        lastSentAt: String? = "2025-10-29T00:00:00",
+        accessToken: String? = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIzMmY2MWEyYS1hYTEzLTQxZWUtOTlkNS1hNjU0ZGJiMzViNjUiLCJhdXRoIjoiTUVNQkVSIiwiZXhwIjoxOTQyMTM0Mzg0fQ.0tOYhtcDx-eOzz4wKESq05E99tUfrMmWBrdcCh-1Krw"
     ) {
         viewModelScope.launch {
             Log.d("StreamingChatViewModel", "채팅 메시지 로드 시작: chatRoomId=$chatRoomId")
@@ -59,6 +59,32 @@ class StreamingChatViewModel(
                         )
                     }
                 }
+        }
+    }
+
+    fun sendMessage(
+        message: String,
+        chatRoomId: Int = 3,
+        userId: String = "user-${System.currentTimeMillis()}"
+    ) {
+        if (message.isBlank()) return
+        
+        viewModelScope.launch {
+            Log.d("StreamingChatViewModel", "메시지 전송: $message")
+            // TODO: 실제 메시지 전송 API 호출 구현
+            // 현재는 로컬 상태에만 추가 (임시)
+            val newMessage = ChatMessage(
+                id = System.currentTimeMillis().toString(),
+                chatRoomId = chatRoomId,
+                userId = userId,
+                content = message,
+                sentAt = System.currentTimeMillis().toString(),
+                role = emptyList(),
+                messageType = "TEXT" // 기본 메시지 타입
+            )
+            _uiState.update { state ->
+                state.copy(messages = state.messages + newMessage)
+            }
         }
     }
 }

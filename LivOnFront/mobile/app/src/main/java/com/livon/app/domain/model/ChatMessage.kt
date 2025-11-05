@@ -1,4 +1,4 @@
-package com.livon.app.feature.shared.streaming.data
+package com.livon.app.domain.model
 
 /**
  * 채팅 메시지 도메인 모델
@@ -12,5 +12,4 @@ data class ChatMessage(
     val role: List<String>,
     val messageType: String
 )
-
 

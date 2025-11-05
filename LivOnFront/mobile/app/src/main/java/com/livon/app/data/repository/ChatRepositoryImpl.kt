@@ -4,8 +4,8 @@ import android.util.Log
 import com.livon.app.data.remote.api.ChatApi
 import com.livon.app.data.remote.api.ChatApiImpl
 import com.livon.app.data.remote.dto.ChatMessageDto
+import com.livon.app.domain.model.ChatMessage
 import com.livon.app.domain.repository.ChatRepository
-import com.livon.app.feature.shared.streaming.data.ChatMessage
 
 /**
  * 채팅 메시지 Repository 구현체

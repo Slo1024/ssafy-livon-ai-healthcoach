@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <!--
+              [수정된 패턴]
+              PID, 스레드명, 로거(클래스명)를 모두 제거하고,
+              [시간] [레벨] : [로그 메시지] 형식으로만 출력합니다.
+
+              %-5level을 %highlight(%-5level)로 변경하여
+              로그 레벨(INFO, ERROR 등)에 따라 색상을 적용합니다.
+              (ERROR: RED, WARN: YELLOW, INFO: GREEN 등)
+            -->
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} %highlight(%-5level) : %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!--
+      [참고] 일반적인 Spring Boot의 기본 패턴 (이전 설정)
+
+      %d       : 시간 (2025-11-04T15:52:00.021+09:00)
+      %-5level : 로그 레벨 (ERROR)
+      %-5pid   : PID (6464)
+      %-15.15t : 스레드명 ([nio-8081-exec-1])
+      %-40.40logger{39} : 로거(클래스)명 (com.s406.livon.global.aop.LogAspect)
+      %msg     : 로그 메시지
+      %n       : 줄바꿈
+    -->
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE" />
+    </root>
+
+</configuration>
+

@@ -2,6 +2,7 @@ package com.s406.livon.domain.user.entity;
 
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.s406.livon.domain.ai.entity.AiAnalysis;
 import com.s406.livon.domain.user.enums.Gender;
 import com.s406.livon.domain.user.enums.Role;
 
@@ -59,6 +60,9 @@ public class User extends BaseTime implements UserDetails {
 
   @OneToOne(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
   private HealthSurvey healthSurvey;
+
+  @OneToOne(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+  private AiAnalysis aiAnalysis;
 
 
   @ElementCollection(fetch = FetchType.EAGER)

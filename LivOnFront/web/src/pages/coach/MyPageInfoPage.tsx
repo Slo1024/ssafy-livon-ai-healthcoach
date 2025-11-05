@@ -4,25 +4,76 @@ import { useAuth } from '../../hooks/useAuth';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Input as CommonInput } from '../../components/common/Input';
 import { Dropdown as CommonDropdown } from '../../components/common/Dropdown';
-import { SegmentedTabs } from '../../components/common/Button';
 import { DateTimePickerModal } from '../../components/common/Modal';
 import profilePictureIcon from '../../assets/images/profile_picture.png';
 import { ROUTES } from '../../constants/routes';
 
 const PageContainer = styled.div`
-  width: 100%;
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: 30px 20px 60px;
-  box-sizing: border-box;
+  min-height: 100vh;
+  background-color: #ffffff;
+  padding: 40px 20px;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 `;
 
-const Title = styled.h1`
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+const ContentWrapper = styled.div`
+  max-width: 1200px;
+  margin: 0 auto;
+`;
+
+const PageTitle = styled.h1`
   font-weight: 700;
   font-size: 40px;
-  color: #000;
-  margin: 0 0 16px 0;
+  color: #000000;
+  margin: 0 0 24px 0;
+`;
+
+const Tabs = styled.div`
+  display: flex;
+  gap: 0;
+  
+  /* 두 버튼이 맞닿도록 인접 모서리 처리 */
+  button {
+    border-radius: 6px;
+  }
+  button:last-child {
+    margin-left: -1px; /* 테두리 겹치기 */
+  }
+`;
+
+const PrimaryTabButton = styled.button`
+  width: 120px;
+  height: 48px;
+  border: 1px solid #4965f6;
+  background-color: #4965f6;
+  color: #ffffff;
+  font-weight: 500; /* Pretendard Medium */
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 6px;
+  white-space: nowrap;
+`;
+
+const OutlineTabButton = styled.button`
+  width: 120px;
+  height: 48px;
+  border: 1px solid #4965f6;
+  background-color: #ffffff;
+  color: #4965f6;
+  font-weight: 500; /* Pretendard Medium */
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 6px;
+  white-space: nowrap;
+`;
+
+const Divider = styled.div`
+  width: 100vw; /* 화면 전체 폭 */
+  height: 2px;
+  background-color: #4965f6;
+  margin: 0;
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%); /* 중앙 기준으로 좌우 끝까지 */
 `;
 
 // 프로필 사진 업로드 섹션 스타일
@@ -365,15 +416,22 @@ export const MyPageInfoPage: React.FC = () => {
 
   return (
     <PageContainer>
-      <Title>{nickname ? `${nickname} 코치님 마이페이지` : '코치님 마이페이지'}</Title>
-      <SegmentedTabs
-        leftLabel="코치님 정보"
-        rightLabel="코치 인증 여부"
-        active={isInfoPage ? 'left' : 'right'}
-        onLeftClick={handleInfoClick}
-        onRightClick={handleVerificationClick}
-        tabWidth={120}
-      />
+      <ContentWrapper>
+        <PageTitle>{nickname ? `${nickname} 코치님 마이페이지` : '코치님 마이페이지'}</PageTitle>
+        <Tabs>
+          {isInfoPage ? (
+            <>
+              <PrimaryTabButton onClick={handleInfoClick}>코치님 정보</PrimaryTabButton>
+              <OutlineTabButton onClick={handleVerificationClick}>코치 인증 여부</OutlineTabButton>
+            </>
+          ) : (
+            <>
+              <OutlineTabButton onClick={handleInfoClick}>코치님 정보</OutlineTabButton>
+              <PrimaryTabButton onClick={handleVerificationClick}>코치 인증 여부</PrimaryTabButton>
+            </>
+          )}
+        </Tabs>
+        <Divider />
 
       {/* 프로필 사진 업로드 섹션 */}
       <ProfileSection>
@@ -652,6 +710,7 @@ export const MyPageInfoPage: React.FC = () => {
           </ModalCard>
         </ModalOverlay>
       )}
+      </ContentWrapper>
     </PageContainer>
   );
 };

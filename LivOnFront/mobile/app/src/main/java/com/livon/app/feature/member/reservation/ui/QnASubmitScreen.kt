@@ -246,50 +246,66 @@ private fun QnaInputItem(
     }
 }
 
+
 @Composable
 fun ReservationCompleteDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
     onChangeHealthInfo: () -> Unit
 ) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = true)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.60f))
+            .clickable(
+                onClick = onDismiss,
+                indication = null,
+                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            )
     ) {
         Card(
             shape = RoundedCornerShape(10.dp),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
-                .wrapContentHeight(),
+                .align(Alignment.Center)
+                .heightIn(min = 220.dp, max = 420.dp), // 최소/최대 높이 지정
             colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp, horizontal = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    "예약이 완료 되었습니다.",
-                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
-                    textAlign = TextAlign.Center
-                )
-                Text(
-                    text = "내 건강 정보를 바꾸고 싶으신가요?",
-                    style = TextStyle(
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = LiveRed,
-                        textDecoration = TextDecoration.Underline
-                    ),
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Column(
                     modifier = Modifier
-                        .clickable(onClick = onChangeHealthInfo)
-                        .padding(horizontal = 8.dp),
-                    textAlign = TextAlign.Center
+                        .fillMaxWidth()
+                        .padding(vertical = 20.dp, horizontal = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        "예약이 완료 되었습니다.",
+                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = "내 건강 정보를 바꾸고 싶으신가요?",
+                        style = TextStyle(
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = LiveRed,
+                            textDecoration = TextDecoration.Underline
+                        ),
+                        modifier = Modifier
+                            .clickable(onClick = onChangeHealthInfo)
+                            .padding(horizontal = 8.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                Divider(
+                    color = Gray,
+                    thickness = 1.dp,
+                    modifier = Modifier.fillMaxWidth()
                 )
-                Divider(color = Gray, thickness = 1.dp)
+
                 Text(
                     text = "확인",
                     modifier = Modifier
@@ -303,6 +319,9 @@ fun ReservationCompleteDialog(
         }
     }
 }
+
+
+
 
 @Preview(showBackground = true)
 @Composable

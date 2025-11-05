@@ -28,6 +28,16 @@ import androidx.navigation.navArgument
 import androidx.navigation.NavType
 import com.livon.app.feature.shared.auth.ui.HealthInfoConditionScreen
 import com.livon.app.feature.shared.auth.ui.LifestyleSmokingScreen
+import com.livon.app.feature.shared.auth.ui.SignupState
+import com.livon.app.feature.member.home.ui.DataMetric
+import com.livon.app.feature.shared.auth.ui.HealthInfoMedicationScreen
+import com.livon.app.feature.shared.auth.ui.HealthInfoPainDiscomfortScreen
+import com.livon.app.feature.shared.auth.ui.HealthInfoSleepQualityScreen
+import com.livon.app.feature.shared.auth.ui.HealthInfoStressScreen
+import com.livon.app.feature.shared.auth.ui.LifestyleActivityLevelScreen
+import com.livon.app.feature.shared.auth.ui.LifestyleAlcoholIntakeScreen
+import com.livon.app.feature.shared.auth.ui.LifestyleCaffeinIntakeScreen
+import com.livon.app.feature.shared.auth.ui.LifestyleSleepDurationScreen
 import java.net.URLDecoder
 import java.net.URLEncoder
 
@@ -89,6 +99,7 @@ fun NavGraphBuilder.authNavGraph(navController: NavHostController) {
             onBack = { navController.popBackStack() },
             onComplete = { mode ->
                 Log.d("AppNavGraph","RoleSelect -> EmailSetup (role=$mode)")
+                SignupState.role = mode
                 // pass role as query param
                 navController.navigate("${Routes.EmailSetup}?role=${URLEncoder.encode(mode, "UTF-8")}")
             }
@@ -136,6 +147,7 @@ fun NavGraphBuilder.authNavGraph(navController: NavHostController) {
             onBack = { navController.popBackStack() },
             onNext = { password ->
                 Log.d("AppNavGraph","PasswordSetup -> NickName (role=$role)")
+                SignupState.passwordSet = true
                 navController.navigate("${Routes.NickName}?role=${URLEncoder.encode(role, "UTF-8")}")
             }
         )
@@ -149,6 +161,7 @@ fun NavGraphBuilder.authNavGraph(navController: NavHostController) {
             onNext = { nickname ->
                 val enc = URLEncoder.encode(nickname, "UTF-8")
                 Log.d("AppNavGraph","NickName -> MemberTypeSelect (nickname=$nickname, role=$role)")
+                SignupState.nickname = nickname
                 navController.navigate("${Routes.MemberTypeSelect}?role=${URLEncoder.encode(role, "UTF-8")}&nickname=$enc")
             }
         )
@@ -231,6 +244,7 @@ fun NavGraphBuilder.authNavGraph(navController: NavHostController) {
             onBack = { navController.popBackStack() },
             onNext = { height ->
                 Log.d("AppNavGraph", "HealthHeight -> HealthWeight (height=$height)")
+                SignupState.heightCm = height
                 navController.navigate(Routes.HealthWeight)
             }
         )
@@ -240,28 +254,88 @@ fun NavGraphBuilder.authNavGraph(navController: NavHostController) {
             onBack = { navController.popBackStack() },
             onNext = { weight ->
                 Log.d("AppNavGraph", "HealthWeight -> HealthSurvey (weight=$weight)")
+                SignupState.weightKg = weight
                 navController.navigate(Routes.HealthSurvey)
             }
         )
     }
     // Start of health survey sequence
     composable(Routes.HealthSurvey) {
-        // Use first survey screen (condition) as entry point; it will navigate to lifestyle when done
+        // Use first survey screen (condition) as entry point; chain the rest here
         HealthInfoConditionScreen(
             onBack = { navController.popBackStack() },
-            onNext = { selected ->
-                Log.d("AppNavGraph", "HealthSurvey(condition) -> LifestyleSurvey (selected=$selected)")
-                navController.navigate(Routes.LifeStyleSurvey)
+            onNext = { condition ->
+                SignupState.condition = condition
+                Log.d("AppNavGraph", "HealthSurvey(condition) -> sleep (condition=$condition)")
+                // push next: sleep quality
+                navController.navigate("health_survey_sleep")
             }
         )
     }
+    composable("health_survey_sleep") {
+        HealthInfoSleepQualityScreen(onBack = { navController.popBackStack() }, onNext = { sleep ->
+            SignupState.sleepQuality = sleep
+            Log.d("AppNavGraph","HealthSurvey(sleep) -> medication (sleep=$sleep)")
+            navController.navigate("health_survey_medication")
+        })
+    }
+    composable("health_survey_medication") {
+        HealthInfoMedicationScreen(onBack = { navController.popBackStack() }, onNext = { med ->
+            SignupState.medication = med
+            Log.d("AppNavGraph","HealthSurvey(med) -> pain (med=$med)")
+            navController.navigate("health_survey_pain")
+        })
+    }
+    composable("health_survey_pain") {
+        HealthInfoPainDiscomfortScreen(onBack = { navController.popBackStack() }, onNext = { pain ->
+            SignupState.painArea = pain
+            Log.d("AppNavGraph","HealthSurvey(pain) -> stress (pain=$pain)")
+            navController.navigate("health_survey_stress")
+        })
+    }
+    composable("health_survey_stress") {
+        HealthInfoStressScreen(onBack = { navController.popBackStack() }, onNext = { stress ->
+            SignupState.stress = stress
+            Log.d("AppNavGraph","HealthSurvey(stress) -> lifestyle (stress=$stress)")
+            navController.navigate(Routes.LifeStyleSurvey)
+        })
+    }
+
+    // Lifestyle flow chain
     composable(Routes.LifeStyleSurvey) {
-        LifestyleSmokingScreen(
-            onBack = { navController.popBackStack() },
-            onNext = { selected ->
-                Log.d("AppNavGraph", "LifestyleSurvey(smoking) -> MemberHome (selected=$selected)")
-                navController.navigate(Routes.MemberHome)
-            }
-        )
+        LifestyleSmokingScreen(onBack = { navController.popBackStack() }, onNext = { smoking ->
+            SignupState.smoking = smoking
+            Log.d("AppNavGraph","Lifestyle(smoking) -> alcohol (smoking=$smoking)")
+            navController.navigate("lifestyle_alcohol")
+        })
+    }
+    composable("lifestyle_alcohol") {
+        LifestyleAlcoholIntakeScreen(onBack = { navController.popBackStack() }, onNext = { alcohol ->
+            SignupState.alcohol = alcohol
+            Log.d("AppNavGraph","Lifestyle(alcohol) -> sleepDuration (alcohol=$alcohol)")
+            navController.navigate("lifestyle_sleep")
+        })
+    }
+    composable("lifestyle_sleep") {
+        LifestyleSleepDurationScreen(onBack = { navController.popBackStack() }, onNext = { hours ->
+            SignupState.sleepHours = hours
+            Log.d("AppNavGraph","Lifestyle(sleep) -> activity (hours=$hours)")
+            navController.navigate("lifestyle_activity")
+        })
+    }
+    composable("lifestyle_activity") {
+        LifestyleActivityLevelScreen(onBack = { navController.popBackStack() }, onNext = { activity ->
+            SignupState.activityLevel = activity
+            Log.d("AppNavGraph","Lifestyle(activity) -> caffeine (activity=$activity)")
+            navController.navigate("lifestyle_caffeine")
+        })
+    }
+    composable("lifestyle_caffeine") {
+        LifestyleCaffeinIntakeScreen(onBack = { navController.popBackStack() }, onNext = { caffeine ->
+            SignupState.caffeine = caffeine
+            Log.d("AppNavGraph","Lifestyle(caffeine) finished (caffeine=$caffeine)")
+            // Navigate to member home; MemberNavGraph will read SignupState to build metrics and nickname
+            navController.navigate(Routes.MemberHome)
+        })
     }
 }

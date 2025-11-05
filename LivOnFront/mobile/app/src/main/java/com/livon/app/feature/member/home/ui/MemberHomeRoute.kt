@@ -1,5 +1,6 @@
 package com.livon.app.feature.member.home.ui
 
+import com.livon.app.feature.shared.auth.ui.SignupState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -38,6 +39,8 @@ import com.livon.app.ui.component.navbar.HomeNavBar
 import com.livon.app.ui.component.navbar.BottomNavRoute
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.ui.graphics.graphicsLayer
+import com.livon.app.feature.member.reservation.ui.ReservationUi
+import com.livon.app.feature.member.reservation.ui.ReservationCard
 
 /* ---------- Models ---------- */
 data class DataMetric(
@@ -59,6 +62,7 @@ fun MemberHomeRoute(
     onTapMyPage: () -> Unit,
     metrics: List<DataMetric> = emptyList(),
     upcoming: List<UpcomingItem> = emptyList(),
+    upcomingReservations: List<ReservationUi> = emptyList(),
     companyName: String? = "ACME Corp.",
     modifier: Modifier = Modifier
 ) {
@@ -133,7 +137,7 @@ fun MemberHomeRoute(
                 Spacer(Modifier.width(14.dp))
 
                 Text(
-                    text = "김싸피님",
+                    text = if (SignupState.nickname.isBlank()) "회원님" else if (SignupState.nickname.endsWith("님")) SignupState.nickname else "${SignupState.nickname}님",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Medium,
                     color = Color.Black,
@@ -190,27 +194,33 @@ fun MemberHomeRoute(
                                     text = metric.name,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = Color(0xFF555555)
+                                    color = Color(0xFF555555),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
-                                Column {
-                                    Text(
-                                        text = metric.value,
-                                        fontSize = 20.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = Color.Black,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = metric.average,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = Color.Gray,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        letterSpacing = 0.01.em
-                                    )
-                                }
+
+                                Spacer(Modifier.height(6.dp))
+
+                                Text(
+                                    text = metric.value,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Normal,
+                                    color = Color.Black,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+
+                                Text(
+                                    text = metric.average,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.Gray,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
                             }
                         }
                     }
@@ -239,6 +249,7 @@ fun MemberHomeRoute(
                     modifier = Modifier.padding(bottom = 10.dp)
                 )
 
+                // Reservation action buttons: always visible
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -276,54 +287,37 @@ fun MemberHomeRoute(
                     modifier = Modifier.padding(bottom = 10.dp)
                 )
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(IntrinsicSize.Min) // 이 줄이 중요합니다
-                ) {
-                    // 전체 세로선 (리스트 전체에 걸쳐 이어짐)
-                    Box(
-                        modifier = Modifier
-                            .offset(x = 18.dp) // dot의 가로 중심 위치
-                            .width(1.dp)
-                            .fillMaxHeight()
-                            .background(Color(0xFFDDDDDD)) // 좀 더 명확한 회색
-                            .align(Alignment.TopStart)
-                    )
+                // If there are upcoming reservations, show them here as text rows (also allows vertical scrolling of whole screen)
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (upcomingReservations.isEmpty()) {
+                        Text(text = "등록된 예약이 없습니다.", color = Color.Gray)
+                    } else {
+                        upcomingReservations.forEach { item ->
+                            Column(modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp)) {
+                                Text(
+                                    text = item.className,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.Black
+                                )
 
-                    Column {
-                        upcoming.forEach { item ->
-                            Row(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 12.dp) // 항목 간 간격
-                            ) {
-                                // 선과 정렬되는 영역: 너비 36dp, dot은 중앙에 위치
-                                Box(
-                                    modifier = Modifier
-                                        .width(36.dp),
-                                    contentAlignment = Alignment.TopCenter
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(10.dp)
-                                            .border(1.dp, Color.LightGray, CircleShape)
-                                            .background(Color.White, CircleShape)
-                                    )
-                                }
+                                Spacer(Modifier.height(4.dp))
 
-                                Column(modifier = Modifier.weight(1f)) {
+                                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                     Text(
-                                        text = item.title,
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = Color.Black
+                                        text = formatDateYmd(item.date),
+                                        fontSize = 12.sp,
+                                        color = Color.Gray
                                     )
+
+                                    Spacer(Modifier.width(8.dp))
+
                                     Text(
-                                        text = item.datetime,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = Color.DarkGray
+                                        text = extractTimeShort(item.timeText),
+                                        fontSize = 12.sp,
+                                        color = Color.Gray
                                     )
                                 }
                             }
@@ -331,9 +325,6 @@ fun MemberHomeRoute(
                     }
                 }
             }
-
-//            // 하단 내비 여유
-//            Spacer(Modifier.height(88.dp))
         }
     }
 }
@@ -381,7 +372,7 @@ private fun ReservationBigButton(
             color = Color.White,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
-            lineHeight = 16.sp,
+            lineHeight = 18.sp,
             modifier = Modifier.align(Alignment.BottomStart)
         )
 
@@ -407,6 +398,19 @@ private fun Modifier.noRippleClickable(onClick: () -> Unit) = composed {
     )
 }
 
+// helper: format date as yyyy/MM/dd
+private fun formatDateYmd(date: java.time.LocalDate): String {
+    return "%04d/%02d/%02d".format(date.year, date.monthValue, date.dayOfMonth)
+}
+
+// helper: try to extract HH:mm pattern from a timeText like "오후 4:00 ~ 5:00" or "16:40"
+private fun extractTimeShort(timeText: String): String {
+    // try to find pattern like 16:40 or 04:30
+    val regex = Regex("(\\d{1,2}:\\d{2})")
+    val match = regex.find(timeText)
+    return match?.value ?: timeText
+}
+
 /* ---------- Preview ---------- */
 @Preview(showBackground = true, showSystemUi = true, name = "MemberHomeRoute")
 @Composable
@@ -417,17 +421,42 @@ private fun MemberHomeRoutePreview() {
         DataMetric("체지방률", "18%", "평균: 20%"),
         DataMetric("혈압", "120/80", "평균: 122/82")
     )
-    val dummyUpcoming = listOf(
-        UpcomingItem("필라테스 클래스", "2025/11/15 14:00"),
-        UpcomingItem("식단 코칭", "2025/11/16 19:30")
+
+    val today = java.time.LocalDate.of(2025, 10, 15)
+    val sampleReservations = listOf(
+        com.livon.app.feature.member.reservation.ui.ReservationUi(
+            id = "p1",
+            date = today,
+            className = "필라테스 클래스",
+            coachName = "김코치",
+            coachRole = "코치",
+            coachIntro = "스트레칭 중심",
+            timeText = "16:40",
+            classIntro = "저녁 힐링",
+            imageResId = null,
+            isLive = false
+        ),
+        com.livon.app.feature.member.reservation.ui.ReservationUi(
+            id = "p2",
+            date = today.plusDays(2),
+            className = "식단 코칭",
+            coachName = "박코치",
+            coachRole = "영양",
+            coachIntro = "식단 설계",
+            timeText = "19:30",
+            classIntro = "맞춤 식단",
+            imageResId = null,
+            isLive = false
+        )
     )
+
     LivonTheme {
         MemberHomeRoute(
             onTapBooking = {},
             onTapReservations = {},
             onTapMyPage = {},
             metrics = dummyMetrics,
-            upcoming = dummyUpcoming,
+            upcomingReservations = sampleReservations,
             companyName = "회사이름"
         )
     }

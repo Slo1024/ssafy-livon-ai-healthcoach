@@ -12,6 +12,9 @@ import com.livon.app.feature.member.my.MyInfoUiState
 import com.livon.app.feature.member.my.MyInfoScreen
 import com.livon.app.feature.member.my.MyPageScreen
 import com.livon.app.feature.shared.auth.ui.ReservationModeSelectScreen
+import com.livon.app.feature.shared.auth.ui.SignupState
+import com.livon.app.feature.member.home.ui.DataMetric
+import com.livon.app.feature.member.home.ui.UpcomingItem
 import java.net.URLDecoder
 import java.time.LocalDate
 
@@ -47,10 +50,65 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
     val useDevMocks = isDebugBuild()
 
     composable(Routes.MemberHome) {
+        // Build metrics from SignupState if available, otherwise show defaults
+        fun withUnit(value: String?, unit: String): String = value?.let {
+            val t = it.trim()
+            if (t.isEmpty()) "-" else if (t.endsWith(unit)) t else "$t$unit"
+        } ?: "-"
+
+        val metrics = listOf(
+            DataMetric("키", withUnit(SignupState.heightCm, "cm"), "평균: 169cm"),
+            DataMetric("몸무게", withUnit(SignupState.weightKg, "kg"), "평균: 60kg"),
+            DataMetric("기저질환", SignupState.condition ?: "-", "-"),
+            DataMetric("수면 상태", SignupState.sleepQuality ?: "-", "-"),
+            DataMetric("복약 여부", SignupState.medication ?: "-", "-"),
+            DataMetric("통증 부위", SignupState.painArea ?: "-", "-"),
+            DataMetric("스트레스", SignupState.stress ?: "-", "-"),
+            DataMetric("흡연 여부", SignupState.smoking ?: "-", "-"),
+            DataMetric("음주", SignupState.alcohol ?: "-", "-"),
+            DataMetric("수면 시간", SignupState.sleepHours?.let { if (it.endsWith("시간")) it else "${it}시간" } ?: "-", "평균: 7시간"),
+            DataMetric("활동 수준", SignupState.activityLevel ?: "-", "-"),
+            DataMetric("카페인", SignupState.caffeine ?: "-", "-")
+        )
+
+        val upcoming = listOf<UpcomingItem>() // keep empty or provide dev sample
+
+        val devCurrentReservations = listOf(
+            ReservationUi(
+                id = "r1",
+                date = LocalDate.now().plusDays(1),
+                className = "개인 상담",
+                coachName = "김도윤",
+                coachRole = "임상심리사",
+                coachIntro = "마음 회복 전문",
+                timeText = "오전 10:00 ~ 11:00",
+                classIntro = "심리 상담 세션",
+                imageResId = null,
+                isLive = false
+            ),
+            ReservationUi(
+                id = "r2",
+                date = LocalDate.now(),
+                className = "필라테스",
+                coachName = "박지성",
+                coachRole = "트레이너",
+                coachIntro = "유연성 전문가",
+                timeText = "오후 3:00 ~ 4:00",
+                classIntro = "체형 개선 그룹 레슨",
+                imageResId = null,
+                isLive = true
+            )
+        )
+
         MemberHomeRoute(
             onTapBooking = { nav.navigate("reservation_model_select") },
             onTapReservations = { nav.navigate("reservations") },
-            onTapMyPage = { nav.navigate("mypage") }
+            onTapMyPage = { nav.navigate("mypage") },
+            metrics = metrics,
+            upcoming = upcoming,
+            upcomingReservations = if (useDevMocks) devCurrentReservations else emptyList(),
+            companyName = null,
+            modifier = androidx.compose.ui.Modifier
         )
     }
 

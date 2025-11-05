@@ -1642,6 +1642,7 @@ const StreamingEndMessage = styled.p`
   font-size: 16px;
   color: #6b7280;
   line-height: 1.6;
+  white-space: pre-line;
 `;
 
 const StreamingEndButton = styled.button`
@@ -1686,7 +1687,8 @@ export const StreamingEndModal: React.FC<StreamingEndModalProps> = ({
       <StreamingEndCard className={className} style={style} onClick={(e) => e.stopPropagation()}>
         <StreamingEndTitle>상담이 종료되었습니다.</StreamingEndTitle>
         <StreamingEndMessage>
-          AI를 통한 상담 내용 요약본은{'\n'}잠시 후 '지난 예약 현황 - 상담 요약본'에서 확인하실 수 있습니다.
+          AI를 통한 상담 내용 요약본은<br />
+          잠시 후 '지난 예약 현황 - 상담 요약본'에서 확인하실 수 있습니다.
         </StreamingEndMessage>
         <StreamingEndButton onClick={handleConfirm}>확인</StreamingEndButton>
       </StreamingEndCard>

@@ -10,6 +10,8 @@ RUN ./gradlew --version
 
 # 실제 소스 복사
 COPY --chown=gradle:gradle . .
+RUN chmod +x gradlew
+
 RUN ./gradlew clean bootJar --no-daemon --stacktrace
 
 # --------- 실행용 이미지 구성 ---------

@@ -8,9 +8,9 @@ COPY --chown=gradle:gradle gradlew settings.gradle build.gradle ./
 RUN chmod +x gradlew
 RUN ./gradlew --version
 
-# 실제 소스 복사 후 빌드
-COPY . .
-RUN gradle clean bootJar --no-daemon
+# 실제 소스 복사
+COPY --chown=gradle:gradle . .
+RUN ./gradlew clean bootJar --no-daemon --stacktrace
 
 # --------- 실행용 이미지 구성 ---------
 FROM eclipse-temurin:17-jre-alpine

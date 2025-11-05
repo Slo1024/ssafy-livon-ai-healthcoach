@@ -35,6 +35,9 @@ export const AppRouter: React.FC = () => {
         <Route path={ROUTES.ABOUT} element={<AboutPage />} />
         <Route path={ROUTES.DOWNLOAD} element={<DownloadPage />} />
         
+        {/* 예외 처리: /dashboard 경로는 홈으로 리다이렉트 */}
+        <Route path="/dashboard" element={<Navigate to={ROUTES.HOME} replace />} />
+        
         {/* 인증 라우트 */}
         <Route path={ROUTES.LOGIN} element={<LoginPage />} />
         <Route path={ROUTES.SIGNUP} element={<SignupPage />} />

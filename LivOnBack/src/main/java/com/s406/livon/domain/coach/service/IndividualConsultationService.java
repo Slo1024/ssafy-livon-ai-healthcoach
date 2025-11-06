@@ -10,6 +10,7 @@ import com.s406.livon.domain.coach.repository.IndividualConsultationRepository;
 import com.s406.livon.domain.coach.repository.ParticipantRepository;
 import com.s406.livon.domain.user.entity.User;
 import com.s406.livon.domain.user.repository.UserRepository;
+import com.s406.livon.global.aop.DistributedLock;
 import com.s406.livon.global.error.handler.CoachHandler;
 import com.s406.livon.global.web.response.code.status.ErrorStatus;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class IndividualConsultationService {
     private final UserRepository userRepository;
     private final ParticipantRepository participantRepository;
 
+    @DistributedLock(key = "ㅋㅋ")
     public Long reserveConsultation(UUID userId, IndivualConsultationReservationRequestDto requestDto) {
 
         //1. 코치 검증
@@ -69,6 +71,9 @@ public class IndividualConsultationService {
                 .preQnA(requestDto.preQnA())
                 .build();
         IndividualConsultation saved = individualConsultationRepository.save(individualConsultation);
+
+        // 확인하기 - blocked Times 갱신이 되는가?
+        // 아마 blocked Times 조회 API와 Repository를 살펴봐야 할수도
 
         return saved.getId();
     }

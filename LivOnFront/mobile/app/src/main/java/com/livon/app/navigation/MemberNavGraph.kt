@@ -60,7 +60,33 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             if (t.isEmpty()) "-" else if (t.endsWith(unit)) t else "$t$unit"
         } ?: "-"
 
-        val metrics = listOf(
+        // setup UserViewModel to fetch current user's info
+        val userApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.UserApiService::class.java)
+        val userRepo = remember { com.livon.app.domain.repository.UserRepository(userApi) }
+        val userVm = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return com.livon.app.feature.member.home.vm.UserViewModel(userRepo) as T
+            }
+        }) as com.livon.app.feature.member.home.vm.UserViewModel
+
+        val userState by userVm.uiState.collectAsState()
+        LaunchedEffect(Unit) { userVm.load() }
+
+        val metrics = if (userState.info != null) listOf(
+            DataMetric("키", userState.info.heightCm ?: "-", "평균: 169cm"),
+            DataMetric("몸무게", userState.info.weightKg ?: "-", "평균: 60kg"),
+            DataMetric("기저질환", userState.info.condition ?: "-", "-"),
+            DataMetric("수면 상태", userState.info.sleepQuality ?: "-", "-"),
+            DataMetric("복약 여부", userState.info.medication ?: "-", "-"),
+            DataMetric("통증 부위", userState.info.painArea ?: "-", "-"),
+            DataMetric("스트레스", userState.info.stress ?: "-", "-"),
+            DataMetric("흡연 여부", userState.info.smoking ?: "-", "-"),
+            DataMetric("음주", userState.info.alcohol ?: "-", "-"),
+            DataMetric("수면 시간", userState.info.sleepHours ?: "-", "평균: 7시간"),
+            DataMetric("활동 수준", userState.info.activityLevel ?: "-", "-"),
+            DataMetric("카페인", userState.info.caffeine ?: "-", "-")
+        ) else listOf(
             DataMetric("키", withUnit(SignupState.heightCm, "cm"), "평균: 169cm"),
             DataMetric("몸무게", withUnit(SignupState.weightKg, "kg"), "평균: 60kg"),
             DataMetric("기저질환", SignupState.condition ?: "-", "-"),
@@ -96,6 +122,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             upcoming = emptyList(),
             upcomingReservations = if (resState.items.isNotEmpty()) resState.items else if (isDebugBuild()) listOf() else emptyList(),
             companyName = null,
+            nickname = userState.info?.nickname,
             modifier = androidx.compose.ui.Modifier
         )
     }

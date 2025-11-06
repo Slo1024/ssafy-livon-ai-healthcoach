@@ -1,5 +1,7 @@
-// com/livon/app/feature/shared/auth/ui/EmailSetupScreen.kt
+// app/src/main/java/com/livon/app/feature/shared/auth/ui/EmailSetupScreen.kt
 package com.livon.app.feature.shared.auth.ui
+
+import com.livon.app.feature.shared.auth.ui.CommonSignUpScreenA
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
@@ -8,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.livon.app.ui.component.button.PrimaryButtonBottom
 import com.livon.app.ui.component.input.LivonTextField
 import com.livon.app.ui.component.overlay.TopBar
@@ -16,19 +19,21 @@ import com.livon.app.ui.theme.Spacing
 
 @Composable
 fun EmailSetupScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onBack: () -> Unit = {},
+    onNext: (String) -> Unit = {} // pass entered email when navigating
 ) {
     var email by remember { mutableStateOf("") }
     val isValidEmail = email.contains("@") && email.contains(".")
 
     CommonSignUpScreenA(
-        topBar = { TopBar(title = "회원가입", onBack = {}) },
-        bottomBar = { 
+        topBar = { TopBar(title = "회원가입", onBack = onBack) },
+        bottomBar = {
             PrimaryButtonBottom(
                 text = "다음",
                 enabled = isValidEmail,
-                onClick = { /* TODO: Navigate to next screen */ }
-            ) 
+                onClick = { if (isValidEmail) onNext(email) }
+            )
         }
     ) {
         Text(
@@ -36,12 +41,15 @@ fun EmailSetupScreen(
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground
         )
-        Spacer(Modifier.height(Spacing.DescToContent))
+        Spacer(Modifier.height(140.dp))
+
         LivonTextField(
+            modifier = Modifier.fillMaxWidth(),
             value = email,
             onValueChange = { email = it },
             label = "이메일",
-            placeholder = "example@example.com"
+            placeholder = "example@example.com",
+            maxLength = 30
         )
     }
 }
@@ -59,16 +67,17 @@ fun EmailSetupScreenPreview_Empty() {
 fun EmailSetupScreenPreview_Valid() {
     LivonTheme {
         var email by remember { mutableStateOf("user@example.com") }
+        val maxLength = 30
         val isValidEmail = email.contains("@") && email.contains(".")
 
         CommonSignUpScreenA(
             topBar = { TopBar(title = "회원가입", onBack = {}) },
-            bottomBar = { 
+            bottomBar = {
                 PrimaryButtonBottom(
                     text = "다음",
                     enabled = isValidEmail,
                     onClick = {}
-                ) 
+                )
             }
         ) {
             Text(
@@ -76,12 +85,14 @@ fun EmailSetupScreenPreview_Valid() {
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onBackground
             )
-            Spacer(Modifier.height(Spacing.DescToContent))
+            Spacer(Modifier.height(140.dp))
             LivonTextField(
+                modifier = Modifier.fillMaxWidth(),
                 value = email,
                 onValueChange = { email = it },
                 label = "이메일",
-                placeholder = "example@example.com"
+                placeholder = "example@example.com",
+                maxLength = maxLength
             )
         }
     }

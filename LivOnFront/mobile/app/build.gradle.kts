@@ -67,10 +67,11 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.coil.compose)
 
-
+    implementation("androidx.compose.material:material-icons-extended")
 
     implementation(libs.identity.doctypes.jvm)
     implementation(libs.transport.api)
+    implementation(libs.androidx.material3.lint)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -1,5 +1,6 @@
 package com.livon.app.feature.member.reservation.ui
 
+import androidx.navigation.NavHostController
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -43,6 +44,7 @@ fun QnASubmitScreen(
     onConfirmReservation: (List<String>) -> Unit,
     onNavigateHome: () -> Unit,
     onNavigateToMyHealthInfo: () -> Unit,
+    navController: NavHostController? = null // optional navController for HomeNavBar navigation
 ) {
     var questions by rememberSaveable { mutableStateOf(listOf("", "")) }
     var showDialog by rememberSaveable { mutableStateOf(false) }
@@ -80,7 +82,9 @@ fun QnASubmitScreen(
                         .fillMaxWidth()
                         .height(56.dp),
                     currentRoute = null,
+                    navController = navController,
                     onNavigate = { route ->
+                        // Fallback behavior when navController not provided
                         when (route) {
                             "home" -> onNavigateHome()
                             "mypage" -> onNavigateToMyHealthInfo()

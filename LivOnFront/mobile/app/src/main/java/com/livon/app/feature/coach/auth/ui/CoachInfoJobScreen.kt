@@ -1,9 +1,8 @@
-// com/livon/app/feature/coach/auth/ui/CoachInfoJobScreen.kt
 package com.livon.app.feature.coach.auth.ui
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -14,20 +13,43 @@ import com.livon.app.ui.component.text.RequirementText
 import com.livon.app.ui.preview.PreviewSurface
 
 @Composable
-fun CoachInfoJobScreen() {
+fun CoachInfoJobScreen(
+    onBack: () -> Unit = {},
+    onNext: () -> Unit = {}
+) {
+
+    var intro by remember { mutableStateOf("") }
+
     CommonSignUpScreenB(
         title = "코치 정보 입력",
-        onBack = {},
-        bottomBar = { PrimaryButtonBottom(text = "다음", onClick = {}) }
+        onBack = onBack,
+        bottomBar = {
+            PrimaryButtonBottom(
+                text = if (intro.isBlank()) "건너뛰기" else "다음",
+                onClick = onNext
+            )
+        }
     ) {
         Spacer(Modifier.height(60.dp))
-        RequirementText("직무를 입력해 주세요")
-        LivonTextField(value = "", onValueChange = {}, label = "직무", placeholder = "예: 피트니스 코치")
+
+        RequirementText("직무가 무엇인가요?")
+
+        Spacer(modifier = Modifier.height(120.dp))
+
+        LivonTextField(
+            value = intro,
+            onValueChange = { intro = it },
+            label = "",
+            placeholder = "직무를 입력해주세요",
+            maxLength = 10,     // ✅ 글자수 제한
+            showCounter = true  // ✅ 카운터 표시
+        )
     }
 }
 
+
 @Preview(showBackground = true)
 @Composable
-private fun PreviewCoachInfoJobScreen() = PreviewSurface { CoachInfoJobScreen() }
-
-
+private fun PreviewCoachJobScreen() = PreviewSurface {
+    CoachInfoJobScreen()
+}

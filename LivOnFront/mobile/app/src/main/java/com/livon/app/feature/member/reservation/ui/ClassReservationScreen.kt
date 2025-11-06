@@ -1,9 +1,5 @@
 package com.livon.app.feature.member.reservation.ui
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,24 +7,29 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.layout.PaddingValues
 import com.livon.app.R
 import com.livon.app.feature.shared.auth.ui.CommonScreenC
 import com.livon.app.ui.component.button.PrimaryButtonBottom
 import com.livon.app.ui.component.calendar.CalendarMonth
-import com.livon.app.ui.component.navbar.HomeNavBar
 import com.livon.app.ui.component.overlay.TopBar
 import com.livon.app.ui.theme.LivonTheme
 import java.time.LocalDate
 import java.time.YearMonth
-import androidx.compose.ui.zIndex
-import androidx.compose.foundation.shape.ZeroCornerSize
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
+import androidx.navigation.NavHostController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,10 +38,9 @@ fun ClassReservationScreen(
     onCardClick: (SampleClassInfo) -> Unit,
     onCoachClick: (String) -> Unit,
     modifier: Modifier = Modifier,
-    initialShowCalendar: Boolean = false
+    initialShowCalendar: Boolean = false,
+    navController: NavHostController? = null
 ) {
-    val isPreview = LocalInspectionMode.current
-
     var showCalendar by remember { mutableStateOf(initialShowCalendar) }
     var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
 
@@ -49,7 +49,7 @@ fun ClassReservationScreen(
     }
 
     CommonScreenC(
-        topBar = { TopBar(title = "예약하기", onBack = {}) },
+        topBar = { TopBar(title = "예약하기", onBack = { navController?.popBackStack() ?: Unit }) },
         modifier = modifier
     ) {
         // 메인 레이아웃
@@ -89,49 +89,37 @@ fun ClassReservationScreen(
                     items(filtered, key = { it.id }) { item ->
                         ClassCard(
                             classInfo = item,
-                            onCardClick = { onCardClick(item) },
+                            onCardClick = {
+                                if (navController != null) {
+                                    try {
+                                        navController.navigate("class_detail/${item.id}")
+                                    } catch (_: Exception) {
+                                        onCardClick(item)
+                                    }
+                                } else {
+                                    onCardClick(item)
+                                }
+                            },
                             onCoachClick = { onCoachClick(item.coachId) }
                         )
                     }
                 }
             }
 
-            // 달력 모달(스크림 + 하단 시트) - 프리뷰/런타임 동일 동작
+            // 달력 모달(하단 시트) - ModalBottomSheet으로 변경: swipe-to-dismiss 지원
             if (showCalendar) {
-                // 스크림: 화면 어둡게, 탭하면 닫힘
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color(0x99000000))
-                        .clickable { showCalendar = false }
-                        .zIndex(1f) // 위에 표시
-                )
-
-                // 하단 시트: 화면 너비 꽉 채움, 양옆 마진 무시
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .zIndex(2f),
-                    contentAlignment = Alignment.BottomCenter
+                ModalBottomSheet(
+                    onDismissRequest = { showCalendar = false },
+                    tonalElevation = 8.dp,
                 ) {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth(),
-                        tonalElevation = 8.dp,
-                        shadowElevation = 8.dp,
-                        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-                        color = Color.White
-                    ) {
-                        // 시트 내부: 달력(흰색 배경) + 하단 PrimaryButtonBottom("선택")
-                        CalendarSheetContent(
-                            selectedDate = selectedDate,
-                            onSelect = { date -> selectedDate = date },
-                            onConfirm = {
-                                // confirm 선택시 동작: 시트 닫기 (필요시 추가 동작 연결)
-                                showCalendar = false
-                            }
-                        )
-                    }
+                    // Sheet content: header (예약 정보 centered), month nav, calendar (full width), confirm button
+                    CalendarSheetContent(
+                        selectedDate = selectedDate,
+                        onSelect = { date -> selectedDate = date },
+                        onConfirm = {
+                            showCalendar = false
+                        }
+                    )
                 }
             }
         }
@@ -153,47 +141,63 @@ private fun CalendarSheetContent(
             .padding(top = 16.dp, start = 0.dp, end = 0.dp, bottom = 0.dp)
             .padding(WindowInsets.navigationBars.add(WindowInsets.ime).asPaddingValues())
     ) {
-        // 헤더 (닫기 버튼 위치나 제목이 필요하면 추가 가능)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(text = "예약 정보", style = MaterialTheme.typography.titleMedium)
-            // 닫기 아이콘 대신 빈 영역 (스크림 탭으로 닫기 처리)
-            Spacer(modifier = Modifier.width(24.dp))
-        }
+        // Header: centered title
+        Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(text = "예약 정보", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
 
-        // 달력 영역: 흰색 배경(상위 Surface가 흰색이므로 별도 색 불필요)
-        val ym = selectedDate?.let { YearMonth.from(it) } ?: YearMonth.now()
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 320.dp, max = 520.dp)
-        ) {
-            CalendarMonth(
-                yearMonth = ym,
-                selected = selectedDate,
-                onSelect = { date -> onSelect(date) },
-                modifier = Modifier.fillMaxSize()
+            // month navigation row
+            var currentMonth by remember { mutableStateOf(selectedDate?.let { YearMonth.from(it) } ?: YearMonth.now()) }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                IconButton(onClick = { currentMonth = currentMonth.minusMonths(1) }) {
+                    Icon(imageVector = Icons.Filled.ArrowBack, contentDescription = "Prev month")
+                }
+
+                Text(text = "${currentMonth.monthValue}월 ${currentMonth.year}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 16.dp))
+
+                IconButton(onClick = { currentMonth = currentMonth.plusMonths(1) }) {
+                    Icon(imageVector = Icons.Filled.ArrowForward, contentDescription = "Next month")
+                }
+            }
+
+            // Calendar area: white background, full width, adjust height
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 320.dp, max = 520.dp)
+            ) {
+                Surface(color = Color.White, modifier = Modifier.fillMaxSize()) {
+                    CalendarMonth(
+                        yearMonth = currentMonth,
+                        selected = selectedDate,
+                        onSelect = { date ->
+                            onSelect(date)
+                            currentMonth = YearMonth.from(date)
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            // Confirm button
+            PrimaryButtonBottom(
+                text = "선택",
+                enabled = true,
+                onClick = onConfirm,
+                bottomMargin = 0.dp,
+                applyNavPadding = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
             )
         }
-
-        Spacer(Modifier.height(12.dp))
-
-        // 하단 버튼: "선택" 텍스트, 내비게이션 바 없음
-        PrimaryButtonBottom(
-            text = "선택",
-            enabled = true,
-            onClick = onConfirm,
-            bottomMargin = 0.dp,
-            applyNavPadding = true, // 내비바가 없는 시트이므로 true/false는 필요에 따라 조정
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-        )
     }
 }
 

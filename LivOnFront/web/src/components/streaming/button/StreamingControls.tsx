@@ -22,7 +22,7 @@ const ControlBarLeft = styled.div`
 
 const ControlBarCenter = styled.div`
   display: flex;
-  gap: 8px;
+  gap: 16px;
   align-items: center;
   position: absolute;
   left: 50%;
@@ -41,8 +41,9 @@ const ControlButton = styled.button<{ $active?: boolean; $variant?: 'danger' }>`
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  padding: 8px 16px;
+  padding: 8px 12px;
   background-color: transparent;
   border: none;
   outline: none;
@@ -54,6 +55,12 @@ const ControlButton = styled.button<{ $active?: boolean; $variant?: 'danger' }>`
   font-size: 12px;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   transition: all 0.2s ease;
+  width: 100px;
+  min-width: 100px;
+  max-width: 100px;
+  white-space: nowrap;
+  box-sizing: border-box;
+  flex-shrink: 0;
   
   &:hover {
     color: ${props => props.$variant === 'danger' ? '#ffffff' : '#ffffff'};
@@ -72,6 +79,7 @@ const ControlButton = styled.button<{ $active?: boolean; $variant?: 'danger' }>`
   svg {
     width: 24px;
     height: 24px;
+    flex-shrink: 0;
   }
 `;
 

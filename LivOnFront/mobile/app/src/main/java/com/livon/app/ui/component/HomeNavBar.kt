@@ -1,5 +1,6 @@
 package com.livon.app.ui.component.navbar
 
+import androidx.navigation.NavHostController
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -64,6 +65,7 @@ enum class BottomNavRoute(
 fun HomeNavBar(
     modifier: Modifier = Modifier,
     currentRoute: String?,
+    navController: NavHostController? = null,
     onNavigate: (route: String) -> Unit,
 ) {
     val navItems = BottomNavRoute.values()
@@ -84,7 +86,21 @@ fun HomeNavBar(
                 BottomNavItem(
                     item = item,
                     isSelected = currentRoute == item.routeName,
-                    onClick = { onNavigate(item.routeName) }
+                    navController = navController,
+                    onClick = { route ->
+                        // If navController provided, HomeNavBar will perform default navigation mapping.
+                        if (navController != null) {
+                            when (route) {
+                                BottomNavRoute.HOME.routeName -> navController.navigate("member_home")
+                                BottomNavRoute.BOOKING.routeName -> navController.navigate("reservation_model_select")
+                                BottomNavRoute.RESERVATIONS.routeName -> navController.navigate("reservations")
+                                BottomNavRoute.MY_PAGE.routeName -> navController.navigate("mypage")
+                                else -> { /* noop */ }
+                            }
+                        } else {
+                            onNavigate(route)
+                        }
+                    }
                 )
             }
         }
@@ -95,7 +111,8 @@ fun HomeNavBar(
 private fun RowScope.BottomNavItem(
     item: BottomNavRoute,
     isSelected: Boolean,
-    onClick: () -> Unit
+    navController: NavHostController? = null,
+    onClick: (String) -> Unit
 ) {
     val iconRes = item.icon
     val contentColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Black
@@ -105,7 +122,7 @@ private fun RowScope.BottomNavItem(
             .padding(top = 8.dp) // 아이콘 위 여백 추가
             .fillMaxHeight()
             .weight(1f) // 모든 아이템이 동일한 너비를 갖도록 설정
-            .clickable(onClick = onClick),
+            .clickable(onClick = { onClick(item.routeName) }),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -128,9 +145,7 @@ private fun RowScope.BottomNavItem(
 @Composable
 private fun HomeNavBarPreview() {
     LivonTheme {
-        HomeNavBar(currentRoute = BottomNavRoute.BOOKING.routeName) {
-            // Preview에서는 클릭 동작을 확인할 필요 없음
-        }
+        HomeNavBar(currentRoute = BottomNavRoute.BOOKING.routeName, onNavigate = {})
     }
 }
 
@@ -138,7 +153,7 @@ private fun HomeNavBarPreview() {
 @Composable
 private fun HomeNavBarHomeSelectedPreview() {
     LivonTheme {
-        HomeNavBar(currentRoute = BottomNavRoute.HOME.routeName) {}
+        HomeNavBar(currentRoute = BottomNavRoute.HOME.routeName, onNavigate = {})
     }
 }
 

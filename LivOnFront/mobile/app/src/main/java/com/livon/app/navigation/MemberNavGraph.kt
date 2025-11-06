@@ -1,6 +1,10 @@
 // com/livon/app/navigation/MemberNavGraph.kt
 package com.livon.app.navigation
 
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import com.livon.app.R
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -71,42 +75,26 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             DataMetric("카페인", SignupState.caffeine ?: "-", "-")
         )
 
-        val upcoming = listOf<UpcomingItem>() // keep empty or provide dev sample
+        // setup Reservation ViewModel (no DI)
+        val reservationApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.ReservationApiService::class.java)
+        val reservationRepo = remember { com.livon.app.domain.repository.ReservationRepository(reservationApi) }
+        val reservationVm = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return com.livon.app.feature.member.reservation.vm.ReservationViewModel(reservationRepo) as T
+            }
+        }) as com.livon.app.feature.member.reservation.vm.ReservationViewModel
 
-        val devCurrentReservations = listOf(
-            ReservationUi(
-                id = "r1",
-                date = LocalDate.now().plusDays(1),
-                className = "개인 상담",
-                coachName = "김도윤",
-                coachRole = "임상심리사",
-                coachIntro = "마음 회복 전문",
-                timeText = "오전 10:00 ~ 11:00",
-                classIntro = "심리 상담 세션",
-                imageResId = null,
-                isLive = false
-            ),
-            ReservationUi(
-                id = "r2",
-                date = LocalDate.now(),
-                className = "필라테스",
-                coachName = "박지성",
-                coachRole = "트레이너",
-                coachIntro = "유연성 전문가",
-                timeText = "오후 3:00 ~ 4:00",
-                classIntro = "체형 개선 그룹 레슨",
-                imageResId = null,
-                isLive = true
-            )
-        )
+        val resState by reservationVm.uiState.collectAsState()
+        LaunchedEffect(Unit) { reservationVm.loadUpcoming() }
 
         MemberHomeRoute(
             onTapBooking = { nav.navigate("reservation_model_select") },
             onTapReservations = { nav.navigate("reservations") },
             onTapMyPage = { nav.navigate("mypage") },
             metrics = metrics,
-            upcoming = upcoming,
-            upcomingReservations = if (useDevMocks) devCurrentReservations else emptyList(),
+            upcoming = emptyList(),
+            upcomingReservations = if (resState.items.isNotEmpty()) resState.items else if (isDebugBuild()) listOf() else emptyList(),
             companyName = null,
             modifier = androidx.compose.ui.Modifier
         )

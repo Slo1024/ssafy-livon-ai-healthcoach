@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * 상담 예약 레포지토리
+ * 그룹 상담 예약 레포지토리
  */
 @Repository
 public interface ConsultationRepository extends JpaRepository<Consultation, Long> {

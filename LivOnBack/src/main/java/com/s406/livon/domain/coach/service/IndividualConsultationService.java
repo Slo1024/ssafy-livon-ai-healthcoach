@@ -2,8 +2,14 @@ package com.s406.livon.domain.coach.service;
 
 import com.s406.livon.domain.coach.dto.request.IndivualConsultationReservationRequestDto;
 import com.s406.livon.domain.coach.entity.Consultation;
+import com.s406.livon.domain.coach.entity.IndividualConsultation;
+import com.s406.livon.domain.coach.entity.Participant;
+import com.s406.livon.domain.coach.repository.ConsultationRepository;
 import com.s406.livon.domain.coach.repository.GroupConsultationRepository;
+import com.s406.livon.domain.coach.repository.IndividualConsultationRepository;
+import com.s406.livon.domain.coach.repository.ParticipantRepository;
 import com.s406.livon.domain.user.entity.User;
+import com.s406.livon.domain.user.repository.UserRepository;
 import com.s406.livon.global.error.handler.CoachHandler;
 import com.s406.livon.global.web.response.code.status.ErrorStatus;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +25,10 @@ public class IndividualConsultationService {
 
     private final GroupConsultationService groupConsultationService;
     private final GroupConsultationRepository groupConsultationRepository;
-
+    private final ConsultationRepository consultationRepository;
+    private final IndividualConsultationRepository individualConsultationRepository;
+    private final UserRepository userRepository;
+    private final ParticipantRepository participantRepository;
 
     public Long reserveConsultation(UUID userId, IndivualConsultationReservationRequestDto requestDto) {
 
@@ -33,7 +42,7 @@ public class IndividualConsultationService {
             throw new CoachHandler(ErrorStatus.CONSULTATION_TIME_CONFLICT);
         }
 
-        // 3. Consultation 생성
+        // 3. Consultation 생성 및 저장
         Consultation consultation = Consultation.builder()
                 .coach(coach)
                 .capacity(1)
@@ -43,11 +52,24 @@ public class IndividualConsultationService {
                 .sessionId("")  // WebRTC 세션 생성 시 업데이트
                 .status(Consultation.Status.OPEN)
                 .build();
+        consultationRepository.save(consultation);
 
-        // 4. IndividualConsultation 생성
+        // 4. participant 생성 및 저장
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CoachHandler(ErrorStatus.USER_NOT_FOUND));
 
-        
+        Participant participant = Participant.builder()
+                .id(consultation.getId())
+                .user(user)
+                .build();
+        participantRepository.save(participant);
 
-        return;
+        // 5. IndividualConsultation 생성 및 저장
+        IndividualConsultation individualConsultation = IndividualConsultation.builder()
+                .preQnA(requestDto.preQnA())
+                .build();
+        IndividualConsultation saved = individualConsultationRepository.save(individualConsultation);
+
+        return saved.getId();
     }
 }

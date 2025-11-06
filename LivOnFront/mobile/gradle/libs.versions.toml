@@ -29,6 +29,7 @@ roomGradlePlugin = "2.8.3"
 
 navCompose = "2.8.3"
 transportApi = "4.0.0"
+material3Lint = "1.4.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -78,6 +79,7 @@ androidx-navigation-compose = { group = "androidx.navigation", name = "navigatio
 
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version = "2.6.0" }
 transport-api = { group = "com.google.android.datatransport", name = "transport-api", version.ref = "transportApi" }
+androidx-material3-lint = { group = "androidx.compose.material3", name = "material3-lint", version.ref = "material3Lint" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

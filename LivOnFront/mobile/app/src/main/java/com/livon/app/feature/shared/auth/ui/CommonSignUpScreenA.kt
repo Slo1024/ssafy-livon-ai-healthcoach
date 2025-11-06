@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 
 /**
  * A그룹 화면 템플릿
@@ -27,8 +28,8 @@ import androidx.compose.ui.unit.dp
  */
 @Composable
 fun CommonSignUpScreenA(
-    topBar: @Composable (Modifier) -> Unit,     // ✅ modifier 받도록 타입 변경
-    bottomBar: @Composable (Modifier) -> Unit,  // ✅ modifier 받도록 타입 변경
+    topBar: @Composable () -> Unit,     // 0-arg composable로 변경: 기존 호출들이 기본적으로 0-arg를 사용함
+    bottomBar: @Composable () -> Unit,  // 0-arg composable로 변경
     modifier: Modifier = Modifier,
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit
 ) {
@@ -38,20 +39,20 @@ fun CommonSignUpScreenA(
             Box(
                 Modifier
                     .padding(top = Spacing.TopMargin)
-//                    .padding(horizontal = Spacing.Horizontal)
-                    .fillMaxWidth()                                 // ✅ 가로 꽉
+                    .fillMaxWidth()
+                    .zIndex(1f)                                 // ensure topBar is above content
             ) {
-                topBar(Modifier.fillMaxWidth())                     // ✅ 전달한 컴포넌트도 꽉
+                topBar()
             }
         },
         bottomBar = {
             Box(
                 Modifier
-//                    .padding(horizontal = Spacing.Horizontal)
-                    .fillMaxWidth()                                 // ✅ 가로 꽉
-                    .windowInsetsPadding(WindowInsets.navigationBars) // ✅ 제스처 바 겹침 방지
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.navigationBars) // 제스처 바 겹침 방지
+                    .zIndex(1f)                                 // ensure bottomBar is above content
             ) {
-                bottomBar(Modifier.fillMaxWidth())                  // ✅ 전달한 컴포넌트도 꽉
+                bottomBar()
             }
         }
     ) { inner ->

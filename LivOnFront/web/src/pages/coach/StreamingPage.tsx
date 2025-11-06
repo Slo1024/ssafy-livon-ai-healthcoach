@@ -181,27 +181,56 @@ export const StreamingPage: React.FC = () => {
 
   // 토큰 발급 API 호출
   const getToken = async (): Promise<string> => {
+    const tokenUrl = `${CONFIG.LIVEKIT.APPLICATION_SERVER_URL}/token`;
+    const requestBody = {
+      roomName,
+      participantName,
+      role: 'coach',
+    };
+
+    console.log('🔑 토큰 발급 요청:', {
+      url: tokenUrl,
+      server: CONFIG.LIVEKIT.APPLICATION_SERVER_URL,
+      body: requestBody,
+      environment: process.env.NODE_ENV,
+    });
+
     try {
-      const response = await fetch(`${CONFIG.LIVEKIT.APPLICATION_SERVER_URL}/token`, {
+      const response = await fetch(tokenUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          roomName,
-          participantName,
-          role: 'coach',
-        }),
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log('📡 토큰 발급 응답:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        url: response.url,
       });
 
       if (!response.ok) {
-        throw new Error('토큰 발급 실패');
+        const errorText = await response.text();
+        console.error('❌ 토큰 발급 실패 - 응답 내용:', errorText);
+        throw new Error(`토큰 발급 실패 (${response.status}): ${errorText || response.statusText}`);
       }
 
       const data = await response.json();
+      console.log('✅ 토큰 발급 성공:', {
+        hasToken: !!data.token,
+        tokenLength: data.token?.length || 0,
+      });
+
+      if (!data.token) {
+        console.error('❌ 토큰 발급 응답에 token이 없습니다:', data);
+        throw new Error('토큰 발급 응답에 token이 없습니다');
+      }
+
       return data.token;
     } catch (error) {
-      console.error('토큰 발급 오류:', error);
+      console.error('❌ 토큰 발급 오류:', error);
       // 개발 환경에서는 백엔드 서버가 실행되지 않았을 수 있음
       // 실제 배포 환경에서는 백엔드 API가 필수입니다
       const errorMessage = error instanceof Error ? error.message : '토큰 발급 실패';
@@ -612,12 +641,7 @@ export const StreamingPage: React.FC = () => {
       {/* 상단 바 */}
       <TopBar>
         <TopBarLeft>
-          <OriginalSoundIndicator>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-            </svg>
-            Original Sound: Off
-          </OriginalSoundIndicator>
+          {/* Original Sound Indicator 제거됨 */}
         </TopBarLeft>
         <TopBarRight>
           {/* 보기 버튼 제거됨 */}

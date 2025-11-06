@@ -16,20 +16,22 @@ import com.livon.app.ui.theme.Spacing
 
 @Composable
 fun PasswordSetupScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onBack: () -> Unit = {},
+    onNext: (String) -> Unit = {}
 ) {
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     val isValid = password.length >= 8 && confirmPassword.length >= 8 && password == confirmPassword
 
     CommonSignUpScreenA(
-        topBar = { TopBar(title = "회원가입", onBack = {}) },
-        bottomBar = { 
+        topBar = { TopBar(title = "회원가입", onBack = onBack) },
+        bottomBar = {
             PrimaryButtonBottom(
                 text = "다음",
                 enabled = isValid,
-                onClick = { /* TODO: Navigate to next screen */ }
-            ) 
+                onClick = { if (isValid) onNext(password) }
+            )
         }
     ) {
         Text(
@@ -42,14 +44,16 @@ fun PasswordSetupScreen(
             value = password,
             onValueChange = { password = it },
             label = "비밀번호",
-            placeholder = "비밀번호를 입력해주세요"
+            placeholder = "비밀번호를 입력해주세요",
+            maxLength = 64
         )
         Spacer(Modifier.height(12.dp))
         LivonTextField(
             value = confirmPassword,
             onValueChange = { confirmPassword = it },
             label = "비밀번호 확인",
-            placeholder = "비밀번호를 입력해주세요"
+            placeholder = "비밀번호를 입력해주세요",
+            maxLength = 64
         )
     }
 }
@@ -90,14 +94,16 @@ fun PasswordSetupScreenPreview_Valid() {
                 value = password,
                 onValueChange = { password = it },
                 label = "비밀번호",
-                placeholder = "비밀번호를 입력해주세요"
+                placeholder = "비밀번호를 입력해주세요",
+                maxLength = 64
             )
             Spacer(Modifier.height(12.dp))
             LivonTextField(
                 value = confirmPassword,
                 onValueChange = { confirmPassword = it },
                 label = "비밀번호 확인",
-                placeholder = "비밀번호를 입력해주세요"
+                placeholder = "비밀번호를 입력해주세요",
+                maxLength = 64
             )
         }
     }

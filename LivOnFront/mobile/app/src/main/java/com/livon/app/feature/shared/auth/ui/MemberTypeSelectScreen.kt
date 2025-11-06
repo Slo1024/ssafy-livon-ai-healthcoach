@@ -1,6 +1,7 @@
 // com/livon/app/feature/shared/auth/ui/RoleSelectScreen.kt
 package com.livon.app.feature.shared.auth.ui
 
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
@@ -18,17 +19,18 @@ import com.livon.app.ui.theme.Spacing
 @Composable
 fun MemberTypeSelectScreen(
     modifier: Modifier = Modifier,
+    onBack: () -> Unit = {},
     onComplete: (mode: String) -> Unit = {}
 ) {
     var selected by remember { mutableStateOf<String?>(null) }
 
     CommonSignUpScreenA(
-        topBar = { TopBar(title = "회원가입", onBack = {}) },
+        topBar = { TopBar(title = "회원가입", onBack = onBack) },
         bottomBar = {
             PrimaryButtonBottom(
                 text = "다음",
                 enabled = selected != null,
-                onClick = { /* TODO */ }
+                onClick = { selected?.let { Log.d("MemberTypeSelect","Next clicked with=$it"); onComplete(it) } }
             )
         },
         modifier = modifier
@@ -42,7 +44,7 @@ fun MemberTypeSelectScreen(
                     .align(Alignment.TopStart)
                     .fillMaxWidth()
             ) {
-                RequirementText("어떤 포지션으로 참여하나요?")
+                RequirementText("소속된 기업이 있으신가요?")
             }
 
             // 2) 화면(TopBar~BottomBar 사이) 전체 기준 '진짜 중앙'에 카드 2개
@@ -84,9 +86,10 @@ fun MemberTypeSelectScreen(
     }
 }
 
-/* ---------- Previews ---------- */
-@Preview(showBackground = true, showSystemUi = true, name = "MemberTypeSelectScreen")
+@Preview(showBackground = true)
 @Composable
-private fun PreviewMemberTypeSelectScreen() {
-    LivonTheme { MemberTypeSelectScreen() }
+private fun PreviewMemberTypeSelect() {
+    LivonTheme {
+        MemberTypeSelectScreen(onComplete = {})
+    }
 }

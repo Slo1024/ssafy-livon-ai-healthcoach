@@ -1,5 +1,6 @@
 package com.livon.app.feature.member.reservation.ui
 
+import androidx.navigation.NavHostController
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -38,7 +39,8 @@ fun ClassDetailScreen(
     onReserveClick: () -> Unit,
     onNavigateHome: () -> Unit,
     onNavigateToMyPage: () -> Unit,
-    imageResId: Int = R.drawable.ic_classphoto // 샘플: 실제에선 이미지 리소스/URL 연동
+    imageResId: Int = R.drawable.ic_classphoto, // 샘플: 실제에선 이미지 리소스/URL 연동
+    navController: NavHostController? = null // optional nav controller to let HomeNavBar navigate directly
 ) {
     Scaffold(
         contentWindowInsets = WindowInsets(0),
@@ -67,7 +69,9 @@ fun ClassDetailScreen(
                         .fillMaxWidth()
                         .height(56.dp),
                     currentRoute = null,
+                    navController = navController,
                     onNavigate = { route ->
+                        // Fallback behavior when navController not provided
                         when (route) {
                             "home" -> onNavigateHome()
                             "mypage" -> onNavigateToMyPage()

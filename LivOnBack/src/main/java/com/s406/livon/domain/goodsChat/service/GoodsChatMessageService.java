@@ -55,7 +55,7 @@ public class GoodsChatMessageService {
 
     private void saveAndSendMessage(GoodsChatRoom chatRoom, User user, String message, MessageType type) {
         // 채팅 도큐먼트 생성
-        GoodsChatMessage chatMessage = createChatMessage(chatRoom.getId(), user.getId(), message, user.getRoles() ,type);
+        GoodsChatMessage chatMessage = createChatMessage(chatRoom.getId(), user.getId(), message, user.getRoles().get(0) ,type);
         // 최근메세지 불필요
 //        chatRoom.updateLastChat(message, chatMessage.getSentAt());
 
@@ -99,14 +99,15 @@ public class GoodsChatMessageService {
 
     }
 
-    private GoodsChatMessage createChatMessage(Long chatRoomId, UUID userId, String message, List<Role> role , MessageType type) {
+    private GoodsChatMessage createChatMessage(Long chatRoomId, UUID userId, String message, Role role , MessageType type) {
+
         return GoodsChatMessage.builder()
                 .chatRoomId(chatRoomId)
                 .userId(userId)
                 .sentAt(LocalDateTime.now())
                 .content(message)
                 .messageType(type)
-                .role(role)
+                .role(role) // <-- String List로 저장
                 .build();
     }
 

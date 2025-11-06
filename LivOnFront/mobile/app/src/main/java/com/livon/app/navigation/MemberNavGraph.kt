@@ -18,7 +18,6 @@ import com.livon.app.feature.member.my.MyPageScreen
 import com.livon.app.feature.shared.auth.ui.ReservationModeSelectScreen
 import com.livon.app.feature.shared.auth.ui.SignupState
 import com.livon.app.feature.member.home.ui.DataMetric
-import com.livon.app.feature.member.home.ui.UpcomingItem
 import java.net.URLDecoder
 import java.time.LocalDate
 
@@ -73,19 +72,22 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         val userState by userVm.uiState.collectAsState()
         LaunchedEffect(Unit) { userVm.load() }
 
-        val metrics = if (userState.info != null) listOf(
-            DataMetric("키", userState.info.heightCm ?: "-", "평균: 169cm"),
-            DataMetric("몸무게", userState.info.weightKg ?: "-", "평균: 60kg"),
-            DataMetric("기저질환", userState.info.condition ?: "-", "-"),
-            DataMetric("수면 상태", userState.info.sleepQuality ?: "-", "-"),
-            DataMetric("복약 여부", userState.info.medication ?: "-", "-"),
-            DataMetric("통증 부위", userState.info.painArea ?: "-", "-"),
-            DataMetric("스트레스", userState.info.stress ?: "-", "-"),
-            DataMetric("흡연 여부", userState.info.smoking ?: "-", "-"),
-            DataMetric("음주", userState.info.alcohol ?: "-", "-"),
-            DataMetric("수면 시간", userState.info.sleepHours ?: "-", "평균: 7시간"),
-            DataMetric("활동 수준", userState.info.activityLevel ?: "-", "-"),
-            DataMetric("카페인", userState.info.caffeine ?: "-", "-")
+        // cache the info locally to allow smart casts and avoid repeated complex access
+        val info = userState.info
+
+        val metrics = if (info != null) listOf(
+            DataMetric("키", info.heightCm ?: "-", "평균: 169cm"),
+            DataMetric("몸무게", info.weightKg ?: "-", "평균: 60kg"),
+            DataMetric("기저질환", info.condition ?: "-", "-"),
+            DataMetric("수면 상태", info.sleepQuality ?: "-", "-"),
+            DataMetric("복약 여부", info.medication ?: "-", "-"),
+            DataMetric("통증 부위", info.painArea ?: "-", "-"),
+            DataMetric("스트레스", info.stress ?: "-", "-"),
+            DataMetric("흡연 여부", info.smoking ?: "-", "-"),
+            DataMetric("음주", info.alcohol ?: "-", "-"),
+            DataMetric("수면 시간", info.sleepHours ?: "-", "평균: 7시간"),
+            DataMetric("활동 수준", info.activityLevel ?: "-", "-"),
+            DataMetric("카페인", info.caffeine ?: "-", "-")
         ) else listOf(
             DataMetric("키", withUnit(SignupState.heightCm, "cm"), "평균: 169cm"),
             DataMetric("몸무게", withUnit(SignupState.weightKg, "kg"), "평균: 60kg"),
@@ -178,13 +180,29 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
     }
 
     composable("reservation_model_select") {
-        ReservationModeSelectScreen(onComplete = { mode ->
-            if (mode == "personal") nav.navigate("coach_list") else nav.navigate("class_reservation")
-        })
+        ReservationModeSelectScreen(
+            onComplete = { mode ->
+                if (mode == "personal") nav.navigate("coach_list") else nav.navigate("class_reservation")
+            },
+            onBack = { nav.popBackStack() }
+        )
     }
 
     composable("coach_list") {
-        val coachesToShow = if (useDevMocks) devMockCoaches else emptyList()
+        // network-backed coach list
+        val coachApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.CoachApiService::class.java)
+        val coachRepo = remember { com.livon.app.domain.repository.CoachRepository(coachApi) }
+        val coachVm = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return com.livon.app.feature.member.reservation.vm.CoachListViewModel(coachRepo) as T
+            }
+        }) as com.livon.app.feature.member.reservation.vm.CoachListViewModel
+
+        val coachState by coachVm.uiState.collectAsState()
+        LaunchedEffect(Unit) { coachVm.load() }
+
+        val coachesToShow = if (coachState.coaches.isNotEmpty()) coachState.coaches else if (useDevMocks) devMockCoaches else emptyList()
         val isCorporate = useDevMocks
         val loadMore = useDevMocks
 
@@ -204,9 +222,24 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
     composable("coach_detail/{coachId}/{mode}") { backStackEntry ->
         val coachId = backStackEntry.arguments?.getString("coachId")
         val mode = backStackEntry.arguments?.getString("mode") ?: "personal"
-        val coach = if (useDevMocks) devMockCoaches.find { it.id == coachId } else null
         val showSchedule = mode == "personal"
-        CoachDetailScreenNav(nav = nav, coach = coach, showSchedule = showSchedule)
+
+        // Provide a ViewModel factory so CoachDetailScreen can load remote detail
+        val coachApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.CoachApiService::class.java)
+        val coachRepo = remember { com.livon.app.domain.repository.CoachRepository(coachApi) }
+        val factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return com.livon.app.feature.member.reservation.vm.CoachDetailViewModel(coachRepo) as T
+            }
+        }
+
+        CoachDetailScreen(
+            coachId = coachId ?: "",
+            onBack = { nav.popBackStack() },
+            showSchedule = showSchedule,
+            viewModelFactory = factory
+        )
     }
 
     // New navigable route that accepts coachName and date as path params (date: ISO yyyy-MM-dd)

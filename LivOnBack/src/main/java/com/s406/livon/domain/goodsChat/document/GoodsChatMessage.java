@@ -39,7 +39,7 @@ public class GoodsChatMessage {
     private LocalDateTime sentAt;
 
     @Field(name = "role")
-    private List<Role> role;
+    private Role role;
 
     @Field(name = "message_type")
     private MessageType messageType;

@@ -29,7 +29,7 @@ class StreamingChatViewModel(
     val uiState: StateFlow<StreamingChatUiState> = _uiState
 
     fun loadChatMessages(
-        chatRoomId: Int = 1,
+        chatRoomId: Int = 43,
         lastSentAt: String? = null,
         accessToken: String? = BuildConfig.WEBSOCKET_TOKEN
     ) {
@@ -63,7 +63,7 @@ class StreamingChatViewModel(
     fun sendMessage(
         message: String,
         accessToken: String,
-        chatRoomId: Int = 1,
+        chatRoomId: Int = 43,
         senderUUID: UUID = UUID.fromString("00000000-0000-0000-0000-000000000001")
     ) {
         if (message.isBlank()) return

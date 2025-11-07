@@ -31,7 +31,7 @@ fun StreamingCheating(
     onSearch: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: StreamingChatViewModel = viewModel(),
-    chatRoomId: Int = 1
+    chatRoomId: Int = 43
 ) {
     val uiState by viewModel.uiState.collectAsState()
 

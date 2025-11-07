@@ -17,7 +17,7 @@ object ChatStompManager {
     fun connect(token: String, roomId: Long) {
         stompClient = Stomp.over(
             Stomp.ConnectionProvider.OKHTTP,
-            BuildConfig.APPLICATION_SERVER_URL
+            BuildConfig.WEBSOCKET_URL
         )
 
         val headers = listOf(
@@ -45,7 +45,7 @@ object ChatStompManager {
     }
 
     private fun subscribe(roomId: Long) {
-        val topic = "/ws/chat/sub/chat/goods/$roomId"
+        val topic = "/sub/chat/goods/$roomId"
         Log.d("STOMP", "구독 요청: $topic")
 
         stompClient.topic(topic)
@@ -70,7 +70,7 @@ object ChatStompManager {
 
         val headers = listOf(
             StompHeader("Authorization", "Bearer $token"),
-            StompHeader("destination", "/ws/chat/pub/chat/goods/message")
+            StompHeader("destination", "/pub/chat/goods/message")
         )
 
         val message = StompMessage(

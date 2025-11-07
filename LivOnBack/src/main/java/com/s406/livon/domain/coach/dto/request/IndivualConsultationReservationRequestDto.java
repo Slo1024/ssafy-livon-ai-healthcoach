@@ -18,8 +18,6 @@ public record IndivualConsultationReservationRequestDto(
         LocalDateTime endAt,
 
         @Nullable
-        String preQnA,
-
-        @Nullable
-        String aiSummary) {
+        String preQnA
+) {
 }

@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -31,7 +32,12 @@ public class IndividualConsultationService {
     private final UserRepository userRepository;
     private final ParticipantRepository participantRepository;
 
-    @DistributedLock(key = "ㅋㅋ")
+    @DistributedLock(
+            key = "'IC:' + #requestDto.coachId + ':' + #requestDto.startAt",
+            waitTime = 0,        // ✅ 대기하지 않음 (즉시 실패)
+            leaseTime = 3,
+            timeUnit = TimeUnit.SECONDS
+    )
     public Long reserveConsultation(UUID userId, IndivualConsultationReservationRequestDto requestDto) {
 
         //1. 코치 검증
@@ -60,20 +66,15 @@ public class IndividualConsultationService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CoachHandler(ErrorStatus.USER_NOT_FOUND));
 
-        Participant participant = Participant.builder()
-                .id(consultation.getId())
-                .user(user)
-                .build();
+        Participant participant = Participant.of(user, consultation);
         participantRepository.save(participant);
 
         // 5. IndividualConsultation 생성 및 저장
         IndividualConsultation individualConsultation = IndividualConsultation.builder()
+                .consultation(consultation)
                 .preQnA(requestDto.preQnA())
                 .build();
         IndividualConsultation saved = individualConsultationRepository.save(individualConsultation);
-
-        // 확인하기 - blocked Times 갱신이 되는가?
-        // 아마 blocked Times 조회 API와 Repository를 살펴봐야 할수도
 
         return saved.getId();
     }

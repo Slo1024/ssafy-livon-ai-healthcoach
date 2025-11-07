@@ -8,6 +8,7 @@ import com.s406.livon.global.web.response.ApiResponse;
 import com.s406.livon.global.web.response.code.status.SuccessStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -29,7 +30,7 @@ public class IndividualConsultationController {
     @Operation(summary = "1:1 상담 예약 API", description = "일반 사용자가 코치와의 1:1 상담을 신청합니다.")
     public ResponseEntity<ApiResponse<Long>> reserveIndividualConsultation(
             @RequestHeader("Authorization") String token,
-            @RequestBody IndivualConsultationReservationRequestDto requestDto) {
+            @Valid @RequestBody IndivualConsultationReservationRequestDto requestDto) {
 
         UUID userId = jwtTokenProvider.getUserId(token.substring(7));
         Long consultationId = individualConsultationService.reserveConsultation(userId, requestDto);

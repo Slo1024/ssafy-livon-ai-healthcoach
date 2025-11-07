@@ -1,5 +1,6 @@
 package com.livon.app.feature.member.reservation.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -9,9 +10,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -31,6 +29,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.navigation.NavHostController
+import com.livon.app.ui.theme.Basic
+import com.livon.app.ui.theme.BorderBlack
+import com.livon.app.ui.theme.Unclickable
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -112,11 +114,28 @@ fun ClassReservationScreen(
                 ModalBottomSheet(
                     onDismissRequest = { showCalendar = false },
                     tonalElevation = 8.dp,
+                    containerColor = Basic ,
+                    dragHandle = {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp)
+                                .wrapContentWidth(Alignment.CenterHorizontally)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 50.dp, height = 8.dp)
+
+                            )
+                        }
+                    }
                 ) {
                     // Sheet content: header (예약 정보 centered), month nav, calendar (full width), confirm button
                     CalendarSheetContent(
                         selectedDate = selectedDate,
-                        onSelect = { date -> selectedDate = date },
+                        onSelect = { dateOrNull ->               // 🔧 CHANGED: (LocalDate?) 받도록
+                            selectedDate = dateOrNull            // ← nullable 그대로 저장
+                        },
                         onConfirm = {
                             showCalendar = false
                         }
@@ -132,18 +151,27 @@ fun ClassReservationScreen(
 @Composable
 private fun CalendarSheetContent(
     selectedDate: LocalDate?,
-    onSelect: (LocalDate) -> Unit,
+    onSelect: (LocalDate?) -> Unit,
     onConfirm: () -> Unit
 ) {
+
+    val H_MARGIN = 16.dp
     // 화면 높이에 따라 적절히 크기 조절 (최대 높이 지정)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 6.dp, start = 0.dp, end = 0.dp, bottom = 0.dp)
+            .background(Basic)
+            .padding(top = 4.dp, start = 0.dp, end = 0.dp, bottom = 0.dp)
             .padding(WindowInsets.navigationBars.add(WindowInsets.ime).asPaddingValues())
     ) {
-        // Header: centered title
-        Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Basic)
+                .padding(horizontal = H_MARGIN), // 🔧 ADDED: 버튼과 동일 좌우 마진
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Text(text = "예약 정보", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
 
             // month navigation row
@@ -151,7 +179,8 @@ private fun CalendarSheetContent(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                    .background(Basic)
+                    .padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
@@ -162,9 +191,9 @@ private fun CalendarSheetContent(
                     )
                 }
 
-                Spacer(Modifier.width(16.dp))
+                Spacer(Modifier.width(50.dp))
                 Text(text = "${currentMonth.monthValue}월 ${currentMonth.year}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 16.dp))
-                Spacer(Modifier.width(16.dp))
+                Spacer(Modifier.width(50.dp))
                 IconButton(onClick = { currentMonth = currentMonth.plusMonths(1) }) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_back),
@@ -177,68 +206,49 @@ private fun CalendarSheetContent(
 
             }
 
-            // Calendar area: white background, full width, adjust height
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .background(Basic)
+                    .padding(horizontal = H_MARGIN)
                     .heightIn(min = 320.dp, max = 330.dp)
             ) {
-                Surface(color = Color.White, modifier = Modifier.fillMaxSize()) {
+                Surface(color = Basic,
+                    modifier = Modifier.fillMaxSize()
+                ) {
                     CalendarMonth(
                         yearMonth = currentMonth,
                         selected = selectedDate,
                         onSelect = { date ->
-                            onSelect(date)
-                            currentMonth = YearMonth.from(date)
+                            if (selectedDate == date) {
+                                onSelect(null)                 // ✅ 다시 누르면 취소
+                            } else {
+                                onSelect(date)
+                                currentMonth = YearMonth.from(date)
+                            }
                         },
                         modifier = Modifier.fillMaxSize()
                     )
                 }
             }
-
+            val isEnabled = selectedDate != null
             // Confirm button
             PrimaryButtonBottom(
                 text = "선택",
-                enabled = true,
+                enabled = isEnabled,          // ← 날짜 없으면 자동 비활성
                 onClick = onConfirm,
                 bottomMargin = 0.dp,
                 applyNavPadding = true,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .background(Basic)
+                    .padding( vertical = 8.dp)
             )
         }
     }
 }
 
-/* -------------------- Preview -------------------- */
 
-@Preview(showBackground = true, name = "예약 리스트")
-@Composable
-private fun ClassReservationScreenPreview() {
-    val items = sampleItemsForPreview()
-    LivonTheme {
-        ClassReservationScreen(
-            classes = items,
-            onCardClick = {},
-            onCoachClick = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, name = "달력 시트(프리뷰 강제 오픈)")
-@Composable
-private fun ClassReservationScreenCalendarPreview() {
-    val items = sampleItemsForPreview()
-    LivonTheme {
-        ClassReservationScreen(
-            classes = items,
-            onCardClick = {},
-            onCoachClick = {},
-            initialShowCalendar = true
-        )
-    }
-}
 
 /* --- 샘플 데이터 (프리뷰용) --- */
 private fun sampleItemsForPreview() = listOf(

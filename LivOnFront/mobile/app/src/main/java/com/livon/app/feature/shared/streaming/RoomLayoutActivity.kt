@@ -299,6 +299,8 @@ class RoomLayoutActivity : AppCompatActivity() {
             contentType(ContentType.Application.Json)
             setBody(TokenRequest(participantName, roomName))
         }
+
+        Log.d("token", response.body<TokenResponse>().token)
         return response.body<TokenResponse>().token
     }
 
@@ -339,8 +341,6 @@ class RoomLayoutActivity : AppCompatActivity() {
     }
 
     private fun updateLocalParticipantInfo() {
-        // 이제 videoTrackPublications.flow를 사용하므로 이 메서드는 더 이상 필요하지 않습니다
-        // 하지만 toggleCamera/toggleMicrophone에서 사용할 수 있으므로 유지
         val localParticipant = room.localParticipant
         val participantName = localParticipant.identity?.value ?: "Participant"
 

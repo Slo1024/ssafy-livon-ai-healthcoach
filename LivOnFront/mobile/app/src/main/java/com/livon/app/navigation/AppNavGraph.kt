@@ -2,7 +2,7 @@
 package com.livon.app.navigation
 
 import android.util.Log
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -107,9 +107,33 @@ fun NavGraphBuilder.authNavGraph(navController: NavHostController) {
     }
 
     composable(Routes.EmailLogin) {
+        // create api/repo/vm for login flow (no DI)
+        val authApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.AuthApiService::class.java)
+        val authRepo = remember { com.livon.app.domain.repository.AuthRepository(authApi) }
+        val factory = remember {
+            object : androidx.lifecycle.ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                    return com.livon.app.feature.member.auth.vm.AuthViewModel(authRepo) as T
+                }
+            }
+        }
+        val authVm: com.livon.app.feature.member.auth.vm.AuthViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = factory)
+
+        // observe login state and navigate on success
+        val authState by authVm.state.collectAsState()
+        LaunchedEffect(authState.success) {
+            if (authState.success) {
+                // Navigate to member_home and clear backstack up to landing
+                navController.navigate(Routes.MemberHome) {
+                    popUpTo(Routes.Landing) { inclusive = true }
+                }
+            }
+        }
+
         EmailLoginScreen(
             onBack = { navController.popBackStack() },
-            onLogin = { email, pw -> /* TODO */ },
+            onLogin = { email, pw -> authVm.login(email, pw) },
             onSignUp = { Log.d("AppNavGraph","navigate to Terms"); navController.navigate(Routes.Terms) },
             onFindId = {},
             onFindPassword = {}

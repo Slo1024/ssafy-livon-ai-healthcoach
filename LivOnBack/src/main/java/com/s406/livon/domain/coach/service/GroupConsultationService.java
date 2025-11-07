@@ -219,7 +219,7 @@ public class GroupConsultationService {
     /**
      * 코치 권한 검증
      */
-    private User validateCoach(UUID userId) {
+    protected User validateCoach(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CoachHandler(ErrorStatus.USER_NOT_FOUND));
         

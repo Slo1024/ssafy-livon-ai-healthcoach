@@ -151,4 +151,10 @@ public class GroupConsultationController {
         return ResponseEntity.ok()
                 .body(ApiResponse.of(SuccessStatus.DELETE_SUCCESS, null));
     }
+
+    // 클래스 신청하기 API
+
+    // 클래스 취소하기 API(일반 사용자)
+
+    // 클래스 취소하기 API(코치)
 }

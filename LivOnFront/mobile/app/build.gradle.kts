@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -6,9 +8,20 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(localPropertiesFile.inputStream())
+}
+
 android {
     namespace = "com.livon.app"
     compileSdk = 36
+
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 
     defaultConfig {
         applicationId = "com.livon.app"
@@ -18,6 +31,14 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "OPENVIDU_SERVER_URL", "\"${localProperties.getProperty("openvidu.server.url")}\"")
+        buildConfigField("String", "APPLICATION_SERVER_URL", "\"${localProperties.getProperty("application.server.url")}\"")
+        buildConfigField("String", "CLEARTEXT_IP", "\"${localProperties.getProperty("cleartext.ip")}\"")
+        buildConfigField("String", "WEBSOCKET_TOKEN", "\"${localProperties.getProperty("websocket.token")}\"")
+        buildConfigField("String", "WEBSOCKET_URL", "\"${localProperties.getProperty("websocket.url")}\"")
+
+
     }
 
     buildTypes {
@@ -36,9 +57,6 @@ android {
     }
     kotlinOptions {
         jvmTarget = "17"
-    }
-    buildFeatures {
-        compose = true
     }
 
     packaging {

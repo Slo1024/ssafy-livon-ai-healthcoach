@@ -22,9 +22,9 @@ data class ReservationDto(
 )
 
 interface ReservationApiService {
-    @GET("/api/v1/reservations/upcoming")
+    @GET("/reservations/upcoming")
     suspend fun getUpcoming(): List<ReservationDto>
 
-    @POST("/api/v1/reservations")
+    @POST("/reservations")
     suspend fun createReservation(@Body req: Any): ReservationDto
 }

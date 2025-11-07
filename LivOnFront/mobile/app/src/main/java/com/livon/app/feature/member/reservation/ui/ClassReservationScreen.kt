@@ -124,7 +124,7 @@ fun ClassReservationScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(width = 50.dp, height = 8.dp)
+                                    .size(width = 36.dp, height = 4.dp)
 
                             )
                         }
@@ -154,27 +154,24 @@ private fun CalendarSheetContent(
     onSelect: (LocalDate?) -> Unit,
     onConfirm: () -> Unit
 ) {
-
     val H_MARGIN = 16.dp
-    // 화면 높이에 따라 적절히 크기 조절 (최대 높이 지정)
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Basic)
-            .padding(top = 4.dp, start = 0.dp, end = 0.dp, bottom = 0.dp)
+            .background(Basic) // 최상위 배경을 Basic으로 고정
+            .padding(top = 4.dp)
             .padding(WindowInsets.navigationBars.add(WindowInsets.ime).asPaddingValues())
     ) {
-
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Basic)
-                .padding(horizontal = H_MARGIN), // 🔧 ADDED: 버튼과 동일 좌우 마진
+                .padding(horizontal = H_MARGIN),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(text = "예약 정보", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
 
-            // month navigation row
             var currentMonth by remember { mutableStateOf(selectedDate?.let { YearMonth.from(it) } ?: YearMonth.now()) }
             Row(
                 modifier = Modifier
@@ -185,10 +182,7 @@ private fun CalendarSheetContent(
                 horizontalArrangement = Arrangement.Center
             ) {
                 IconButton(onClick = { currentMonth = currentMonth.minusMonths(1) }) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_back),
-                        contentDescription = "Prev month"
-                    )
+                    Icon(painter = painterResource(id = R.drawable.ic_back), contentDescription = "Prev month")
                 }
 
                 Spacer(Modifier.width(50.dp))
@@ -198,12 +192,9 @@ private fun CalendarSheetContent(
                     Icon(
                         painter = painterResource(id = R.drawable.ic_back),
                         contentDescription = "Next month",
-                        modifier = Modifier.graphicsLayer(
-                            scaleX = -1f   // 좌우반전
-                        )
+                        modifier = Modifier.graphicsLayer(scaleX = -1f)
                     )
                 }
-
             }
 
             Box(
@@ -213,15 +204,13 @@ private fun CalendarSheetContent(
                     .padding(horizontal = H_MARGIN)
                     .heightIn(min = 320.dp, max = 330.dp)
             ) {
-                Surface(color = Basic,
-                    modifier = Modifier.fillMaxSize()
-                ) {
+                Surface(color = Basic, modifier = Modifier.fillMaxSize()) { // Surface도 Basic
                     CalendarMonth(
                         yearMonth = currentMonth,
                         selected = selectedDate,
                         onSelect = { date ->
                             if (selectedDate == date) {
-                                onSelect(null)                 // ✅ 다시 누르면 취소
+                                onSelect(null)
                             } else {
                                 onSelect(date)
                                 currentMonth = YearMonth.from(date)
@@ -231,18 +220,18 @@ private fun CalendarSheetContent(
                     )
                 }
             }
+
             val isEnabled = selectedDate != null
-            // Confirm button
             PrimaryButtonBottom(
                 text = "선택",
-                enabled = isEnabled,          // ← 날짜 없으면 자동 비활성
+                enabled = isEnabled,
                 onClick = onConfirm,
                 bottomMargin = 0.dp,
                 applyNavPadding = true,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Basic)
-                    .padding( vertical = 8.dp)
+                    .background(Basic) // 버튼 주변 배경도 Basic
+                    .padding(vertical = 8.dp)
             )
         }
     }

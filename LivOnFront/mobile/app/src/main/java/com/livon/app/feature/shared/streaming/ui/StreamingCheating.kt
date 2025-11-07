@@ -23,13 +23,15 @@ import com.livon.app.ui.component.streaming.StreamingCheatingHeader
 import com.livon.app.ui.component.streaming.StreamingCheatingProfile
 import com.livon.app.ui.theme.LivonTheme
 
+import com.livon.app.BuildConfig
+
 @Composable
 fun StreamingCheating(
     onBackClick: () -> Unit,
     onSearch: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: StreamingChatViewModel = viewModel(),
-    chatRoomId: Int = 1
+    chatRoomId: Int = 43
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -46,7 +48,7 @@ fun StreamingCheating(
                 CheatingBar(
                     modifier = Modifier.fillMaxWidth(),
                     onSend = { message ->
-                        viewModel.sendMessage(message, "", chatRoomId = chatRoomId)
+                        viewModel.sendMessage(message, BuildConfig.WEBSOCKET_TOKEN, chatRoomId = chatRoomId)
                     }
                 )
             }
@@ -95,3 +97,4 @@ fun StreamingCheating(
         }
     }
 }
+

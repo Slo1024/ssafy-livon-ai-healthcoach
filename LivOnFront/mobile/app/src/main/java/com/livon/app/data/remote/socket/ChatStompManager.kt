@@ -4,6 +4,7 @@ import io.reactivex.android.schedulers.AndroidSchedulers
 import ua.naiksoftware.stomp.Stomp
 import ua.naiksoftware.stomp.StompClient
 import android.util.Log
+import com.livon.app.BuildConfig
 import ua.naiksoftware.stomp.dto.StompCommand
 import ua.naiksoftware.stomp.dto.StompHeader
 import ua.naiksoftware.stomp.dto.StompMessage
@@ -16,7 +17,7 @@ object ChatStompManager {
     fun connect(token: String, roomId: Long) {
         stompClient = Stomp.over(
             Stomp.ConnectionProvider.OKHTTP,
-            ""
+            BuildConfig.WEBSOCKET_URL
         )
 
         val headers = listOf(

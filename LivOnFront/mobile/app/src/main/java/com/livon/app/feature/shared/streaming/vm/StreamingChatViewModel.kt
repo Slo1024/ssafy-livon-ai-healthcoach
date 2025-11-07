@@ -3,6 +3,7 @@ package com.livon.app.feature.shared.streaming.vm
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.livon.app.BuildConfig
 import com.livon.app.data.remote.socket.ChatStompManager
 import com.livon.app.data.repository.ChatRepositoryImpl
 import com.livon.app.domain.model.ChatMessage
@@ -30,7 +31,7 @@ class StreamingChatViewModel(
     fun loadChatMessages(
         chatRoomId: Int = 1,
         lastSentAt: String? = null,
-        accessToken: String? = ""
+        accessToken: String? = BuildConfig.WEBSOCKET_TOKEN
     ) {
         viewModelScope.launch {
             Log.d("StreamingChatViewModel", "채팅 메시지 로드 시작: chatRoomId=$chatRoomId")

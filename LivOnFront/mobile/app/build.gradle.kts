@@ -100,4 +100,10 @@ dependencies {
     implementation(libs.androidx.recyclerview)
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
 
+    // websocket
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.github.NaikSoftware:StompProtocolAndroid:1.6.6")
+    implementation("io.reactivex.rxjava2:rxjava:2.2.21")
+    implementation("io.reactivex.rxjava2:rxandroid:2.1.1")
+
 }

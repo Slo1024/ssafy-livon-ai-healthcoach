@@ -1,5 +1,7 @@
 package com.s406.livon.global.aop;
 
+import com.s406.livon.global.error.handler.CoachHandler;
+import com.s406.livon.global.web.response.code.status.ErrorStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -37,7 +39,7 @@ public class DistributedLockAop {
         try {
             boolean available = rLock.tryLock(distributedLock.waitTime(), distributedLock.leaseTime(), distributedLock.timeUnit());  // (2)
             if (!available) {
-                return false;
+                throw new CoachHandler(ErrorStatus.CONSULTATION_TIME_CONFLICT);
             }
 
             return aopForTransaction.proceed(joinPoint);  // (3)

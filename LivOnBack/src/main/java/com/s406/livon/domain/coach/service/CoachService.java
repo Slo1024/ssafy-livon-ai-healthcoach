@@ -51,7 +51,7 @@ public class CoachService {
     private final UserRepository userRepository;
 
     // 기본 근무 시간대 (9시~18시, 1시간 단위)
-    private static final List<String> DEFAULT_TIME_SLOTS = List.of(
+    protected static final List<String> DEFAULT_TIME_SLOTS = List.of(
             "09:00-10:00", "10:00-11:00", "11:00-12:00", "12:00-13:00",
             "13:00-14:00", "14:00-15:00", "15:00-16:00",
             "16:00-17:00", "17:00-18:00"
@@ -265,7 +265,7 @@ public class CoachService {
     /**
      * 날짜 유효성 검증 및 파싱
      */
-    private LocalDate validateAndParseDate(String dateStr) {
+    protected LocalDate validateAndParseDate(String dateStr) {
         LocalDate requestDate;
 
         try {

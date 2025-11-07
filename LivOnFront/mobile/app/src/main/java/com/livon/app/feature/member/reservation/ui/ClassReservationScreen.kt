@@ -29,6 +29,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.navigation.NavHostController
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -138,7 +139,7 @@ private fun CalendarSheetContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 16.dp, start = 0.dp, end = 0.dp, bottom = 0.dp)
+            .padding(top = 6.dp, start = 0.dp, end = 0.dp, bottom = 0.dp)
             .padding(WindowInsets.navigationBars.add(WindowInsets.ime).asPaddingValues())
     ) {
         // Header: centered title
@@ -155,21 +156,32 @@ private fun CalendarSheetContent(
                 horizontalArrangement = Arrangement.Center
             ) {
                 IconButton(onClick = { currentMonth = currentMonth.minusMonths(1) }) {
-                    Icon(imageVector = Icons.Filled.ArrowBack, contentDescription = "Prev month")
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_back),
+                        contentDescription = "Prev month"
+                    )
                 }
 
+                Spacer(Modifier.width(16.dp))
                 Text(text = "${currentMonth.monthValue}월 ${currentMonth.year}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 16.dp))
-
+                Spacer(Modifier.width(16.dp))
                 IconButton(onClick = { currentMonth = currentMonth.plusMonths(1) }) {
-                    Icon(imageVector = Icons.Filled.ArrowForward, contentDescription = "Next month")
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_back),
+                        contentDescription = "Next month",
+                        modifier = Modifier.graphicsLayer(
+                            scaleX = -1f   // 좌우반전
+                        )
+                    )
                 }
+
             }
 
             // Calendar area: white background, full width, adjust height
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 320.dp, max = 520.dp)
+                    .heightIn(min = 320.dp, max = 330.dp)
             ) {
                 Surface(color = Color.White, modifier = Modifier.fillMaxSize()) {
                     CalendarMonth(
@@ -183,8 +195,6 @@ private fun CalendarSheetContent(
                     )
                 }
             }
-
-            Spacer(Modifier.height(8.dp))
 
             // Confirm button
             PrimaryButtonBottom(

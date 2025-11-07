@@ -34,7 +34,7 @@ fun CoachDetailScreen(
     val state by vm.uiState.collectAsState()
 
     CommonScreenC(
-        topBar = { TopBar(title = "코치 정보", onBack = onBack) },
+        topBar = { TopBar(title = "상세 정보", onBack = onBack) },
         fullBleedContent = null
     ) {
         // main content column

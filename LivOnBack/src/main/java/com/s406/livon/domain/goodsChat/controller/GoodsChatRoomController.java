@@ -2,23 +2,17 @@ package com.s406.livon.domain.goodsChat.controller;
 
 
 import com.s406.livon.domain.goodsChat.document.GoodsChatMessage;
-import com.s406.livon.domain.goodsChat.dto.response.GoodsChatMessageResponse;
 import com.s406.livon.domain.goodsChat.dto.response.GoodsChatRoomResponse;
 import com.s406.livon.domain.goodsChat.service.GoodsChatService;
 import com.s406.livon.domain.user.entity.User;
 import com.s406.livon.global.web.response.ApiResponse;
-import com.s406.livon.global.web.response.PageResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -60,13 +54,22 @@ public class GoodsChatRoomController {
 
     // Todo 채팅방 안 유저 정보
 
-    @GetMapping("/{chatRoomId}/users")
-    public ResponseEntity<ApiResponse<List<GoodsChatMessage>>> getChatUsers(
+    @GetMapping("/{chatRoomId}/users/connection")
+    public ResponseEntity<ApiResponse<?>> getChatUsersConnection(
             @PathVariable Long chatRoomId,
             @AuthenticationPrincipal User user
     ) {
-        goodsChatService.getChatUsersInfo(chatRoomId,user);
-        return ResponseEntity.ok(ApiResponse.onSuccess(null));
+
+        return ResponseEntity.ok(ApiResponse.onSuccess(goodsChatService.getChatUsersConnection(chatRoomId,user)));
+    }
+
+    @GetMapping("/{chatRoomId}/users")
+    public ResponseEntity<ApiResponse<?>> getChatUsers(
+            @PathVariable Long chatRoomId,
+            @AuthenticationPrincipal User user
+    ) {
+
+        return ResponseEntity.ok(ApiResponse.onSuccess(goodsChatService.getChatUsersInfo(chatRoomId,user)));
     }
 
 }

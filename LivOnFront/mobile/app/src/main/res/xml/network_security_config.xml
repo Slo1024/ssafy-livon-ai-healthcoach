@@ -6,11 +6,8 @@
     </domain-config>
 
     <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">192.168.30.137</domain>
         <domain includeSubdomains="true">k13s406.p.ssafy.io</domain>
     </domain-config>
 
-    <!-- Fallback: allow cleartext for all (only if you understand the security implications) -->
-    <!--
-    <base-config cleartextTrafficPermitted="true" />
-    -->
 </network-security-config>

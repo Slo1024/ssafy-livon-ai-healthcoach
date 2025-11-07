@@ -1,6 +1,7 @@
 package com.livon.app.data.remote.api
 
 import android.util.Log
+import com.livon.app.BuildConfig
 import com.livon.app.data.remote.dto.ChatMessageResponseDto
 import com.livon.app.feature.shared.streaming.Urls
 import io.ktor.client.HttpClient
@@ -26,7 +27,7 @@ interface ChatApi {
 
 
 class ChatApiImpl(
-    private val baseUrl: String = ""
+    private val baseUrl: String = BuildConfig.APPLICATION_SERVER_URL
 ) : ChatApi {
 
     private val client = HttpClient(CIO) {
@@ -44,7 +45,7 @@ class ChatApiImpl(
         lastSentAt: String?,
         accessToken: String?
     ): ChatMessageResponseDto {
-        val endpoint = "$baseUrl/api/v1/goods/chat/$reservationId/message"
+        val endpoint = "$baseUrl/goods/chat/$reservationId/message"
 
         return try {
             Log.d("ChatApi", "요청 시작: $endpoint")

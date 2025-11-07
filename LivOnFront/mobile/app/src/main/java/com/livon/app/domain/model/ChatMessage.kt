@@ -1,15 +1,12 @@
 package com.livon.app.domain.model
 
-/**
- * 채팅 메시지 도메인 모델
- */
 data class ChatMessage(
     val id: String,
     val chatRoomId: Int,
     val userId: String,
     val content: String,
     val sentAt: String,
-    val role: List<String>,
+    val role: String,
     val messageType: String
 )
 

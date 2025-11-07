@@ -7,9 +7,7 @@ import com.livon.app.data.remote.dto.ChatMessageDto
 import com.livon.app.domain.model.ChatMessage
 import com.livon.app.domain.repository.ChatRepository
 
-/**
- * 채팅 메시지 Repository 구현체
- */
+
 class ChatRepositoryImpl(
     private val chatApi: ChatApi = ChatApiImpl()
 ) : ChatRepository {
@@ -41,9 +39,7 @@ class ChatRepositoryImpl(
     }
 }
 
-/**
- * DTO를 Domain Model로 변환하는 확장 함수
- */
+
 private fun ChatMessageDto.toDomainModel(): ChatMessage {
     return ChatMessage(
         id = this.id,
@@ -51,7 +47,7 @@ private fun ChatMessageDto.toDomainModel(): ChatMessage {
         userId = this.userId,
         content = this.content,
         sentAt = this.sentAt,
-        role = this.role ?: emptyList(), // null이면 빈 리스트로 변환
+        role = this.role,
         messageType = this.messageType
     )
 }

@@ -29,11 +29,10 @@ fun StreamingCheating(
     onSearch: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: StreamingChatViewModel = viewModel(),
-    chatRoomId: Int = 3
+    chatRoomId: Int = 1
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    // 화면 진입 시 채팅 메시지 로드
     LaunchedEffect(Unit) {
         viewModel.loadChatMessages(chatRoomId = chatRoomId)
     }
@@ -47,7 +46,7 @@ fun StreamingCheating(
                 CheatingBar(
                     modifier = Modifier.fillMaxWidth(),
                     onSend = { message ->
-                        viewModel.sendMessage(message, chatRoomId = chatRoomId)
+                        viewModel.sendMessage(message, "", chatRoomId = chatRoomId)
                     }
                 )
             }

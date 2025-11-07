@@ -3,6 +3,7 @@ package com.livon.app.feature.shared.streaming.vm
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.livon.app.data.remote.socket.ChatStompManager
 import com.livon.app.data.repository.ChatRepositoryImpl
 import com.livon.app.domain.model.ChatMessage
 import com.livon.app.domain.repository.ChatRepository
@@ -10,19 +11,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.UUID
 
-/**
- * 채팅 화면 UI State
- */
+
 data class StreamingChatUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val messages: List<ChatMessage> = emptyList()
 )
 
-/**
- * 채팅 화면 ViewModel
- */
 class StreamingChatViewModel(
     private val repository: ChatRepository = ChatRepositoryImpl()
 ) : ViewModel() {
@@ -31,9 +28,9 @@ class StreamingChatViewModel(
     val uiState: StateFlow<StreamingChatUiState> = _uiState
 
     fun loadChatMessages(
-        chatRoomId: Int = 3,
-        lastSentAt: String? = "2025-10-29T00:00:00",
-        accessToken: String? = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIzMmY2MWEyYS1hYTEzLTQxZWUtOTlkNS1hNjU0ZGJiMzViNjUiLCJhdXRoIjoiTUVNQkVSIiwiZXhwIjoxOTQyMTM0Mzg0fQ.0tOYhtcDx-eOzz4wKESq05E99tUfrMmWBrdcCh-1Krw"
+        chatRoomId: Int = 1,
+        lastSentAt: String? = null,
+        accessToken: String? = ""
     ) {
         viewModelScope.launch {
             Log.d("StreamingChatViewModel", "채팅 메시지 로드 시작: chatRoomId=$chatRoomId")
@@ -64,28 +61,42 @@ class StreamingChatViewModel(
 
     fun sendMessage(
         message: String,
-        chatRoomId: Int = 3,
-        userId: String = "user-${System.currentTimeMillis()}"
+        accessToken: String,
+        chatRoomId: Int = 1,
+        senderUUID: UUID = UUID.fromString("00000000-0000-0000-0000-000000000001")
     ) {
         if (message.isBlank()) return
-        
+
         viewModelScope.launch {
-            Log.d("StreamingChatViewModel", "메시지 전송: $message")
-            // TODO: 실제 메시지 전송 API 호출 구현
-            // 현재는 로컬 상태에만 추가 (임시)
+            Log.d("StreamingChatViewModel", "메시지 전송 시도: $message")
+
+            try {
+                ChatStompManager.sendMessage(
+                    token = accessToken,
+                    content = message,
+                    roomId = chatRoomId.toLong(),
+                    senderUUID = senderUUID
+                )
+                Log.d("StreamingChatViewModel", "STOMP 메시지 발행 성공")
+            } catch (e: Exception) {
+                Log.e("StreamingChatViewModel", "STOMP 메시지 발행 실패: ${e.message}", e)
+                return@launch
+            }
+
             val newMessage = ChatMessage(
                 id = System.currentTimeMillis().toString(),
                 chatRoomId = chatRoomId,
-                userId = userId,
+                userId = "me",
                 content = message,
                 sentAt = System.currentTimeMillis().toString(),
-                role = emptyList(),
-                messageType = "TEXT" // 기본 메시지 타입
+                role = "MEMBER",
+                messageType = "TEXT"
             )
             _uiState.update { state ->
                 state.copy(messages = state.messages + newMessage)
             }
         }
     }
+
 }
 

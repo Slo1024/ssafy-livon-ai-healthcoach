@@ -10,6 +10,7 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.url
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
@@ -25,9 +26,9 @@ interface ChatApi {
 
 
 class ChatApiImpl(
-    private val baseUrl: String = Urls.applicationServerUrl.trimEnd('/')
+    private val baseUrl: String = ""
 ) : ChatApi {
-    
+
     private val client = HttpClient(CIO) {
         install(ContentNegotiation) {
             json(Json {
@@ -43,19 +44,20 @@ class ChatApiImpl(
         lastSentAt: String?,
         accessToken: String?
     ): ChatMessageResponseDto {
-        val endpoint = "$baseUrl/goods/chat/$reservationId/message"
-        
+        val endpoint = "$baseUrl/api/v1/goods/chat/$reservationId/message"
+
         return try {
             Log.d("ChatApi", "요청 시작: $endpoint")
             Log.d("ChatApi", "lastSentAt: $lastSentAt")
             Log.d("ChatApi", "accessToken 존재: ${accessToken != null}")
-            
-            val response = client.get(endpoint) {
+
+            val responseText = client.get(endpoint) {
                 url {
-                    lastSentAt?.let {
-                        parameters.append("lastSentAt", it)
+                    if (!lastSentAt.isNullOrBlank() && lastSentAt.lowercase() != "null") {
+                        parameters.append("lastSentAt", lastSentAt)
                     }
                 }
+
                 accessToken?.let { token ->
                     val authHeader = if (token.startsWith("Bearer ", ignoreCase = true)) {
                         token
@@ -64,14 +66,24 @@ class ChatApiImpl(
                     }
                     header(HttpHeaders.Authorization, authHeader)
                 }
-            }.body<ChatMessageResponseDto>()
-            
-            Log.d("ChatApi", "응답 성공: isSuccess=${response.isSuccess}, message=${response.message}")
-            response
+            }.bodyAsText()
+
+            try {
+                Json.decodeFromString<ChatMessageResponseDto>(responseText)
+            } catch (e: Exception) {
+                Log.e("ChatApi", "응답 파싱 실패, 원문: $responseText")
+                ChatMessageResponseDto(
+                    isSuccess = false,
+                    code = "500",
+                    message = "서버 응답 파싱 실패",
+                    result = emptyList()
+                )
+            }
         } catch (e: Exception) {
             Log.e("ChatApi", "요청 실패: ${e.message}", e)
             throw e
         }
+
     }
 }
 

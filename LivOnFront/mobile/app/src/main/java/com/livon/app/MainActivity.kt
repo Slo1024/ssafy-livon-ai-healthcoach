@@ -27,7 +27,6 @@ class MainActivity : ComponentActivity() {
                 initialParticipantName = "User-${(0..99).random()}",
                 initialRoomName = "LiveKitRoom",
                 onJoinClicked = { roomName, participantName ->
-                    ChatStompManager.connect("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIzMmY2MWEyYS1hYTEzLTQxZWUtOTlkNS1hNjU0ZGJiMzViNjUiLCJhdXRoIjoiTUVNQkVSIiwiZXhwIjoxOTQyMTM0Mzg0fQ.0tOYhtcDx-eOzz4wKESq05E99tUfrMmWBrdcCh-1Krw")
 
                     val intent = Intent(this, RoomLayoutActivity::class.java).apply {
                         putExtra("roomName", roomName)

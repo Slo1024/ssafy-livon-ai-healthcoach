@@ -2,9 +2,11 @@ package com.s406.livon.domain.goodsChat.service;
 
 
 import com.s406.livon.domain.coach.entity.Consultation;
+import com.s406.livon.domain.coach.entity.Participant;
 import com.s406.livon.domain.coach.repository.ConsultationRepository;
 import com.s406.livon.domain.coach.repository.ParticipantRepository;
 import com.s406.livon.domain.goodsChat.document.GoodsChatMessage;
+import com.s406.livon.domain.goodsChat.dto.response.ChatRoomUserResponseDto;
 import com.s406.livon.domain.goodsChat.dto.response.GoodsChatRoomResponse;
 import com.s406.livon.domain.goodsChat.entity.GoodsChatPart;
 import com.s406.livon.domain.goodsChat.entity.GoodsChatRoom;
@@ -15,7 +17,6 @@ import com.s406.livon.domain.goodsChat.repository.GoodsChatMessageRepository;
 import com.s406.livon.domain.goodsChat.repository.GoodsChatPartRepository;
 import com.s406.livon.domain.goodsChat.repository.GoodsChatRoomRepository;
 import com.s406.livon.domain.user.entity.User;
-import com.s406.livon.domain.user.enums.Role;
 import com.s406.livon.domain.user.repository.UserRepository;
 import com.s406.livon.global.error.handler.ChatHandler;
 import com.s406.livon.global.error.handler.UserHandler;
@@ -23,10 +24,11 @@ import com.s406.livon.global.web.response.code.status.ErrorStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StopWatch;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -166,8 +168,28 @@ public class GoodsChatService {
         return chatMessages;
     }
 
-    public void getChatUsersInfo(Long chatRoomId, User user) {
-        System.out.println(chatHandler.getConnectedUsers(3L));
+    public List<ChatRoomUserResponseDto> getChatUsersConnection(Long chatRoomId, User user) {
+        boolean isParticipant = participantRepository.existsByUserIdAndConsultationId(user.getId(), chatRoomId);
+        if (!isParticipant) {
+            // 참여자가 아니면 권한 없음
+            throw new ChatHandler(ErrorStatus.USER_NOT_PARTICIPANT_VALID); // (적절한 ErrorStatus로 변경)
+        }
+        Set<UUID> uuidSet = chatHandler.getConnectedUsers(chatRoomId);
+        List<ChatRoomUserResponseDto> chatRoomUserResponseDtoList = new ArrayList<>();
+        for(UUID uuid : uuidSet){
+            chatRoomUserResponseDtoList.add(ChatRoomUserResponseDto.toDto(findUserById(uuid)));
+        }
+        return chatRoomUserResponseDtoList;
+    }
+
+    public Object getChatUsersInfo(Long chatRoomId, User user) {
+        boolean isParticipant = participantRepository.existsByUserIdAndConsultationId(user.getId(), chatRoomId);
+        if (!isParticipant) {
+            // 참여자가 아니면 권한 없음
+            throw new ChatHandler(ErrorStatus.USER_NOT_PARTICIPANT_VALID); // (적절한 ErrorStatus로 변경)
+        }
+        List<User> participantList = participantRepository.findByConsultationId(chatRoomId);
+        return participantList.stream().map(ChatRoomUserResponseDto::toDto).toList();
     }
 
     // 메시지 발신자 정보 조회 및 DTO 매핑

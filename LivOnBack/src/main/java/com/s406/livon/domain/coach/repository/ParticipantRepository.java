@@ -1,15 +1,20 @@
 package com.s406.livon.domain.coach.repository;
 
+import com.s406.livon.domain.coach.entity.Consultation;
 import com.s406.livon.domain.coach.entity.Participant;
+import com.s406.livon.domain.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 public interface ParticipantRepository extends JpaRepository<Participant, Long> {
-    
+
+    @Query("SELECT p.user FROM Participant p WHERE p.consultation.id = :consultationId") // 'p.user' (User)를 선택
+    List<User> findByConsultationId(long consultationId);
     /**
      * 특정 상담의 참가자 수 조회
      */

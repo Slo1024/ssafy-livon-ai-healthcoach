@@ -2,7 +2,7 @@
 <network-security-config>
     <!-- Allow emulator localhost and the dev server host for cleartext (HTTP) during development -->
     <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">192.168.45.101</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
     </domain-config>
 
     <domain-config cleartextTrafficPermitted="true">

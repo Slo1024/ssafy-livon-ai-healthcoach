@@ -10,6 +10,8 @@ data class CoachDto(
     val certificates: List<String>?
 )
 
+
+
 data class ConsultationDto(
     val id: Long,
     val coachId: Long,

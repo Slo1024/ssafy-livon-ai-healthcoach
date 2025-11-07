@@ -3,6 +3,7 @@ package com.livon.app.feature.shared.auth.ui
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -16,17 +17,18 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.livon.app.ui.component.button.PrimaryButtonBottom
+import com.livon.app.ui.component.button.PrimaryButtonCore
 import com.livon.app.ui.component.input.LivonTextField
 import com.livon.app.ui.component.overlay.TopBar
 import com.livon.app.ui.preview.PreviewSurface
-import androidx.compose.foundation.text.KeyboardOptions
+import com.livon.app.ui.theme.LivonTheme
 import com.livon.app.R
 import com.livon.app.ui.theme.Gray
 import com.livon.app.ui.theme.Gray2
 
 @Composable
 fun EmailLoginScreen(
+    modifier: Modifier = Modifier,
     onBack: () -> Unit = {},
     onLogin: (String, String) -> Unit = { _, _ -> },
     onSignUp: () -> Unit = {},
@@ -39,10 +41,11 @@ fun EmailLoginScreen(
 
     // 단순 검증
     val emailValid = email.contains("@") && email.contains(".")
-    val pwValid = password.length >= 8
-    val enabled = email.isNotBlank() && password.isNotBlank() && emailValid && pwValid
+    // allow passwords of any length (including < 8)
+    val enabled = email.isNotBlank() && password.isNotBlank() && emailValid
 
     CommonSignUpScreenA(
+        modifier = modifier,
         topBar = { TopBar(title = "이메일 로그인", onBack = onBack) },
         bottomBar = { } // no-op bottomBar
 
@@ -95,16 +98,17 @@ fun EmailLoginScreen(
                         .clickableNoRipple { pwVisible = !pwVisible }
                 )
             },
-            errorText = if (password.isNotEmpty() && !pwValid) "비밀번호는 8자 이상 권장해요." else null
+            // no minimum length error shown; allow any non-empty password
         )
 
         Spacer(Modifier.height(40.dp))
 
         // 로그인 버튼 — 비밀번호 입력과 하단 링크 사이에 위치
-        PrimaryButtonBottom(
+        PrimaryButtonCore(
             text = "로그인",
             enabled = enabled,
-            onClick = { if (enabled) onLogin(email, password) }
+            onClick = { if (enabled) onLogin(email, password) },
+            modifier = Modifier.fillMaxWidth().padding(16.dp)
         )
 
         Spacer(Modifier.height(12.dp))
@@ -159,4 +163,10 @@ private fun Modifier.clickableNoRipple(onClick: () -> Unit): Modifier =
 @Composable
 private fun PreviewEmailLogin_Disabled() = PreviewSurface {
     EmailLoginScreen()
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun PreviewEmailLogin() = PreviewSurface {
+    LivonTheme { EmailLoginScreen() }
 }

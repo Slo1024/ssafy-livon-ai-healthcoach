@@ -51,18 +51,4 @@ public class Participant {
                 .consultation(consultation)
                 .build();
     }
-    
-    /**
-     * 동일 사용자 확인
-     */
-    public boolean isSameUser(Long userId) {
-        return this.user.getId().equals(userId);
-    }
-    
-    /**
-     * 동일 상담 확인
-     */
-    public boolean isSameConsultation(Long consultationId) {
-        return this.consultation.getId().equals(consultationId);
-    }
 }

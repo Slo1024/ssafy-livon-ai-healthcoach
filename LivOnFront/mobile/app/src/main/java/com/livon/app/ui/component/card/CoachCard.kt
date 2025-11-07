@@ -4,15 +4,18 @@ package com.livon.app.ui.component.card
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import coil.compose.rememberAsyncImagePainter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -118,25 +121,37 @@ fun CoachCard(
                 Spacer(Modifier.width(12.dp))
 
                 // 아바타 (프로필 미등록 시 기본 아이콘)
+                val avatarPainter = if (!avatarUrl.isNullOrBlank()) {
+                    rememberAsyncImagePainter(
+                        model = avatarUrl,
+                        placeholder = painterResource(R.drawable.ic_noprofile),
+                        error = painterResource(R.drawable.ic_noprofile)
+                    )
+                } else painterResource(R.drawable.ic_noprofile)
+
                 Image(
-                    painter = painterResource(R.drawable.ic_noprofile),
-                    contentDescription = null,
-                    modifier = Modifier.size(80.dp)
-                )
+                    painter = avatarPainter,
+                    contentDescription = "coach avatar",
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .border(1.dp, Border, CircleShape),
+                    contentScale = ContentScale.Crop
+                 )
             }
         }
     }
 }
 
-/* ---------- Preview ---------- */
-@Preview(showBackground = true, name = "CoachCard")
-@Composable
-private fun PreviewCoachCard() = PreviewSurface {
-    CoachCard(
-        name = "김도윤",
-        job = "피트니스 코치",
-        intro = "유산소-근력 균형 트레이닝으로 체지방 감량과 근육 강화.\n1:1 상담 및 그룹 클래스 진행",
-        avatarUrl = null,
-        modifier = Modifier.fillMaxWidth()
-    )
-}
+///* ---------- Preview ---------- */
+//@Preview(showBackground = true, name = "CoachCard")
+//@Composable
+//private fun PreviewCoachCard() = PreviewSurface {
+//    CoachCard(
+//        name = "김도윤",
+//        job = "피트니스 코치",
+//        intro = "유산소-근력 균형 트레이닝으로 체지방 감량과 근육 강화.\n1:1 상담 및 그룹 클래스 진행",
+//        avatarUrl = null,
+//        modifier = Modifier.fillMaxWidth()
+//    )
+//}

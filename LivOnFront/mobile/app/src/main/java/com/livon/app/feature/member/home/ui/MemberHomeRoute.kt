@@ -64,6 +64,7 @@ fun MemberHomeRoute(
     upcoming: List<UpcomingItem> = emptyList(),
     upcomingReservations: List<ReservationUi> = emptyList(),
     companyName: String? = "ACME Corp.",
+    nickname: String? = null,
     modifier: Modifier = Modifier
 ) {
     val mainBlue = Color(0xFF0F74FF)
@@ -137,7 +138,14 @@ fun MemberHomeRoute(
                 Spacer(Modifier.width(14.dp))
 
                 Text(
-                    text = if (SignupState.nickname.isBlank()) "회원님" else if (SignupState.nickname.endsWith("님")) SignupState.nickname else "${SignupState.nickname}님",
+                    text = run {
+                        val fromSignup = if (SignupState.nickname.isBlank()) null else if (SignupState.nickname.endsWith("님")) SignupState.nickname else "${SignupState.nickname}님"
+                        when {
+                            !nickname.isNullOrBlank() -> nickname
+                            !fromSignup.isNullOrBlank() -> fromSignup
+                            else -> "회원님"
+                        }
+                    },
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Medium,
                     color = Color.Black,

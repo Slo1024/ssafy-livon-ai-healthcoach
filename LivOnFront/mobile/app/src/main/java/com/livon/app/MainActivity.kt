@@ -1,4 +1,3 @@
-
 package com.livon.app
 
 import android.os.Bundle
@@ -46,4 +45,4 @@ fun GreetingPreview() {
     }
 }
 
-// Android Build Type: APK Release Test Annotation 
+// Android Build Type: APK Release Test Annotation ㅅㄱ

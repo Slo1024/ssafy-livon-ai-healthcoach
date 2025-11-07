@@ -22,9 +22,11 @@ fun PasswordSetupScreen(
 ) {
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
-    val isValid = password.length >= 8 && confirmPassword.length >= 8 && password == confirmPassword
+    // allow passwords of any length; require non-empty and matching confirmation
+    val isValid = password.isNotEmpty() && confirmPassword.isNotEmpty() && password == confirmPassword
 
     CommonSignUpScreenA(
+        modifier = modifier,
         topBar = { TopBar(title = "회원가입", onBack = onBack) },
         bottomBar = {
             PrimaryButtonBottom(
@@ -70,9 +72,9 @@ fun PasswordSetupScreenPreview_Invalid() {
 @Composable
 fun PasswordSetupScreenPreview_Valid() {
     LivonTheme {
-        var password by remember { mutableStateOf("password123") }
-        var confirmPassword by remember { mutableStateOf("password123") }
-        val isValid = password.length >= 8 && confirmPassword.length >= 8 && password == confirmPassword
+        var password by remember { mutableStateOf("pw1") }
+        var confirmPassword by remember { mutableStateOf("pw1") }
+        val isValid = password.isNotEmpty() && confirmPassword.isNotEmpty() && password == confirmPassword
 
         CommonSignUpScreenA(
             topBar = { TopBar(title = "회원가입", onBack = {}) },

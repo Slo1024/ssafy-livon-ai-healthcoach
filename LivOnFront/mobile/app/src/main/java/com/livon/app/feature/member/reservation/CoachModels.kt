@@ -6,5 +6,6 @@ data class CoachUIModel(
     val job: String?,
     val intro: String,
     val avatarUrl: String?,
+    val certificates: List<String> = emptyList(),
     val isCorporate: Boolean = false
 )

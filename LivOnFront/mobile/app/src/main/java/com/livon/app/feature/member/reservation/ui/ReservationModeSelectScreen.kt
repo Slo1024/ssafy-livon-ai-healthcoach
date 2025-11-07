@@ -25,12 +25,13 @@ private const val TAG = "ResModeSelect"
 @Composable
 fun ReservationModeSelectScreen(
     modifier: Modifier = Modifier,
-    onComplete: (mode: String) -> Unit = {}
+    onComplete: (mode: String) -> Unit = {},
+    onBack: () -> Unit = {}
 ) {
     var selected by remember { mutableStateOf<String?>(null) }
 
     CommonSignUpScreenA(
-        topBar = { TopBar(title = "예약하기", onBack = {}) },
+        topBar = { TopBar(title = "예약하기", onBack = onBack) },
         bottomBar = {
             PrimaryButtonBottom(
                 text = "완료",

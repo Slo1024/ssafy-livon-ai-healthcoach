@@ -238,7 +238,13 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             coachId = coachId ?: "",
             onBack = { nav.popBackStack() },
             showSchedule = showSchedule,
-            viewModelFactory = factory
+            viewModelFactory = factory,
+            onReserve = { coachName, date, time ->
+                // encode coachName and date (ISO) into route
+                val encoded = java.net.URLEncoder.encode(coachName, "UTF-8")
+                val iso = date.toString()
+                nav.navigate("qna_submit/$encoded/$iso")
+            }
         )
     }
 

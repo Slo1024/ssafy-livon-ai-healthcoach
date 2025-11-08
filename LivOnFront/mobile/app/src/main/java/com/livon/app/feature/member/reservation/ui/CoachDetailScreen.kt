@@ -53,6 +53,13 @@ fun CoachDetailScreen(
     var showTimeSelection by remember { mutableStateOf(false) }
     var selectedTime by remember { mutableStateOf<String?>(null) }
 
+    // Placeholder availability data structures
+    // TODO: Replace these with real data coming from ViewModel / API.
+    // Example: vm.loadAvailableDates(coachId) -> sets vm.uiState.availableDates: Set<LocalDate>
+    //          vm.loadAvailableTimes(coachId, date) -> vm.uiState.availableTimesByDate[date] : List<String> (values with AM_/PM_ prefix)
+    val placeholderAvailableDates = remember { mutableStateOf<Set<LocalDate>>(emptySet()) }
+    val placeholderAvailableTimesByDate = remember { mutableStateOf<Map<LocalDate, List<String>>>(emptyMap()) }
+
     // ensure mutual exclusivity: when date changes, clear selectedTime and hide time selection
     LaunchedEffect(selectedDate) {
         if (selectedDate == null) {
@@ -82,6 +89,8 @@ fun CoachDetailScreen(
                             if (isSelectPhase) {
                                 // move from date-selection phase to time selection
                                 if (selectedDate != null) {
+                                    // when entering time selection, load available times for that date from ViewModel (if implemented)
+                                    // TODO: vm.loadAvailableTimes(coachId, selectedDate!!)
                                     showTimeSelection = true
                                     selectedTime = null
                                 }
@@ -162,14 +171,18 @@ fun CoachDetailScreen(
 
                             Spacer(Modifier.height(8.dp))
 
+                            // Wrap CalendarMonth: prevent selection when date not available
                             CalendarMonth(
                                 yearMonth = currentMonth,
                                 selected = selectedDate,
                                 onSelect = { date ->
-                                    // selecting a date clears any previously chosen time and hides time selection
-                                    selectedDate = if (selectedDate == date) null else date
-                                    selectedTime = null
-                                    showTimeSelection = false
+                                    // Only allow selecting if date is available (placeholder set empty -> allow all)
+                                    val allowed = placeholderAvailableDates.value.ifEmpty { null }?.contains(date) ?: true
+                                    if (allowed) {
+                                        selectedDate = if (selectedDate == date) null else date
+                                        selectedTime = null
+                                        showTimeSelection = false
+                                    }
                                 },
                                 modifier = Modifier.fillMaxWidth()
                             )
@@ -181,11 +194,21 @@ fun CoachDetailScreen(
                             if (showTimeSelection) {
                                 Spacer(Modifier.height(8.dp))
                                 Text(text = "오전", style = MaterialTheme.typography.titleSmall)
-                                TimeGrid(times = (1..12).map { "%d:00".format(it) }, selected = selectedTime, onSelect = { t -> selectedTime = t })
+
+                                // Build display/value pairs where value includes AM/PM to ensure uniqueness
+                                val amItems = (1..12).map { hour -> Pair("${hour}:00", "AM_${hour}:00") }
+                                // If available times for the selected date exist in placeholder map, filter, otherwise show all
+                                val availableForDate = selectedDate?.let { d -> placeholderAvailableTimesByDate.value[d] }
+                                val amFiltered = availableForDate?.filter { it.startsWith("AM_") }?.map { valStr -> Pair(valStr.removePrefix("AM_"), valStr) } ?: amItems
+
+                                TimeGrid(timeItems = amFiltered, selected = selectedTime, onSelect = { t -> selectedTime = t })
 
                                 Spacer(Modifier.height(8.dp))
                                 Text(text = "오후", style = MaterialTheme.typography.titleSmall)
-                                TimeGrid(times = (1..12).map { "%d:00".format(it) }, selected = selectedTime, onSelect = { t -> selectedTime = t })
+                                val pmItems = (1..12).map { hour -> Pair("${hour}:00", "PM_${hour}:00") }
+                                val pmFiltered = availableForDate?.filter { it.startsWith("PM_") }?.map { valStr -> Pair(valStr.removePrefix("PM_"), valStr) } ?: pmItems
+
+                                TimeGrid(timeItems = pmFiltered, selected = selectedTime, onSelect = { t -> selectedTime = t })
 
                                 Spacer(Modifier.height(40.dp)) // extra spacing so content not hidden by bottom bar
                             }
@@ -254,24 +277,28 @@ fun CoachDetailScreen(
         }
     }
 
-    LaunchedEffect(coachId) { vm.load(coachId) }
+    LaunchedEffect(coachId) {
+        vm.load(coachId)
+        // TODO: if your ViewModel provides methods to load availability, call them here
+        // e.g. vm.loadAvailableDates(coachId)
+    }
 }
 
 @Composable
-private fun TimeGrid(times: List<String>, selected: String?, onSelect: (String?) -> Unit) {
+private fun TimeGrid(timeItems: List<Pair<String, String>>, selected: String?, onSelect: (String?) -> Unit) {
     Column {
-        times.chunked(3).forEach { row ->
+        timeItems.chunked(3).forEach { row ->
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { time ->
-                    val isSelected = time == selected
+                row.forEach { (display, value) ->
+                    val isSelected = value == selected
                     OutlinedButton(
-                        onClick = { if (isSelected) onSelect(null) else onSelect(time) },
+                        onClick = { if (isSelected) onSelect(null) else onSelect(value) },
                         modifier = Modifier.size(width = 70.dp, height = 35.dp),
                         shape = RoundedCornerShape(6.dp),
                         border = BorderStroke(0.8.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline),
                         colors = ButtonDefaults.outlinedButtonColors(containerColor = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface)
                     ) {
-                        Text(text = time, style = MaterialTheme.typography.bodySmall, color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+                        Text(text = display, style = MaterialTheme.typography.bodySmall, color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
                     }
                 }
             }

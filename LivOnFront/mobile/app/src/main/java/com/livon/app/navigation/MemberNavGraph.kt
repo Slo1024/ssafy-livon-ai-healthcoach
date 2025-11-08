@@ -22,6 +22,13 @@ import java.net.URLDecoder
 import java.time.LocalDate
 import com.livon.app.feature.member.reservation.vm.ClassReservationViewModel
 
+// Added imports required for composable UI rendering in this file
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+
 fun isDebugBuild(): Boolean {
     return try {
         val cls = Class.forName("com.livon.app.BuildConfig")
@@ -310,248 +317,67 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
     // class_detail/{classId} route: show ClassDetailScreen for the selected class id
     composable("class_detail/{classId}") { backStackEntry ->
         val classId = backStackEntry.arguments?.getString("classId") ?: ""
-        // find in mockClasses; recreate the same list here or better: compute once above and reuse
-        val mockClasses = listOf(
-            SampleClassInfo(
-                id = "1",
-                coachId = "c1",
-                date = LocalDate.now(),
-                time = "11:00 ~ 12:00",
-                type = "일반 클래스",
-                imageUrl = null,
-                className = "직장인을 위한 코어 강화",
-                coachName = "김리본 코치",
-                description = "점심시간 30분 집중 코어 운동.",
-                currentParticipants = 7,
-                maxParticipants = 10
-            ),
-            SampleClassInfo(
-                id = "2",
-                coachId = "c2",
-                date = LocalDate.now().plusDays(1),
-                time = "19:00 ~ 20:00",
-                type = "기업 클래스",
-                imageUrl = null,
-                className = "퇴근 후 스트레칭",
-                coachName = "박생존 코치",
-                description = "힐링 스트레칭.",
-                currentParticipants = 10,
-                maxParticipants = 10
-            )
-            // Add other mocks if needed
-        )
-        val item = mockClasses.find { it.id == classId } ?: mockClasses.first()
 
-        ClassDetailScreen(
-            className = item.className,
-            coachName = item.coachName,
-            classInfo = item.description,
-            onBack = { nav.popBackStack() },
-            onReserveClick = { /* TODO */ },
-            onNavigateHome = { nav.navigate(Routes.MemberHome) },
-            onNavigateToMyPage = { nav.navigate("mypage") },
-            imageResId = R.drawable.ic_classphoto,
-            navController = nav
+        // Create repo to fetch class detail (network-backed, with dev fallback inside repo)
+        val groupApi = com.livon.app.core.network.RetrofitProvider.createService(
+            com.livon.app.data.remote.api.GroupConsultationApiService::class.java
         )
-    }
+        val groupRepo = remember { com.livon.app.domain.repository.GroupConsultationRepository(groupApi) }
 
-    composable("reservations") {
-        // dev mock reservations
-        val today = LocalDate.now()
-        val devCurrent = listOf(
-            ReservationUi(
-                id = "r1",
-                date = today.plusDays(1),
-                className = "개인 상담",
-                coachName = "김도윤",
-                coachRole = "임상심리사",
-                coachIntro = "마음 회복 전문",
-                timeText = "오전 10:00 ~ 11:00",
-                classIntro = "심리 상담 세션",
-                imageResId = null,
-                isLive = false
-            ),
-            ReservationUi(
-                id = "r2",
-                date = today,
-                className = "필라테스",
-                coachName = "박지성",
-                coachRole = "트레이너",
-                coachIntro = "유연성 전문가",
-                timeText = "오후 3:00 ~ 4:00",
-                classIntro = "체형 개선 그룹 레슨",
-                imageResId = null,
-                isLive = true
-            )
-        )
+        // Local mutable state to hold loaded class detail
+        val detailState = remember { androidx.compose.runtime.mutableStateOf<com.livon.app.feature.member.reservation.ui.SampleClassInfo?>(null) }
+        val errorState = remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+        val loadingState = remember { androidx.compose.runtime.mutableStateOf(true) }
 
-        val devPast = listOf(
-            ReservationUi(
-                id = "p1",
-                date = today.minusDays(5),
-                className = "개인 상담",
-                coachName = "최코치",
-                coachRole = "코치",
-                coachIntro = "코어 전문가",
-                timeText = "오전 9:00 ~ 10:00",
-                classIntro = "개인 집중 코칭",
-                imageResId = null,
-                sessionTypeLabel = "개인 상담",
-                hasAiReport = true
-            ),
-            ReservationUi(
-                id = "p2",
-                date = today.minusDays(10),
-                className = "모닝 요가",
-                coachName = "박코치",
-                coachRole = "요가",
-                coachIntro = "힐링 요가",
-                timeText = "오전 8:00 ~ 9:00",
-                classIntro = "편안한 요가",
-                imageResId = null,
-                sessionTypeLabel = "그룹 상담",
-                hasAiReport = false
-            )
-        )
-
-        ReservationStatusScreen(
-            current = devCurrent,
-            past = devPast,
-            onBack = { nav.popBackStack() },
-            onDetail = { item ->
-                // navigate to reservation detail route with id
-                nav.navigate("reservation_detail/${item.id}")
-            },
-            onCancel = { item -> /* TODO: cancel logic */ },
-            onJoin = { item -> /* TODO: join logic */ },
-            onAiAnalyze = { item ->
-                // navigate to AI result screen
-                nav.navigate("ai_result/${item.id}")
+        // Load detail when entering this composable
+        LaunchedEffect(classId) {
+            loadingState.value = true
+            errorState.value = null
+            try {
+                val res = groupRepo.fetchClassDetail(classId)
+                if (res.isSuccess) {
+                    detailState.value = res.getOrNull()
+                } else {
+                    errorState.value = res.exceptionOrNull()?.message ?: "Unknown error"
+                }
+            } catch (t: Throwable) {
+                errorState.value = t.message
+            } finally {
+                loadingState.value = false
             }
-        )
-    }
-
-    // reservation detail route: show ReservationDetailScreen based on id
-    composable("reservation_detail/{resId}") { backStackEntry ->
-        val resId = backStackEntry.arguments?.getString("resId") ?: ""
-        // Find in dev lists (recreate same lists)
-        val today = LocalDate.now()
-        val all = listOf(
-            ReservationUi(
-                id = "r1",
-                date = today.plusDays(1),
-                className = "개인 상담",
-                coachName = "김도윤",
-                coachRole = "임상심리사",
-                coachIntro = "마음 회복 전문",
-                timeText = "오전 10:00 ~ 11:00",
-                classIntro = "심리 상담 세션",
-                imageResId = null,
-                isLive = false
-            ),
-            ReservationUi(
-                id = "r2",
-                date = today,
-                className = "필라테스",
-                coachName = "박지성",
-                coachRole = "트레이너",
-                coachIntro = "유연성 전문가",
-                timeText = "오후 3:00 ~ 4:00",
-                classIntro = "체형 개선 그룹 레슨",
-                imageResId = null,
-                isLive = true
-            ),
-            ReservationUi(
-                id = "p1",
-                date = today.minusDays(5),
-                className = "개인 상담",
-                coachName = "최코치",
-                coachRole = "코치",
-                coachIntro = "코어 전문가",
-                timeText = "오전 9:00 ~ 10:00",
-                classIntro = "개인 집중 코칭",
-                imageResId = null,
-                sessionTypeLabel = "개인 상담",
-                hasAiReport = true
-            ),
-            ReservationUi(
-                id = "p2",
-                date = today.minusDays(10),
-                className = "모닝 요가",
-                coachName = "박코치",
-                coachRole = "요가",
-                coachIntro = "힐링 요가",
-                timeText = "오전 8:00 ~ 9:00",
-                classIntro = "편안한 요가",
-                imageResId = null,
-                sessionTypeLabel = "그룹 상담",
-                hasAiReport = false
-            )
-        )
-
-        val item = all.find { it.id == resId } ?: all.first()
-        val type = when {
-            // current if date >= today
-            item.date >= today -> ReservationDetailType.Current
-            item.sessionTypeLabel == "개인 상담" -> ReservationDetailType.PastPersonal
-            else -> ReservationDetailType.PastGroup
         }
 
-        // create coach and session models
-        val coachMini = CoachMini(
-            name = item.coachName,
-            title = item.coachRole,
-            specialties = item.coachIntro,
-            workplace = "연결된 직장"
-        )
-        val session = SessionInfo(
-            dateText = "${item.date.monthValue}월 ${item.date.dayOfMonth}일",
-            timeText = item.timeText,
-            modelText = item.className,
-            appliedText = null
-        )
-
-        ReservationDetailScreen(
-            type = type,
-            coach = coachMini,
-            session = session,
-            aiSummary = if (item.hasAiReport) "AI 분석 결과 예시입니다." else null,
-            qnas = listOf("Q1 내용", "Q2 내용"),
-            onBack = { nav.popBackStack() },
-            onDelete = { /* TODO */ },
-            // NOTE (dev): 현재는 개발 편의상 하드코딩된 코치 id(1)로 '코치 보기' 네비게이션을 연결해 두었습니다.
-            // 실제 배포/연동 시에는 예약 데이터(item)에 포함된 실제 코치 id를 사용해야 합니다.
-            // 예시 변경: onSeeCoach = { nav.navigate("coach_detail/${item.coachId}/personal") }
-            // 필요하시면 제가 이 매핑을 자동으로 적용해 드리겠습니다.
-            onSeeCoach = { nav.navigate("coach_detail/1/personal") },
-            onSeeAiDetail = { nav.navigate("ai_result/${item.id}") }
-        )
-    }
-
-    // AI result route
-    composable("ai_result/{resId}") { backStackEntry ->
-        val resId = backStackEntry.arguments?.getString("resId") ?: ""
-        val today = LocalDate.now()
-        val item = ReservationUi(
-            id = resId,
-            date = today.minusDays(5),
-            className = "개인 상담",
-            coachName = "최코치",
-            coachRole = "코치",
-            coachIntro = "코어 전문가",
-            timeText = "오전 9:00 ~ 10:00",
-            classIntro = "개인 집중 코칭",
-            imageResId = null,
-            sessionTypeLabel = "개인 상담",
-            hasAiReport = true
-        )
-
-        com.livon.app.feature.member.schedule.ui.AiResultScreen(
-            memberName = "김싸피",
-            counselingDateText = "${item.date.monthValue}월 ${item.date.dayOfMonth}일",
-            counselingName = item.className,
-            aiSummary = "AI 분석 결과 예시 텍스트입니다.",
-            onBack = { nav.popBackStack() }
-        )
+        // UI: show loading indicator until detail is available
+        if (loadingState.value) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            val item = detailState.value
+            if (item != null) {
+                ClassDetailScreen(
+                    className = item.className,
+                    coachName = item.coachName,
+                    classInfo = item.description,
+                    onBack = { nav.popBackStack() },
+                    onReserveClick = { /* TODO: navigate to QnA / reserve */ },
+                    onNavigateHome = { nav.navigate(Routes.MemberHome) },
+                    onNavigateToMyPage = { nav.navigate("mypage") },
+                    imageResId = R.drawable.ic_classphoto,
+                    navController = nav
+                )
+            } else {
+                // show error / fallback UI
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(text = errorState.value ?: "클래스 정보를 불러올 수 없습니다.")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(onClick = { nav.popBackStack() }) {
+                            Text(text = "뒤로가기")
+                        }
+                    }
+                }
+            }
+        }
     }
 }

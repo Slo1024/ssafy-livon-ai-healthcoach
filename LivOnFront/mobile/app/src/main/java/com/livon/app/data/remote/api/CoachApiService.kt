@@ -22,9 +22,9 @@ data class CoachListResult(
 )
 
 interface CoachApiService {
-    @GET("/coaches")
+    @GET("api/v1/coaches")
     suspend fun findCoaches(): ApiResponse<CoachListResult>
 
-    @GET("/coaches/{coachId}")
+    @GET("api/v1/coaches/{coachId}")
     suspend fun findCoachDetail(@Path("coachId") coachId: String): ApiResponse<CoachItemResponse>
 }

@@ -61,7 +61,7 @@ class StreamingChatViewModel(
                         userId = json.optString("senderId", json.optString("userId", "unknown")),
                         content = json.optString("message", ""),
                         sentAt = json.optString("sentAt", Instant.now().toString()),
-                        role = json.optString("role", "MEMBER"),
+                        role = json.optString("role", "COACH"),
                         messageType = json.optString("type", "TEXT")
                     )
                 } catch (e: Exception) {

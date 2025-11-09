@@ -1,5 +1,6 @@
 package com.livon.app.feature.member.reservation.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -48,6 +49,11 @@ fun ReservationStatusScreen(
     onJoin: (ReservationUi) -> Unit,
     onAiAnalyze: (ReservationUi) -> Unit
 ) {
+    // Ensure system back (device back) behaves the same as TopBar back
+    BackHandler {
+        onBack()
+    }
+
     var tab by remember { mutableStateOf(ReservationTab.CURRENT) }
 
     CommonScreenC(

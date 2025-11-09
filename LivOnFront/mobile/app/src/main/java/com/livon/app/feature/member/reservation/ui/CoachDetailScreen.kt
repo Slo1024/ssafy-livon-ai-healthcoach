@@ -22,6 +22,7 @@ import com.livon.app.feature.member.reservation.vm.CoachDetailViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.livon.app.ui.component.overlay.TopBar
 import com.livon.app.feature.shared.auth.ui.CommonSignUpScreenA
+import com.livon.app.feature.shared.auth.ui.CommonScreenC
 import com.livon.app.ui.preview.PreviewSurface
 import com.livon.app.ui.theme.LivonTheme
 import androidx.compose.ui.tooling.preview.Preview
@@ -224,57 +225,65 @@ fun CoachDetailScreen(
             // Because CommonSignUpScreenA reserves space for bottomBar, content includes padding to avoid overlap.
         }
     } else {
-        // Group consultation: simple scaffold with HomeNavBar at bottom and no calendar/time
-        Scaffold(
+        // Group consultation: use CommonScreenC so layout/padding matches other non-signup screens
+        CommonScreenC(
             topBar = { TopBar(title = "상세 정보", onBack = onBack) },
-            bottomBar = {
-                HomeNavBar(currentRoute = null, navController = navController, onNavigate = { route ->
-                    // default nav mapping
-                    when (route) {
-                        "home" -> navController?.navigate("member_home")
-                        "booking" -> navController?.navigate("reservation_model_select")
-                        "reservations" -> navController?.navigate("reservations")
-                        "mypage" -> navController?.navigate("mypage")
-                        else -> {}
-                    }
-                })
-            }
-        ) { inner ->
-            Column(Modifier.fillMaxSize().padding(inner).padding(20.dp)) {
-                state.coach?.let { coach ->
-                    val avatarPainter = rememberAsyncImagePainter(coach.avatarUrl ?: "")
-                    Image(
-                        painter = avatarPainter,
-                        contentDescription = "coach",
-                        modifier = Modifier
-                            .size(100.dp)
-                            .clip(CircleShape)
-                            .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
-                            .align(Alignment.CenterHorizontally),
-                        contentScale = ContentScale.Crop
-                    )
+            content = {
+                Column(Modifier.fillMaxSize().padding(top = 8.dp)) {
+                    state.coach?.let { coach ->
+                        val avatarPainter = rememberAsyncImagePainter(coach.avatarUrl ?: "")
+                        Image(
+                            painter = avatarPainter,
+                            contentDescription = "coach",
+                            modifier = Modifier
+                                .size(100.dp)
+                                .clip(CircleShape)
+                                .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                                .align(Alignment.CenterHorizontally),
+                            contentScale = ContentScale.Crop
+                        )
 
-                    Spacer(Modifier.height(12.dp))
-                    Text(text = coach.name, style = MaterialTheme.typography.titleLarge, modifier = Modifier.align(Alignment.CenterHorizontally))
-                    Spacer(Modifier.height(8.dp))
-
-                    Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                        Text(text = "코치 소개", style = MaterialTheme.typography.titleSmall)
-                        Text(text = coach.job ?: "", style = MaterialTheme.typography.bodyMedium)
+                        Spacer(Modifier.height(12.dp))
+                        Text(text = coach.name, style = MaterialTheme.typography.titleLarge, modifier = Modifier.align(Alignment.CenterHorizontally))
                         Spacer(Modifier.height(8.dp))
 
-                        Text(text = "자격증", style = MaterialTheme.typography.titleSmall)
-                        coach.certificates.forEach { cert ->
-                            Text(text = cert, style = MaterialTheme.typography.bodyMedium)
+                        Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                            Text(text = "코치 소개", style = MaterialTheme.typography.titleSmall)
+                            Text(text = coach.job ?: "", style = MaterialTheme.typography.bodyMedium)
+                            Spacer(Modifier.height(8.dp))
+
+                            Text(text = "자격증", style = MaterialTheme.typography.titleSmall)
+                            coach.certificates.forEach { cert ->
+                                Text(text = cert, style = MaterialTheme.typography.bodyMedium)
+                            }
+
+                            Spacer(Modifier.height(8.dp))
+                            Text(text = "소개", style = MaterialTheme.typography.titleSmall)
+                            Text(text = coach.intro, style = MaterialTheme.typography.bodyMedium)
                         }
-
-                        Spacer(Modifier.height(8.dp))
-                        Text(text = "소개", style = MaterialTheme.typography.titleSmall)
-                        Text(text = coach.intro, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
+            },
+            fullBleedContent = {
+                // Place HomeNavBar in full-bleed area so it's pinned at bottom similar to QnASubmitScreen / MemberHomeRoute
+                HomeNavBar(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    currentRoute = null,
+                    navController = navController,
+                    onNavigate = { route ->
+                        when (route) {
+                            "home" -> navController?.navigate("member_home")
+                            "booking" -> navController?.navigate("reservation_model_select")
+                            "reservations" -> navController?.navigate("reservations")
+                            "mypage" -> navController?.navigate("mypage")
+                            else -> {}
+                        }
+                    }
+                )
             }
-        }
+        )
     }
 
     LaunchedEffect(coachId) {

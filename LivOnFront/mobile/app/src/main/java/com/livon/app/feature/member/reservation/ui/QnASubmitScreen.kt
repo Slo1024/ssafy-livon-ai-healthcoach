@@ -184,7 +184,7 @@ fun QnASubmitScreen(
             onConfirm = {
                 showDialog = false
                 onConfirmReservation(questions.filter { it.isNotBlank() })
-                onNavigateHome()
+                // NOTE: navigation (to reservations/home) is handled by caller via onConfirmReservation in NavGraph
             },
             onChangeHealthInfo = {
                 showDialog = false
@@ -249,6 +249,7 @@ private fun QnaInputItem(
         )
     }
 }
+
 
 
 @Composable

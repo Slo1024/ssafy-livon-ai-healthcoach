@@ -11,7 +11,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import com.livon.app.feature.member.home.ui.MemberHomeRoute
 import com.livon.app.feature.member.reservation.ui.*
-import com.livon.app.feature.member.reservation.model.CoachUIModel
 import com.livon.app.feature.member.my.MyInfoUiState
 import com.livon.app.feature.member.my.MyInfoScreen
 import com.livon.app.feature.member.my.MyPageScreen
@@ -28,6 +27,7 @@ import androidx.compose.material3.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.mutableStateOf
 
 fun isDebugBuild(): Boolean {
     return try {
@@ -42,23 +42,7 @@ fun isDebugBuild(): Boolean {
 
 fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
 
-    // Reusable mock coaches for dev/debug: put at top so multiple routes can use them
-    val devMockCoaches = listOf(
-        CoachUIModel(id = "1", name = "김도윤", job = "피트니스 코치", intro = "체형 분석 기반 근력·유산소 균형 프로그램", avatarUrl = null, isCorporate = false),
-        CoachUIModel(id = "2", name = "박지성", job = "유산소 트레이너", intro = "유산소 퍼포먼스 향상 및 빌드업 계획", avatarUrl = null, isCorporate = true),
-        CoachUIModel(id = "3", name = "손흥민", job = "러닝 코치", intro = "러닝 기술, 착지 개선, 인터벌 프로그램 설계", avatarUrl = null, isCorporate = false),
-        CoachUIModel(id = "4", name = "이강인", job = "필라테스", intro = "코어 강화, 밸런싱 중심 프로그램", avatarUrl = null, isCorporate = true),
-        CoachUIModel(id = "5", name = "정우영", job = "영양 코치", intro = "체형·목표에 맞는 식단 설계 및 점검", avatarUrl = null, isCorporate = false),
-        CoachUIModel(id = "6", name = "황희찬", job = "근력 트레이너", intro = "파워 및 근성 향상 집중 트레이닝", avatarUrl = null, isCorporate = false),
-        CoachUIModel(id = "7", name = "김민재", job = "바디 리셋", intro = "스트레칭→근력 밸런싱 리커버리 플랜", avatarUrl = null, isCorporate = true),
-        CoachUIModel(id = "8", name = "조규성", job = "피트니스", intro = "근력·유연성 균형 맞춤 루틴", avatarUrl = null, isCorporate = false),
-        CoachUIModel(id = "9", name = "백승호", job = "필라테스", intro = "골반·척추 정렬 중심 루틴", avatarUrl = null, isCorporate = false),
-        CoachUIModel(id = "10", name = "이승우", job = "PT 코치", intro = "1:1 자세 교정 집중 코칭", avatarUrl = null, isCorporate = false),
-        CoachUIModel(id = "11", name = "권창훈", job = "영양", intro = "식단 전략 설계·실행 지속케어", avatarUrl = null, isCorporate = true),
-        CoachUIModel(id = "12", name = "안정환", job = "피트니스", intro = "부상 예방 중심 트레이닝", avatarUrl = null, isCorporate = false)
-    )
-
-    val useDevMocks = isDebugBuild()
+    // No dev-mock data retained here: application uses only server API responses.
 
     composable(Routes.MemberHome) {
         // Build metrics from SignupState if available, otherwise show defaults
@@ -133,7 +117,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             upcomingReservations = if (resState.items.isNotEmpty()) resState.items else if (isDebugBuild()) listOf() else emptyList(),
             companyName = null,
             nickname = userState.info?.nickname,
-            modifier = androidx.compose.ui.Modifier
+            modifier = Modifier
         )
     }
 
@@ -210,14 +194,14 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         val coachState by coachVm.uiState.collectAsState()
         LaunchedEffect(Unit) { coachVm.load() }
 
-        val coachesToShow = if (coachState.coaches.isNotEmpty()) coachState.coaches else if (useDevMocks) devMockCoaches else emptyList()
-        val isCorporate = useDevMocks
-        val loadMore = useDevMocks
+        val coachesToShow = if (coachState.coaches.isNotEmpty()) coachState.coaches else emptyList()
+        val isCorporate = false
+        val loadMore = false
 
         CoachListScreen(
             coaches = coachesToShow,
             onBack = { nav.popBackStack() },
-            modifier = androidx.compose.ui.Modifier,
+            modifier = Modifier,
             isCorporateUser = isCorporate,
             showLoadMore = loadMore,
             onLoadMore = {},
@@ -267,7 +251,23 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             coachName = decodedName,
             selectedDate = parsedDate,
             onBack = { nav.popBackStack() },
-            onConfirmReservation = { _ -> nav.navigate("reservations") },
+            onConfirmReservation = { questions ->
+                // DEV-MOCK fallback removed: do NOT persist mock reservations here.
+                // If you need a temporary local reservation during development, re-enable DevReservationStore usage here (commented out intentionally).
+                /*
+                // Dev-only helper (commented out):
+                val timeText = "오전 9:00 ~ 10:00"
+                DevReservationStore.addReservation(
+                    date = parsedDate,
+                    className = "개인 상담",
+                    coachName = decodedName,
+                    timeText = timeText,
+                    sessionTypeLabel = "개인 상담"
+                )
+                */
+                // navigate to reservations screen
+                nav.navigate("reservations")
+            },
             onNavigateHome = { nav.navigate(Routes.MemberHome) },
             onNavigateToMyHealthInfo = { /* noop */ },
             navController = nav
@@ -325,9 +325,9 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         val groupRepo = remember { com.livon.app.domain.repository.GroupConsultationRepository(groupApi) }
 
         // Local mutable state to hold loaded class detail
-        val detailState = remember { androidx.compose.runtime.mutableStateOf<com.livon.app.feature.member.reservation.ui.SampleClassInfo?>(null) }
-        val errorState = remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
-        val loadingState = remember { androidx.compose.runtime.mutableStateOf(true) }
+        val detailState = remember { mutableStateOf<SampleClassInfo?>(null) }
+        val errorState = remember { mutableStateOf<String?>(null) }
+        val loadingState = remember { mutableStateOf(true) }
 
         // Load detail when entering this composable
         LaunchedEffect(classId) {
@@ -379,5 +379,50 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 }
             }
         }
+    }
+
+    // Reservations (예약 현황) screen
+    composable("reservations") {
+        // Try to use ReservationViewModel to fetch real items; fallback to DevReservationStore on dev
+        val reservationApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.ReservationApiService::class.java)
+        val reservationRepo = remember { com.livon.app.domain.repository.ReservationRepository(reservationApi) }
+        val reservationVm = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return com.livon.app.feature.member.reservation.vm.ReservationViewModel(reservationRepo) as T
+            }
+        }) as com.livon.app.feature.member.reservation.vm.ReservationViewModel
+
+        val resState by reservationVm.uiState.collectAsState()
+        LaunchedEffect(Unit) { reservationVm.loadUpcoming() }
+
+        // If API returned items, use them. Otherwise in dev return our in-memory store
+        val currentList = if (resState.items.isNotEmpty()) resState.items else emptyList()
+
+        ReservationStatusScreen(
+            current = currentList,
+            past = emptyList(),
+            onBack = {
+                // Ensure back always goes to home, not back through the reservation flow
+                val homeRoute = Routes.MemberHome
+                // If we're already on home, just pop; otherwise navigate and clear stack up to home
+                try {
+                    if (nav.currentDestination?.route == homeRoute) {
+                        nav.popBackStack()
+                    } else {
+                        nav.navigate(homeRoute) {
+                            popUpTo(homeRoute) { inclusive = false }
+                        }
+                    }
+                } catch (t: Throwable) {
+                    // fallback: conservative pop
+                    nav.popBackStack()
+                }
+            },
+            onDetail = { /* TODO: navigate to reservation detail */ },
+            onCancel = { /* TODO: cancel reservation via API */ },
+            onJoin = { /* TODO: join live session */ },
+            onAiAnalyze = { /* TODO: show AI analysis */ }
+        )
     }
 }

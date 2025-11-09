@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 import java.util.UUID
 import java.time.Instant
 
@@ -26,11 +27,59 @@ data class StreamingChatUiState(
 )
 
 class StreamingChatViewModel(
-    private val repository: ChatRepository = ChatRepositoryImpl()
+    private val repository: ChatRepository = ChatRepositoryImpl(),
+    private val chatRoomId: Int = 43
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(StreamingChatUiState())
     val uiState: StateFlow<StreamingChatUiState> = _uiState
+
+    init {
+        // 1) STOMP 연결 (viewModelScope을 넘겨서 SharedFlow emit이 안전하게 동작하도록 함)
+        viewModelScope.launch {
+            try {
+                ChatStompManager.connect(
+                    token = BuildConfig.WEBSOCKET_TOKEN,
+                    roomId = chatRoomId.toLong(),
+                    scope = viewModelScope
+                )
+            } catch (e: Exception) {
+                Log.e("StreamingChatViewModel", "STOMP connect 실패: ${e.message}", e)
+            }
+        }
+
+        // 2) 수신된 메시지를 collect 하여 UI 상태 갱신
+        viewModelScope.launch {
+            ChatStompManager.incomingMessages.collect { payload ->
+                Log.d("StreamingChatViewModel", "수신 payload: $payload")
+                // JSON 파싱은 서버 응답 형식에 맞게 조정하세요.
+                val message = try {
+                    val json = JSONObject(payload)
+                    ChatMessage(
+                        id = json.optString("id", UUID.randomUUID().toString()),
+                        chatRoomId = json.optInt("roomId", chatRoomId),
+                        userId = json.optString("senderId", json.optString("userId", "unknown")),
+                        content = json.optString("message", ""),
+                        sentAt = json.optString("sentAt", Instant.now().toString()),
+                        role = json.optString("role", "MEMBER"),
+                        messageType = json.optString("type", "TEXT")
+                    )
+                } catch (e: Exception) {
+                    Log.e("StreamingChatViewModel", "수신 메시지 파싱 실패: ${e.message}")
+                    null
+                }
+
+                if (message != null) {
+                    _uiState.update { state ->
+                        val updated = (state.messages + message)
+                            .distinctBy { it.id }
+                            .sortedBy { it.sentAt }
+                        state.copy(messages = updated)
+                    }
+                }
+            }
+        }
+    }
 
     fun loadChatMessages(
         chatRoomId: Int = 43,

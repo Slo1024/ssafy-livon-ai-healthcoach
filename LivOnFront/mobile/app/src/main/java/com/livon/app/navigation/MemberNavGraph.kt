@@ -96,8 +96,9 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         )
 
         // setup Reservation ViewModel (no DI)
-        val reservationApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.ReservationApiService::class.java)
-        val reservationRepo = remember { com.livon.app.domain.repository.ReservationRepository(reservationApi) }
+        // ReservationRepository is an interface; use concrete implementation from data layer
+        // ReservationRepositoryImpl internally creates its Retrofit service, so we can instantiate it directly.
+        val reservationRepo = remember { com.livon.app.data.repository.ReservationRepositoryImpl() }
         val reservationVm = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
@@ -232,49 +233,163 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             showSchedule = showSchedule,
             viewModelFactory = factory,
             onReserve = { coachName, date, time ->
-                // encode coachName and date (ISO) into route
-                val encoded = java.net.URLEncoder.encode(coachName, "UTF-8")
-                val iso = date.toString()
-                nav.navigate("qna_submit/$encoded/$iso")
+                // encode coachId, coachName, date and time into route so QnA screen can perform reservation
+                val encodedName = java.net.URLEncoder.encode(coachName, "UTF-8")
+                val iso = date.toString() // yyyy-MM-dd
+                val timeEnc = java.net.URLEncoder.encode(time, "UTF-8")
+                nav.navigate("qna_submit/${coachId}/${encodedName}/${iso}/${timeEnc}")
             }
         )
     }
 
-    // New navigable route that accepts coachName and date as path params (date: ISO yyyy-MM-dd)
-    composable("qna_submit/{coachName}/{date}") { backStackEntry ->
+    // qna_submit now accepts coachId and time so we can call reservation API from here
+    composable("qna_submit/{coachId}/{coachName}/{date}/{time}") { backStackEntry ->
         val encodedName = backStackEntry.arguments?.getString("coachName") ?: ""
         val decodedName = try { URLDecoder.decode(encodedName, "UTF-8") } catch (t: Throwable) { encodedName }
+        val coachIdArg = backStackEntry.arguments?.getString("coachId") ?: ""
         val dateStr = backStackEntry.arguments?.getString("date") ?: ""
         val parsedDate = try { LocalDate.parse(dateStr) } catch (t: Throwable) { LocalDate.now() }
+        val timeRaw = backStackEntry.arguments?.getString("time") ?: ""
+        val decodedTime = try { URLDecoder.decode(timeRaw, "UTF-8") } catch (t: Throwable) { timeRaw }
+
+        // helper: convert incoming time token (like "AM_9:00" / "PM_1:00" or "09:00" / "9:00") to hour in 24h
+        fun timeTokenToHour(tok: String): Int {
+            return try {
+                val s = tok.trim()
+                when {
+                    s.startsWith("AM_") || s.startsWith("am_") -> {
+                        val hh = s.substringAfter("_").split(":")[0].toIntOrNull() ?: 9
+                        // 12 AM -> 0 hour, others as-is
+                        if (hh % 12 == 0) 0 else (hh % 12)
+                    }
+                    s.startsWith("PM_") || s.startsWith("pm_") -> {
+                        val hh = s.substringAfter("_").split(":")[0].toIntOrNull() ?: 1
+                        // 12 PM -> 12, others add 12
+                        if (hh % 12 == 0) 12 else (hh % 12) + 12
+                    }
+                    else -> {
+                        // plain form like "09:00" or "9:00" -> parse hour directly
+                        val hh = s.split(":")[0].toIntOrNull() ?: 9
+                        hh % 24
+                    }
+                }
+            } catch (t: Throwable) {
+                9 // fallback to 9am
+            }
+        }
+
+        // Use ReservationViewModel to perform reservation and observe result
+        val reservationRepoForQna = remember { com.livon.app.data.repository.ReservationRepositoryImpl() }
+        val reservationVmForQna = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return com.livon.app.feature.member.reservation.vm.ReservationViewModel(reservationRepoForQna) as T
+            }
+        }) as com.livon.app.feature.member.reservation.vm.ReservationViewModel
+
+        val actionState by reservationVmForQna.actionState.collectAsState()
+
+        // When reservation action completes, navigate to reservations (success or failure)
+        LaunchedEffect(actionState.success) {
+            if (actionState.success != null) {
+                nav.navigate("reservations") {
+                    popUpTo(Routes.MemberHome) { inclusive = false }
+                }
+            }
+        }
 
         QnASubmitScreen(
             coachName = decodedName,
             selectedDate = parsedDate,
             onBack = { nav.popBackStack() },
             onConfirmReservation = { questions ->
-                // DEV-MOCK fallback removed: do NOT persist mock reservations here.
-                // If you need a temporary local reservation during development, re-enable DevReservationStore usage here (commented out intentionally).
-                /*
-                // Dev-only helper (commented out):
-                val timeText = "오전 9:00 ~ 10:00"
-                DevReservationStore.addReservation(
-                    date = parsedDate,
-                    className = "개인 상담",
-                    coachName = decodedName,
-                    timeText = timeText,
-                    sessionTypeLabel = "개인 상담"
-                )
-                */
-                // navigate to reservations screen
-                nav.navigate("reservations")
+                val preQnA = questions.joinToString("\n")
+                val hour = timeTokenToHour(decodedTime)
+                val startAt = java.time.LocalDateTime.of(parsedDate, java.time.LocalTime.of(hour,0))
+                val endAt = startAt.plusHours(1)
+
+                // delegate to ViewModel
+                reservationVmForQna.reserveCoach(coachIdArg, startAt, endAt, preQnA)
             },
             onNavigateHome = { nav.navigate(Routes.MemberHome) },
             onNavigateToMyHealthInfo = { /* noop */ },
-            navController = nav
+            navController = nav,
+            externalError = actionState.errorMessage
         )
     }
 
-    // Keep the old qna_submit fallback for previews/tests
+    // --- ADDED FALLBACK ROUTE: accept missing 'time' segment and default to empty time ---
+    composable("qna_submit/{coachId}/{coachName}/{date}") { backStackEntry ->
+        // reuse the same logic but supply an empty time token so ViewModel can handle it
+        val encodedName = backStackEntry.arguments?.getString("coachName") ?: ""
+        val decodedName = try { URLDecoder.decode(encodedName, "UTF-8") } catch (t: Throwable) { encodedName }
+        val coachIdArg = backStackEntry.arguments?.getString("coachId") ?: ""
+        val dateStr = backStackEntry.arguments?.getString("date") ?: ""
+        val parsedDate = try { LocalDate.parse(dateStr) } catch (t: Throwable) { LocalDate.now() }
+        val decodedTime = "" // no time provided by caller
+
+        fun timeTokenToHour(tok: String): Int {
+            return try {
+                val s = tok.trim()
+                when {
+                    s.startsWith("AM_") || s.startsWith("am_") -> {
+                        val hh = s.substringAfter("_").split(":")[0].toIntOrNull() ?: 9
+                        if (hh % 12 == 0) 0 else (hh % 12)
+                    }
+                    s.startsWith("PM_") || s.startsWith("pm_") -> {
+                        val hh = s.substringAfter("_").split(":")[0].toIntOrNull() ?: 1
+                        if (hh % 12 == 0) 12 else (hh % 12) + 12
+                    }
+                    else -> {
+                        val hh = s.split(":")[0].toIntOrNull() ?: 9
+                        hh % 24
+                    }
+                }
+            } catch (t: Throwable) {
+                9
+            }
+        }
+
+        // ViewModel setup
+        val reservationRepoForQna = remember { com.livon.app.data.repository.ReservationRepositoryImpl() }
+        val reservationVmForQna = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return com.livon.app.feature.member.reservation.vm.ReservationViewModel(reservationRepoForQna) as T
+            }
+        }) as com.livon.app.feature.member.reservation.vm.ReservationViewModel
+
+        val actionState by reservationVmForQna.actionState.collectAsState()
+
+        LaunchedEffect(actionState.success) {
+            if (actionState.success != null) {
+                nav.navigate("reservations") {
+                    popUpTo(Routes.MemberHome) { inclusive = false }
+                }
+            }
+        }
+
+        QnASubmitScreen(
+            coachName = decodedName,
+            selectedDate = parsedDate,
+            onBack = { nav.popBackStack() },
+            onConfirmReservation = { questions ->
+                val preQnA = questions.joinToString("\n")
+                val hour = timeTokenToHour(decodedTime)
+                val startAt = java.time.LocalDateTime.of(parsedDate, java.time.LocalTime.of(hour,0))
+                val endAt = startAt.plusHours(1)
+
+                // delegate to ViewModel
+                reservationVmForQna.reserveCoach(coachIdArg, startAt, endAt, preQnA)
+            },
+            onNavigateHome = { nav.navigate(Routes.MemberHome) },
+            onNavigateToMyHealthInfo = { /* noop */ },
+            navController = nav,
+            externalError = actionState.errorMessage
+        )
+    }
+
+    // qna_submit fallback (no args) kept for previews/tests
     composable("qna_submit") {
         QnASubmitScreen(
             coachName = "코치",
@@ -360,7 +475,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                     coachName = item.coachName,
                     classInfo = item.description,
                     onBack = { nav.popBackStack() },
-                    onReserveClick = { /* TODO: navigate to QnA / reserve */ },
+                    onReserveClick = { nav.navigate("qna_submit_class/${item.id}") },
                     onNavigateHome = { nav.navigate(Routes.MemberHome) },
                     onNavigateToMyPage = { nav.navigate("mypage") },
                     imageResId = R.drawable.ic_classphoto,
@@ -384,8 +499,8 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
     // Reservations (예약 현황) screen
     composable("reservations") {
         // Try to use ReservationViewModel to fetch real items; fallback to DevReservationStore on dev
-        val reservationApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.ReservationApiService::class.java)
-        val reservationRepo = remember { com.livon.app.domain.repository.ReservationRepository(reservationApi) }
+        // Use concrete implementation instead of interface here as well
+        val reservationRepo = remember { com.livon.app.data.repository.ReservationRepositoryImpl() }
         val reservationVm = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
@@ -423,6 +538,45 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             onCancel = { /* TODO: cancel reservation via API */ },
             onJoin = { /* TODO: join live session */ },
             onAiAnalyze = { /* TODO: show AI analysis */ }
+        )
+    }
+    // class QnA/reserve route: class reservations (no time selection)
+    composable("qna_submit_class/{classId}") { backStackEntry ->
+        val classId = backStackEntry.arguments?.getString("classId") ?: ""
+
+        // setup reservation vm
+        val reservationRepoForClass = remember { com.livon.app.data.repository.ReservationRepositoryImpl() }
+        val reservationVmForClass = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return com.livon.app.feature.member.reservation.vm.ReservationViewModel(reservationRepoForClass) as T
+            }
+        }) as com.livon.app.feature.member.reservation.vm.ReservationViewModel
+
+        val actionState by reservationVmForClass.actionState.collectAsState()
+
+        // navigate back to reservations on success
+        LaunchedEffect(actionState.success) {
+            if (actionState.success == true) {
+                nav.navigate("reservations") {
+                    popUpTo(Routes.MemberHome) { inclusive = false }
+                }
+            }
+        }
+
+        // Show QnA screen but on confirm call reserveClass
+        QnASubmitScreen(
+            coachName = "클래스",
+            selectedDate = java.time.LocalDate.now(),
+            onBack = { nav.popBackStack() },
+            onConfirmReservation = { _ ->
+                // ignore QnA text for class reservation - backend only needs classId in path
+                reservationVmForClass.reserveClass(classId)
+            },
+            onNavigateHome = { nav.navigate(Routes.MemberHome) },
+            onNavigateToMyHealthInfo = { /* noop */ },
+            navController = nav,
+            externalError = actionState.errorMessage
         )
     }
 }

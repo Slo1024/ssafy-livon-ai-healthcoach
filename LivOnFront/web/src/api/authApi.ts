@@ -123,6 +123,16 @@ export interface ApiResponse<T> {
 
 export type SignInResponse = ApiResponse<SignInResult>;
 
+export interface UserProfile {
+  userId: string;
+  email: string;
+  nickname?: string;
+  profileImage?: string;
+  phoneNumber?: string;
+  roles?: string[];
+  role?: string | string[];
+}
+
 // 새로운 로그인 API (POST /api/v1/user/sign-in)
 export const signInApi = async (email: string, password: string): Promise<SignInResponse> => {
   const response = await axios.post<SignInResponse>(
@@ -134,6 +144,19 @@ export const signInApi = async (email: string, password: string): Promise<SignIn
     {
       headers: {
         'Content-Type': 'application/json',
+      },
+    }
+  );
+  return response.data;
+};
+
+// 사용자 정보 조회 API (GET /api/v1/user/me)
+export const getMyProfileApi = async (accessToken: string): Promise<ApiResponse<UserProfile>> => {
+  const response = await axios.get<ApiResponse<UserProfile>>(
+    `${API_BASE_URL}/api/v1/user/me`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
       },
     }
   );

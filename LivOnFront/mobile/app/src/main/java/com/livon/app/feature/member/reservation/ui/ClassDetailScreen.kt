@@ -71,13 +71,8 @@ fun ClassDetailScreen(
                 PrimaryButtonBottom(
                     text = "예약 하기",
                     onClick = {
-                        if (navController != null) {
-                            val encoded = URLEncoder.encode(coachName, "UTF-8")
-                            val iso = LocalDate.now().toString()
-                            navController.navigate("qna_submit/$encoded/$iso")
-                        } else {
-                            onReserveClick()
-                        }
+                        // Always delegate to onReserveClick; the caller (NavGraph) decides where to navigate
+                        onReserveClick()
                     },
                     bottomMargin = 0.dp,
                     applyNavPadding = false,

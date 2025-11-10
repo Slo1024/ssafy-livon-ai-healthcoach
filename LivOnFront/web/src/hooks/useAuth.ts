@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signInApi } from '../api/authApi';
+import { getMyProfileApi, signInApi } from '../api/authApi';
 import { CONFIG } from '../constants/config';
 
 interface User {
@@ -35,38 +35,68 @@ export const useAuth = () => {
       // 새로운 로그인 API 호출
       const response = await signInApi(email, password);
       
-      if (response.isSuccess) {
-        const { accessToken, refreshToken, role } = response.result;
-        
-        // 토큰 저장
-        localStorage.setItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY, accessToken);
-        localStorage.setItem(CONFIG.TOKEN.REFRESH_TOKEN_KEY, refreshToken);
-        
-        // 역할 정보 저장
-        localStorage.setItem('user_role', JSON.stringify(role));
-        
-        // 사용자 정보는 이메일로 임시 설정 (실제로는 사용자 정보 조회 API 필요)
-        const user: User = {
-          id: email, // 임시 ID
-          email: email,
-          name: email.split('@')[0], // 임시 이름
-          role: role.includes('COACH') ? 'coach' : 'member',
-        };
-        
-        localStorage.setItem(CONFIG.STORAGE_KEYS.USER_INFO, JSON.stringify(user));
-        
-        setAuthState({
-          user,
-          isAuthenticated: true,
-          isLoading: false,
-        });
-        
-        console.log('✅ 로그인 성공:', response.message);
-        return { success: true, message: response.message };
-      } else {
+      if (!response.isSuccess) {
         throw new Error(response.message || '로그인 실패');
       }
+
+      const { accessToken, refreshToken, role: loginRoles } = response.result;
+
+      // 토큰 저장 (먼저 저장하여 이후 API 호출에서 활용)
+      localStorage.setItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY, accessToken);
+      localStorage.setItem(CONFIG.TOKEN.REFRESH_TOKEN_KEY, refreshToken);
+
+      // 사용자 정보 조회
+      const profileResponse = await getMyProfileApi(accessToken);
+
+      if (!profileResponse.isSuccess) {
+        throw new Error(profileResponse.message || '사용자 정보 조회 실패');
+      }
+
+      const profile = profileResponse.result;
+
+      const normalizedRoles = Array.isArray(profile.role)
+        ? profile.role
+        : Array.isArray(profile.roles)
+          ? profile.roles
+          : Array.isArray(loginRoles)
+            ? loginRoles
+            : typeof profile.role === 'string'
+              ? [profile.role]
+              : [];
+
+      const resolvedRole: User['role'] = normalizedRoles.includes('COACH') ? 'coach' : 'member';
+
+      const resolvedEmail = profile.email || email;
+
+      const user: User = {
+        id: profile.userId ? String(profile.userId) : resolvedEmail,
+        email: resolvedEmail,
+        name: profile.nickname || resolvedEmail.split('@')[0],
+        nickname: profile.nickname,
+        role: resolvedRole,
+        profileImage: profile.profileImage,
+      };
+
+      // 역할 정보 저장
+      localStorage.setItem('user_role', JSON.stringify(normalizedRoles));
+
+      // 사용자 정보 저장
+      localStorage.setItem(CONFIG.STORAGE_KEYS.USER_INFO, JSON.stringify(user));
+      
+      setAuthState({
+        user,
+        isAuthenticated: true,
+        isLoading: false,
+      });
+      
+      console.log('✅ 로그인 성공:', response.message);
+      return { success: true, message: response.message };
     } catch (error) {
+      localStorage.removeItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
+      localStorage.removeItem(CONFIG.TOKEN.REFRESH_TOKEN_KEY);
+      localStorage.removeItem(CONFIG.STORAGE_KEYS.USER_INFO);
+      localStorage.removeItem('user_role');
+
       setAuthState(prev => ({ ...prev, isLoading: false }));
       const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.';
       console.error('❌ 로그인 오류:', errorMessage);
@@ -83,10 +113,12 @@ export const useAuth = () => {
     });
     
     // 토큰 제거
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user_info');
-    
+    localStorage.removeItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
+    localStorage.removeItem(CONFIG.TOKEN.REFRESH_TOKEN_KEY);
+    localStorage.removeItem(CONFIG.STORAGE_KEYS.USER_INFO);
+    localStorage.removeItem('user_role');
+    localStorage.removeItem('keepLoggedIn');
+
     navigate('/');
   }, [navigate]);
 
@@ -117,8 +149,8 @@ export const useAuth = () => {
   useEffect(() => {
     const checkAuthStatus = () => {
       try {
-        const token = localStorage.getItem('access_token');
-        const userInfo = localStorage.getItem('user_info');
+        const token = localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
+        const userInfo = localStorage.getItem(CONFIG.STORAGE_KEYS.USER_INFO);
         
         if (token && userInfo) {
           const user = JSON.parse(userInfo);

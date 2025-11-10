@@ -6,7 +6,7 @@
     </domain-config>
 
     <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">192.168.45.13</domain>
+        <domain includeSubdomains="true">192.168.30.137</domain>
         <domain includeSubdomains="true">k13s406.p.ssafy.io</domain>
     </domain-config>
 

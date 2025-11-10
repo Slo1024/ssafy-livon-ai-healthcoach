@@ -35,9 +35,9 @@ data class HealthSurveyResponse(
 data class ProfileImageRequest(val profileImageUrl: String)
 
 interface UserApiService {
-    @GET("api/v1/user/my-info")
+    @GET("user/my-info")
     suspend fun getMyInfo(): ApiResponse<MyInfoResponse>
 
-    @PUT("api/v1/user/profileImage")
+    @PUT("user/profileImage")
     suspend fun updateProfileImage(@Body req: ProfileImageRequest): ApiResponse<Any?>
 }

@@ -2,7 +2,7 @@ package com.s406.livon;
 
 import com.s406.livon.domain.coach.dto.request.IndivualConsultationReservationRequestDto;
 import com.s406.livon.domain.coach.entity.Consultation;
-import com.s406.livon.domain.coach.repository.ConsultationRepository;
+import com.s406.livon.domain.coach.repository.ConsultationReservationRepository;
 import com.s406.livon.domain.coach.repository.IndividualConsultationRepository;
 import com.s406.livon.domain.coach.repository.ParticipantRepository;
 import com.s406.livon.domain.coach.service.IndividualConsultationService;
@@ -41,7 +41,7 @@ class IndividualConsultationConcurrencyTest {
     private UserRepository userRepository;
 
     @Autowired
-    private ConsultationRepository consultationRepository;
+    private ConsultationReservationRepository consultationRepository;
 
     @Autowired
     private ParticipantRepository participantRepository;

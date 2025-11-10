@@ -175,11 +175,12 @@ fun StreamingCheating(
                                 }
                             }
 
-                            items(uiState.messages, key = { it.id }) { message -> // 5. 고유한 key 사용 권장
+                            items(uiState.messages, key = { it.id }) { message ->
                                 StreamingCheatingProfile(
                                     userName = message.userId,
                                     message = message.content,
-                                    time = DateFormatter.formatToTime(message.sentAt)
+                                    time = DateFormatter.formatToTime(message.sentAt),
+                                    role = message.role
                                 )
                             }
                         }

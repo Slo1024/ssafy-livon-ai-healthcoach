@@ -22,6 +22,7 @@ export const CONFIG = {
   // LiveKit 설정 (OpenVidu 3.4.1)
   LIVEKIT: {
     SERVER_URL: process.env.REACT_APP_LIVEKIT_URL || 'ws://localhost:7880',
+    APPLICATION_SERVER_URL: process.env.REACT_APP_APPLICATION_SERVER_URL || 'http://localhost:6080',
   },
   
   // 페이지네이션 설정

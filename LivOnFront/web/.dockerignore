@@ -10,7 +10,3 @@ dist
 # 운영체제 파일
 .DS_Store
 *.log
-
-# 환경 변수 파일 (Jenkins에서 주입)
-.env
-.env.*

@@ -14,14 +14,7 @@ import java.util.concurrent.TimeUnit
 object RetrofitProvider {
     // Server is serving plain HTTP on port 8082; use http:// to avoid SSL/TLS handshake errors
     private const val BASE_URL = BuildConfig.API_BASE_URL
-    private val BASE_URL: String = BuildConfig.APPLICATION_SERVER_URL
-        .let { url ->
-            when {
-                url.isBlank() -> throw IllegalStateException("APPLICATION_SERVER_URL is not configured.")
-                url.endsWith("/") -> url
-                else -> "$url/"
-            }
-        }
+
 
     private val authInterceptor = Interceptor { chain ->
         val reqBuilder = chain.request().newBuilder()

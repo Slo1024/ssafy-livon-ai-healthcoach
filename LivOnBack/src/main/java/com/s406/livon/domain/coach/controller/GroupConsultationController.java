@@ -171,6 +171,15 @@ public class GroupConsultationController {
     }
 
     // 클래스 취소하기 API(일반 사용자)
+    @Operation(summary = "클래스 참여 취소", description = "참여 중인 1:N 클래스를 취소합니다. 당일 취소는 불가능합니다.")
+    @DeleteMapping("/{consultationId}/participants")
+    public ApiResponse<Void> cancelParticipation(
+            @RequestHeader("Authorization") String token,
+            @PathVariable Long consultationId) {
 
-    // 클래스 취소하기 API(코치)
+        UUID userId = jwtTokenProvider.getUserId(token.substring(7));
+        groupConsultationService.cancelParticipation(userId, consultationId);
+
+        return ApiResponse.of(SuccessStatus.DELETE_SUCCESS, null);
+    }
 }

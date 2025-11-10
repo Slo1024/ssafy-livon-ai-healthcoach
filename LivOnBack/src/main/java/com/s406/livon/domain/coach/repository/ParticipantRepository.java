@@ -31,4 +31,16 @@ public interface ParticipantRepository extends JpaRepository<Participant, Long> 
     void deleteByConsultationId(Long consultationId);
 
     boolean existsByConsultationIdAndUserId(Long consultationId, UUID userId);
+
+    /**
+     * 사용자와 상담 ID로 참가자 조회
+     */
+    @Query("SELECT p FROM Participant p " +
+            "JOIN FETCH p.consultation c " +
+            "WHERE p.user.id = :userId " +
+            "AND p.consultation.id = :consultationId")
+    Optional<Participant> findByUserIdAndConsultationId(
+            @Param("userId") Long userId,
+            @Param("consultationId") Long consultationId
+    );
 }

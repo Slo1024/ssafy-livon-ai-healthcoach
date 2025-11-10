@@ -89,6 +89,9 @@ public enum ErrorStatus implements BaseErrorCode {
     CONSULTATION_ALREADY_STARTED(HttpStatus.BAD_REQUEST, "CONSULTATION4005", "이미 시작된 상담은 취소할 수 없습니다."),
     CONSULTATION_NOT_PARTICIPANT(HttpStatus.FORBIDDEN, "CONSULTATION4006", "해당 상담의 참여자가 아닙니다."),
 
+    PARTICIPANT_NOT_FOUND(HttpStatus.BAD_REQUEST, "PARTICIPANT4000", "해당 클래스에 참여하지 않았습니다"),
+    PARTICIPANT_CANCEL_SAME_DAY(HttpStatus.BAD_REQUEST, "PARTICIPANT4001", "당일 취소는 불가능합니다"),
+    PARTICIPANT_ALREADY_CANCELLED(HttpStatus.BAD_REQUEST, "PARTICIPANT4002", "이미 취소된 클래스입니다"),
     ;
 
 

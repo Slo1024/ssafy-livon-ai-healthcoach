@@ -14,9 +14,11 @@ import com.s406.livon.global.aop.DistributedLock;
 import com.s406.livon.global.error.handler.CoachHandler;
 import com.s406.livon.global.web.response.code.status.ErrorStatus;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -26,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class IndividualConsultationService {
 
     private final GroupConsultationService groupConsultationService;
@@ -95,7 +98,7 @@ public class IndividualConsultationService {
      * - CoachService.DEFAULT_TIME_SLOTS 에 정확히 존재
      * - 과거 시간 금지
      */
-    private void validateReservationTime(LocalDateTime startAt, LocalDateTime endAt) {
+    protected void validateReservationTime(LocalDateTime startAt, LocalDateTime endAt) {
         if (startAt == null || endAt == null) {
             throw new CoachHandler(ErrorStatus.DATE_FORM_ERROR);
         }
@@ -137,5 +140,60 @@ public class IndividualConsultationService {
         if (!CoachService.DEFAULT_TIME_SLOTS.contains(slot)) {
             throw new CoachHandler(ErrorStatus.DATE_FORM_ERROR);
         }
+    }
+
+    /**
+     * 1:1 상담 취소
+     * - 당일 취소 불가
+     * - 이미 시작된 상담 취소 불가
+     * - 코치 또는 예약한 사용자만 취소 가능
+     */
+    @Transactional
+    public void cancelOneOnOneConsultation(Long consultationId, UUID userId) {
+        // 1. Consultation 조회
+        Consultation consultation = consultationRepository.findById(consultationId)
+                .orElseThrow(() -> new CoachHandler(ErrorStatus.CONSULTATION_NOT_FOUND));
+
+        // 2. 1:1 상담인지 검증
+        if (consultation.getType() != Consultation.Type.ONE) {
+            throw new CoachHandler(ErrorStatus._BAD_REQUEST);
+        }
+
+        // 3. 이미 취소되었는지 검증
+        if (consultation.getStatus() == Consultation.Status.CANCELLED) {
+            throw new CoachHandler(ErrorStatus.CONSULTATION_ALREADY_CANCELLED);
+        }
+
+        // 4. 이미 종료되었는지 검증
+        if (consultation.getStatus() == Consultation.Status.CLOSE) {
+            throw new CoachHandler(ErrorStatus.CONSULTATION_ALREADY_CLOSED);
+        }
+
+        // 5. 이미 시작되었는지 검증
+        LocalDateTime now = LocalDateTime.now();
+        if (now.isAfter(consultation.getStartAt())) {
+            throw new CoachHandler(ErrorStatus.CONSULTATION_ALREADY_STARTED);
+        }
+
+        // 6. 당일 취소 불가 검증
+        LocalDate consultationDate = consultation.getStartAt().toLocalDate();
+        LocalDate today = LocalDate.now();
+        if (consultationDate.equals(today)) {
+            throw new CoachHandler(ErrorStatus.CONSULTATION_CANNOT_CANCEL_SAME_DAY);
+        }
+
+        // 7. 권한 검증 (코치 또는 예약한 사용자만 가능)
+        boolean isCoach = consultation.getCoach().getId().equals(userId);
+        boolean isParticipant = participantRepository
+                .existsByConsultationIdAndUserId(consultationId, userId);
+
+        if (!isCoach && !isParticipant) {
+            throw new CoachHandler(ErrorStatus.CONSULTATION_NOT_PARTICIPANT);
+        }
+
+        // 8. 상담 취소 처리
+        consultation.cancel();
+
+        log.info("1:1 상담 취소 완료 - consultationId: {}, userId: {}", consultationId, userId);
     }
 }

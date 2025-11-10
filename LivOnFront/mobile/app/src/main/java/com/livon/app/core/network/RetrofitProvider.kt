@@ -12,13 +12,14 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 import java.util.concurrent.TimeUnit
 
 object RetrofitProvider {
+    // Use APPLICATION_SERVER_URL (should include /api/v1) as the canonical base URL.
+    // Retrofit requires the baseUrl to end with a single '/'. We normalize here to avoid
+    // accidental double slashes when endpoints start with '/'.
     private val BASE_URL: String = BuildConfig.APPLICATION_SERVER_URL
         .let { url ->
-            when {
-                url.isBlank() -> throw IllegalStateException("APPLICATION_SERVER_URL is not configured.")
-                url.endsWith("/") -> url
-                else -> "$url/"
-            }
+            if (url.isBlank()) throw IllegalStateException("APPLICATION_SERVER_URL is not configured.")
+            // Normalize: remove any trailing slashes, then add exactly one.
+            url.trimEnd('/') + "/"
         }
 
     private val authInterceptor = Interceptor { chain ->

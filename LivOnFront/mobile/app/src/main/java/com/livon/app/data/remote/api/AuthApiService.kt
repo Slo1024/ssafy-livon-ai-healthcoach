@@ -24,6 +24,6 @@ data class ApiResponse<T>(
 )
 
 interface AuthApiService {
-    @POST("/api/v1/user/sign-in")
+    @POST("user/sign-in")
     suspend fun signIn(@Body req: SignInRequest): ApiResponse<SignInResult>
 }

@@ -78,8 +78,22 @@ public enum ErrorStatus implements BaseErrorCode {
     FILE_INVALID_EXTENSION(HttpStatus.BAD_REQUEST, "FILE4002", "지원하지 않는 파일 형식입니다. (jpg, jpeg, png, gif, webp만 가능)"),
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE5000", "파일 업로드에 실패했습니다."),
 
+    // 1:N 클래스 관련
+    CONSULTATION_TYPE_MISMATCH(HttpStatus.BAD_REQUEST, "CONSULT4002", "클래스 예약만 가능합니다"),
+    CONSULTATION_ALREADY_CLOSED(HttpStatus.BAD_REQUEST, "CONSULT4003", "마감된 클래스입니다"),
+    CONSULTATION_CAPACITY_FULL(HttpStatus.BAD_REQUEST, "CONSULT4004", "정원이 가득 찼습니다"),
+    CONSULTATION_ALREADY_RESERVED(HttpStatus.BAD_REQUEST, "CONSULT4005", "이미 예약한 클래스입니다"),
 
+    CONSULTATION_ALREADY_CANCELLED(HttpStatus.BAD_REQUEST, "CONSULTATION4002", "이미 취소된 상담입니다."),
+    CONSULTATION_CANNOT_CANCEL_SAME_DAY(HttpStatus.BAD_REQUEST, "CONSULTATION4004", "당일 취소는 불가능합니다."),
+    CONSULTATION_ALREADY_STARTED(HttpStatus.BAD_REQUEST, "CONSULTATION4005", "이미 시작된 상담은 취소할 수 없습니다."),
+    CONSULTATION_NOT_PARTICIPANT(HttpStatus.FORBIDDEN, "CONSULTATION4006", "해당 상담의 참여자가 아닙니다."),
+
+    PARTICIPANT_NOT_FOUND(HttpStatus.BAD_REQUEST, "PARTICIPANT4000", "해당 클래스에 참여하지 않았습니다"),
+    PARTICIPANT_CANCEL_SAME_DAY(HttpStatus.BAD_REQUEST, "PARTICIPANT4001", "당일 취소는 불가능합니다"),
+    PARTICIPANT_ALREADY_CANCELLED(HttpStatus.BAD_REQUEST, "PARTICIPANT4002", "이미 취소된 클래스입니다"),
     ;
+
 
     private final HttpStatus httpStatus;
     private final String code;

@@ -5,7 +5,6 @@ import com.s406.livon.domain.coach.dto.request.GroupConsultationUpdateRequestDto
 import com.s406.livon.domain.coach.dto.response.GroupConsultationDetailResponseDto;
 import com.s406.livon.domain.coach.dto.response.GroupConsultationListResponseDto;
 import com.s406.livon.domain.coach.service.GroupConsultationService;
-import com.s406.livon.domain.user.dto.request.SignUpDto;
 import com.s406.livon.global.security.jwt.JwtTokenProvider;
 import com.s406.livon.global.web.response.ApiResponse;
 import com.s406.livon.global.web.response.PaginatedResponse;
@@ -17,7 +16,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -152,9 +150,36 @@ public class GroupConsultationController {
                 .body(ApiResponse.of(SuccessStatus.DELETE_SUCCESS, null));
     }
 
-    // 클래스 신청하기 API
+    /**
+     * 클래스 예약
+     *
+     * @param token Authorization 헤더
+     * @param classId 예약할 클래스 ID
+     * @return 예약된 클래스 ID
+     */
+    @PostMapping("/{classId}")
+    @Operation(summary = "클래스 예약 API", description = "사용자가 그룹 상담(클래스)을 예약합니다.")
+    public ResponseEntity<ApiResponse<Long>> reserveGroupConsultation(
+            @RequestHeader("Authorization") String token,
+            @PathVariable("classId") Long classId) {
+
+        UUID userId = jwtTokenProvider.getUserId(token.substring(7));
+        Long reservedClassId = groupConsultationService.reserveGroupConsultation(userId, classId);
+
+        return ResponseEntity.ok()
+                .body(ApiResponse.of(SuccessStatus.INSERT_SUCCESS, reservedClassId));
+    }
 
     // 클래스 취소하기 API(일반 사용자)
+    @Operation(summary = "클래스 참여 취소", description = "참여 중인 1:N 클래스를 취소합니다. 당일 취소는 불가능합니다.")
+    @DeleteMapping("/{consultationId}/participants")
+    public ApiResponse<Void> cancelParticipation(
+            @RequestHeader("Authorization") String token,
+            @PathVariable Long consultationId) {
 
-    // 클래스 취소하기 API(코치)
+        UUID userId = jwtTokenProvider.getUserId(token.substring(7));
+        groupConsultationService.cancelParticipation(userId, consultationId);
+
+        return ApiResponse.of(SuccessStatus.DELETE_SUCCESS, null);
+    }
 }

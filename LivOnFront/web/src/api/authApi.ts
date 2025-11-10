@@ -1,7 +1,8 @@
 // 인증 관련 API 함수들
 import axios from 'axios';
+import { CONFIG } from '../constants/config';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
+const API_BASE_URL = CONFIG.API_BASE_URL || process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
 
 // 타입 정의
 interface LoginRequest {
@@ -96,5 +97,45 @@ export const socialLoginApi = async (provider: string, token: string): Promise<S
     provider,
     token,
   });
+  return response.data;
+};
+
+// 새로운 로그인 API 타입 정의
+export interface SignInRequest {
+  email: string;
+  password: string;
+}
+
+export interface SignInResult {
+  grantType: string;
+  accessToken: string;
+  refreshToken: string;
+  refreshTokenExpirationTime: number;
+  role: string[];
+}
+
+export interface ApiResponse<T> {
+  isSuccess: boolean;
+  code: string;
+  message: string;
+  result: T;
+}
+
+export type SignInResponse = ApiResponse<SignInResult>;
+
+// 새로운 로그인 API (POST /api/v1/user/sign-in)
+export const signInApi = async (email: string, password: string): Promise<SignInResponse> => {
+  const response = await axios.post<SignInResponse>(
+    `${API_BASE_URL}/api/v1/user/sign-in`,
+    {
+      email,
+      password,
+    },
+    {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }
+  );
   return response.data;
 };

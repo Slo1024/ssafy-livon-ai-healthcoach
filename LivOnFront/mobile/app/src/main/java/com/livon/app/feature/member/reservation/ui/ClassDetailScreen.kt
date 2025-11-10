@@ -10,7 +10,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -23,6 +22,16 @@ import com.livon.app.ui.component.button.PrimaryButtonBottom
 import com.livon.app.ui.component.navbar.HomeNavBar
 import com.livon.app.ui.component.overlay.TopBar
 import com.livon.app.ui.theme.LivonTheme
+import androidx.compose.ui.zIndex
+
+// Coil image loading
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+
+import java.net.URLEncoder
+import java.time.LocalDate
 
 /**
  * 클래스 상세 화면 (캘린더/시간 선택 없음)
@@ -40,6 +49,7 @@ fun ClassDetailScreen(
     onNavigateHome: () -> Unit,
     onNavigateToMyPage: () -> Unit,
     imageResId: Int = R.drawable.ic_classphoto, // 샘플: 실제에선 이미지 리소스/URL 연동
+    imageUrl: String? = null, // 서버에서 전달되는 이미지 URL 있으면 우선 사용
     navController: NavHostController? = null // optional nav controller to let HomeNavBar navigate directly
 ) {
     Scaffold(
@@ -51,7 +61,7 @@ fun ClassDetailScreen(
             }
         },
         bottomBar = {
-            // 제스처바/IME 안전영역은 하단 레이아웃에서만 적용
+            // QnA 화면과 동일한 하단 바 배치로 통일
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -60,10 +70,14 @@ fun ClassDetailScreen(
             ) {
                 PrimaryButtonBottom(
                     text = "예약 하기",
-                    onClick = onReserveClick,
-                    bottomMargin = 0.dp,        // 버튼과 내비바가 붙도록
-                    applyNavPadding = false      // 내부 navPadding 비활성화(중복 방지)
+                    onClick = {
+                        // Always delegate to onReserveClick; the caller (NavGraph) decides where to navigate
+                        onReserveClick()
+                    },
+                    bottomMargin = 0.dp,
+                    applyNavPadding = false,
                 )
+
                 HomeNavBar(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -71,117 +85,121 @@ fun ClassDetailScreen(
                     currentRoute = null,
                     navController = navController,
                     onNavigate = { route ->
-                        // Fallback behavior when navController not provided
                         when (route) {
                             "home" -> onNavigateHome()
                             "mypage" -> onNavigateToMyPage()
+                            "booking" -> onNavigateHome()
+                            "reservations" -> onNavigateHome()
+                            else -> Unit
                         }
                     }
                 )
             }
         }
     ) { inner ->
-        // 루트로 Column 사용하여 inner padding 적용 및 weight 사용 가능하도록 함
+        // 세로 스크롤 가능하도록 변경: preview와 실기기에서 동일하게 보이도록
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(inner)
-                .padding(horizontal = 24.dp) // 좌우 마진을 24.dp로 고정
+                .padding(horizontal = 24.dp)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.Start
         ) {
-            // 상단: 이미지 + 클래스명 (화면의 60% 차지)
-            Box(
+            // 상단: 이미지 + 클래스명
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.6f),
-                contentAlignment = Alignment.Center
+                    .wrapContentHeight(),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
+                if (!imageUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth(0.9f)
+                            .aspectRatio(16f / 9f)
+                            .clip(RoundedCornerShape(16.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
                     Image(
                         painter = painterResource(id = imageResId),
                         contentDescription = null,
                         modifier = Modifier
                             .fillMaxWidth(0.9f)
                             .aspectRatio(16f / 9f)
-                            .clip(RoundedCornerShape(16.dp))
-                    )
-
-                    Spacer(Modifier.height(20.dp))
-
-                    Text(
-                        text = className,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.SemiBold
-                        ),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp)),
+                        // 기본 이미지 리소스는 내부에서 크롭하지 않음
                     )
                 }
-            }
-
-            // 하단: 클래스 소개 등 (남은 40% 차지, 아래로 내려감)
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(0.4f),
-                horizontalAlignment = Alignment.Start
-            ) {
-                Spacer(Modifier.height(8.dp))
-
-                SectionTitle(text = "클래스 소개")
-                Spacer(Modifier.height(10.dp))
-                // 클래스 소개 본문: SemiBold 16, 회색
-                Text(
-                    text = classInfo,
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
-                    ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Start
-                )
 
                 Spacer(Modifier.height(20.dp))
 
-                // 코치 레이블 (SemiBold 14)
-                LabelText(label = "코치", fontSize = 14.sp)
-
-                Spacer(Modifier.height(10.dp))
-
-                // 코치 이름 값 (SemiBold 14, Gray)
                 Text(
-                    text = coachName,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontSize = 14.sp,
+                    text = className,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.SemiBold
                     ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
-
-                Spacer(Modifier.height(20.dp))
-
-                // 정보 레이블 (SemiBold 14)
-                LabelText(label = "정보", fontSize = 14.sp)
-
-                Spacer(Modifier.height(10.dp))
-
-                // 정보 값 (SemiBold 14, Gray)
-                Text(
-                    text = classInfo,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold
-                    ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(Modifier.height(24.dp))
             }
+
+            Spacer(Modifier.height(12.dp))
+
+            // 하단: 클래스 소개 등
+            SectionTitle(text = "클래스 소개")
+            Spacer(Modifier.height(10.dp))
+
+            // 클래스 소개 본문: SemiBold 16, 회색
+            Text(
+                text = classInfo,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Start
+            )
+
+            Spacer(Modifier.height(20.dp))
+
+            LabelText(label = "코치", fontSize = 14.sp)
+            Spacer(Modifier.height(10.dp))
+
+            Text(
+                text = coachName,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(20.dp))
+
+            LabelText(label = "정보", fontSize = 14.sp)
+            Spacer(Modifier.height(10.dp))
+
+            Text(
+                text = classInfo,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(24.dp))
+
+            // 추가 여백을 주어 내용이 길어질 때도 아래 버튼과 겹치지 않도록 함
+            Spacer(Modifier.height(72.dp))
         }
     }
 }

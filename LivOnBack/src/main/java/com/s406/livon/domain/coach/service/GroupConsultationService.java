@@ -6,29 +6,36 @@ import com.s406.livon.domain.coach.dto.response.GroupConsultationDetailResponseD
 import com.s406.livon.domain.coach.dto.response.GroupConsultationListResponseDto;
 import com.s406.livon.domain.coach.entity.Consultation;
 import com.s406.livon.domain.coach.entity.GroupConsultation;
+import com.s406.livon.domain.coach.entity.Participant;
 import com.s406.livon.domain.coach.repository.ConsultationRepository;
 import com.s406.livon.domain.coach.repository.GroupConsultationRepository;
 import com.s406.livon.domain.coach.repository.ParticipantRepository;
 import com.s406.livon.domain.user.entity.User;
 import com.s406.livon.domain.user.enums.Role;
 import com.s406.livon.domain.user.repository.UserRepository;
+import com.s406.livon.global.aop.DistributedLock;
 import com.s406.livon.global.error.handler.CoachHandler;
 import com.s406.livon.global.s3.S3Service;
 import com.s406.livon.global.web.response.code.status.ErrorStatus;
 import com.s406.livon.global.web.response.PaginatedResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 그룹 상담(클래스) 서비스
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -212,6 +219,92 @@ public class GroupConsultationService {
         // 3. Soft Delete: status를 CANCELLED로 변경
         Consultation consultation = groupConsultation.getConsultation();
         consultation.cancel();
+    }
+
+    /**
+     * 클래스 예약하기
+     */
+    @DistributedLock(
+            key = "'consultation:' + #classId",
+            waitTime = 3,
+            leaseTime = 5,
+            timeUnit = TimeUnit.SECONDS
+    )
+    public Long reserveGroupConsultation(UUID userId, Long classId) {
+
+        // 1. 사용자 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CoachHandler(ErrorStatus.USER_NOT_FOUND));
+
+        // 2. 클래스 존재 여부 확인 및 조회
+        Consultation consultation = consultationRepository.findById(classId)
+                .orElseThrow(() -> new CoachHandler(ErrorStatus.CONSULTATION_NOT_FOUND));
+
+        // 3. 클래스 타입 검증 (GROUP 타입인지 확인)
+        if (consultation.getType() != Consultation.Type.GROUP) {
+            throw new CoachHandler(ErrorStatus.CONSULTATION_TYPE_MISMATCH);
+        }
+
+        // 4. 클래스 상태 검증 (OPEN 상태인지 확인)
+        if (consultation.getStatus() != Consultation.Status.OPEN) {
+            throw new CoachHandler(ErrorStatus.CONSULTATION_ALREADY_CLOSED);
+        }
+
+        // 5. 현재 참가 인원 확인 및 정원 검증
+        Long currentParticipants = participantRepository.countByConsultationId(classId);
+        if (currentParticipants >= consultation.getCapacity()) {
+            throw new CoachHandler(ErrorStatus.CONSULTATION_CAPACITY_FULL);
+        }
+
+        // 6. 중복 예약 방지 (이미 예약한 사용자인지 확인)
+        if (participantRepository.existsByUserIdAndConsultationId(userId, classId)) {
+            throw new CoachHandler(ErrorStatus.CONSULTATION_ALREADY_RESERVED);
+        }
+
+        // 7. Participant 생성 및 저장
+        Participant participant = Participant.of(user, consultation);
+        participantRepository.save(participant);
+
+        return consultation.getId();
+    }
+
+    /**
+     * 클래스 참여 취소
+     *
+     * @param userId 취소하려는 사용자 ID
+     * @param consultationId 취소하려는 클래스 ID
+     */
+    @Transactional
+    public void cancelParticipation(UUID userId, Long consultationId) {
+        // 1. 참가자 정보 조회
+        Participant participant = participantRepository
+                .findByUserIdAndConsultationId(userId, consultationId)
+                .orElseThrow(() -> new CoachHandler(ErrorStatus.PARTICIPANT_NOT_FOUND));
+
+        Consultation consultation = participant.getConsultation();
+
+        // 2. 이미 취소된 클래스인지 확인
+        if (consultation.getStatus() == Consultation.Status.CANCELLED) {
+            throw new CoachHandler(ErrorStatus.PARTICIPANT_ALREADY_CANCELLED);
+        }
+
+        // 3. 당일 취소 불가 검증
+        LocalDate today = LocalDate.now();
+        LocalDate consultationDate = consultation.getStartAt().toLocalDate();
+
+        if (consultationDate.equals(today)) {
+            throw new CoachHandler(ErrorStatus.PARTICIPANT_CANCEL_SAME_DAY);
+        }
+
+        // 4. 이미 시작된 클래스인지 확인
+        if (consultation.getStartAt().isBefore(LocalDateTime.now())) {
+            throw new CoachHandler(ErrorStatus.CONSULTATION_ALREADY_STARTED);
+        }
+
+        // 5. 참가자 삭제
+        participantRepository.delete(participant);
+
+        log.info("클래스 참여 취소 완료 - userId: {}, consultationId: {}", userId, consultationId);
     }
     
     // === Private Helper Methods ===

@@ -1,30 +1,22 @@
 package com.livon.app.data.remote.api
 
-import retrofit2.http.GET
-import retrofit2.http.POST
 import retrofit2.http.Body
-import java.time.LocalDate
-
-// DTO matching backend; adjust fields if backend differs
-data class ReservationDto(
-    val id: String,
-    val date: String, // ISO date e.g. 2025-11-06
-    val className: String,
-    val coachName: String,
-    val coachRole: String,
-    val coachIntro: String,
-    val timeText: String,
-    val classIntro: String,
-    val imageResId: Int? = null,
-    val isLive: Boolean = false,
-    val sessionTypeLabel: String? = null,
-    val hasAiReport: Boolean = false
-)
+import retrofit2.http.POST
+import retrofit2.http.Path
 
 interface ReservationApiService {
-    @GET("/api/v1/reservations/upcoming")
-    suspend fun getUpcoming(): List<ReservationDto>
+    /**
+     * 개인 상담 예약
+     * POST /individual-consultations  (baseUrl에 /api/v1 포함된 경우를 지원)
+     * Body: ReserveCoachRequest
+     */
+    @POST("individual-consultations")
+    suspend fun reserveCoach(@Body req: ReserveCoachRequest): ApiResponse<Int>
 
-    @POST("/api/v1/reservations")
-    suspend fun createReservation(@Body req: Any): ReservationDto
+    /**
+     * 그룹(클래스) 예약
+     * POST /group-consultations/{classId}  (baseUrl에 /api/v1 포함된 경우를 지원)
+     */
+    @POST("group-consultations/{classId}")
+    suspend fun reserveClass(@Path("classId") classId: String): ApiResponse<Int>
 }

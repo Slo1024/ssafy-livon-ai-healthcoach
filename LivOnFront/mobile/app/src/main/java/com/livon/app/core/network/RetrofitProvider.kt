@@ -12,9 +12,15 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 import java.util.concurrent.TimeUnit
 
 object RetrofitProvider {
-    // Server is serving plain HTTP on port 8082; use http:// to avoid SSL/TLS handshake errors
-    private const val BASE_URL = BuildConfig.API_BASE_URL
-
+    // Use APPLICATION_SERVER_URL (should include /api/v1) as the canonical base URL.
+    // Retrofit requires the baseUrl to end with a single '/'. We normalize here to avoid
+    // accidental double slashes when endpoints start with '/'.
+    private val BASE_URL: String = BuildConfig.APPLICATION_SERVER_URL
+        .let { url ->
+            if (url.isBlank()) throw IllegalStateException("APPLICATION_SERVER_URL is not configured.")
+            // Normalize: remove any trailing slashes, then add exactly one.
+            url.trimEnd('/') + "/"
+        }
 
     private val authInterceptor = Interceptor { chain ->
         val reqBuilder = chain.request().newBuilder()

@@ -16,10 +16,9 @@ data class ReserveCoachRequest(
 // We'll reuse ApiResponse<T> defined in AuthApiService.kt
 
 interface ReservationApi {
-    @POST("api/v1/individual-consultations")
+    @POST("individual-consultations")
     suspend fun reserveCoach(@Body req: ReserveCoachRequest): ApiResponse<Int>
 
-    @POST("api/v1/group-consultations/{classId}")
+    @POST("group-consultations/{classId}")
     suspend fun reserveClass(@Path("classId") classId: String): ApiResponse<Int>
 }
-

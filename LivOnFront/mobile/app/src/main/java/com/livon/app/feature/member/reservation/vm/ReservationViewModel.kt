@@ -43,9 +43,40 @@ class ReservationViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             try {
-                // 현재 백엔드에 upcoming API가 없으므로 빈 리스트를 사용합니다.
-                // 추후 server API가 준비되면 repo 또는 api를 통해 실제 데이터를 가져오도록 변경하세요.
-                val mapped = emptyList<ReservationUi>()
+                // Read in-memory cached reservations (written by ReservationRepositoryImpl on create)
+                val local = try {
+                    com.livon.app.data.repository.ReservationRepositoryImpl.localReservations.toList()
+                } catch (t: Throwable) {
+                    emptyList()
+                }
+
+                // Map repository LocalReservation -> ReservationUi
+                val mapped = local.map { lr ->
+                    val start = try {
+                        java.time.LocalDateTime.parse(lr.startAt)
+                    } catch (t: Throwable) {
+                        java.time.LocalDateTime.now()
+                    }
+                    val end = try {
+                        java.time.LocalDateTime.parse(lr.endAt)
+                    } catch (t: Throwable) {
+                        start.plusHours(1)
+                    }
+
+                    ReservationUi(
+                        id = lr.id.toString(),
+                        date = start.toLocalDate(),
+                        className = if (lr.type.name == "PERSONAL") "개인 상담" else "그룹 클래스",
+                        coachName = lr.coachId,
+                        coachRole = "",
+                        coachIntro = "",
+                        timeText = formatTimeText(start, end),
+                        classIntro = "",
+                        imageResId = null,
+                        isLive = false
+                    )
+                }
+
                 _uiState.value = ReservationsUiState(items = mapped, isLoading = false)
             } catch (t: Throwable) {
                 _uiState.value = ReservationsUiState(items = emptyList(), isLoading = false, errorMessage = t.message)

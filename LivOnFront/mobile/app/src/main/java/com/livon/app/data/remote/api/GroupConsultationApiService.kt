@@ -49,10 +49,9 @@ data class GroupConsultationDetailDto(
 )
 
 interface GroupConsultationApiService {
-    @GET("api/v1/group-consultations")
+    @GET("group-consultations")
     suspend fun findClasses(): ApiResponse<PaginatedGroupConsultationListResult>
 
-    @GET("api/v1/group-consultations/{id}")
+    @GET("group-consultations/{id}")
     suspend fun findClassDetail(@Path("id") id: String): ApiResponse<GroupConsultationDetailDto>
 }
-

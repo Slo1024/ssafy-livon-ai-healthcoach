@@ -7,16 +7,16 @@ import retrofit2.http.Path
 interface ReservationApiService {
     /**
      * 개인 상담 예약
-     * POST /api/v1/individual-consultations
+     * POST /individual-consultations  (baseUrl에 /api/v1 포함된 경우를 지원)
      * Body: ReserveCoachRequest
      */
-    @POST("api/v1/individual-consultations")
+    @POST("individual-consultations")
     suspend fun reserveCoach(@Body req: ReserveCoachRequest): ApiResponse<Int>
 
     /**
      * 그룹(클래스) 예약
-     * POST /api/v1/group-consultations/{classId}
+     * POST /group-consultations/{classId}  (baseUrl에 /api/v1 포함된 경우를 지원)
      */
-    @POST("api/v1/group-consultations/{classId}")
+    @POST("group-consultations/{classId}")
     suspend fun reserveClass(@Path("classId") classId: String): ApiResponse<Int>
 }

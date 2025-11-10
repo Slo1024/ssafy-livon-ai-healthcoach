@@ -2,7 +2,7 @@ package com.s406.livon.domain.goodsChat.service;
 
 
 import com.s406.livon.domain.coach.entity.Consultation;
-import com.s406.livon.domain.coach.repository.ConsultationRepository;
+import com.s406.livon.domain.coach.repository.ConsultationReservationRepository;
 import com.s406.livon.domain.coach.repository.ParticipantRepository;
 import com.s406.livon.domain.goodsChat.document.GoodsChatMessage;
 import com.s406.livon.domain.goodsChat.dto.response.GoodsChatRoomResponse;
@@ -15,7 +15,6 @@ import com.s406.livon.domain.goodsChat.repository.GoodsChatMessageRepository;
 import com.s406.livon.domain.goodsChat.repository.GoodsChatPartRepository;
 import com.s406.livon.domain.goodsChat.repository.GoodsChatRoomRepository;
 import com.s406.livon.domain.user.entity.User;
-import com.s406.livon.domain.user.enums.Role;
 import com.s406.livon.domain.user.repository.UserRepository;
 import com.s406.livon.global.error.handler.ChatHandler;
 import com.s406.livon.global.error.handler.UserHandler;
@@ -23,7 +22,6 @@ import com.s406.livon.global.web.response.code.status.ErrorStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StopWatch;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -41,7 +39,7 @@ public class GoodsChatService {
     private final GoodsChatPartRepository partRepository;
     private final GoodsChatMessageRepository messageRepository;
     private final GoodsChatEventPublisher eventPublisher;
-    private final ConsultationRepository consultationRepository;
+    private final ConsultationReservationRepository consultationRepository;
     private final GoodsChatCacheManager goodsChatCacheManager;
     private final ParticipantRepository participantRepository;
     private final GoodsChatPartRepository goodsChatPartRepository;

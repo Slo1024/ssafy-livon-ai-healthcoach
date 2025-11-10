@@ -98,4 +98,8 @@ public interface GroupConsultationRepository extends JpaRepository<GroupConsulta
     WHERE gc.id = :id
     """)
     List<Object[]> findByIdWithParticipantCount(@Param("id") Long id);
+
+    // 여러 개 한번에 조회 (N+1 방지)
+    @Query("SELECT gc FROM GroupConsultation gc WHERE gc.consultation.id IN :consultationIds")
+    List<GroupConsultation> findByConsultationIdIn(@Param("consultationIds") List<Long> consultationIds);
 }

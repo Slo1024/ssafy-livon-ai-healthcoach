@@ -2,8 +2,8 @@ package com.s406.livon.domain.goodsChat.service;
 
 
 import com.s406.livon.domain.coach.entity.Consultation;
+import com.s406.livon.domain.coach.repository.ConsultationReservationRepository;
 import com.s406.livon.domain.coach.entity.Participant;
-import com.s406.livon.domain.coach.repository.ConsultationRepository;
 import com.s406.livon.domain.coach.repository.ParticipantRepository;
 import com.s406.livon.domain.goodsChat.document.GoodsChatMessage;
 import com.s406.livon.domain.goodsChat.dto.response.ChatRoomUserResponseDto;
@@ -43,7 +43,7 @@ public class GoodsChatService {
     private final GoodsChatPartRepository partRepository;
     private final GoodsChatMessageRepository messageRepository;
     private final GoodsChatEventPublisher eventPublisher;
-    private final ConsultationRepository consultationRepository;
+    private final ConsultationReservationRepository consultationRepository;
     private final GoodsChatCacheManager goodsChatCacheManager;
     private final ParticipantRepository participantRepository;
     private final GoodsChatPartRepository goodsChatPartRepository;

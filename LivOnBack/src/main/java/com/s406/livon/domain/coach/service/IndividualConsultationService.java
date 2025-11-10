@@ -4,7 +4,7 @@ import com.s406.livon.domain.coach.dto.request.IndivualConsultationReservationRe
 import com.s406.livon.domain.coach.entity.Consultation;
 import com.s406.livon.domain.coach.entity.IndividualConsultation;
 import com.s406.livon.domain.coach.entity.Participant;
-import com.s406.livon.domain.coach.repository.ConsultationRepository;
+import com.s406.livon.domain.coach.repository.ConsultationReservationRepository;
 import com.s406.livon.domain.coach.repository.GroupConsultationRepository;
 import com.s406.livon.domain.coach.repository.IndividualConsultationRepository;
 import com.s406.livon.domain.coach.repository.ParticipantRepository;
@@ -33,7 +33,7 @@ public class IndividualConsultationService {
 
     private final GroupConsultationService groupConsultationService;
     private final GroupConsultationRepository groupConsultationRepository;
-    private final ConsultationRepository consultationRepository;
+    private final ConsultationReservationRepository consultationRepository;
     private final IndividualConsultationRepository individualConsultationRepository;
     private final UserRepository userRepository;
     private final ParticipantRepository participantRepository;

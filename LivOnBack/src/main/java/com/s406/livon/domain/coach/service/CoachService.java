@@ -8,7 +8,7 @@ import com.s406.livon.domain.coach.dto.response.CoachDetailResponseDto;
 import com.s406.livon.domain.coach.dto.response.CoachListResponseDto;
 import com.s406.livon.domain.coach.entity.Consultation;
 import com.s406.livon.domain.coach.repository.CoachRepository;
-import com.s406.livon.domain.coach.repository.ConsultationRepository;
+import com.s406.livon.domain.coach.repository.ConsultationReservationRepository;
 import com.s406.livon.domain.user.entity.CoachInfo;
 import com.s406.livon.domain.user.entity.User;
 import com.s406.livon.domain.user.enums.Role;
@@ -47,7 +47,7 @@ public class CoachService {
     private final CoachRepository coachRepository;
     private final CoachInfoRepository coachInfoRepository;
     private final CoachCertificatesRepository coachCertificateRepository;
-    private final ConsultationRepository consultationRepository;
+    private final ConsultationReservationRepository consultationRepository;
     private final UserRepository userRepository;
 
     // 기본 근무 시간대 (9시~18시, 1시간 단위)
@@ -131,6 +131,7 @@ public class CoachService {
                 coachInfo != null ? coachInfo.getJob() : null,
                 coachInfo != null ? coachInfo.getIntroduce() : null,
                 coach.getProfileImage(),
+                coach.getOrganizations().getName(),
                 certificates
         );
     }

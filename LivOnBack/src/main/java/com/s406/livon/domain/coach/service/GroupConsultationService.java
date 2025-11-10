@@ -7,7 +7,7 @@ import com.s406.livon.domain.coach.dto.response.GroupConsultationListResponseDto
 import com.s406.livon.domain.coach.entity.Consultation;
 import com.s406.livon.domain.coach.entity.GroupConsultation;
 import com.s406.livon.domain.coach.entity.Participant;
-import com.s406.livon.domain.coach.repository.ConsultationRepository;
+import com.s406.livon.domain.coach.repository.ConsultationReservationRepository;
 import com.s406.livon.domain.coach.repository.GroupConsultationRepository;
 import com.s406.livon.domain.coach.repository.ParticipantRepository;
 import com.s406.livon.domain.user.entity.User;
@@ -42,7 +42,7 @@ import java.util.concurrent.TimeUnit;
 public class GroupConsultationService {
     
     private final GroupConsultationRepository groupConsultationRepository;
-    private final ConsultationRepository consultationRepository;
+    private final ConsultationReservationRepository consultationRepository;
     private final ParticipantRepository participantRepository;
     private final UserRepository userRepository;
     private final S3Service s3Service;

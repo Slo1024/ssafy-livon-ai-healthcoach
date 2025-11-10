@@ -184,7 +184,7 @@ export const getMyProfileApi = async (
   accessToken: string
 ): Promise<ApiResponse<UserProfile>> => {
   const response = await axios.get<ApiResponse<UserProfile>>(
-    `${API_BASE_URL}/api/v1/user/me`,
+    `${API_BASE_URL}/api/v1/user/my-info`,
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,

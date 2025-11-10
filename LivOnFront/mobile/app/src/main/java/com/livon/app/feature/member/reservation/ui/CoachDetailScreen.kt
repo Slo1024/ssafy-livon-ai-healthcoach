@@ -116,16 +116,16 @@ fun CoachDetailScreen(
                     .padding(bottom = 8.dp)
             ) {
                 state.coach?.let { coach ->
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(24.dp))
 
                     val avatarPainter = rememberAsyncImagePainter(coach.avatarUrl ?: "")
                     Image(
                         painter = avatarPainter,
                         contentDescription = "coach",
                         modifier = Modifier
-                            .size(120.dp)
+                            .size(150.dp)
                             .clip(CircleShape)
-                            .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+//                            .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
                             .align(Alignment.CenterHorizontally),
                         contentScale = ContentScale.Crop
                     )
@@ -133,24 +133,26 @@ fun CoachDetailScreen(
                     Spacer(Modifier.height(16.dp))
 
                     Text(text = coach.name, style = MaterialTheme.typography.titleLarge, modifier = Modifier.align(Alignment.CenterHorizontally))
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(12.dp))
 
-                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
-                        Text(text = "코치 소개", style = MaterialTheme.typography.titleSmall)
+                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+                        Text(text = "코치 소개", style = MaterialTheme.typography.titleLarge)
+                        Spacer(Modifier.height(16.dp))
+                        Text(text = "직무", style = MaterialTheme.typography.titleLarge)
                         Text(text = coach.job ?: "", style = MaterialTheme.typography.bodyMedium)
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(16.dp))
 
-                        Text(text = "자격증", style = MaterialTheme.typography.titleSmall)
+                        Text(text = "자격증", style = MaterialTheme.typography.titleLarge)
                         coach.certificates.forEach { cert ->
                             Text(text = cert, style = MaterialTheme.typography.bodyMedium)
                         }
 
-                        Spacer(Modifier.height(8.dp))
-                        Text(text = "소개", style = MaterialTheme.typography.titleSmall)
+                        Spacer(Modifier.height(16.dp))
+                        Text(text = "소개", style = MaterialTheme.typography.titleLarge)
                         Text(text = coach.intro, style = MaterialTheme.typography.bodyMedium)
                     }
 
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(24.dp))
 
                     Box(
                         modifier = Modifier
@@ -297,12 +299,12 @@ fun CoachDetailScreen(
 private fun TimeGrid(timeItems: List<Pair<String, String>>, selected: String?, onSelect: (String?) -> Unit) {
     Column {
         timeItems.chunked(3).forEach { row ->
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 row.forEach { (display, value) ->
                     val isSelected = value == selected
                     OutlinedButton(
                         onClick = { if (isSelected) onSelect(null) else onSelect(value) },
-                        modifier = Modifier.size(width = 70.dp, height = 35.dp),
+                        modifier = Modifier.size(width = 100.dp, height = 35.dp),
                         shape = RoundedCornerShape(6.dp),
                         border = BorderStroke(0.8.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline),
                         colors = ButtonDefaults.outlinedButtonColors(containerColor = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface)
@@ -311,15 +313,12 @@ private fun TimeGrid(timeItems: List<Pair<String, String>>, selected: String?, o
                     }
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(16.dp))
         }
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-private fun PreviewCoachDetail() = PreviewSurface {
-    LivonTheme {
-        CoachDetailScreen(coachId = "1", onBack = {}, onReserve = { _, _, _ -> })
-    }
-}
+
+
+
+

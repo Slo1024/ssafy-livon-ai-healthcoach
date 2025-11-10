@@ -3,7 +3,6 @@ package com.livon.app.feature.member.auth.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.android.datatransport.BuildConfig
 import com.livon.app.data.session.SessionManager
 import com.livon.app.domain.repository.AuthRepository
 import kotlinx.coroutines.Dispatchers
@@ -36,15 +35,8 @@ class AuthViewModel(private val repo: AuthRepository) : ViewModel() {
                 }
             }
 
-            // If we reach here, login failed or no token returned
-            if (BuildConfig.DEBUG) {
-                // Dev fallback: accept any credentials and create a dummy token so devs can progress
-                val devToken = "dev-token-${System.currentTimeMillis()}"
-                SessionManager.saveToken(devToken)
-                _state.value = AuthUiState(isLoading = false, success = true)
-            } else {
-                _state.value = AuthUiState(isLoading = false, error = (res.exceptionOrNull()?.message ?: "로그인 실패"))
-            }
+            // No dev fallback: surface the failure to UI
+            _state.value = AuthUiState(isLoading = false, error = (res.exceptionOrNull()?.message ?: "로그인 실패"))
         }
     }
 }

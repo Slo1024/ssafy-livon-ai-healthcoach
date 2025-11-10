@@ -45,4 +45,4 @@ fun GreetingPreview() {
     }
 }
 
-// Android Build Type: APK Release Test Annotation ㅅㄱ
+// Android Build Type: APK Release Test Annotation

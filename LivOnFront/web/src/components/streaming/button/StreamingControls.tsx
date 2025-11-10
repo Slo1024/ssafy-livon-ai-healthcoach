@@ -4,37 +4,66 @@ import videoOffIcon from '../../../assets/images/video_off.png';
 
 const ControlBar = styled.div`
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
   padding: 12px 24px;
   background-color: rgba(0, 0, 0, 0.9);
   color: #ffffff;
   position: relative;
+  gap: 16px;
+  min-width: 0;
+  flex-wrap: nowrap;
+
+  @media (max-width: 1200px) {
+    padding: 12px 16px;
+    gap: 12px;
+  }
+
+  @media (max-width: 900px) {
+    padding: 12px 12px;
+    gap: 8px;
+  }
 `;
 
 const ControlBarLeft = styled.div`
   display: flex;
   gap: 16px;
   align-items: center;
-  flex: 1;
+  flex-shrink: 0;
   visibility: hidden;
+  width: 0;
+  min-width: 0;
 `;
 
 const ControlBarCenter = styled.div`
   display: flex;
   gap: 16px;
   align-items: center;
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  flex: 1;
+  justify-content: center;
+  min-width: 0;
+  flex-wrap: wrap;
+
+  @media (max-width: 1200px) {
+    gap: 12px;
+  }
+
+  @media (max-width: 900px) {
+    gap: 8px;
+  }
+
+  @media (max-width: 768px) {
+    gap: 6px;
+  }
 `;
 
 const ControlBarRight = styled.div`
   display: flex;
   gap: 8px;
   align-items: center;
-  flex: 1;
+  flex-shrink: 0;
   justify-content: flex-end;
+  min-width: 0;
 `;
 
 const ControlButton = styled.button<{ $active?: boolean; $variant?: 'danger' }>`
@@ -56,11 +85,45 @@ const ControlButton = styled.button<{ $active?: boolean; $variant?: 'danger' }>`
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   transition: all 0.2s ease;
   width: 100px;
-  min-width: 100px;
+  min-width: 80px;
   max-width: 100px;
   white-space: nowrap;
   box-sizing: border-box;
-  flex-shrink: 0;
+  flex-shrink: 1;
+
+  @media (max-width: 1200px) {
+    width: 90px;
+    min-width: 70px;
+    max-width: 90px;
+    padding: 8px 8px;
+    font-size: 11px;
+  }
+
+  @media (max-width: 900px) {
+    width: 75px;
+    min-width: 60px;
+    max-width: 75px;
+    padding: 6px 6px;
+    font-size: 10px;
+    
+    svg {
+      width: 20px;
+      height: 20px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    width: 65px;
+    min-width: 55px;
+    max-width: 65px;
+    padding: 6px 4px;
+    font-size: 9px;
+    
+    svg {
+      width: 18px;
+      height: 18px;
+    }
+  }
   
   &:hover {
     color: ${props => props.$variant === 'danger' ? '#ffffff' : '#ffffff'};
@@ -94,6 +157,23 @@ const LeaveButton = styled.button`
   font-weight: 500;
   cursor: pointer;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  @media (max-width: 1200px) {
+    padding: 10px 20px;
+    font-size: 13px;
+  }
+
+  @media (max-width: 900px) {
+    padding: 10px 16px;
+    font-size: 12px;
+  }
+
+  @media (max-width: 768px) {
+    padding: 8px 12px;
+    font-size: 11px;
+  }
   
   &:hover {
     background-color: #b91c1c;

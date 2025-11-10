@@ -297,7 +297,7 @@ class RoomLayoutActivity : AppCompatActivity() {
     private suspend fun getToken(roomName: String, participantName: String): String {
         val response = client.post(Urls.applicationServerUrl + "token") {
             contentType(ContentType.Application.Json)
-            setBody(TokenRequest(participantName, roomName))
+            setBody(TokenRequest(roomName, participantName))
         }
 
         Log.d("token", response.body<TokenResponse>().token)

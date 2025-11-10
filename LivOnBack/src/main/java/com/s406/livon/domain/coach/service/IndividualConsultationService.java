@@ -95,7 +95,7 @@ public class IndividualConsultationService {
      * - CoachService.DEFAULT_TIME_SLOTS 에 정확히 존재
      * - 과거 시간 금지
      */
-    private void validateReservationTime(LocalDateTime startAt, LocalDateTime endAt) {
+    protected void validateReservationTime(LocalDateTime startAt, LocalDateTime endAt) {
         if (startAt == null || endAt == null) {
             throw new CoachHandler(ErrorStatus.DATE_FORM_ERROR);
         }

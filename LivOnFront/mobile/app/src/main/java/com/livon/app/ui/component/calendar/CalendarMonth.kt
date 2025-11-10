@@ -17,6 +17,7 @@ import java.time.LocalDate
 import java.time.YearMonth
 import kotlin.math.ceil
 import com.livon.app.ui.theme.LivonTheme
+import com.livon.app.ui.theme.Basic
 
 @Composable
 fun MonthNavigator(
@@ -43,7 +44,10 @@ fun CalendarMonth(
     onSelect: (LocalDate) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier) {
+    Column(
+        modifier = modifier
+            .background(Basic)
+    ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             listOf("일","월","화","수","목","금","토").forEach {
                 Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {

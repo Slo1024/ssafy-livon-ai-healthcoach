@@ -6,12 +6,14 @@ import com.s406.livon.domain.coach.dto.response.GroupConsultationDetailResponseD
 import com.s406.livon.domain.coach.dto.response.GroupConsultationListResponseDto;
 import com.s406.livon.domain.coach.entity.Consultation;
 import com.s406.livon.domain.coach.entity.GroupConsultation;
+import com.s406.livon.domain.coach.entity.Participant;
 import com.s406.livon.domain.coach.repository.ConsultationRepository;
 import com.s406.livon.domain.coach.repository.GroupConsultationRepository;
 import com.s406.livon.domain.coach.repository.ParticipantRepository;
 import com.s406.livon.domain.user.entity.User;
 import com.s406.livon.domain.user.enums.Role;
 import com.s406.livon.domain.user.repository.UserRepository;
+import com.s406.livon.global.aop.DistributedLock;
 import com.s406.livon.global.error.handler.CoachHandler;
 import com.s406.livon.global.s3.S3Service;
 import com.s406.livon.global.web.response.code.status.ErrorStatus;
@@ -25,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 그룹 상담(클래스) 서비스
@@ -212,6 +215,53 @@ public class GroupConsultationService {
         // 3. Soft Delete: status를 CANCELLED로 변경
         Consultation consultation = groupConsultation.getConsultation();
         consultation.cancel();
+    }
+
+    /**
+     * 클래스 예약하기
+     */
+    @DistributedLock(
+            key = "'consultation:' + #classId",
+            waitTime = 3,
+            leaseTime = 5,
+            timeUnit = TimeUnit.SECONDS
+    )
+    public Long reserveGroupConsultation(UUID userId, Long classId) {
+
+        // 1. 사용자 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CoachHandler(ErrorStatus.USER_NOT_FOUND));
+
+        // 2. 클래스 존재 여부 확인 및 조회
+        Consultation consultation = consultationRepository.findById(classId)
+                .orElseThrow(() -> new CoachHandler(ErrorStatus.CONSULTATION_NOT_FOUND));
+
+        // 3. 클래스 타입 검증 (GROUP 타입인지 확인)
+        if (consultation.getType() != Consultation.Type.GROUP) {
+            throw new CoachHandler(ErrorStatus.CONSULTATION_TYPE_MISMATCH);
+        }
+
+        // 4. 클래스 상태 검증 (OPEN 상태인지 확인)
+        if (consultation.getStatus() != Consultation.Status.OPEN) {
+            throw new CoachHandler(ErrorStatus.CONSULTATION_ALREADY_CLOSED);
+        }
+
+        // 5. 현재 참가 인원 확인 및 정원 검증
+        Long currentParticipants = participantRepository.countByConsultationId(classId);
+        if (currentParticipants >= consultation.getCapacity()) {
+            throw new CoachHandler(ErrorStatus.CONSULTATION_CAPACITY_FULL);
+        }
+
+        // 6. 중복 예약 방지 (이미 예약한 사용자인지 확인)
+        if (participantRepository.existsByUserIdAndConsultationId(userId, classId)) {
+            throw new CoachHandler(ErrorStatus.CONSULTATION_ALREADY_RESERVED);
+        }
+
+        // 7. Participant 생성 및 저장
+        Participant participant = Participant.of(user, consultation);
+        participantRepository.save(participant);
+
+        return consultation.getId();
     }
     
     // === Private Helper Methods ===

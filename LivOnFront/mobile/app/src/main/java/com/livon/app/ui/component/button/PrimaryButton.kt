@@ -16,9 +16,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.livon.app.ui.theme.Basic
 import com.livon.app.ui.theme.Border
 import com.livon.app.ui.theme.LivonTheme
-
 
 
 
@@ -27,7 +27,6 @@ fun PrimaryButtonCore(
     text: String,
     onClick: () -> Unit,
     enabled: Boolean = true,
-
     modifier: Modifier = Modifier
 ) {
     val shape = RoundedCornerShape(10.dp)

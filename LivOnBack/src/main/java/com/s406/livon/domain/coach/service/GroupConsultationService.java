@@ -19,12 +19,15 @@ import com.s406.livon.global.s3.S3Service;
 import com.s406.livon.global.web.response.code.status.ErrorStatus;
 import com.s406.livon.global.web.response.PaginatedResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -32,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * 그룹 상담(클래스) 서비스
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -262,6 +266,45 @@ public class GroupConsultationService {
         participantRepository.save(participant);
 
         return consultation.getId();
+    }
+
+    /**
+     * 클래스 참여 취소
+     *
+     * @param userId 취소하려는 사용자 ID
+     * @param consultationId 취소하려는 클래스 ID
+     */
+    @Transactional
+    public void cancelParticipation(UUID userId, Long consultationId) {
+        // 1. 참가자 정보 조회
+        Participant participant = participantRepository
+                .findByUserIdAndConsultationId(userId, consultationId)
+                .orElseThrow(() -> new CoachHandler(ErrorStatus.PARTICIPANT_NOT_FOUND));
+
+        Consultation consultation = participant.getConsultation();
+
+        // 2. 이미 취소된 클래스인지 확인
+        if (consultation.getStatus() == Consultation.Status.CANCELLED) {
+            throw new CoachHandler(ErrorStatus.PARTICIPANT_ALREADY_CANCELLED);
+        }
+
+        // 3. 당일 취소 불가 검증
+        LocalDate today = LocalDate.now();
+        LocalDate consultationDate = consultation.getStartAt().toLocalDate();
+
+        if (consultationDate.equals(today)) {
+            throw new CoachHandler(ErrorStatus.PARTICIPANT_CANCEL_SAME_DAY);
+        }
+
+        // 4. 이미 시작된 클래스인지 확인
+        if (consultation.getStartAt().isBefore(LocalDateTime.now())) {
+            throw new CoachHandler(ErrorStatus.CONSULTATION_ALREADY_STARTED);
+        }
+
+        // 5. 참가자 삭제
+        participantRepository.delete(participant);
+
+        log.info("클래스 참여 취소 완료 - userId: {}, consultationId: {}", userId, consultationId);
     }
     
     // === Private Helper Methods ===

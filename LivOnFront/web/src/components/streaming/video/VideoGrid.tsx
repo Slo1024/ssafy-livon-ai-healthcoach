@@ -14,28 +14,17 @@ const VideoGridOuterContainer = styled.div`
 const VideoGridScrollContainer = styled.div<{ $hasScroll: boolean; $participantCount: number }>`
   width: 100%;
   height: 100%;
-  overflow-y: ${props => props.$hasScroll ? 'auto' : 'hidden'};
+  overflow-y: hidden; /* 마우스 스크롤 방지, 화살표 버튼으로만 이동 */
   overflow-x: hidden;
-  padding-right: ${props => props.$hasScroll ? '0' : '0'};
+  padding-right: 0;
   
-  /* 스크롤바 숨기기 (크롬, 엣지, 사파리) */
-  &::-webkit-scrollbar {
-    display: none;
-  }
-  
-  /* 스크롤바 숨기기 (파이어폭스) */
-  scrollbar-width: none;
-  
-  /* 3명 이상일 때 4행 높이로 제한 */
+  /* 15명 이상일 때 정확히 3행 높이로 제한 */
   ${props => {
-    if (props.$participantCount > 2) {
-      // 4행의 높이 계산: 각 행 높이 = (100% - padding 16px) / 4
-      // 4행 높이 = (100% - 16px) / 4 * 4 = 100% - 16px
-      // 하지만 gap도 고려해야 함: gap 8px * 3 = 24px
-      // 총 높이 = 100% - 16px (padding) + 24px (gap) = 100% + 8px
-      // 실제로는 그리드가 자동으로 계산하므로, 그냥 높이 제한만 설정
+    if (props.$hasScroll && props.$participantCount > 15) {
       return `
+        /* 3행 높이로 고정 (5x3=15개) */
         max-height: 100%;
+        position: relative;
       `;
     }
     return '';
@@ -45,13 +34,25 @@ const VideoGridScrollContainer = styled.div<{ $hasScroll: boolean; $participantC
 const VideoGridContainer = styled.div<{ 
   $viewMode: 'gallery' | 'speaker' | 'shared'; 
   $participantCount: number;
+  $isPaginationMode?: boolean;
 }>`
   display: grid;
   width: 100%;
-  min-height: 100%;
+  ${props => props.$participantCount > 15 || props.$isPaginationMode ? '' : 'min-height: 100%;'}
   
   ${props => {
     const count = props.$participantCount;
+    
+    // 페이지네이션 모드(15명 이상)일 때는 항상 5x3 그리드 사용
+    if (props.$isPaginationMode) {
+      return `
+        grid-template-columns: repeat(5, 1fr);
+        grid-template-rows: repeat(3, 1fr);
+        gap: 8px;
+        padding: 8px;
+        height: 100%;
+      `;
+    }
     
     if (count === 1) {
       return `
@@ -144,8 +145,8 @@ const VideoGridContainer = styled.div<{
     } else {
       // 11명 이상: 5열 고정 그리드
       // 행은 자동으로 생성되며, 각 행의 높이는 동일
-      // 스크롤 컨테이너가 4행까지만 보여줌 (20명)
-      // 20명 넘으면 스크롤 가능
+      // 스크롤 컨테이너가 3행까지만 보여줌 (5x3=15개)
+      // 15명 넘으면 화살표 버튼으로 페이지 이동
       return `
         grid-template-columns: repeat(5, 1fr);
         grid-auto-rows: 1fr;
@@ -165,6 +166,10 @@ const VideoTileWrapper = styled.div<{
   $lastRowIndex?: number;
   $rowIndex?: number;
   $totalRows?: number;
+  $isPaginationLastPageIncomplete?: boolean;
+  $paginationLastPageItemIndex?: number;
+  $paginationLastPageTotalItems?: number;
+  $paginationRowIndex?: number;
 }>`
   position: relative;
   width: 100%;
@@ -288,6 +293,46 @@ const VideoTileWrapper = styled.div<{
       
       // 마지막 행의 행 번호 (1-based)
       const gridRowNum = props.$rowIndex + 1;
+      
+      return `
+        grid-column: 1 / -1;
+        grid-row: ${gridRowNum};
+        justify-self: start;
+        width: ${videoWidthCalc};
+        margin-left: ${videoPositionCalc};
+      `;
+    }
+    return '';
+  }}
+  
+  /* 15명 이상일 때 마지막 페이지에 마지막 행이 5개 미만일 때 정중앙 배치 */
+  ${props => {
+    if (props.$isPaginationLastPageIncomplete && props.$paginationLastPageItemIndex !== undefined && props.$paginationLastPageTotalItems !== undefined && props.$paginationRowIndex !== undefined) {
+      const padding = 8; // px (좌우 각 8px)
+      const gap = 8; // px
+      const totalColumns = 5;
+      const itemCount = props.$paginationLastPageTotalItems;
+      const itemIndex = props.$paginationLastPageItemIndex;
+      const rowIndex = props.$paginationRowIndex;
+      
+      // 각 비디오 너비: calc((100% - 16px - 32px) / 5) = calc((100% - 48px) / 5)
+      const videoWidthCalc = `calc((100% - ${padding * 2}px - ${(totalColumns - 1) * gap}px) / ${totalColumns})`;
+      const gapCalc = `${gap}px`;
+      
+      // 하단 그룹 전체 너비 계산
+      const totalGaps = (itemCount - 1) * gap;
+      const totalGroupWidthCalc = `calc(${videoWidthCalc} * ${itemCount} + ${totalGaps}px)`;
+      
+      // 좌측 오프셋 계산 (정중앙 배치)
+      const leftOffsetCalc = `calc((100% - ${totalGroupWidthCalc}) / 2)`;
+      
+      // 각 비디오의 위치 계산 (가로 한 줄로 나란히)
+      const videoPositionCalc = itemIndex === 0
+        ? leftOffsetCalc
+        : `calc(${leftOffsetCalc} + ${itemIndex} * (${videoWidthCalc} + ${gapCalc}))`;
+      
+      // 마지막 행의 행 번호 (1-based)
+      const gridRowNum = rowIndex + 1;
       
       return `
         grid-column: 1 / -1;
@@ -459,60 +504,48 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
   participantName,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const gridContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollUp, setCanScrollUp] = useState(false);
   const [canScrollDown, setCanScrollDown] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0); // 현재 표시 중인 페이지 (0부터 시작, 15개씩)
 
   // 참가자 수 계산 (로컬 비디오 + 원격 비디오)
   const localVideoCount = (localTrack && isVideoEnabled) ? 1 : 0;
   const remoteVideoCount = remoteTracks.filter(item => item.trackPublication.track?.kind === Track.Kind.Video).length;
   const participantCount = localVideoCount + remoteVideoCount;
 
-  // 20명 초과 여부 확인
-  const hasMoreThan20 = participantCount > 20;
+  // 15명 초과 여부 확인 (5x3=15개만 표시, 나머지는 화살표로 이동)
+  const hasMoreThan15 = participantCount > 15;
+  const totalPages = hasMoreThan15 ? Math.ceil(participantCount / 15) : 1;
 
-  // 스크롤 가능 여부 확인
+  // 스크롤 가능 여부 확인 (페이지 기반)
   useEffect(() => {
-    const checkScrollability = () => {
-      if (scrollContainerRef.current && hasMoreThan20) {
-        const container = scrollContainerRef.current;
-        const canScroll = container.scrollHeight > container.clientHeight;
-        setCanScrollUp(container.scrollTop > 0);
-        setCanScrollDown(canScroll && container.scrollTop < container.scrollHeight - container.clientHeight - 1);
-      } else {
-        setCanScrollUp(false);
-        setCanScrollDown(false);
-      }
-    };
-
-    checkScrollability();
-    const scrollContainer = scrollContainerRef.current;
-    if (scrollContainer) {
-      scrollContainer.addEventListener('scroll', checkScrollability);
-      // ResizeObserver로 크기 변경 감지
-      const resizeObserver = new ResizeObserver(checkScrollability);
-      resizeObserver.observe(scrollContainer);
-      
-      return () => {
-        scrollContainer.removeEventListener('scroll', checkScrollability);
-        resizeObserver.disconnect();
-      };
+    if (hasMoreThan15) {
+      setCanScrollUp(currentPage > 0);
+      setCanScrollDown(currentPage < totalPages - 1);
+    } else {
+      setCanScrollUp(false);
+      setCanScrollDown(false);
     }
-  }, [hasMoreThan20, participantCount]);
+  }, [hasMoreThan15, currentPage, totalPages]);
 
-  // 스크롤 함수
+  // 화살표 버튼으로 페이지 이동
   const scrollUp = () => {
-    if (scrollContainerRef.current) {
-      const rowHeight = scrollContainerRef.current.clientHeight / 4; // 4행 기준
-      scrollContainerRef.current.scrollBy({ top: -rowHeight, behavior: 'smooth' });
+    if (currentPage > 0) {
+      setCurrentPage(currentPage - 1);
     }
   };
 
   const scrollDown = () => {
-    if (scrollContainerRef.current) {
-      const rowHeight = scrollContainerRef.current.clientHeight / 4; // 4행 기준
-      scrollContainerRef.current.scrollBy({ top: rowHeight, behavior: 'smooth' });
+    if (currentPage < totalPages - 1) {
+      setCurrentPage(currentPage + 1);
     }
   };
+
+  // 참가자 수가 변경되면 첫 페이지로 리셋
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [participantCount]);
 
   // 모든 비디오 트랙 수집 (로컬 + 원격)
   const allVideoTracks: Array<{
@@ -539,16 +572,23 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
       });
     });
 
+  // 15명 이상일 때 현재 페이지에 해당하는 비디오만 필터링
+  const displayVideoTracks = hasMoreThan15
+    ? allVideoTracks.slice(currentPage * 15, currentPage * 15 + 15)
+    : allVideoTracks;
+
   return (
     <VideoGridOuterContainer>
       <VideoGridScrollContainer 
         ref={scrollContainerRef}
-        $hasScroll={hasMoreThan20}
+        $hasScroll={hasMoreThan15}
         $participantCount={participantCount}
       >
         <VideoGridContainer 
+          ref={gridContainerRef}
           $viewMode={viewMode} 
-          $participantCount={participantCount}
+          $participantCount={hasMoreThan15 ? displayVideoTracks.length : participantCount}
+          $isPaginationMode={hasMoreThan15}
         >
       {isScreenSharing && sharedContent ? (
         <SharedContentPanel>
@@ -581,14 +621,20 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
         </SharedContentPanel>
       ) : (
         <>
-          {/* 모든 비디오 트랙 렌더링 (5x4 그리드) */}
-          {allVideoTracks.map((videoItem, index) => {
+          {/* 현재 페이지의 비디오 트랙 렌더링 (15개씩) */}
+          {displayVideoTracks.map((videoItem, displayIndex) => {
+            // 전체 인덱스 계산 (현재 페이지 고려)
+            const index = hasMoreThan15 ? currentPage * 15 + displayIndex : displayIndex;
             // 원격 비디오의 경우 key 생성
             const key = videoItem.isLocal 
               ? `local-video-${participantName}`
               : `remote-video-${videoItem.identity}-${index}`;
 
             // 행과 열 계산
+            // 15명 이상일 때는 현재 페이지의 비디오 수를 기준으로 계산
+            const currentPageParticipantCount = hasMoreThan15 ? displayVideoTracks.length : participantCount;
+            const currentIndex = hasMoreThan15 ? displayIndex : index;
+            
             let rowIndex: number = 0;
             let colIndex: number = 0;
             let totalRows: number = 1;
@@ -596,110 +642,121 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
             let lastRowItemCount: number = 0;
             let lastRowIndex: number | undefined = undefined;
             
-            if (participantCount <= 10) {
-              // 10명 이하 특별 레이아웃
-              if (participantCount === 1) {
+            if (currentPageParticipantCount <= 10 && !hasMoreThan15) {
+              // 10명 이하 특별 레이아웃 (15명 이상이 아닐 때만)
+              if (currentPageParticipantCount === 1) {
                 rowIndex = 0;
                 colIndex = 0;
                 totalRows = 1;
                 isLastRow = false;
                 lastRowItemCount = 0;
                 lastRowIndex = undefined;
-              } else if (participantCount === 2) {
+              } else if (currentPageParticipantCount === 2) {
                 // 2명: 가로 반반
                 rowIndex = 0;
-                colIndex = index;
+                colIndex = currentIndex;
                 totalRows = 1;
                 isLastRow = false;
                 lastRowItemCount = 0;
                 lastRowIndex = undefined;
-              } else if (participantCount === 3) {
+              } else if (currentPageParticipantCount === 3) {
                 // 3명: 상단 2개, 하단 1개
-                rowIndex = Math.floor(index / 2);
-                colIndex = index % 2;
+                rowIndex = Math.floor(currentIndex / 2);
+                colIndex = currentIndex % 2;
                 totalRows = 2;
                 isLastRow = rowIndex === 1;
                 lastRowItemCount = 1;
                 lastRowIndex = isLastRow ? 0 : undefined;
-              } else if (participantCount === 4) {
+              } else if (currentPageParticipantCount === 4) {
                 // 4명: 2x2 그리드
-                rowIndex = Math.floor(index / 2);
-                colIndex = index % 2;
+                rowIndex = Math.floor(currentIndex / 2);
+                colIndex = currentIndex % 2;
                 totalRows = 2;
                 isLastRow = false;
                 lastRowItemCount = 0;
                 lastRowIndex = undefined;
-              } else if (participantCount === 5) {
+              } else if (currentPageParticipantCount === 5) {
                 // 5명: 상단 3개, 하단 2개
-                rowIndex = Math.floor(index / 3);
-                colIndex = index % 3;
+                rowIndex = Math.floor(currentIndex / 3);
+                colIndex = currentIndex % 3;
                 totalRows = 2;
                 isLastRow = rowIndex === 1;
                 lastRowItemCount = 2;
-                // 하단 행의 경우: index 3, 4 -> 하단 행 내에서의 인덱스는 0, 1
-                lastRowIndex = isLastRow ? (index - 3) : undefined;
-              } else if (participantCount === 6) {
+                lastRowIndex = isLastRow ? (currentIndex - 3) : undefined;
+              } else if (currentPageParticipantCount === 6) {
                 // 6명: 3x2 그리드
-                rowIndex = Math.floor(index / 3);
-                colIndex = index % 3;
+                rowIndex = Math.floor(currentIndex / 3);
+                colIndex = currentIndex % 3;
                 totalRows = 2;
                 isLastRow = false;
                 lastRowItemCount = 0;
                 lastRowIndex = undefined;
-              } else if (participantCount === 7) {
+              } else if (currentPageParticipantCount === 7) {
                 // 7명: 상단 4개, 하단 3개
-                rowIndex = Math.floor(index / 4);
-                colIndex = index % 4;
+                rowIndex = Math.floor(currentIndex / 4);
+                colIndex = currentIndex % 4;
                 totalRows = 2;
                 isLastRow = rowIndex === 1;
                 lastRowItemCount = 3;
                 lastRowIndex = isLastRow ? colIndex : undefined;
-              } else if (participantCount === 8) {
+              } else if (currentPageParticipantCount === 8) {
                 // 8명: 4x2 그리드
-                rowIndex = Math.floor(index / 4);
-                colIndex = index % 4;
+                rowIndex = Math.floor(currentIndex / 4);
+                colIndex = currentIndex % 4;
                 totalRows = 2;
                 isLastRow = false;
                 lastRowItemCount = 0;
                 lastRowIndex = undefined;
-              } else if (participantCount === 9) {
+              } else if (currentPageParticipantCount === 9) {
                 // 9명: 상단 5개, 하단 4개
-                rowIndex = Math.floor(index / 5);
-                colIndex = index % 5;
+                rowIndex = Math.floor(currentIndex / 5);
+                colIndex = currentIndex % 5;
                 totalRows = 2;
                 isLastRow = rowIndex === 1;
                 lastRowItemCount = 4;
                 lastRowIndex = isLastRow ? colIndex : undefined;
-              } else if (participantCount === 10) {
+              } else if (currentPageParticipantCount === 10) {
                 // 10명: 5x2 그리드
-                rowIndex = Math.floor(index / 5);
-                colIndex = index % 5;
+                rowIndex = Math.floor(currentIndex / 5);
+                colIndex = currentIndex % 5;
                 totalRows = 2;
                 isLastRow = false;
                 lastRowItemCount = 0;
                 lastRowIndex = undefined;
               }
             } else {
-              // 11명 이상: 5열 그리드
-              rowIndex = Math.floor(index / 5);
-              colIndex = index % 5;
-              totalRows = Math.ceil(participantCount / 5);
+              // 11명 이상 또는 15명 이상일 때: 5열 그리드
+              rowIndex = Math.floor(currentIndex / 5);
+              colIndex = currentIndex % 5;
+              totalRows = Math.ceil(currentPageParticipantCount / 5);
               isLastRow = rowIndex === totalRows - 1;
-              lastRowItemCount = participantCount % 5 === 0 ? 5 : participantCount % 5;
+              lastRowItemCount = currentPageParticipantCount % 5 === 0 ? 5 : currentPageParticipantCount % 5;
               lastRowIndex = (isLastRow && lastRowItemCount < 5) ? colIndex : undefined;
             }
+
+            // 15명 이상일 때 마지막 페이지에 마지막 행이 5개 미만(1,2,3,4개)이면 정중앙 배치
+            // 조건: 15명 초과 AND 현재 페이지가 마지막 페이지 AND 마지막 행에 5개 미만
+            const isLastPage = hasMoreThan15 && currentPage === totalPages - 1;
+            const isPaginationLastPageIncomplete = isLastPage && 
+              isLastRow && 
+              lastRowItemCount < 5 && 
+              lastRowItemCount > 0;
 
             return (
               <VideoTileWrapper 
                 key={key}
                 $isMain={viewMode === 'speaker'} 
-                $fullScreen={participantCount === 1}
-                $participantCount={participantCount}
-                $isLastRow={isLastRow && ((participantCount <= 10 && (participantCount === 3 || participantCount === 5 || participantCount === 7 || participantCount === 9)) || (participantCount >= 11 && lastRowItemCount < 5 && lastRowItemCount > 0))}
-                $lastRowItemCount={isLastRow && ((participantCount <= 10 && (participantCount === 3 || participantCount === 5 || participantCount === 7 || participantCount === 9)) || (participantCount >= 11 && lastRowItemCount < 5 && lastRowItemCount > 0)) ? lastRowItemCount : undefined}
+                $fullScreen={currentPageParticipantCount === 1 && !hasMoreThan15}
+                $participantCount={currentPageParticipantCount}
+                $isLastRow={isLastRow && ((currentPageParticipantCount <= 10 && (currentPageParticipantCount === 3 || currentPageParticipantCount === 5 || currentPageParticipantCount === 7 || currentPageParticipantCount === 9)) || (currentPageParticipantCount >= 11 && lastRowItemCount < 5 && lastRowItemCount > 0))}
+                $lastRowItemCount={isLastRow && ((currentPageParticipantCount <= 10 && (currentPageParticipantCount === 3 || currentPageParticipantCount === 5 || currentPageParticipantCount === 7 || currentPageParticipantCount === 9)) || (currentPageParticipantCount >= 11 && lastRowItemCount < 5 && lastRowItemCount > 0)) ? lastRowItemCount : undefined}
                 $lastRowIndex={lastRowIndex}
                 $rowIndex={rowIndex}
                 $totalRows={totalRows}
+                $isPaginationLastPageIncomplete={isPaginationLastPageIncomplete}
+                $paginationLastPageItemIndex={isPaginationLastPageIncomplete ? lastRowIndex : undefined}
+                $paginationLastPageTotalItems={isPaginationLastPageIncomplete ? lastRowItemCount : undefined}
+                $paginationRowIndex={isPaginationLastPageIncomplete ? rowIndex : undefined}
               >
                 <VideoComponent
                   track={videoItem.track}
@@ -725,8 +782,8 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
         </VideoGridContainer>
       </VideoGridScrollContainer>
       
-      {/* 스크롤 버튼 (20명 넘을 때만 표시) */}
-      {hasMoreThan20 && (
+      {/* 스크롤 버튼 (15명 넘을 때만 표시) */}
+      {hasMoreThan15 && (
         <ScrollButtonContainer>
           <ScrollButton 
             onClick={scrollUp}

@@ -73,6 +73,8 @@ pipeline {
                                 echo "🔒 Copying .env..."
                                 rm -f .env
                                 cp "$ENV_FILE" .env
+                                echo "🔍 Dump .env for debugging"
+                                cat .env
                             '''
                         }
                     }

@@ -11,7 +11,7 @@ import { ParticipantPanel } from '../../components/streaming/participant/Partici
 import { VideoGrid } from '../../components/streaming/video/VideoGrid';
 import { StreamingControls } from '../../components/streaming/button/StreamingControls';
 
-const TOKEN_SERVER_URL = CONFIG.LIVEKIT.APPLICATION_SERVER_URL;
+const TOKEN_SERVER_URL = CONFIG.API_BASE_URL;
 
 const StreamingContainer = styled.div`
   width: 100vw;

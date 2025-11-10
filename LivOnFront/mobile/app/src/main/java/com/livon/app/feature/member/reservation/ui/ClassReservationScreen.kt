@@ -1,5 +1,6 @@
 package com.livon.app.feature.member.reservation.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -9,9 +10,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -29,7 +27,12 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.navigation.NavHostController
+import com.livon.app.ui.theme.Basic
+import com.livon.app.ui.theme.BorderBlack
+import com.livon.app.ui.theme.Unclickable
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -111,11 +114,28 @@ fun ClassReservationScreen(
                 ModalBottomSheet(
                     onDismissRequest = { showCalendar = false },
                     tonalElevation = 8.dp,
+                    containerColor = Basic ,
+                    dragHandle = {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp)
+                                .wrapContentWidth(Alignment.CenterHorizontally)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 36.dp, height = 4.dp)
+
+                            )
+                        }
+                    }
                 ) {
                     // Sheet content: header (예약 정보 centered), month nav, calendar (full width), confirm button
                     CalendarSheetContent(
                         selectedDate = selectedDate,
-                        onSelect = { date -> selectedDate = date },
+                        onSelect = { dateOrNull ->               // 🔧 CHANGED: (LocalDate?) 받도록
+                            selectedDate = dateOrNull            // ← nullable 그대로 저장
+                        },
                         onConfirm = {
                             showCalendar = false
                         }
@@ -131,104 +151,93 @@ fun ClassReservationScreen(
 @Composable
 private fun CalendarSheetContent(
     selectedDate: LocalDate?,
-    onSelect: (LocalDate) -> Unit,
+    onSelect: (LocalDate?) -> Unit,
     onConfirm: () -> Unit
 ) {
-    // 화면 높이에 따라 적절히 크기 조절 (최대 높이 지정)
+    val H_MARGIN = 16.dp
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 16.dp, start = 0.dp, end = 0.dp, bottom = 0.dp)
+            .background(Basic) // 최상위 배경을 Basic으로 고정
+            .padding(top = 4.dp)
             .padding(WindowInsets.navigationBars.add(WindowInsets.ime).asPaddingValues())
     ) {
-        // Header: centered title
-        Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Basic)
+                .padding(horizontal = H_MARGIN),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Text(text = "예약 정보", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
 
-            // month navigation row
             var currentMonth by remember { mutableStateOf(selectedDate?.let { YearMonth.from(it) } ?: YearMonth.now()) }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                    .background(Basic)
+                    .padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
                 IconButton(onClick = { currentMonth = currentMonth.minusMonths(1) }) {
-                    Icon(imageVector = Icons.Filled.ArrowBack, contentDescription = "Prev month")
+                    Icon(painter = painterResource(id = R.drawable.ic_back), contentDescription = "Prev month")
                 }
 
+                Spacer(Modifier.width(50.dp))
                 Text(text = "${currentMonth.monthValue}월 ${currentMonth.year}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 16.dp))
-
+                Spacer(Modifier.width(50.dp))
                 IconButton(onClick = { currentMonth = currentMonth.plusMonths(1) }) {
-                    Icon(imageVector = Icons.Filled.ArrowForward, contentDescription = "Next month")
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_back),
+                        contentDescription = "Next month",
+                        modifier = Modifier.graphicsLayer(scaleX = -1f)
+                    )
                 }
             }
 
-            // Calendar area: white background, full width, adjust height
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 320.dp, max = 520.dp)
+                    .background(Basic)
+                    .padding(horizontal = H_MARGIN)
+                    .heightIn(min = 320.dp, max = 330.dp)
             ) {
-                Surface(color = Color.White, modifier = Modifier.fillMaxSize()) {
+                Surface(color = Basic, modifier = Modifier.fillMaxSize()) { // Surface도 Basic
                     CalendarMonth(
                         yearMonth = currentMonth,
                         selected = selectedDate,
                         onSelect = { date ->
-                            onSelect(date)
-                            currentMonth = YearMonth.from(date)
+                            if (selectedDate == date) {
+                                onSelect(null)
+                            } else {
+                                onSelect(date)
+                                currentMonth = YearMonth.from(date)
+                            }
                         },
                         modifier = Modifier.fillMaxSize()
                     )
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
-
-            // Confirm button
+            val isEnabled = selectedDate != null
             PrimaryButtonBottom(
                 text = "선택",
-                enabled = true,
+                enabled = isEnabled,
                 onClick = onConfirm,
                 bottomMargin = 0.dp,
                 applyNavPadding = true,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .background(Basic) // 버튼 주변 배경도 Basic
+                    .padding(vertical = 8.dp)
             )
         }
     }
 }
 
-/* -------------------- Preview -------------------- */
 
-@Preview(showBackground = true, name = "예약 리스트")
-@Composable
-private fun ClassReservationScreenPreview() {
-    val items = sampleItemsForPreview()
-    LivonTheme {
-        ClassReservationScreen(
-            classes = items,
-            onCardClick = {},
-            onCoachClick = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, name = "달력 시트(프리뷰 강제 오픈)")
-@Composable
-private fun ClassReservationScreenCalendarPreview() {
-    val items = sampleItemsForPreview()
-    LivonTheme {
-        ClassReservationScreen(
-            classes = items,
-            onCardClick = {},
-            onCoachClick = {},
-            initialShowCalendar = true
-        )
-    }
-}
 
 /* --- 샘플 데이터 (프리뷰용) --- */
 private fun sampleItemsForPreview() = listOf(

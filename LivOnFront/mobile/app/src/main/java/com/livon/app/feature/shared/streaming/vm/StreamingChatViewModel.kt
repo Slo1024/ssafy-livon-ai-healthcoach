@@ -3,6 +3,7 @@ package com.livon.app.feature.shared.streaming.vm
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.livon.app.BuildConfig
 import com.livon.app.data.remote.socket.ChatStompManager
 import com.livon.app.data.repository.ChatRepositoryImpl
 import com.livon.app.domain.model.ChatMessage
@@ -12,12 +13,16 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
+import java.time.Instant
 
 
 data class StreamingChatUiState(
     val isLoading: Boolean = false,
+    val isLoadingPast: Boolean = false,
     val error: String? = null,
-    val messages: List<ChatMessage> = emptyList()
+    val messages: List<ChatMessage> = emptyList(),
+    val isLastPage: Boolean = false,
+    val showPastLoadingIndicator: Boolean = false
 )
 
 class StreamingChatViewModel(
@@ -28,24 +33,52 @@ class StreamingChatViewModel(
     val uiState: StateFlow<StreamingChatUiState> = _uiState
 
     fun loadChatMessages(
-        chatRoomId: Int = 1,
-        lastSentAt: String? = null,
-        accessToken: String? = ""
+        chatRoomId: Int = 43,
+        accessToken: String? = BuildConfig.WEBSOCKET_TOKEN,
+        isInitialLoad: Boolean = true
     ) {
         viewModelScope.launch {
+            val currentState = _uiState.value
+            if (currentState.isLoading || currentState.isLoadingPast || (!isInitialLoad && currentState.isLastPage)) {
+                Log.d("ChatVM", "로드 요청 거부: 로딩 중이거나 마지막 페이지임")
+                return@launch
+            }
+
+            val paginationCursor = if (isInitialLoad) null else currentState.messages.firstOrNull()?.sentAt
+
             Log.d("StreamingChatViewModel", "채팅 메시지 로드 시작: chatRoomId=$chatRoomId")
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            
-            repository.getChatMessages(chatRoomId, lastSentAt, accessToken)
-                .onSuccess { messages ->
-                    Log.d("StreamingChatViewModel", "채팅 메시지 로드 성공: ${messages.size}개")
-                    _uiState.update {
-                        it.copy(
+            _uiState.update {
+                it.copy(
+                    isLoading = isInitialLoad,
+                    isLoadingPast = !isInitialLoad,
+                    showPastLoadingIndicator = !isInitialLoad && paginationCursor != null,
+                    error = null
+                )
+            }
+
+        repository.getChatMessages(chatRoomId, paginationCursor, accessToken)
+                .onSuccess { newMessages ->
+                    _uiState.update { currentState ->
+                        val existingMessages = currentState.messages
+                    val combinedMessages =
+                        if (isInitialLoad) newMessages
+                        else newMessages + existingMessages
+                        val dedupedMessages = combinedMessages
+                            .distinctBy { it.id }
+                    val sortedMessages = dedupedMessages
+                        .sortedBy { it.sentAt }
+
+                        currentState.copy(
                             isLoading = false,
-                            messages = messages
+                            isLoadingPast = false,
+                            showPastLoadingIndicator = false,
+                            messages = sortedMessages,
+                            isLastPage = newMessages.isEmpty()
                         )
                     }
                 }
+
+
                 .onFailure { e ->
                     val errorMsg = e.message ?: "채팅 메시지 조회 실패"
                     Log.e("StreamingChatViewModel", "채팅 메시지 로드 실패: $errorMsg", e)
@@ -62,7 +95,7 @@ class StreamingChatViewModel(
     fun sendMessage(
         message: String,
         accessToken: String,
-        chatRoomId: Int = 1,
+        chatRoomId: Int = 43,
         senderUUID: UUID = UUID.fromString("00000000-0000-0000-0000-000000000001")
     ) {
         if (message.isBlank()) return
@@ -84,16 +117,19 @@ class StreamingChatViewModel(
             }
 
             val newMessage = ChatMessage(
-                id = System.currentTimeMillis().toString(),
+                id = UUID.randomUUID().toString(),
                 chatRoomId = chatRoomId,
                 userId = "me",
                 content = message,
-                sentAt = System.currentTimeMillis().toString(),
+                sentAt = Instant.now().toString(),
                 role = "MEMBER",
                 messageType = "TEXT"
             )
             _uiState.update { state ->
-                state.copy(messages = state.messages + newMessage)
+                val updated = (state.messages + newMessage)
+                    .distinctBy { it.id }
+                    .sortedBy { it.sentAt }
+                state.copy(messages = updated)
             }
         }
     }

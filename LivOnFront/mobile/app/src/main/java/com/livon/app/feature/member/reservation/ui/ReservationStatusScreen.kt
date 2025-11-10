@@ -1,5 +1,6 @@
 package com.livon.app.feature.member.reservation.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -48,6 +49,11 @@ fun ReservationStatusScreen(
     onJoin: (ReservationUi) -> Unit,
     onAiAnalyze: (ReservationUi) -> Unit
 ) {
+    // Ensure system back (device back) behaves the same as TopBar back
+    BackHandler {
+        onBack()
+    }
+
     var tab by remember { mutableStateOf(ReservationTab.CURRENT) }
 
     CommonScreenC(
@@ -203,196 +209,4 @@ private fun Preview_Current_Live() {
             onAiAnalyze = {}
         )
     }
-}
-
-@Preview(showBackground = true, name = "지난 예약 – 그룹 상담 (AI 버튼 없음)")
-@Composable
-private fun Preview_Past_Group() {
-    val today = LocalDate.now()
-    LivonTheme {
-        ReservationStatusScreen(
-            current = emptyList(),
-            past = listOf(
-                ReservationUi(
-                    id = "p1",
-                    date = today.minusDays(8),
-                    className = "요가 클래스",
-                    coachName = "박코치",
-                    coachRole = "요가",
-                    coachIntro = "힐링 요가 지도",
-                    timeText = "오전 10:00 ~ 11:00",
-                    classIntro = "유연성 강화를 돕는 힐링 요가",
-                    sessionTypeLabel = "그룹 상담",
-                    hasAiReport = true // 그룹이라도 AI 버튼은 X
-                )
-            ),
-            onBack = {},
-            onDetail = {},
-            onCancel = {},
-            onJoin = {},
-            onAiAnalyze = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, name = "지난 예약 – 개인 상담 (AI 버튼 O)")
-@Composable
-private fun Preview_Past_Personal_AI() {
-    val today = LocalDate.now()
-    LivonTheme {
-        ReservationStatusScreen(
-            current = emptyList(),
-            past = listOf(
-                ReservationUi(
-                    id = "p2",
-                    date = today.minusDays(13),
-                    className = "코어 강화",
-                    coachName = "최코치",
-                    coachRole = "피트니스",
-                    coachIntro = "근력/코어 집중",
-                    timeText = "오후 1:00 ~ 2:00",
-                    classIntro = "개인 집중 코어 트레이닝",
-                    sessionTypeLabel = "개인 상담",
-                    hasAiReport = true
-                )
-            ),
-            onBack = {},
-            onDetail = {},
-            onCancel = {},
-            onJoin = {},
-            onAiAnalyze = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, name = "지난 예약 – 개인 상담 (AI 버튼 X)")
-@Composable
-private fun Preview_Past_Personal_NoAI() {
-    val today = LocalDate.now()
-    LivonTheme {
-        ReservationStatusScreen(
-            current = emptyList(),
-            past = listOf(
-                ReservationUi(
-                    id = "p3",
-                    date = today.minusDays(20),
-                    className = "컨디셔닝",
-                    coachName = "한코치",
-                    coachRole = "재활",
-                    coachIntro = "컨디셔닝/통증",
-                    timeText = "오전 11:00 ~ 12:00",
-                    classIntro = "개인 컨디셔닝 세션",
-                    sessionTypeLabel = "개인 상담",
-                    hasAiReport = false
-                )
-            ),
-            onBack = {},
-            onDetail = {},
-            onCancel = {},
-            onJoin = {},
-            onAiAnalyze = {}
-        )
-    }
-}
-
-
-
-
-
-@Preview(showBackground = true, name = "현재 예약 / 여러 개")
-@Composable
-private fun Preview_ReservationStatus_Current() {
-    val today = LocalDate.now()
-
-    ReservationStatusScreen(
-        current = listOf(
-            ReservationUi(
-                id = "c1",
-                date = today.plusDays(2),
-                className = "체형 교정",
-                coachName = "이싸피",
-                coachRole = "PT",
-                coachIntro = "자세/근유연",
-                timeText = "오전 9:00 ~ 10:00",
-                classIntro = "교정 코어 클래스",
-            ),
-            ReservationUi(
-                id = "c2",
-                date = today,
-                className = "저녁 스트레칭",
-                coachName = "김코치",
-                coachRole = "트레이너",
-                coachIntro = "근골격교정",
-                timeText = "오후 3:00 ~ 4:00",
-                classIntro = "저녁 회복 스트레칭",
-                isLive = true
-            )
-        ),
-        past = emptyList(),
-        onBack = {},
-        onDetail = {},
-        onCancel = {},
-        onJoin = {},
-        onAiAnalyze = {}
-    )
-}
-
-
-@Preview(showBackground = true, name = "지난 예약 – 개인 상담 + AI")
-@Composable
-private fun Preview_ReservationStatus_Past_Personal_AI() {
-    val today = LocalDate.now()
-
-    ReservationStatusScreen(
-        current = emptyList(),
-        past = listOf(
-            ReservationUi(
-                id = "p1",
-                date = today.minusDays(7),
-                className = "코어 강화",
-                coachName = "최코치",
-                coachRole = "피트니스",
-                coachIntro = "코어 집중",
-                timeText = "오전 7:00 ~ 8:00",
-                classIntro = "개인 집중 · 코어 강화",
-                sessionTypeLabel = "개인 상담",
-                hasAiReport = true
-            )
-        ),
-        onBack = {},
-        onDetail = {},
-        onCancel = {},
-        onJoin = {},
-        onAiAnalyze = {}
-    )
-}
-
-
-@Preview(showBackground = true, name = "지난 예약 – 그룹 상담")
-@Composable
-private fun Preview_ReservationStatus_Past_Group() {
-    val today = LocalDate.now()
-
-    ReservationStatusScreen(
-        current = emptyList(),
-        past = listOf(
-            ReservationUi(
-                id = "p2",
-                date = today.minusDays(10),
-                className = "필라테스",
-                coachName = "이코치",
-                coachRole = "필라테스",
-                coachIntro = "호흡 · 스트레칭",
-                timeText = "오전 10:00 ~ 11:00",
-                classIntro = "유연 스트레칭",
-                sessionTypeLabel = "그룹 상담",
-                hasAiReport = false
-            )
-        ),
-        onBack = {},
-        onDetail = {},
-        onCancel = {},
-        onJoin = {},
-        onAiAnalyze = {}
-    )
 }

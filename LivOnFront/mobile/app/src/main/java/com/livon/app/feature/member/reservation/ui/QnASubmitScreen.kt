@@ -24,8 +24,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.livon.app.R
 import com.livon.app.ui.component.button.PrimaryButtonBottom
 import com.livon.app.ui.component.navbar.HomeNavBar
@@ -44,13 +42,24 @@ fun QnASubmitScreen(
     onConfirmReservation: (List<String>) -> Unit,
     onNavigateHome: () -> Unit,
     onNavigateToMyHealthInfo: () -> Unit,
-    navController: NavHostController? = null // optional navController for HomeNavBar navigation
+    navController: NavHostController? = null, // optional navController for HomeNavBar navigation
+    externalError: String? = null // external error message (e.g., 409) to show in snackbar
 ) {
     var questions by rememberSaveable { mutableStateOf(listOf("", "")) }
     var showDialog by rememberSaveable { mutableStateOf(false) }
 
     val formattedDate = remember(selectedDate) {
         selectedDate.format(DateTimeFormatter.ofPattern("M월 d일"))
+    }
+
+    // local snackbar host for showing errors like 409
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // 외부에서 전달된 error를 스낵바로 보여줌
+    LaunchedEffect(externalError) {
+        externalError?.let { msg ->
+            if (msg.isNotBlank()) snackbarHostState.showSnackbar(msg)
+        }
     }
 
     Scaffold(
@@ -61,6 +70,7 @@ fun QnASubmitScreen(
                 TopBar(title = "Q&A", onBack = onBack)
             }
         },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
             // 하단 안전영역(제스처바/IME)
             Column(
@@ -184,7 +194,7 @@ fun QnASubmitScreen(
             onConfirm = {
                 showDialog = false
                 onConfirmReservation(questions.filter { it.isNotBlank() })
-                onNavigateHome()
+                // NOTE: navigation (to reservations/home) is handled by caller via onConfirmReservation in NavGraph
             },
             onChangeHealthInfo = {
                 showDialog = false
@@ -249,6 +259,7 @@ private fun QnaInputItem(
         )
     }
 }
+
 
 
 @Composable

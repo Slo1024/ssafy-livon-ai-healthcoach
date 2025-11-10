@@ -150,6 +150,10 @@ public class ConsultationService {
             imageUrl = groupConsultation.getImageUrl();
         }
 
+        // 코치 정보 추가
+        User coach = consultation.getCoach();
+        CoachDetailResponseDto coachDetail = buildCoachDetailResponse(coach);
+
         // 참가자 수 조회
         int currentParticipants = consultationRepository.countParticipantsByConsultationId(consultation.getId());
 
@@ -160,6 +164,7 @@ public class ConsultationService {
                 .endAt(consultation.getEndAt())
                 .sessionId(consultation.getSessionId())
                 .status(consultation.getStatus())
+                .coach(coachDetail)  // 코치 정보 추가
                 .title(title)
                 .description(description)
                 .imageUrl(imageUrl)

@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import googleIcon from '../../assets/images/google-icon.png';
 import kakaoIcon from '../../assets/images/Kakao.png';
 import naverIcon from '../../assets/images/Naver logo.png';
 import visibilityIcon from '../../assets/images/visibility.png';
 import visibilityOffIcon from '../../assets/images/visibility_off.png';
+import { useAuth } from '../../hooks/useAuth';
+import { ROUTES } from '../../constants/routes';
 
 const LoginContainer = styled.div`
   min-height: 100vh;
@@ -140,6 +142,12 @@ const ButtonSubmit = styled.button`
   &:hover {
     background-color: #4965f6;
   }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: #77a3f3;
+  }
 `;
 
 const SocialButton = styled.button`
@@ -192,17 +200,48 @@ const SignUpSpan = styled.span`
   cursor: pointer;
 `;
 
+const ErrorMessage = styled.p`
+  margin: 8px 0 0;
+  color: #ff4d4f;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+`;
+
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [keepLoggedIn, setKeepLoggedIn] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const redirectPath =
+    (location.state as { from?: { pathname: string } })?.from?.pathname || ROUTES.HOME;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Login attempt:', { email, password, keepLoggedIn });
+    setErrorMessage(null);
+    setIsSubmitting(true);
+
+    const result = await login(email, password);
+
+    setIsSubmitting(false);
+
+    if (result.success) {
+      if (keepLoggedIn) {
+        localStorage.setItem('keepLoggedIn', 'true');
+      } else {
+        localStorage.removeItem('keepLoggedIn');
+      }
+      navigate(redirectPath, { replace: true });
+    } else {
+      setErrorMessage(result.error || '로그인에 실패했습니다. 다시 시도해주세요.');
+    }
   };
 
   const handleGoogleLogin = () => {
@@ -269,7 +308,10 @@ export const LoginPage: React.FC = () => {
             <ForgotPassword>비밀번호 찾기</ForgotPassword>
           </FlexRow>
 
-          <ButtonSubmit type="submit">로그인</ButtonSubmit>
+          <ButtonSubmit type="submit" disabled={isSubmitting}>
+            {isSubmitting ? '로그인 중...' : '로그인'}
+          </ButtonSubmit>
+          {errorMessage && <ErrorMessage>{errorMessage}</ErrorMessage>}
         </form>
 
         <GoogleButton type="button" onClick={handleGoogleLogin}>

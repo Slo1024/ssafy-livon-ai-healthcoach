@@ -13,8 +13,8 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitProvider {
     // Server is serving plain HTTP on port 8082; use http:// to avoid SSL/TLS handshake errors
-//    private const val BASE_URL = "http://k13s406.p.ssafy.io:8082/"
     private const val BASE_URL = BuildConfig.API_BASE_URL
+
 
     private val authInterceptor = Interceptor { chain ->
         val reqBuilder = chain.request().newBuilder()

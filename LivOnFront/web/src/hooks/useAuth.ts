@@ -54,33 +54,30 @@ export const useAuth = () => {
 
       const profile = profileResponse.result;
 
-      const normalizedRoles = Array.isArray(profile.role)
+      const roleList = Array.isArray(profile.role)
         ? profile.role
-        : Array.isArray(profile.roles)
-          ? profile.roles
-          : Array.isArray(loginRoles)
-            ? loginRoles
-            : typeof profile.role === 'string'
+        : Array.isArray(loginRoles)
+          ? loginRoles
+          : Array.isArray(profile.roles)
+            ? profile.roles
+            : profile.role
               ? [profile.role]
               : [];
 
-      const resolvedRole: User['role'] = normalizedRoles.includes('COACH') ? 'coach' : 'member';
+      const resolvedRole: User['role'] = roleList.includes('COACH') ? 'coach' : 'member';
 
-      const resolvedEmail = profile.email || email;
+      const userEmail = profile.email || email;
 
       const user: User = {
-        id: profile.userId ? String(profile.userId) : resolvedEmail,
-        email: resolvedEmail,
-        name: profile.nickname || resolvedEmail.split('@')[0],
+        id: profile.userId ? String(profile.userId) : userEmail,
+        email: userEmail,
+        name: profile.nickname || (userEmail ? userEmail.split('@')[0] : email.split('@')[0]),
         nickname: profile.nickname,
         role: resolvedRole,
         profileImage: profile.profileImage,
       };
 
-      // 역할 정보 저장
-      localStorage.setItem('user_role', JSON.stringify(normalizedRoles));
-
-      // 사용자 정보 저장
+      localStorage.setItem('user_role', JSON.stringify(roleList));
       localStorage.setItem(CONFIG.STORAGE_KEYS.USER_INFO, JSON.stringify(user));
       
       setAuthState({

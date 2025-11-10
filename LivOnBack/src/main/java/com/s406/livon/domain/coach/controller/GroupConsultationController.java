@@ -155,7 +155,6 @@ public class GroupConsultationController {
      *
      * @param token Authorization 헤더
      * @param classId 예약할 클래스 ID
-     * @param request 클래스 예약 요청 (추가 정보)
      * @return 예약된 클래스 ID
      */
     @PostMapping("/{classId}")

@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -39,7 +40,14 @@ public class IndividualConsultationController {
                 .body(ApiResponse.of(SuccessStatus.INSERT_SUCCESS, consultationId));
     }
 
-    //상담 취소하기 API(일반 사용자)
+    @Operation(summary = "1:1 상담 취소", description = "1:1 상담을 취소합니다. 당일 취소는 불가능합니다.")
+    @DeleteMapping("/{consultationId}")
+    public ApiResponse<Void> cancelOneOnOneConsultation(
+            @PathVariable Long consultationId,
+            @RequestHeader("Authorization") String token) {
 
-    //상담 취소하기 API(코치)
+        UUID userId = jwtTokenProvider.getUserId(token.substring(7));
+        individualConsultationService.cancelOneOnOneConsultation(consultationId, userId);
+        return ApiResponse.of(SuccessStatus.DELETE_SUCCESS, null);
+    }
 }

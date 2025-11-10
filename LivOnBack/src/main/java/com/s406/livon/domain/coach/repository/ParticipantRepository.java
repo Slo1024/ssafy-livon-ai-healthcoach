@@ -29,4 +29,6 @@ public interface ParticipantRepository extends JpaRepository<Participant, Long> 
      * 특정 상담의 모든 참가자 삭제 (상담 취소 시)
      */
     void deleteByConsultationId(Long consultationId);
+
+    boolean existsByConsultationIdAndUserId(Long consultationId, UUID userId);
 }

@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { signInApi } from '../api/authApi';
+import { CONFIG } from '../constants/config';
 
 interface User {
   id: string;
@@ -30,16 +32,28 @@ export const useAuth = () => {
     try {
       setAuthState(prev => ({ ...prev, isLoading: true }));
       
-      // API 호출 (실제 구현 시 authApi 사용)
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
+      // 새로운 로그인 API 호출
+      const response = await signInApi(email, password);
       
-      if (response.ok) {
-        const data = await response.json();
-        const user: User = data.user;
+      if (response.isSuccess) {
+        const { accessToken, refreshToken, role } = response.result;
+        
+        // 토큰 저장
+        localStorage.setItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY, accessToken);
+        localStorage.setItem(CONFIG.TOKEN.REFRESH_TOKEN_KEY, refreshToken);
+        
+        // 역할 정보 저장
+        localStorage.setItem('user_role', JSON.stringify(role));
+        
+        // 사용자 정보는 이메일로 임시 설정 (실제로는 사용자 정보 조회 API 필요)
+        const user: User = {
+          id: email, // 임시 ID
+          email: email,
+          name: email.split('@')[0], // 임시 이름
+          role: role.includes('COACH') ? 'coach' : 'member',
+        };
+        
+        localStorage.setItem(CONFIG.STORAGE_KEYS.USER_INFO, JSON.stringify(user));
         
         setAuthState({
           user,
@@ -47,17 +61,16 @@ export const useAuth = () => {
           isLoading: false,
         });
         
-        // 토큰 저장
-        localStorage.setItem('access_token', data.accessToken);
-        localStorage.setItem('user_info', JSON.stringify(user));
-        
-        return { success: true };
+        console.log('✅ 로그인 성공:', response.message);
+        return { success: true, message: response.message };
       } else {
-        throw new Error('로그인 실패');
+        throw new Error(response.message || '로그인 실패');
       }
     } catch (error) {
       setAuthState(prev => ({ ...prev, isLoading: false }));
-      return { success: false, error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.' };
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.';
+      console.error('❌ 로그인 오류:', errorMessage);
+      return { success: false, error: errorMessage };
     }
   }, []);
 

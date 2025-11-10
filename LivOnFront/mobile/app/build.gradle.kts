@@ -34,6 +34,7 @@ android {
 
         buildConfigField("String", "OPENVIDU_SERVER_URL", "\"${localProperties.getProperty("openvidu.server.url")}\"")
         buildConfigField("String", "APPLICATION_SERVER_URL", "\"${localProperties.getProperty("application.server.url")}\"")
+        buildConfigField("String", "API_BASE_URL", "\"${localProperties.getProperty("api.base.url")}\"")
         buildConfigField("String", "CLEARTEXT_IP", "\"${localProperties.getProperty("cleartext.ip")}\"")
         buildConfigField("String", "WEBSOCKET_TOKEN", "\"${localProperties.getProperty("websocket.token")}\"")
         buildConfigField("String", "WEBSOCKET_URL", "\"${localProperties.getProperty("websocket.url")}\"")

@@ -13,6 +13,7 @@ import com.s406.livon.domain.coach.repository.ParticipantRepository;
 import com.s406.livon.domain.user.entity.User;
 import com.s406.livon.domain.user.enums.Role;
 import com.s406.livon.domain.user.repository.UserRepository;
+import com.s406.livon.global.aop.DistributedLock;
 import com.s406.livon.global.error.handler.CoachHandler;
 import com.s406.livon.global.s3.S3Service;
 import com.s406.livon.global.web.response.code.status.ErrorStatus;
@@ -26,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 그룹 상담(클래스) 서비스
@@ -218,7 +220,12 @@ public class GroupConsultationService {
     /**
      * 클래스 예약하기
      */
-    @Transactional(readOnly = false)
+    @DistributedLock(
+            key = "'consultation:' + #classId",
+            waitTime = 3,
+            leaseTime = 5,
+            timeUnit = TimeUnit.SECONDS
+    )
     public Long reserveGroupConsultation(UUID userId, Long classId) {
 
         // 1. 사용자 조회

@@ -78,7 +78,11 @@ public enum ErrorStatus implements BaseErrorCode {
     FILE_INVALID_EXTENSION(HttpStatus.BAD_REQUEST, "FILE4002", "지원하지 않는 파일 형식입니다. (jpg, jpeg, png, gif, webp만 가능)"),
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE5000", "파일 업로드에 실패했습니다."),
 
-
+    // 1:N 클래스 관련
+    CONSULTATION_TYPE_MISMATCH(HttpStatus.BAD_REQUEST, "CONSULT4002", "클래스 예약만 가능합니다"),
+    CONSULTATION_ALREADY_CLOSED(HttpStatus.BAD_REQUEST, "CONSULT4003", "마감된 클래스입니다"),
+    CONSULTATION_CAPACITY_FULL(HttpStatus.BAD_REQUEST, "CONSULT4004", "정원이 가득 찼습니다"),
+    CONSULTATION_ALREADY_RESERVED(HttpStatus.BAD_REQUEST, "CONSULT4005", "이미 예약한 클래스입니다"),
     ;
 
     private final HttpStatus httpStatus;

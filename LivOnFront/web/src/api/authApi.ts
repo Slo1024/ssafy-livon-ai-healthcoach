@@ -150,13 +150,17 @@ export interface ApiResponse<T> {
 export type SignInResponse = ApiResponse<SignInResult>;
 
 export interface UserProfile {
-  userId: string;
-  email: string;
+  userId?: string;
+  email?: string;
   nickname?: string;
   profileImage?: string;
   phoneNumber?: string;
   roles?: string[];
   role?: string | string[];
+  organizations?: string | null;
+  gender?: string;
+  birthdate?: string;
+  healthSurvey?: Record<string, any>;
 }
 
 // 새로운 로그인 API (POST /api/v1/user/sign-in)

@@ -5,16 +5,22 @@ import ua.naiksoftware.stomp.Stomp
 import ua.naiksoftware.stomp.StompClient
 import android.util.Log
 import com.livon.app.BuildConfig
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.asSharedFlow
 import ua.naiksoftware.stomp.dto.StompCommand
 import ua.naiksoftware.stomp.dto.StompHeader
 import ua.naiksoftware.stomp.dto.StompMessage
 import java.util.UUID
+import kotlinx.coroutines.launch
+
 
 object ChatStompManager {
 
+    private val _incomingMessages = kotlinx.coroutines.flow.MutableSharedFlow<String>()
+    val incomingMessages = _incomingMessages.asSharedFlow()
     private lateinit var stompClient: StompClient
 
-    fun connect(token: String, roomId: Long) {
+    fun connect(token: String, roomId: Long, scope: CoroutineScope) {
         stompClient = Stomp.over(
             Stomp.ConnectionProvider.OKHTTP,
             BuildConfig.WEBSOCKET_URL
@@ -32,7 +38,7 @@ object ChatStompManager {
                 when (event.type) {
                     ua.naiksoftware.stomp.dto.LifecycleEvent.Type.OPENED -> {
                         Log.d("STOMP", "연결 성공")
-                        subscribe(roomId)
+                        subscribe(roomId, scope)
                     }
                     ua.naiksoftware.stomp.dto.LifecycleEvent.Type.ERROR ->
                         Log.e("STOMP", "연결 오류", event.exception)
@@ -44,7 +50,7 @@ object ChatStompManager {
             }
     }
 
-    private fun subscribe(roomId: Long) {
+    private fun subscribe(roomId: Long, scope: CoroutineScope) {
         val topic = "/sub/chat/goods/$roomId"
         Log.d("STOMP", "구독 요청: $topic")
 
@@ -52,6 +58,9 @@ object ChatStompManager {
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe({ message ->
                 Log.d("STOMP", "메시지 수신: ${message.payload}")
+                scope.launch {
+                    _incomingMessages.emit(message.payload)
+                }
             }, { error ->
                 Log.e("STOMP", "구독 중 오류", error)
             })

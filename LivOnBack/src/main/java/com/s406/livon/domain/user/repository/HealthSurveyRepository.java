@@ -33,4 +33,9 @@ public interface HealthSurveyRepository extends JpaRepository<HealthSurvey, UUID
         FROM HealthSurvey hs
         """)
     List<Object[]> calculateAllAverages();
+
+    /**
+     * 특정 사용자의 건강 설문 데이터 조회
+     */
+    Optional<HealthSurvey> findByUserId(UUID userId);
 }

@@ -92,6 +92,9 @@ public enum ErrorStatus implements BaseErrorCode {
     PARTICIPANT_NOT_FOUND(HttpStatus.BAD_REQUEST, "PARTICIPANT4000", "해당 클래스에 참여하지 않았습니다"),
     PARTICIPANT_CANCEL_SAME_DAY(HttpStatus.BAD_REQUEST, "PARTICIPANT4001", "당일 취소는 불가능합니다"),
     PARTICIPANT_ALREADY_CANCELLED(HttpStatus.BAD_REQUEST, "PARTICIPANT4002", "이미 취소된 클래스입니다"),
+
+    CONSULTATION_NOT_COACH_AUTHORITY(HttpStatus.FORBIDDEN, "CONSULTATION4030", "해당 상담의 코치가 아닙니다."),
+    CONSULTATION_NOT_ONE_ON_ONE(HttpStatus.BAD_REQUEST, "CONSULTATION4002", "1:1 상담이 아닙니다."),
     ;
 
 

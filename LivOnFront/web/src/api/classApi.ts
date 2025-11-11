@@ -1,9 +1,12 @@
 // 클래스 관련 API 함수들
-import axios from 'axios';
-import { CONFIG } from '../constants/config';
-import { ApiResponse } from './authApi';
+import axios from "axios";
+import { CONFIG } from "../constants/config";
+import { ApiResponse } from "./authApi";
 
-const API_BASE_URL = CONFIG.API_BASE_URL || process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
+const API_BASE_URL =
+  CONFIG.API_BASE_URL ||
+  process.env.REACT_APP_API_BASE_URL ||
+  "http://localhost:8081";
 
 // 타입 정의
 interface ClassData {
@@ -38,32 +41,55 @@ interface ClassListResponse {
 }
 
 // 클래스 개설 API
-export const createClassApi = async (classData: ClassData): Promise<ClassResponse> => {
-  const response = await axios.post<ClassResponse>(`${API_BASE_URL}/class/create`, classData);
+export const createClassApi = async (
+  classData: ClassData
+): Promise<ClassResponse> => {
+  const response = await axios.post<ClassResponse>(
+    `${API_BASE_URL}/class/create`,
+    classData
+  );
   return response.data;
 };
 
 // 클래스 목록 조회 API
-export const getClassListApi = async (coachId: string): Promise<ClassListResponse> => {
-  const response = await axios.get<ClassListResponse>(`${API_BASE_URL}/class/list/${coachId}`);
+export const getClassListApi = async (
+  coachId: string
+): Promise<ClassListResponse> => {
+  const response = await axios.get<ClassListResponse>(
+    `${API_BASE_URL}/class/list/${coachId}`
+  );
   return response.data;
 };
 
 // 클래스 상세 조회 API
-export const getClassDetailApi = async (classId: string): Promise<ClassResponse> => {
-  const response = await axios.get<ClassResponse>(`${API_BASE_URL}/class/${classId}`);
+export const getClassDetailApi = async (
+  classId: string
+): Promise<ClassResponse> => {
+  const response = await axios.get<ClassResponse>(
+    `${API_BASE_URL}/class/${classId}`
+  );
   return response.data;
 };
 
 // 클래스 수정 API
-export const updateClassApi = async (classId: string, classData: Partial<ClassData>): Promise<ClassResponse> => {
-  const response = await axios.put<ClassResponse>(`${API_BASE_URL}/class/${classId}`, classData);
+export const updateClassApi = async (
+  classId: string,
+  classData: Partial<ClassData>
+): Promise<ClassResponse> => {
+  const response = await axios.put<ClassResponse>(
+    `${API_BASE_URL}/class/${classId}`,
+    classData
+  );
   return response.data;
 };
 
 // 클래스 삭제 API
-export const deleteClassApi = async (classId: string): Promise<{ success: boolean; message: string }> => {
-  const response = await axios.delete<{ success: boolean; message: string }>(`${API_BASE_URL}/class/${classId}`);
+export const deleteClassApi = async (
+  classId: string
+): Promise<{ success: boolean; message: string }> => {
+  const response = await axios.delete<{ success: boolean; message: string }>(
+    `${API_BASE_URL}/class/${classId}`
+  );
   return response.data;
 };
 
@@ -86,20 +112,20 @@ export const createGroupConsultationApi = async (
 ): Promise<CreateGroupConsultationResponse> => {
   // 토큰 가져오기
   const token = localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
-  
+
   if (!token) {
-    throw new Error('인증 토큰이 없습니다. 로그인이 필요합니다.');
+    throw new Error("인증 토큰이 없습니다. 로그인이 필요합니다.");
   }
 
   // FormData 생성
   const formData = new FormData();
-  
+
   // data 필드: JSON 문자열로 변환하여 추가
-  formData.append('data', JSON.stringify(classData));
-  
+  formData.append("data", JSON.stringify(classData));
+
   // classImage 필드: 파일이 있으면 추가 (선택사항)
   if (classImage) {
-    formData.append('classImage', classImage);
+    formData.append("classImage", classImage);
   }
 
   // API 호출
@@ -108,11 +134,11 @@ export const createGroupConsultationApi = async (
     formData,
     {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'multipart/form-data', // form-data 형식
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data", // form-data 형식
       },
     }
   );
-  
+
   return response.data;
 };

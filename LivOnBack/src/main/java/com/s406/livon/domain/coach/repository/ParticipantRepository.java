@@ -48,4 +48,16 @@ public interface ParticipantRepository extends JpaRepository<Participant, Long> 
             @Param("userId") Long userId,
             @Param("consultationId") Long consultationId
     );
+
+    // N+1 방지: 여러 consultation의 참가자를 한 번에 조회
+    @Query("SELECT p FROM Participant p " +
+            "JOIN FETCH p.user u " +
+            "WHERE p.consultation.id IN :consultationIds")
+    List<Participant> findByConsultationIdInWithUser(@Param("consultationIds") List<Long> consultationIds);
+
+    // 특정 consultation의 참가자 목록 조회
+    @Query("SELECT p FROM Participant p " +
+            "JOIN FETCH p.user u " +
+            "WHERE p.consultation.id = :consultationId")
+    List<Participant> findByConsultationIdWithUser(@Param("consultationId") Long consultationId);
 }

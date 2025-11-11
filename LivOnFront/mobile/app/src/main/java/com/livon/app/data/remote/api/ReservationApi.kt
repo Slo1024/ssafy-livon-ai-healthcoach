@@ -11,7 +11,7 @@ data class ReserveCoachRequest(
     val coachId: String,
     val startAt: String, // ISO local date-time like "2025-11-09T14:00:00"
     val endAt: String,
-    val preQnA: String? = null
+    val preQna: String? = null
 )
 
 // Generic API wrapper used by backend

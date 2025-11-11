@@ -74,6 +74,18 @@ class ReservationRepositoryImpl : ReservationRepository {
         }
     }
 
+    // New: fetch reservations from server
+    override suspend fun getMyReservations(status: String, type: String?): Result<com.livon.app.data.remote.api.ReservationListResponse> {
+        return try {
+            val res = api.getMyReservations(status = status, type = type)
+            if (res.isSuccess && res.result != null) {
+                Result.success(res.result)
+            } else Result.failure(Exception(res.message ?: "Unknown"))
+        } catch (t: Throwable) {
+            Result.failure(t)
+        }
+    }
+
     companion object {
         // Simple in-memory cache to persist created reservations during app session.
         // This is intentionally minimal and for UX until the backend provides an "upcoming" endpoint.

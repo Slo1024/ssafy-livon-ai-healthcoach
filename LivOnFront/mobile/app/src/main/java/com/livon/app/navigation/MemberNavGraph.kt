@@ -559,7 +559,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
 
         val actionState by reservationVmForClass.actionState.collectAsState()
 
-        // navigate back to reservations on success
+        // navigate back to reservations on successF
         LaunchedEffect(actionState.success) {
             if (actionState.success == true) {
                 nav.navigate("reservations") {

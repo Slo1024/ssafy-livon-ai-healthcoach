@@ -52,7 +52,7 @@ const StyledLoginButton = styled.div`
 const MobileMenuWrapper = styled.div`
   display: none;
 
-  @media (max-width: 768px) {
+  @media (max-width: 1200px) {
     display: block;
   }
 
@@ -167,7 +167,7 @@ const MobileMenuWrapper = styled.div`
     box-shadow: none;
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: 1200px) {
     .mobile-menu-label {
       display: flex;
     }
@@ -183,7 +183,7 @@ const DesktopNav = styled.nav`
   justify-content: center;
   flex: 1 1 auto;
 
-  @media (max-width: 768px) {
+  @media (max-width: 1200px) {
     display: none;
   }
 `;

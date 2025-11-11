@@ -1,17 +1,29 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import styled from 'styled-components';
-import { SegmentedTabs } from '../../components/common/Button';
-import { Dropdown } from '../../components/common/Dropdown';
-import { MemberInfoModal, ApplicationApprovalModal, ReservationCancelConfirmModal, ReservationCancelSuccessModal } from '../../components/common/Modal';
-import { useAuth } from '../../hooks/useAuth';
-import { ROUTES } from '../../constants/routes';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import styled from "styled-components";
+import { SegmentedTabs } from "../../components/common/Button";
+import { Dropdown } from "../../components/common/Dropdown";
+import {
+  MemberInfoModal,
+  ApplicationApprovalModal,
+  ReservationCancelConfirmModal,
+  ReservationCancelSuccessModal,
+} from "../../components/common/Modal";
+import { useAuth } from "../../hooks/useAuth";
+import { ROUTES } from "../../constants/routes";
+import {
+  getCoachConsultationsApi,
+  cancelIndividualConsultationApi,
+  cancelGroupConsultationParticipationApi,
+} from "../../api/reservationApi";
+import { CONFIG } from "../../constants/config";
 
 const PageContainer = styled.div`
   min-height: 100vh;
   background-color: #ffffff;
   padding: 40px 20px;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
 `;
 
 const ContentWrapper = styled.div`
@@ -68,32 +80,19 @@ const ScheduleMessage = styled.div`
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
   font-weight: 500;
   font-size: 28px;
   color: #000000;
   line-height: 1.5;
   white-space: pre-line;
   text-align: center;
-  max-width: 90%;
-
-  @media (max-width: 1200px) {
-    position: static;
-    transform: none;
-    align-self: center;
-    text-align: center;
-    max-width: 100%;
-    font-size: 24px;
-  }
-
-  @media (max-width: 900px) {
-    font-size: 22px;
-  }
 
   @media (max-width: 768px) {
     font-size: 20px;
   }
-  
+
   @media (max-width: 480px) {
     font-size: 18px;
   }
@@ -152,7 +151,7 @@ const TableBody = styled.tbody``;
 
 const TableRow = styled.tr`
   border-bottom: 1px solid #e5e7eb;
-  
+
   &:hover {
     background-color: #f9fafb;
   }
@@ -162,7 +161,7 @@ const TableCell = styled.td`
   padding: 16px;
   font-size: 14px;
   color: #111827;
-  
+
   &:nth-child(1) {
     width: 200px;
   }
@@ -195,9 +194,10 @@ const StartConsultationButton = styled.button`
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
   white-space: nowrap;
-  
+
   &:hover {
     background-color: #f7fafc;
   }
@@ -209,12 +209,13 @@ const ViewMemberButton = styled.button<{ $hasLongText?: boolean }>`
   color: #4965f6;
   border: 1px solid #4965f6;
   border-radius: 8px;
-  font-size: ${props => props.$hasLongText ? '10px' : '14px'};
+  font-size: ${(props) => (props.$hasLongText ? "10px" : "14px")};
   font-weight: 500;
   cursor: pointer;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
   white-space: nowrap;
-  
+
   &:hover {
     background-color: #f7fafc;
   }
@@ -229,14 +230,14 @@ const CancelButton = styled.button`
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
   white-space: nowrap;
-  
+
   &:hover {
     background-color: #fef2f2;
   }
 `;
-
 
 const PaginationContainer = styled.div`
   display: flex;
@@ -249,7 +250,8 @@ const PaginationContainer = styled.div`
 const EmptyMessage = styled.div`
   text-align: center;
   padding: 80px 20px;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
   font-weight: 700;
   font-size: 24px;
   color: #111827;
@@ -261,84 +263,294 @@ const PaginationButton = styled.button<{ $active?: boolean }>`
   padding: 0 12px;
   border: 1px solid #e5e7eb;
   border-radius: 6px;
-  background-color: ${props => props.$active ? '#4965f6' : '#ffffff'};
-  color: ${props => props.$active ? '#ffffff' : '#6b7280'};
+  background-color: ${(props) => (props.$active ? "#4965f6" : "#ffffff")};
+  color: ${(props) => (props.$active ? "#ffffff" : "#6b7280")};
   font-size: 14px;
-  font-weight: ${props => props.$active ? '600' : '400'};
+  font-weight: ${(props) => (props.$active ? "600" : "400")};
   cursor: pointer;
-  
+
   &:hover {
-    background-color: ${props => props.$active ? '#3b5dd8' : '#f9fafb'};
+    background-color: ${(props) => (props.$active ? "#3b5dd8" : "#f9fafb")};
   }
-  
+
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
 `;
 
-interface Reservation {
-  id: number;
-  date: string;
-  time: string;
-  classTitle: string;
-  classDescription: string;
-  classType: string;
-  status?: string;
-  memberName?: string;
+const LoadingMessage = styled.div`
+  text-align: center;
+  padding: 80px 20px;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+  font-weight: 500;
+  font-size: 16px;
+  color: #6b7280;
+`;
+
+const ErrorMessage = styled.div`
+  text-align: center;
+  padding: 80px 20px;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+  font-weight: 500;
+  font-size: 16px;
+  color: #ef4444;
+`;
+
+interface CoachConsultation {
+  consultationId: number;
+  type: string;
+  status: string;
+  startAt: string;
+  endAt: string;
+  sessionId: string;
+  preQna?: string;
+  aiSummary?: string;
+  title?: string;
+  description?: string;
+  imageUrl?: string;
+  capacity?: number;
+  currentParticipants?: number;
+  participants?: Array<{
+    userId: string;
+    nickname: string;
+    profileImage: string;
+    email: string;
+  }>;
 }
 
 export const ReservationListPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'current' | 'past'>('current');
-  const [filterValue, setFilterValue] = useState('전체');
+  const { user, isLoading } = useAuth();
+
+  // 코치 전용 가드
+  useEffect(() => {
+    if (!isLoading && user && user.role !== "coach") {
+      navigate(ROUTES.COACH_ONLY, { replace: true });
+    }
+  }, [isLoading, user, navigate]);
+  const [activeTab, setActiveTab] = useState<"current" | "past">("current");
+  const [filterValue, setFilterValue] = useState("전체");
   const [showMemberInfoModal, setShowMemberInfoModal] = useState(false);
-  const [selectedMemberName, setSelectedMemberName] = useState<string>('');
-  const [showApplicationApprovalModal, setShowApplicationApprovalModal] = useState(false);
+  const [selectedMemberName, setSelectedMemberName] = useState<string>("");
+  const [showApplicationApprovalModal, setShowApplicationApprovalModal] =
+    useState(false);
   const [showCancelConfirmModal, setShowCancelConfirmModal] = useState(false);
   const [showCancelSuccessModal, setShowCancelSuccessModal] = useState(false);
-  const [cancelReservationId, setCancelReservationId] = useState<number | null>(null);
+  const [cancelReservationId, setCancelReservationId] = useState<number | null>(
+    null
+  );
+  const [cancelReservationType, setCancelReservationType] = useState<
+    string | null
+  >(null);
 
-  const nickname = user?.nickname || '';
-  const scheduleMessage = nickname ? `${nickname} 코치님의\n다가오는 상담/코칭 스케줄입니다.` : '코치님의\n다가오는 상담/코칭 스케줄입니다.';
+  // API 관련 상태
+  const [reservations, setReservations] = useState<CoachConsultation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
+  const pageSize = 10;
+
+  const nickname = user?.nickname || "";
+  const scheduleMessage = nickname
+    ? `${nickname} 코치님의\n다가오는 상담/코칭 스케줄입니다.`
+    : "코치님의\n다가오는 상담/코칭 스케줄입니다.";
+
+  // 날짜/시간 포맷팅 함수
+  const formatDateTime = (
+    startAt: string,
+    endAt: string
+  ): { date: string; time: string } => {
+    try {
+      const start = new Date(startAt);
+      const end = new Date(endAt);
+
+      const month = start.getMonth() + 1;
+      const date = start.getDate();
+      const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
+      const dayName = dayNames[start.getDay()];
+
+      const startHour = start.getHours();
+      const startMinute = String(start.getMinutes()).padStart(2, "0");
+      const endHour = end.getHours();
+      const endMinute = String(end.getMinutes()).padStart(2, "0");
+
+      const period = startHour < 12 ? "오전" : "오후";
+      const displayStartHour =
+        startHour > 12 ? startHour - 12 : startHour === 0 ? 12 : startHour;
+      const displayEndHour =
+        endHour > 12 ? endHour - 12 : endHour === 0 ? 12 : endHour;
+
+      return {
+        date: `${month}.${date}(${dayName})`,
+        time: `${period} ${displayStartHour}:${startMinute} ~ ${displayEndHour}:${endMinute}`,
+      };
+    } catch (e) {
+      return { date: startAt, time: endAt };
+    }
+  };
+
+  // 클래스 형태 변환 함수
+  const getClassType = (type: string): string => {
+    switch (type) {
+      case "ONE":
+        return "개인 상담 / 코칭";
+      case "GROUP":
+        return "일반 클래스";
+      default:
+        return "일반 클래스";
+    }
+  };
+
+  // 필터 타입 변환 함수
+  const getFilterType = (filterValue: string): "ONE" | "GROUP" | undefined => {
+    switch (filterValue) {
+      case "개인 상담 / 코칭":
+        return "ONE";
+      case "클래스":
+      case "기업 클래스":
+      case "일반 클래스":
+        return "GROUP";
+      default:
+        return undefined;
+    }
+  };
+
+  // 예약 목록 가져오기
+  const fetchReservations = async (
+    page: number = 0,
+    type?: "ONE" | "GROUP"
+  ) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const token = localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
+
+      if (!token) {
+        throw new Error("인증 토큰이 없습니다. 로그인이 필요합니다.");
+      }
+
+      const response = await getCoachConsultationsApi(
+        token,
+        "upcoming",
+        type,
+        page,
+        pageSize
+      );
+
+      setReservations(response.items);
+      setCurrentPage(response.page);
+      setTotalPages(response.totalPages);
+      setTotalItems(response.totalItems);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "예약 목록을 불러오는데 실패했습니다.";
+      setError(errorMessage);
+      console.error("예약 목록 조회 오류:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 컴포넌트 마운트 시 및 필터 변경 시 데이터 가져오기
+  useEffect(() => {
+    const type = getFilterType(filterValue);
+    fetchReservations(0, type);
+  }, [filterValue]);
+
+  // 페이지 변경 시 데이터 가져오기
+  const handlePageChange = (page: number) => {
+    if (page >= 0 && page < totalPages) {
+      const type = getFilterType(filterValue);
+      fetchReservations(page, type);
+    }
+  };
 
   const handleCurrentClick = () => {
-    setActiveTab('current');
+    setActiveTab("current");
   };
 
   const handlePastClick = () => {
-    setActiveTab('past');
+    setActiveTab("past");
     navigate(ROUTES.PAST_RESERVATION);
   };
 
   const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setFilterValue(e.target.value);
+    setCurrentPage(0); // 필터 변경 시 첫 페이지로
   };
 
   const handleStartConsultation = () => {
     navigate(ROUTES.STREAMING);
   };
 
-  const handleViewMember = (memberName: string) => {
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+
+  const handleViewMember = (memberName: string, memberId?: string) => {
     setSelectedMemberName(memberName);
+    setSelectedMemberId(memberId || null);
     setShowMemberInfoModal(true);
   };
 
-  const handleViewAppliedMembers = () => {
-    setShowApplicationApprovalModal(true);
+  const handleViewAppliedMembers = (
+    participants?: Array<{
+      userId: string;
+      nickname: string;
+      profileImage: string;
+      email: string;
+    }>
+  ) => {
+    if (participants && participants.length > 0) {
+      setShowApplicationApprovalModal(true);
+    }
   };
 
-  const handleCancelClick = (reservationId: number) => {
+  const handleCancelClick = (reservationId: number, type: string) => {
     setCancelReservationId(reservationId);
+    setCancelReservationType(type);
     setShowCancelConfirmModal(true);
   };
 
-  const handleCancelConfirm = () => {
-    if (cancelReservationId !== null) {
-      setAllReservations(prev => prev.filter(reservation => reservation.id !== cancelReservationId));
-      setCancelReservationId(null);
+  const handleCancelConfirm = async () => {
+    if (cancelReservationId === null || !cancelReservationType) return;
+
+    try {
+      const token = localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
+      if (!token) {
+        throw new Error("인증 토큰이 없습니다.");
+      }
+
+      if (cancelReservationType === "ONE") {
+        await cancelIndividualConsultationApi(token, cancelReservationId);
+      } else if (cancelReservationType === "GROUP") {
+        await cancelGroupConsultationParticipationApi(
+          token,
+          cancelReservationId
+        );
+      }
+
+      setShowCancelConfirmModal(false);
       setShowCancelSuccessModal(true);
+      setCancelReservationId(null);
+      setCancelReservationType(null);
+
+      // 목록 새로고침
+      const type = getFilterType(filterValue);
+      fetchReservations(currentPage, type);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "예약 취소에 실패했습니다.";
+      setError(errorMessage);
+      setShowCancelConfirmModal(false);
+      setCancelReservationId(null);
+      setCancelReservationType(null);
+      console.error("예약 취소 오류:", err);
     }
   };
 
@@ -346,26 +558,10 @@ export const ReservationListPage: React.FC = () => {
     setShowCancelSuccessModal(false);
   };
 
-  // 더미 데이터 - 전체
-  const [allReservations, setAllReservations] = useState<Reservation[]>([
-    { id: 1, date: '10.13(월)', time: '오전 10:00 ~ 11:00', classTitle: '체형 교정', classDescription: '자세 교정 운동 클래스', classType: '기업 클래스' },
-    { id: 2, date: '10.13(월)', time: '오전 11:00 ~ 12:00', classTitle: '하체 단련', classDescription: '하체 근력 강화 클래스', classType: '기업 클래스' },
-    { id: 3, date: '10.13(월)', time: '오후 1:00 ~ 2:00', classTitle: '복근 운동', classDescription: '복근 운동 클래스', classType: '일반 클래스' },
-    { id: 4, date: '10.13(월)', time: '오후 2:00 ~ 3:00', classTitle: '홈트 강좌', classDescription: '홈트레이닝 튜토리얼 클래스', classType: '일반 클래스' },
-    { id: 5, date: '10.13(월)', time: '오후 3:00 ~ 4:00', classTitle: '체형 교정', classDescription: '자세 교정 운동 클래스', classType: '개인 상담 / 코칭', memberName: '김싸피' },
-    { id: 6, date: '10.13(월)', time: '오후 4:00 ~ 5:00', classTitle: '체형 교정', classDescription: '자세 교정 운동 클래스', classType: '개인 상담 / 코칭', memberName: '김싸피' },
-  ]);
-
-  // 필터링된 예약 목록
-  const filteredReservations = filterValue === '전체'
-    ? allReservations
-    : allReservations.filter(reservation => reservation.classType === filterValue);
-
   const filterOptions = [
-    { value: '전체', label: '전체' },
-    { value: '기업 클래스', label: '기업 클래스' },
-    { value: '일반 클래스', label: '일반 클래스' },
-    { value: '개인 상담 / 코칭', label: '개인 상담 / 코칭' },
+    { value: "전체", label: "전체" },
+    { value: "클래스", label: "클래스" },
+    { value: "개인 상담 / 코칭", label: "개인 상담 / 코칭" },
   ];
 
   return (
@@ -381,101 +577,183 @@ export const ReservationListPage: React.FC = () => {
             <SegmentedTabs
               leftLabel="현재 예약"
               rightLabel="지난 예약"
-              active={activeTab === 'current' ? 'left' : 'right'}
+              active={activeTab === "current" ? "left" : "right"}
               onLeftClick={handleCurrentClick}
               onRightClick={handlePastClick}
               tabWidth={120}
               showDivider={false}
             />
           </TabsWrapper>
-          
+
           <FilterDropdown>
             <Dropdown
               options={filterOptions}
               value={filterValue}
               onChange={handleFilterChange}
-              style={{ width: '100%' }}
+              style={{ width: "100%" }}
             />
           </FilterDropdown>
         </TabsAndFilterContainer>
 
         <Divider />
 
-        {filteredReservations.length === 0 && activeTab === 'current' ? (
+        {loading ? (
+          <LoadingMessage>예약 목록을 불러오는 중...</LoadingMessage>
+        ) : error ? (
+          <ErrorMessage>{error}</ErrorMessage>
+        ) : reservations.length === 0 ? (
           <EmptyMessage>현재 상담 예약 신청 내역이 없습니다.</EmptyMessage>
         ) : (
-          <ReservationTable>
-            <TableHeader>
-              <tr>
-                <TableHeaderCell>날짜 / 시간</TableHeaderCell>
-                <TableHeaderCell>클래스</TableHeaderCell>
-                <TableHeaderCell>클래스 형태</TableHeaderCell>
-                <TableHeaderCell></TableHeaderCell>
-              </tr>
-            </TableHeader>
-            <TableBody>
-              {filteredReservations.map((reservation) => (
-                <TableRow key={reservation.id}>
-                  <TableCell>{reservation.date} {reservation.time}</TableCell>
-                  <TableCell>
-                    <ClassTitle>{reservation.classTitle}</ClassTitle>
-                    <ClassDescription>{reservation.classDescription}</ClassDescription>
-                  </TableCell>
-                  <TableCell style={{ color: '#4965f6' }}>{reservation.classType}</TableCell>
-                  <TableCell>
-                    <ActionButtonContainer>
-                      <StartConsultationButton onClick={handleStartConsultation}>
-                        상담 시작
-                      </StartConsultationButton>
-                      {reservation.memberName ? (
-                        <ViewMemberButton $hasLongText={true} onClick={() => handleViewMember(reservation.memberName!)}>
-                          김싸피 회원 보기
-                        </ViewMemberButton>
-                      ) : (
-                        <ViewMemberButton onClick={handleViewAppliedMembers}>신청 회원</ViewMemberButton>
-                      )}
-                      <CancelButton onClick={() => handleCancelClick(reservation.id)}>예약 취소</CancelButton>
-                    </ActionButtonContainer>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </ReservationTable>
-        )}
+          <>
+            <ReservationTable>
+              <TableHeader>
+                <tr>
+                  <TableHeaderCell>날짜 / 시간</TableHeaderCell>
+                  <TableHeaderCell>클래스</TableHeaderCell>
+                  <TableHeaderCell>클래스 형태</TableHeaderCell>
+                  <TableHeaderCell></TableHeaderCell>
+                </tr>
+              </TableHeader>
+              <TableBody>
+                {reservations.map((reservation) => {
+                  const { date, time } = formatDateTime(
+                    reservation.startAt,
+                    reservation.endAt
+                  );
+                  const classType = getClassType(reservation.type);
+                  const isIndividual = reservation.type === "ONE";
+                  const firstParticipant =
+                    reservation.participants &&
+                    reservation.participants.length > 0
+                      ? reservation.participants[0]
+                      : null;
 
-        {filteredReservations.length > 0 && (
-          <PaginationContainer>
-            <PaginationButton disabled>‹</PaginationButton>
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((page) => (
-              <PaginationButton key={page} $active={page === 1}>
-                {page}
-              </PaginationButton>
-            ))}
-            <PaginationButton>›</PaginationButton>
-          </PaginationContainer>
+                  return (
+                    <TableRow key={reservation.consultationId}>
+                      <TableCell>
+                        {date} {time}
+                      </TableCell>
+                      <TableCell>
+                        <ClassTitle>
+                          {reservation.title || "제목 없음"}
+                        </ClassTitle>
+                        <ClassDescription>
+                          {reservation.description || ""}
+                        </ClassDescription>
+                      </TableCell>
+                      <TableCell style={{ color: "#4965f6" }}>
+                        {classType}
+                      </TableCell>
+                      <TableCell>
+                        <ActionButtonContainer>
+                          <StartConsultationButton
+                            onClick={handleStartConsultation}
+                          >
+                            상담 시작
+                          </StartConsultationButton>
+                          {isIndividual && firstParticipant ? (
+                            <ViewMemberButton
+                              $hasLongText={true}
+                              onClick={() =>
+                                handleViewMember(
+                                  firstParticipant.nickname,
+                                  firstParticipant.userId
+                                )
+                              }
+                            >
+                              {firstParticipant.nickname} 회원 보기
+                            </ViewMemberButton>
+                          ) : (
+                            <ViewMemberButton
+                              onClick={() =>
+                                handleViewAppliedMembers(
+                                  reservation.participants
+                                )
+                              }
+                            >
+                              신청 회원
+                            </ViewMemberButton>
+                          )}
+                          <CancelButton
+                            onClick={() =>
+                              handleCancelClick(
+                                reservation.consultationId,
+                                reservation.type
+                              )
+                            }
+                          >
+                            예약 취소
+                          </CancelButton>
+                        </ActionButtonContainer>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </ReservationTable>
+
+            {totalPages > 1 && (
+              <PaginationContainer>
+                <PaginationButton
+                  disabled={currentPage === 0}
+                  onClick={() => handlePageChange(currentPage - 1)}
+                >
+                  ‹
+                </PaginationButton>
+                {Array.from({ length: totalPages }, (_, i) => i).map((page) => {
+                  // 페이지 번호 표시 로직: 현재 페이지 주변만 표시
+                  if (
+                    page === 0 ||
+                    page === totalPages - 1 ||
+                    (page >= currentPage - 2 && page <= currentPage + 2)
+                  ) {
+                    return (
+                      <PaginationButton
+                        key={page}
+                        $active={page === currentPage}
+                        onClick={() => handlePageChange(page)}
+                      >
+                        {page + 1}
+                      </PaginationButton>
+                    );
+                  } else if (
+                    page === currentPage - 3 ||
+                    page === currentPage + 3
+                  ) {
+                    return <span key={page}>...</span>;
+                  }
+                  return null;
+                })}
+                <PaginationButton
+                  disabled={currentPage >= totalPages - 1}
+                  onClick={() => handlePageChange(currentPage + 1)}
+                >
+                  ›
+                </PaginationButton>
+              </PaginationContainer>
+            )}
+          </>
         )}
 
         {/* 회원 정보 모달 */}
         <MemberInfoModal
           open={showMemberInfoModal}
-          onClose={() => setShowMemberInfoModal(false)}
-          memberName={selectedMemberName}
-          memberData={{
-            height: 170,
-            weight: 50,
-            sleepTime: 7,
+          onClose={() => {
+            setShowMemberInfoModal(false);
+            setSelectedMemberId(null);
           }}
-          question="전완근을 키우고 싶어요"
+          memberName={selectedMemberName}
+          memberId={selectedMemberId || undefined}
         />
 
         {/* 신청 회원 예약 승인 모달 */}
         <ApplicationApprovalModal
           open={showApplicationApprovalModal}
           onClose={() => setShowApplicationApprovalModal(false)}
-          members={[
-            { id: '1', name: '김싸피' },
-            { id: '2', name: '이싸피' },
-          ]}
+          members={reservations
+            .filter((r) => r.participants && r.participants.length > 0)
+            .flatMap((r) => r.participants || [])
+            .map((p) => ({ id: p.userId, name: p.nickname }))}
         />
 
         {/* 예약 취소 확인 모달 */}

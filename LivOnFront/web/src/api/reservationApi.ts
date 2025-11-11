@@ -2,91 +2,347 @@
 import axios from "axios";
 
 const API_BASE_URL =
-  process.env.REACT_APP_API_BASE_URL || "http://localhost:8081";
+  process.env.REACT_APP_API_BASE_URL || "http://k13s406.p.ssafy.io:8082/api/v1";
 
-// 타입 정의
-interface ReservationData {
-  coachId: string;
-  classId?: string;
-  type: "class" | "personal" | "consultation";
-  title: string;
-  description?: string;
-  scheduledAt: string;
-  duration: number;
-}
-
-interface ReservationResponse {
-  id: string;
+// 공통 타입
+interface CoachInfo {
   userId: string;
-  coachId: string;
-  classId?: string;
-  type: string;
-  title: string;
-  description?: string;
-  scheduledAt: string;
-  duration: number;
-  status: string;
-  price: number;
-  paymentStatus: string;
-  createdAt: string;
-  updatedAt: string;
+  nickname: string;
+  job: string;
+  introduce: string;
+  profileImage: string;
+  certificates: string[];
+  organizations: string;
 }
 
-interface ReservationListResponse {
-  reservations: ReservationResponse[];
-  totalCount: number;
+// ===== 1:1 상담 관련 =====
+
+interface IndividualReservationRequest {
+  coachId: string; // UUID
+  startAt: string; // ISO 8601 format
+  endAt: string; // ISO 8601 format
+  preQnA?: string;
+}
+
+// 1:1 상담 예약 생성
+export const createIndividualConsultationApi = async (
+  token: string,
+  data: IndividualReservationRequest
+): Promise<number> => {
+  const response = await axios.post<{
+    isSuccess: boolean;
+    code: string;
+    message: string;
+    result: number;
+  }>(`${API_BASE_URL}/individual-consultations`, data, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.data.result;
+};
+
+// 1:1 상담 취소
+export const cancelIndividualConsultationApi = async (
+  token: string,
+  consultationId: number
+): Promise<void> => {
+  await axios.delete(
+    `${API_BASE_URL}/individual-consultations/${consultationId}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+};
+
+// ===== 그룹 상담(클래스) 관련 =====
+
+interface GroupConsultationCreateRequest {
+  title: string; // max 200자
+  description: string;
+  startAt: string;
+  endAt: string;
+  capacity: number; // 1-100
+}
+
+interface GroupConsultationListItem {
+  id: number;
+  title: string;
+  imageUrl: string;
+  startAt: string;
+  endAt: string;
+  capacity: number;
+  currentParticipants: number;
+  availableSeats: number;
+  isFull: boolean;
+  coachName: string;
+  coachProfileImage: string;
+}
+
+interface GroupConsultationDetail {
+  id: number;
+  title: string;
+  description: string;
+  imageUrl: string;
+  startAt: string;
+  endAt: string;
+  capacity: number;
+  currentParticipants: number;
+  availableSeats: number;
+  isFull: boolean;
+  coach: CoachInfo;
+}
+
+interface PaginatedResponse<T> {
   page: number;
   pageSize: number;
-  hasNext: boolean;
+  totalItems: number;
+  totalPages: number;
+  items: T[];
 }
 
-// 예약 생성 API
-export const createReservationApi = async (
-  reservationData: ReservationData
-): Promise<ReservationResponse> => {
-  const response = await axios.post<ReservationResponse>(
-    `${API_BASE_URL}/reservation/create`,
-    reservationData
-  );
-  return response.data;
+// 클래스 목록 조회
+export const getGroupConsultationsApi = async (
+  token: string,
+  sameOrganization: boolean = false,
+  page: number = 0,
+  size: number = 10
+): Promise<PaginatedResponse<GroupConsultationListItem>> => {
+  const response = await axios.get<{
+    isSuccess: boolean;
+    code: string;
+    message: string;
+    result: PaginatedResponse<GroupConsultationListItem>;
+  }>(`${API_BASE_URL}/group-consultations`, {
+    params: { sameOrganization, page, size },
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.data.result;
 };
 
-// 현재 예약 목록 조회 API
-export const getCurrentReservationsApi = async (
-  coachId: string
-): Promise<ReservationListResponse> => {
-  const response = await axios.get<ReservationListResponse>(
-    `${API_BASE_URL}/reservation/current/${coachId}`
-  );
-  return response.data;
+// 클래스 상세 조회
+export const getGroupConsultationDetailApi = async (
+  id: number
+): Promise<GroupConsultationDetail> => {
+  const response = await axios.get<{
+    isSuccess: boolean;
+    code: string;
+    message: string;
+    result: GroupConsultationDetail;
+  }>(`${API_BASE_URL}/group-consultations/${id}`);
+  return response.data.result;
 };
 
-// 지난 예약 목록 조회 API
-export const getPastReservationsApi = async (
-  coachId: string
-): Promise<ReservationListResponse> => {
-  const response = await axios.get<ReservationListResponse>(
-    `${API_BASE_URL}/reservation/past/${coachId}`
+// 클래스 생성 (코치용)
+export const createGroupConsultationApi = async (
+  token: string,
+  data: GroupConsultationCreateRequest,
+  classImage?: File
+): Promise<number> => {
+  const formData = new FormData();
+  formData.append(
+    "data",
+    new Blob([JSON.stringify(data)], { type: "application/json" })
   );
-  return response.data;
+  if (classImage) {
+    formData.append("classImage", classImage);
+  }
+
+  const response = await axios.post<{
+    isSuccess: boolean;
+    code: string;
+    message: string;
+    result: number;
+  }>(`${API_BASE_URL}/group-consultations`, formData, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return response.data.result;
 };
 
-// 예약 승인 API
-export const approveReservationApi = async (
-  reservationId: string
-): Promise<{ success: boolean; message: string }> => {
-  const response = await axios.put<{ success: boolean; message: string }>(
-    `${API_BASE_URL}/reservation/${reservationId}/approve`
+// 클래스 참여 취소
+export const cancelGroupConsultationParticipationApi = async (
+  token: string,
+  consultationId: number
+): Promise<void> => {
+  await axios.delete(
+    `${API_BASE_URL}/group-consultations/${consultationId}/participants`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
   );
-  return response.data;
 };
 
-// 예약 취소 API
-export const cancelReservationApi = async (
-  reservationId: string
-): Promise<{ success: boolean; message: string }> => {
-  const response = await axios.put<{ success: boolean; message: string }>(
-    `${API_BASE_URL}/reservation/${reservationId}/cancel`
+// ===== 코치 시간 블록(막기) 관련 =====
+
+interface BlockedTimesRequest {
+  blockedTimes: string[]; // 최대 8개, 시간 문자열 배열 (예: ["09:00", "10:00", "14:00"])
+}
+
+interface BlockedTimesResponse {
+  date: string; // YYYY-MM-DD 형식
+  blockedTimes: string[]; // 막힌 시간대 목록
+}
+
+/**
+ * 코치가 막아놓은 시간대 조회 API
+ * GET /api/v1/coaches/block-times
+ * @param token - 인증 토큰
+ * @param date - 조회할 날짜 (YYYY-MM-DD 형식)
+ */
+export const getCoachBlockedTimesApi = async (
+  token: string,
+  date: string
+): Promise<BlockedTimesResponse> => {
+  const response = await axios.get<{
+    isSuccess: boolean;
+    code: string;
+    message: string;
+    result: BlockedTimesResponse;
+  }>(`${API_BASE_URL}/coaches/block-times`, {
+    params: { date },
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.data.result;
+};
+
+/**
+ * 코치가 특정 날짜의 시간대를 막기 (업데이트) API
+ * PUT /api/v1/coaches/block-times
+ * @param token - 인증 토큰
+ * @param date - 막을 날짜 (YYYY-MM-DD 형식)
+ * @param blockedTimes - 막을 시간대 배열 (최대 8개)
+ */
+export const updateCoachBlockedTimesApi = async (
+  token: string,
+  date: string,
+  blockedTimes: string[]
+): Promise<void> => {
+  // 최대 8개 제한 확인
+  if (blockedTimes.length > 8) {
+    throw new Error("막을 수 있는 시간대는 최대 8개입니다.");
+  }
+
+  const response = await axios.put<{
+    isSuccess: boolean;
+    code: string;
+    message: string;
+  }>(
+    `${API_BASE_URL}/coaches/block-times`,
+    { blockedTimes },
+    {
+      params: { date },
+      headers: { Authorization: `Bearer ${token}` },
+    }
   );
-  return response.data;
+
+  if (!response.data.isSuccess) {
+    throw new Error(response.data.message || "시간대 막기에 실패했습니다.");
+  }
+};
+
+// ===== 코치 예약 가능 시간 조회 =====
+
+interface AvailableTime {
+  time: string; // "HH:mm" 형식
+  isAvailable: boolean;
+}
+
+interface AvailableTimesResponse {
+  date: string; // YYYY-MM-DD 형식
+  availableTimes: AvailableTime[];
+}
+
+/**
+ * 코치의 예약 가능 시간대 조회 API
+ * GET /api/v1/coaches/{coachId}/available-times
+ * @param coachId - 코치 UUID
+ * @param date - 조회할 날짜 (YYYY-MM-DD 형식)
+ */
+export const getCoachAvailableTimesApi = async (
+  coachId: string,
+  date: string
+): Promise<AvailableTimesResponse> => {
+  const response = await axios.get<{
+    isSuccess: boolean;
+    code: string;
+    message: string;
+    result: AvailableTimesResponse;
+  }>(`${API_BASE_URL}/coaches/${coachId}/available-times`, {
+    params: { date },
+  });
+  return response.data.result;
+};
+
+// ===== 코치용 상담 관리 =====
+
+interface CoachConsultation {
+  consultationId: number;
+  type: string;
+  status: string;
+  startAt: string;
+  endAt: string;
+  sessionId: string;
+  preQna?: string;
+  aiSummary?: string;
+  title?: string;
+  description?: string;
+  imageUrl?: string;
+  capacity?: number;
+  currentParticipants?: number;
+  participants?: Array<{
+    userId: string;
+    nickname: string;
+    profileImage: string;
+    email: string;
+  }>;
+}
+
+// 코치 상담 목록 조회
+export const getCoachConsultationsApi = async (
+  token: string,
+  status: "upcoming" | "past",
+  type?: "ONE" | "GROUP",
+  page: number = 0,
+  size: number = 10
+): Promise<PaginatedResponse<CoachConsultation>> => {
+  const response = await axios.get<{
+    isSuccess: boolean;
+    code: string;
+    message: string;
+    result: PaginatedResponse<CoachConsultation>;
+  }>(`${API_BASE_URL}/coaches/consultations`, {
+    params: { status, type, page, size },
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.data.result;
+};
+
+// ===== 회원 정보 조회 =====
+
+export interface MemberInfo {
+  userId: string;
+  nickname: string;
+  email: string;
+  profileImage?: string;
+  height?: number;
+  weight?: number;
+  sleepTime?: number;
+  preQna?: string;
+}
+
+// 회원 정보 조회 API
+export const getMemberInfoApi = async (
+  token: string,
+  userId: string
+): Promise<MemberInfo> => {
+  const response = await axios.get<{
+    isSuccess: boolean;
+    code: string;
+    message: string;
+    result: MemberInfo;
+  }>(`${API_BASE_URL}/user/${userId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.data.result;
 };

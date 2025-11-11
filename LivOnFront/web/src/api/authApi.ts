@@ -179,12 +179,12 @@ export const signInApi = async (
   return response.data;
 };
 
-// 사용자 정보 조회 API (GET /api/v1/user/me)
+// 사용자 정보 조회 API (GET /api/v1/user/my-info)
 export const getMyProfileApi = async (
   accessToken: string
 ): Promise<ApiResponse<UserProfile>> => {
   const response = await axios.get<ApiResponse<UserProfile>>(
-    `${API_BASE_URL}/api/v1/user/my-info`,
+    `${API_BASE_URL}/user/my-info`,
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,

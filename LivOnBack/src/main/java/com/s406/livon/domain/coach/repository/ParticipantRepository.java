@@ -1,6 +1,5 @@
 package com.s406.livon.domain.coach.repository;
 
-import com.s406.livon.domain.coach.entity.Consultation;
 import com.s406.livon.domain.coach.entity.Participant;
 import com.s406.livon.domain.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -42,4 +41,9 @@ public interface ParticipantRepository extends JpaRepository<Participant, Long> 
             "JOIN FETCH p.user u " +
             "WHERE p.consultation.id IN :consultationIds")
     List<Participant> findByConsultationIdInWithUser(@Param("consultationIds") List<Long> consultationIds);
+
+    /**
+     * 특정 상담의 참여자 목록 조회
+     */
+    List<Participant> findParticipantByConsultationId(Long consultationId);
 }

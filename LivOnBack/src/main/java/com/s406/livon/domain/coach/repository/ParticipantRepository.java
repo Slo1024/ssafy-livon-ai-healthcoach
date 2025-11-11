@@ -37,15 +37,9 @@ public interface ParticipantRepository extends JpaRepository<Participant, Long> 
 
     boolean existsByConsultationIdAndUserId(Long consultationId, UUID userId);
 
-    /**
-     * 사용자와 상담 ID로 참가자 조회
-     */
+    // N+1 방지: 여러 consultation의 참가자를 한 번에 조회
     @Query("SELECT p FROM Participant p " +
-            "JOIN FETCH p.consultation c " +
-            "WHERE p.user.id = :userId " +
-            "AND p.consultation.id = :consultationId")
-    Optional<Participant> findByUserIdAndConsultationId(
-            @Param("userId") Long userId,
-            @Param("consultationId") Long consultationId
-    );
+            "JOIN FETCH p.user u " +
+            "WHERE p.consultation.id IN :consultationIds")
+    List<Participant> findByConsultationIdInWithUser(@Param("consultationIds") List<Long> consultationIds);
 }

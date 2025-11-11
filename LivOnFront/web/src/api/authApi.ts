@@ -5,7 +5,7 @@ import { CONFIG } from "../constants/config";
 const API_BASE_URL =
   CONFIG.API_BASE_URL ||
   process.env.REACT_APP_API_BASE_URL ||
-  "http://localhost:8080";
+  "http://localhost:8081";
 
 // 타입 정의
 interface LoginRequest {

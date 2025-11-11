@@ -6,6 +6,7 @@ import com.livon.app.data.remote.api.ReserveCoachRequest
 import com.livon.app.domain.repository.ReservationRepository
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import android.util.Log
 
 class ReservationRepositoryImpl : ReservationRepository {
     private val api = RetrofitProvider.createService(ReservationApi::class.java)
@@ -20,7 +21,8 @@ class ReservationRepositoryImpl : ReservationRepository {
         val endAt: String
     )
 
-    enum class ReservationType { PERSONAL, GROUP }
+    // ReservationType moved to a top-level declaration (ReservationModels.kt)
+    // to avoid cross-file nested-type resolution issues when referenced from viewmodels.
 
     override suspend fun reserveCoach(
         coachId: String,
@@ -70,6 +72,39 @@ class ReservationRepositoryImpl : ReservationRepository {
                 Result.success(res.result)
             } else Result.failure(Exception(res.message ?: "Unknown"))
         } catch (t: Throwable) {
+            Result.failure(t)
+        }
+    }
+
+    // New cancel implementations
+    override suspend fun cancelIndividual(consultationId: Int): Result<Unit> {
+        return try {
+            Log.d("ReservationRepo", "cancelIndividual: calling API for id=$consultationId")
+            val res = api.cancelIndividual(consultationId)
+            Log.d("ReservationRepo", "cancelIndividual: api returned isSuccess=${res.isSuccess}, message=${res.message}")
+            if (res.isSuccess) {
+                // remove from local cache if present
+                localReservations.removeAll { it.id == consultationId }
+                Result.success(Unit)
+            } else Result.failure(Exception(res.message ?: "Unknown"))
+        } catch (t: Throwable) {
+            Log.e("ReservationRepo", "cancelIndividual failed", t)
+            Result.failure(t)
+        }
+    }
+
+    override suspend fun cancelGroupParticipation(consultationId: Int): Result<Unit> {
+        return try {
+            Log.d("ReservationRepo", "cancelGroupParticipation: calling API for id=$consultationId")
+            val res = api.cancelGroupParticipation(consultationId)
+            Log.d("ReservationRepo", "cancelGroupParticipation: api returned isSuccess=${res.isSuccess}, message=${res.message}")
+            if (res.isSuccess) {
+                // remove from local cache if present
+                localReservations.removeAll { it.id == consultationId }
+                Result.success(Unit)
+            } else Result.failure(Exception(res.message ?: "Unknown"))
+        } catch (t: Throwable) {
+            Log.e("ReservationRepo", "cancelGroupParticipation failed", t)
             Result.failure(t)
         }
     }

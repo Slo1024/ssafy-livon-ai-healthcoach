@@ -8,7 +8,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import java.time.LocalDate
+import com.livon.app.data.repository.ReservationType
+import android.util.Log
 
 // We'll use the reservation repository for create actions (reserveCoach / reserveClass).
 class ReservationViewModel(
@@ -85,13 +86,21 @@ class ReservationViewModel(
                     ReservationUi(
                         id = lr.id.toString(),
                         date = start.toLocalDate(),
-                        className = if (lr.type.name == "PERSONAL") "개인 상담" else "그룹 클래스",
+                        className = when (lr.type) {
+                            ReservationType.PERSONAL -> "개인 상담"
+                            ReservationType.GROUP -> "그룹 클래스"
+                        },
                         coachName = lr.coachId,
                         coachRole = "",
                         coachIntro = "",
                         timeText = formatTimeText(start, end),
                         classIntro = "",
-                        imageResId = null
+                        imageResId = null,
+                        // set sessionTypeLabel so cancellation logic can decide personal vs group
+                        sessionTypeLabel = when (lr.type) {
+                            ReservationType.PERSONAL -> "개인 상담"
+                            ReservationType.GROUP -> "그룹 상담"
+                        }
                     )
                 }
 
@@ -161,6 +170,7 @@ class ReservationViewModel(
     /**
      * 클래스 예약(그룹) API 호출: repo.reserveClass를 호출하고 actionState/uiState 갱신
      */
+    @Suppress("unused")
     fun reserveClass(classId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             _actionState.value = ReservationActionState(isLoading = true, success = null, errorMessage = null)
@@ -179,14 +189,7 @@ class ReservationViewModel(
                         else -> ex?.message ?: "알 수 없는 오류"
                     }
 
-                    // If backend reports "이미 예약한 클래스입니다" (CONSULT4005), it means the
-                    // class is already reserved on server side. In that case we should still
-                    // refresh the reservation list and treat the flow as successful so the
-                    // UX navigates to ReservationStatusScreen which will show the existing
-                    // reservation. This avoids confusing the user when backend already had
-                    // the reservation.
                     if (msg.contains("이미 예약")) {
-                        // refresh server list and mark as success (so nav logic can proceed)
                         loadUpcoming()
                         _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null)
                     } else {
@@ -199,6 +202,50 @@ class ReservationViewModel(
                     else -> t.message
                 }
                 _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = msg)
+            }
+        }
+    }
+
+    // cancel APIs
+    fun cancelIndividual(consultationId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            Log.d("ReservationVM", "cancelIndividual: start id=$consultationId")
+            _actionState.value = ReservationActionState(isLoading = true, success = null, errorMessage = null)
+            try {
+                val res = repo.cancelIndividual(consultationId)
+                if (res.isSuccess) {
+                    Log.d("ReservationVM", "cancelIndividual: success id=$consultationId")
+                    _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null)
+                    // refresh server list
+                    loadUpcoming()
+                } else {
+                    Log.d("ReservationVM", "cancelIndividual: failure id=$consultationId, ex=${res.exceptionOrNull()?.message}")
+                    _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = res.exceptionOrNull()?.message)
+                }
+            } catch (t: Throwable) {
+                Log.e("ReservationVM", "cancelIndividual: exception", t)
+                _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = t.message)
+            }
+        }
+    }
+
+    fun cancelGroupParticipation(consultationId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            Log.d("ReservationVM", "cancelGroupParticipation: start id=$consultationId")
+            _actionState.value = ReservationActionState(isLoading = true, success = null, errorMessage = null)
+            try {
+                val res = repo.cancelGroupParticipation(consultationId)
+                if (res.isSuccess) {
+                    Log.d("ReservationVM", "cancelGroupParticipation: success id=$consultationId")
+                    _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null)
+                    loadUpcoming()
+                } else {
+                    Log.d("ReservationVM", "cancelGroupParticipation: failure id=$consultationId, ex=${res.exceptionOrNull()?.message}")
+                    _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = res.exceptionOrNull()?.message)
+                }
+            } catch (t: Throwable) {
+                Log.e("ReservationVM", "cancelGroupParticipation: exception", t)
+                _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = t.message)
             }
         }
     }

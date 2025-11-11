@@ -69,4 +69,12 @@ interface ReservationApi {
         @Query("status") status: String,
         @Query("type") type: String? = null
     ): ApiResponse<ReservationListResponse>
+
+    // 개인 상담 예약 취소
+    @retrofit2.http.DELETE("individual-consultations/{consultationId}")
+    suspend fun cancelIndividual(@Path("consultationId") consultationId: Int): ApiResponse<Unit>
+
+    // 그룹 클래스 예약 취소 (참가자 삭제)
+    @retrofit2.http.DELETE("group-consultations/{consultationId}/participants")
+    suspend fun cancelGroupParticipation(@Path("consultationId") consultationId: Int): ApiResponse<Unit>
 }

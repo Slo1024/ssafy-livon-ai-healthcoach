@@ -322,9 +322,72 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         )
     }
 
-    // --- ADDED FALLBACK ROUTE: accept missing 'time' segment and default to empty time ---
+    // --- ADDED: accept coachName first (missing coachId) -> support routes like qna_submit/{coachName}/{date}/{time}
+    composable("qna_submit/{coachName}/{date}/{time}") { backStackEntry ->
+        val encodedName = backStackEntry.arguments?.getString("coachName") ?: ""
+        val decodedName = try { URLDecoder.decode(encodedName, "UTF-8") } catch (t: Throwable) { encodedName }
+        val coachIdArg = "" // no coachId provided in this route
+        val dateStr = backStackEntry.arguments?.getString("date") ?: ""
+        val parsedDate = try { LocalDate.parse(dateStr) } catch (t: Throwable) { LocalDate.now() }
+        val timeRaw = backStackEntry.arguments?.getString("time") ?: ""
+        val decodedTime = try { URLDecoder.decode(timeRaw, "UTF-8") } catch (t: Throwable) { timeRaw }
+
+        fun timeTokenToHour(tok: String): Int {
+            return try {
+                val s = tok.trim()
+                when {
+                    s.startsWith("AM_") || s.startsWith("am_") -> {
+                        val hh = s.substringAfter("_").split(":")[0].toIntOrNull() ?: 9
+                        if (hh % 12 == 0) 0 else (hh % 12)
+                    }
+                    s.startsWith("PM_") || s.startsWith("pm_") -> {
+                        val hh = s.substringAfter("_").split(":")[0].toIntOrNull() ?: 1
+                        if (hh % 12 == 0) 12 else (hh % 12) + 12
+                    }
+                    else -> {
+                        val hh = s.split(":")[0].toIntOrNull() ?: 9
+                        hh % 24
+                    }
+                }
+            } catch (t: Throwable) {
+                9
+            }
+        }
+
+        val reservationRepoForQna = remember { com.livon.app.data.repository.ReservationRepositoryImpl() }
+        val reservationVmForQna = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return com.livon.app.feature.member.reservation.vm.ReservationViewModel(reservationRepoForQna) as T
+            }
+        }) as com.livon.app.feature.member.reservation.vm.ReservationViewModel
+
+        val actionState by reservationVmForQna.actionState.collectAsState()
+        LaunchedEffect(actionState.success) {
+            if (actionState.success != null) {
+                nav.navigate("reservations") { popUpTo(Routes.MemberHome) { inclusive = false } }
+            }
+        }
+
+        QnASubmitScreen(
+            coachName = decodedName,
+            selectedDate = parsedDate,
+            onBack = { nav.popBackStack() },
+            onConfirmReservation = { questions ->
+                val preQnA = questions.joinToString("\n")
+                val hour = timeTokenToHour(decodedTime)
+                val startAt = java.time.LocalDateTime.of(parsedDate, java.time.LocalTime.of(hour,0))
+                val endAt = startAt.plusHours(1)
+                reservationVmForQna.reserveCoach(coachIdArg, startAt, endAt, preQnA)
+            },
+            onNavigateHome = { nav.navigate(Routes.MemberHome) },
+            onNavigateToMyHealthInfo = { /* noop */ },
+            navController = nav,
+            externalError = actionState.errorMessage
+        )
+    }
+
     composable("qna_submit/{coachId}/{coachName}/{date}") { backStackEntry ->
-        // reuse the same logic but supply an empty time token so ViewModel can handle it
         val encodedName = backStackEntry.arguments?.getString("coachName") ?: ""
         val decodedName = try { URLDecoder.decode(encodedName, "UTF-8") } catch (t: Throwable) { encodedName }
         val coachIdArg = backStackEntry.arguments?.getString("coachId") ?: ""
@@ -518,6 +581,10 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         // If API returned items, use them. Otherwise in dev return our in-memory store
         val currentList = if (resState.items.isNotEmpty()) resState.items else emptyList()
 
+        // dialog state for cancel confirmation
+        val showCancelDialog = remember { mutableStateOf(false) }
+        val selectedReservation = remember { mutableStateOf<ReservationUi?>(null) }
+
         ReservationStatusScreen(
             current = currentList,
             past = emptyList(),
@@ -538,49 +605,123 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                     nav.popBackStack()
                 }
             },
-            onDetail = { /* TODO: navigate to reservation detail */ },
-            onCancel = { /* TODO: cancel reservation via API */ },
+            // navigate to reservation detail by id
+            onDetail = { item ->
+                try {
+                    nav.navigate("reservation_detail/${item.id}")
+                } catch (t: Throwable) {
+                    // if navigation fails, fallback to no-op
+                }
+            },
+            onCancel = { item ->
+                selectedReservation.value = item
+                showCancelDialog.value = true
+            },
             onJoin = { /* TODO: join live session */ },
             onAiAnalyze = { /* TODO: show AI analysis */ }
         )
-    }
-    // class QnA/reserve route: class reservations (no time selection)
-    composable("qna_submit_class/{classId}") { backStackEntry ->
-        val classId = backStackEntry.arguments?.getString("classId") ?: ""
 
-        // setup reservation vm
-        val reservationRepoForClass = remember { com.livon.app.data.repository.ReservationRepositoryImpl() }
-        val reservationVmForClass = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+        // Cancel confirmation dialog
+        if (showCancelDialog.value && selectedReservation.value != null) {
+            val sel = selectedReservation.value!!
+            AlertDialog(
+                onDismissRequest = { showCancelDialog.value = false; selectedReservation.value = null },
+                title = { Text(text = "예약 취소") },
+                text = { Text(text = "예약을 취소하시겠습니까?") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        // Optimistic UI update: remove from local cache and refresh UI immediately
+                        val idInt = sel.id.toIntOrNull()
+                        if (idInt != null) {
+                            // remove from in-memory cache so ReservationStatusScreen reflects change instantly
+                            com.livon.app.data.repository.ReservationRepositoryImpl.localReservations.removeAll { it.id == idInt }
+                            // refresh viewmodel state from server/local cache
+                            reservationVm.loadUpcoming()
+
+                            // still call server cancel API (fire-and-forget here)
+                            if ((sel.sessionTypeLabel ?: "").contains("개인")) {
+                                reservationVm.cancelIndividual(idInt)
+                            } else {
+                                reservationVm.cancelGroupParticipation(idInt)
+                            }
+                        }
+                        showCancelDialog.value = false
+                        selectedReservation.value = null
+                    }) {
+                        Text(text = "확인")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showCancelDialog.value = false; selectedReservation.value = null }) {
+                        Text(text = "취소")
+                    }
+                }
+            )
+        }
+    }
+
+    // Reservation detail route: show details for a specific reservation id
+    composable("reservation_detail/{id}") { backStackEntry ->
+        val id = backStackEntry.arguments?.getString("id") ?: ""
+
+        // reuse ReservationViewModel to read current list (it will fetch from server)
+        val reservationRepoDetail = remember { com.livon.app.data.repository.ReservationRepositoryImpl() }
+        val reservationVmDetail = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                return com.livon.app.feature.member.reservation.vm.ReservationViewModel(reservationRepoForClass) as T
+                return com.livon.app.feature.member.reservation.vm.ReservationViewModel(reservationRepoDetail) as T
             }
         }) as com.livon.app.feature.member.reservation.vm.ReservationViewModel
 
-        val actionState by reservationVmForClass.actionState.collectAsState()
+        val stateDetail by reservationVmDetail.uiState.collectAsState()
+        // ensure we have the latest items
+        LaunchedEffect(Unit) { reservationVmDetail.loadUpcoming() }
 
-        // navigate back to reservations on successF
-        LaunchedEffect(actionState.success) {
-            if (actionState.success == true) {
-                nav.navigate("reservations") {
-                    popUpTo(Routes.MemberHome) { inclusive = false }
+        // find reservation by id
+        val found = stateDetail.items.find { it.id == id }
+
+        if (found != null) {
+            // derive detail type
+            val detailType = when {
+                found.isLive -> com.livon.app.feature.member.reservation.ui.ReservationDetailType.Current
+                (found.sessionTypeLabel ?: "").contains("개인") -> com.livon.app.feature.member.reservation.ui.ReservationDetailType.PastPersonal
+                else -> com.livon.app.feature.member.reservation.ui.ReservationDetailType.PastGroup
+            }
+
+            val coachMini = com.livon.app.feature.member.reservation.ui.CoachMini(
+                name = found.coachName.ifEmpty { "코치" },
+                title = found.coachRole.ifEmpty { "" },
+                specialties = found.coachIntro.ifEmpty { "" },
+                workplace = ""
+            )
+
+            val sessionInfo = com.livon.app.feature.member.reservation.ui.SessionInfo(
+                dateText = "${found.date.monthValue}월 ${found.date.dayOfMonth}일",
+                timeText = found.timeText,
+                modelText = found.className,
+                appliedText = null
+            )
+
+            ReservationDetailScreen(
+                type = detailType,
+                coach = coachMini,
+                session = sessionInfo,
+                aiSummary = null,
+                qnas = emptyList(),
+                onBack = { nav.popBackStack() },
+                onDelete = { /* TODO: delete past reservation from server/local */ },
+                onSeeCoach = { /* TODO: navigate to coach detail if id available */ },
+                onSeeAiDetail = { /* TODO */ }
+            )
+        } else {
+            // show loading / not found
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = "예약 정보를 불러오는 중입니다...")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    CircularProgressIndicator()
                 }
             }
         }
-
-        // Show QnA screen but on confirm call reserveClass
-        QnASubmitScreen(
-            coachName = "클래스",
-            selectedDate = java.time.LocalDate.now(),
-            onBack = { nav.popBackStack() },
-            onConfirmReservation = { _ ->
-                // ignore QnA text for class reservation - backend only needs classId in path
-                reservationVmForClass.reserveClass(classId)
-            },
-            onNavigateHome = { nav.navigate(Routes.MemberHome) },
-            onNavigateToMyHealthInfo = { /* noop */ },
-            navController = nav,
-            externalError = actionState.errorMessage
-        )
     }
 }

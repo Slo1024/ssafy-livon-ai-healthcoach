@@ -334,13 +334,13 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             selectedDate = parsedDate,
             onBack = { nav.popBackStack() },
             onConfirmReservation = { questions ->
-                val preQna = questions.joinToString("\n")
+                val preQnA = questions.joinToString("\n")
                 val hour = timeTokenToHour(decodedTime)
                 val startAt = java.time.LocalDateTime.of(parsedDate, java.time.LocalTime.of(hour,0))
                 val endAt = startAt.plusHours(1)
 
                 // delegate to ViewModel
-                reservationVmForQna.reserveCoach(coachIdArg, startAt, endAt, preQna)
+                reservationVmForQna.reserveCoach(coachIdArg, startAt, endAt, preQnA)
             },
             onNavigateHome = { nav.navigate(Routes.MemberHome) },
             onNavigateToMyHealthInfo = {
@@ -403,11 +403,11 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             selectedDate = parsedDate,
             onBack = { nav.popBackStack() },
             onConfirmReservation = { questions ->
-                val preQna = questions.joinToString("\n")
+                val preQnA = questions.joinToString("\n")
                 val hour = timeTokenToHour(decodedTime)
                 val startAt = java.time.LocalDateTime.of(parsedDate, java.time.LocalTime.of(hour,0))
                 val endAt = startAt.plusHours(1)
-                reservationVmForQna.reserveCoach(coachIdArg, startAt, endAt, preQna)
+                reservationVmForQna.reserveCoach(coachIdArg, startAt, endAt, preQnA)
             },
             onNavigateHome = { nav.navigate(Routes.MemberHome) },
             onNavigateToMyHealthInfo = {
@@ -472,13 +472,13 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             selectedDate = parsedDate,
             onBack = { nav.popBackStack() },
             onConfirmReservation = { questions ->
-                val preQna = questions.joinToString("\n")
+                val preQnA = questions.joinToString("\n")
                 val hour = timeTokenToHour(decodedTime)
                 val startAt = java.time.LocalDateTime.of(parsedDate, java.time.LocalTime.of(hour,0))
                 val endAt = startAt.plusHours(1)
 
                 // delegate to ViewModel
-                reservationVmForQna.reserveCoach(coachIdArg, startAt, endAt, preQna)
+                reservationVmForQna.reserveCoach(coachIdArg, startAt, endAt, preQnA)
             },
             onNavigateHome = { nav.navigate(Routes.MemberHome) },
             onNavigateToMyHealthInfo = {

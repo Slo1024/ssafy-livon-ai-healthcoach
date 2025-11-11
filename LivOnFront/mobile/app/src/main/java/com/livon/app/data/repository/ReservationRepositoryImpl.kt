@@ -28,14 +28,14 @@ class ReservationRepositoryImpl : ReservationRepository {
         coachId: String,
         startAt: LocalDateTime,
         endAt: LocalDateTime,
-        preQna: String?
+        preQnA: String?
     ): Result<Int> {
         return try {
             val req = ReserveCoachRequest(
                 coachId = coachId,
                 startAt = startAt.format(fmt),
                 endAt = endAt.format(fmt),
-                preQna = preQna
+                preQnA = preQnA
             )
             val res = api.reserveCoach(req)
             if (res.isSuccess && res.result != null) {

@@ -469,6 +469,84 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         )
     }
 
+    // NEW: route for class reservation QnA flow
+    composable("qna_submit_class/{classId}") { backStackEntry ->
+        val classId = backStackEntry.arguments?.getString("classId") ?: ""
+
+        // fetch class detail (network-backed)
+        val groupApiForQna = com.livon.app.core.network.RetrofitProvider.createService(
+            com.livon.app.data.remote.api.GroupConsultationApiService::class.java
+        )
+        val groupRepoForQna = remember { com.livon.app.domain.repository.GroupConsultationRepository(groupApiForQna) }
+
+        val detailState = remember { mutableStateOf<SampleClassInfo?>(null) }
+        val loadingDetail = remember { mutableStateOf(true) }
+        val errorDetail = remember { mutableStateOf<String?>(null) }
+
+        LaunchedEffect(classId) {
+            loadingDetail.value = true
+            errorDetail.value = null
+            try {
+                val res = groupRepoForQna.fetchClassDetail(classId)
+                if (res.isSuccess) detailState.value = res.getOrNull()
+                else errorDetail.value = res.exceptionOrNull()?.message ?: "클래스 정보를 불러올 수 없습니다."
+            } catch (t: Throwable) {
+                errorDetail.value = t.message
+            } finally {
+                loadingDetail.value = false
+            }
+        }
+
+        // ViewModel to perform reservation
+        val reservationRepoForQna = remember { com.livon.app.data.repository.ReservationRepositoryImpl() }
+        val reservationVmForQna = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return com.livon.app.feature.member.reservation.vm.ReservationViewModel(reservationRepoForQna) as T
+            }
+        }) as com.livon.app.feature.member.reservation.vm.ReservationViewModel
+
+        val actionState by reservationVmForQna.actionState.collectAsState()
+
+        // navigate to reservations when action completes (same behavior as coach flow)
+        LaunchedEffect(actionState.success) {
+            if (actionState.success != null) {
+                nav.navigate("reservations") { popUpTo(Routes.MemberHome) { inclusive = false } }
+            }
+        }
+
+        if (loadingDetail.value) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            val item = detailState.value
+            if (item != null) {
+                QnASubmitScreen(
+                    coachName = item.coachName,
+                    selectedDate = item.date,
+                    onBack = { nav.popBackStack() },
+                    onConfirmReservation = { questions ->
+                        // For class reservation API we only need classId; pre-QnA currently ignored by backend
+                        reservationVmForQna.reserveClass(item.id)
+                    },
+                    onNavigateHome = { nav.navigate(Routes.MemberHome) },
+                    onNavigateToMyHealthInfo = { /* noop */ },
+                    navController = nav,
+                    externalError = actionState.errorMessage
+                )
+            } else {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(text = errorDetail.value ?: "클래스 정보를 불러올 수 없습니다.")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(onClick = { nav.popBackStack() }) { Text(text = "뒤로가기") }
+                    }
+                }
+            }
+        }
+    }
+
     composable("class_reservation") {
         // Use network-backed group consultation list when available
         val groupApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.GroupConsultationApiService::class.java)

@@ -86,10 +86,39 @@ class ReservationRepositoryImpl : ReservationRepository {
                 // remove from local cache if present
                 localReservations.removeAll { it.id == consultationId }
                 Result.success(Unit)
-            } else Result.failure(Exception(res.message ?: "Unknown"))
+            } else {
+                Result.failure(Exception(res.message ?: "Unknown"))
+            }
         } catch (t: Throwable) {
-            Log.e("ReservationRepo", "cancelIndividual failed", t)
-            Result.failure(t)
+            Log.e("ReservationRepo", "cancelIndividual failed, attempting recovery check", t)
+            // Recovery: server might have processed the deletion but response parsing failed
+            return try {
+                val check = api.getMyReservations(status = "upcoming")
+                if (check.isSuccess && check.result != null) {
+                    val exists = check.result.items.any { it.consultationId == consultationId }
+                    if (!exists) {
+                        // Item no longer present -> treat as success
+                        localReservations.removeAll { it.id == consultationId }
+                        Log.d("ReservationRepo", "cancelIndividual: recovery -> item not found on server; treating as success id=$consultationId")
+                        Result.success(Unit)
+                    } else {
+                        // If present but marked CANCELLED, treat as success
+                        val remote = check.result.items.first { it.consultationId == consultationId }
+                        if (remote.status == "CANCELLED") {
+                            localReservations.removeAll { it.id == consultationId }
+                            Log.d("ReservationRepo", "cancelIndividual: recovery -> item status=CANCELLED; treating as success id=$consultationId")
+                            Result.success(Unit)
+                        } else {
+                            Result.failure(Exception(t))
+                        }
+                    }
+                } else {
+                    Result.failure(Exception(t))
+                }
+            } catch (t2: Throwable) {
+                Log.e("ReservationRepo", "cancelIndividual: recovery check failed", t2)
+                Result.failure(Exception(t))
+            }
         }
     }
 
@@ -104,8 +133,31 @@ class ReservationRepositoryImpl : ReservationRepository {
                 Result.success(Unit)
             } else Result.failure(Exception(res.message ?: "Unknown"))
         } catch (t: Throwable) {
-            Log.e("ReservationRepo", "cancelGroupParticipation failed", t)
-            Result.failure(t)
+            Log.e("ReservationRepo", "cancelGroupParticipation failed, attempting recovery check", t)
+            // Recovery: attempt to verify via my-reservations
+            return try {
+                val check = api.getMyReservations(status = "upcoming")
+                if (check.isSuccess && check.result != null) {
+                    val exists = check.result.items.any { it.consultationId == consultationId }
+                    if (!exists) {
+                        localReservations.removeAll { it.id == consultationId }
+                        Log.d("ReservationRepo", "cancelGroupParticipation: recovery -> item not found on server; treating as success id=$consultationId")
+                        Result.success(Unit)
+                    } else {
+                        val remote = check.result.items.first { it.consultationId == consultationId }
+                        if (remote.status == "CANCELLED") {
+                            localReservations.removeAll { it.id == consultationId }
+                            Log.d("ReservationRepo", "cancelGroupParticipation: recovery -> item status=CANCELLED; treating as success id=$consultationId")
+                            Result.success(Unit)
+                        } else {
+                            Result.failure(Exception(t))
+                        }
+                    }
+                } else Result.failure(Exception(t))
+            } catch (t2: Throwable) {
+                Log.e("ReservationRepo", "cancelGroupParticipation: recovery check failed", t2)
+                Result.failure(Exception(t))
+            }
         }
     }
 

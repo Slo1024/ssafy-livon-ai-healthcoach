@@ -55,6 +55,9 @@ class ReservationViewModel(
                     val body = serverRes.getOrNull()
                     body?.items?.mapNotNull { dto ->
                         try {
+                            // skip cancelled items for upcoming
+                            if ((dto.status ?: "OPEN") == "CANCELLED") return@mapNotNull null
+
                             val start = java.time.LocalDateTime.parse(dto.startAt ?: java.time.LocalDateTime.now().toString())
                             val end = java.time.LocalDateTime.parse(dto.endAt ?: start.plusHours(1).toString())
 

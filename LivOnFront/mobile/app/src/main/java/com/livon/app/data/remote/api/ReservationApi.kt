@@ -72,9 +72,11 @@ interface ReservationApi {
 
     // 개인 상담 예약 취소
     @retrofit2.http.DELETE("individual-consultations/{consultationId}")
-    suspend fun cancelIndividual(@Path("consultationId") consultationId: Int): ApiResponse<Unit>
+    // Use Any? for result to avoid Moshi adapter generation issues for Kotlin Unit
+    suspend fun cancelIndividual(@Path("consultationId") consultationId: Int): ApiResponse<Any?>
 
     // 그룹 클래스 예약 취소 (참가자 삭제)
     @retrofit2.http.DELETE("group-consultations/{consultationId}/participants")
-    suspend fun cancelGroupParticipation(@Path("consultationId") consultationId: Int): ApiResponse<Unit>
+    // Use Any? for result to avoid Moshi adapter generation issues for Kotlin Unit
+    suspend fun cancelGroupParticipation(@Path("consultationId") consultationId: Int): ApiResponse<Any?>
 }

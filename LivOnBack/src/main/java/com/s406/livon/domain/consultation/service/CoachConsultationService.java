@@ -8,11 +8,8 @@ import com.s406.livon.domain.coach.repository.GroupConsultationRepository;
 import com.s406.livon.domain.coach.repository.IndividualConsultationRepository;
 import com.s406.livon.domain.coach.repository.ParticipantRepository;
 import com.s406.livon.domain.consultation.dto.response.CoachConsultationResponseDto;
-import com.s406.livon.domain.consultation.dto.response.CoachConsultationResponseDto.CoachInfoDto;
 import com.s406.livon.domain.consultation.dto.response.CoachConsultationResponseDto.ParticipantInfoDto;
 import com.s406.livon.domain.consultation.repository.ConsultationRepository;
-import com.s406.livon.domain.user.entity.CoachCertificates;
-import com.s406.livon.domain.user.entity.User;
 import com.s406.livon.global.error.handler.ConsultationHandler;
 import com.s406.livon.global.web.response.PaginatedResponse;
 import com.s406.livon.global.web.response.code.status.ErrorStatus;
@@ -24,9 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -67,8 +62,8 @@ public class CoachConsultationService {
         LocalDateTime now = LocalDateTime.now();
         boolean isPast = status.equals("past");
 
-        // 1. Consultation 조회
-        Page<Consultation> consultations = fetchConsultations(
+        // 1. Consultation 조회 (코치 정보와 자격증 포함)
+        Page<Consultation> consultations = fetchConsultationsWithDetails(
                 coachId, now, isPast, consultationType, pageable
         );
 
@@ -93,7 +88,10 @@ public class CoachConsultationService {
         );
     }
 
-    private Page<Consultation> fetchConsultations(
+    /**
+     * Consultation 조회 (코치 정보와 자격증 fetch join 포함)
+     */
+    private Page<Consultation> fetchConsultationsWithDetails(
             UUID coachId,
             LocalDateTime now,
             boolean isPast,
@@ -102,12 +100,12 @@ public class CoachConsultationService {
     ) {
         if (consultationType != null) {
             return isPast
-                    ? consultationRepository.findCoachPastConsultations(coachId, now, consultationType, pageable)
-                    : consultationRepository.findCoachUpcomingConsultations(coachId, now, consultationType, pageable);
+                    ? consultationRepository.findCoachPastConsultationsWithDetails(coachId, now, consultationType, pageable)
+                    : consultationRepository.findCoachUpcomingConsultationsWithDetails(coachId, now, consultationType, pageable);
         } else {
             return isPast
-                    ? consultationRepository.findCoachPastConsultations(coachId, now, pageable)
-                    : consultationRepository.findCoachUpcomingConsultations(coachId, now, pageable);
+                    ? consultationRepository.findCoachPastConsultationsWithDetails(coachId, now, pageable)
+                    : consultationRepository.findCoachUpcomingConsultationsWithDetails(coachId, now, pageable);
         }
     }
 
@@ -147,11 +145,6 @@ public class CoachConsultationService {
             IndividualConsultation individualConsultation,
             GroupConsultation groupConsultation
     ) {
-        User coach = consultation.getCoach();
-
-        // 코치 정보 생성 (자격증 포함)
-        CoachInfoDto coachInfo = buildCoachInfo(coach);
-
         // 참여자 정보 변환
         List<ParticipantInfoDto> participantInfos = participants.stream()
                 .map(p -> ParticipantInfoDto.builder()
@@ -169,10 +162,9 @@ public class CoachConsultationService {
                 .startAt(consultation.getStartAt())
                 .endAt(consultation.getEndAt())
                 .sessionId(consultation.getSessionId())
-                .coach(coachInfo)
                 .capacity(consultation.getCapacity())
                 .currentParticipants(participants.size())
-                .participants(participantInfos);  // 참여자 목록 추가
+                .participants(participantInfos);  // 참여자 목록 추가 (빈 리스트라도 포함)
 
         // GroupConsultation 정보 추가
         if (groupConsultation != null) {
@@ -188,34 +180,5 @@ public class CoachConsultationService {
         }
 
         return builder.build();
-    }
-
-    /**
-     * 코치 정보 DTO 생성 (자격증 포함)
-     */
-    private CoachInfoDto buildCoachInfo(User coach) {
-        // 자격증 목록 추출
-        List<String> certificates = null;
-        if (coach.getCoachInfo() != null && coach.getCoachInfo().getCoachCertificatesList() != null) {
-            certificates = coach.getCoachInfo().getCoachCertificatesList().stream()
-                    .map(CoachCertificates::getCertificatesName)
-                    .collect(Collectors.toList());
-        }
-
-        // 조직 정보 추출
-        String organizations = null;
-        if (coach.getOrganizations() != null) {
-            organizations = coach.getOrganizations().getName();
-        }
-
-        return CoachInfoDto.builder()
-                .userId(coach.getId())
-                .nickname(coach.getNickname())
-                .job(coach.getCoachInfo() != null ? coach.getCoachInfo().getJob() : null)
-                .introduce(coach.getCoachInfo() != null ? coach.getCoachInfo().getIntroduce() : null)
-                .profileImage(coach.getProfileImage())
-                .certificates(certificates)  // 자격증 목록
-                .organizations(organizations)
-                .build();
     }
 }

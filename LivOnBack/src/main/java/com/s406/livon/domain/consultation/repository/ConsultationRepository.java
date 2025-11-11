@@ -15,7 +15,6 @@ public interface ConsultationRepository extends JpaRepository<Consultation, Long
     // 지난 예약 조회 (type 필터링 O)
     @Query("SELECT DISTINCT c FROM Consultation c " +
             "JOIN FETCH c.coach coach " +
-            "LEFT JOIN FETCH coach.coachInfo coachInfo " +
             "LEFT JOIN FETCH coach.organizations org " +
             "JOIN Participant p ON p.consultation.id = c.id " +
             "WHERE p.user.id = :userId " +
@@ -32,7 +31,6 @@ public interface ConsultationRepository extends JpaRepository<Consultation, Long
     // 지난 예약 조회 (type 필터링 X)
     @Query("SELECT DISTINCT c FROM Consultation c " +
             "JOIN FETCH c.coach coach " +
-            "LEFT JOIN FETCH coach.coachInfo coachInfo " +
             "LEFT JOIN FETCH coach.organizations org " +
             "JOIN Participant p ON p.consultation.id = c.id " +
             "WHERE p.user.id = :userId " +
@@ -48,8 +46,6 @@ public interface ConsultationRepository extends JpaRepository<Consultation, Long
     // 앞으로 진행할 예약 조회 (type 필터링 O)
     @Query("SELECT DISTINCT c FROM Consultation c " +
             "JOIN FETCH c.coach coach " +
-            "LEFT JOIN FETCH coach.coachInfo coachInfo " +
-            "LEFT JOIN FETCH coach.organizations org " +
             "JOIN Participant p ON p.consultation.id = c.id " +
             "WHERE p.user.id = :userId " +
             "AND c.endAt >= :now " +
@@ -78,72 +74,71 @@ public interface ConsultationRepository extends JpaRepository<Consultation, Long
             Pageable pageable
     );
 
-    // 코치의 지난 상담 조회 (type 필터링 O)
-    @Query("SELECT c FROM Consultation c " +
+    // ConsultationRepository.java
+
+    @Query("SELECT DISTINCT c FROM Consultation c " +
             "JOIN FETCH c.coach coach " +
-            "LEFT JOIN FETCH coach.coachInfo coachInfo " +
-            "LEFT JOIN FETCH coachInfo.coachCertificatesList " +
-            "LEFT JOIN FETCH coach.organizations org " +
+            "LEFT JOIN FETCH coach.coachInfo ci " +
+            "LEFT JOIN FETCH ci.coachCertificatesList certs " +  // 명시적 fetch join
+            "LEFT JOIN FETCH coach.organizations " +
             "WHERE c.coach.id = :coachId " +
-            "AND c.endAt < :now " +
-            "AND c.type = :type " +
+            "AND c.startAt > :now " +
+            "AND c.type != 'BREAK' " +
+            "ORDER BY c.startAt ASC")
+    Page<Consultation> findCoachUpcomingConsultationsWithDetails(
+            @Param("coachId") UUID coachId,
+            @Param("now") LocalDateTime now,
+            Pageable pageable
+    );
+
+    @Query("SELECT DISTINCT c FROM Consultation c " +
+            "JOIN FETCH c.coach coach " +
+            "LEFT JOIN FETCH coach.coachInfo ci " +
+            "LEFT JOIN FETCH ci.coachCertificatesList certs " +
+            "LEFT JOIN FETCH coach.organizations " +
+            "WHERE c.coach.id = :coachId " +
+            "AND c.startAt < :now " +
+            "AND c.type != 'BREAK' " +
             "ORDER BY c.startAt DESC")
-    Page<Consultation> findCoachPastConsultations(
+    Page<Consultation> findCoachPastConsultationsWithDetails(
+            @Param("coachId") UUID coachId,
+            @Param("now") LocalDateTime now,
+            Pageable pageable
+    );
+
+    @Query("SELECT DISTINCT c FROM Consultation c " +
+            "JOIN FETCH c.coach coach " +
+            "LEFT JOIN FETCH coach.coachInfo ci " +
+            "LEFT JOIN FETCH ci.coachCertificatesList certs " +
+            "LEFT JOIN FETCH coach.organizations " +
+            "WHERE c.coach.id = :coachId " +
+            "AND c.startAt > :now " +
+            "AND c.type = :type " +
+            "AND c.type != 'BREAK' " +
+            "ORDER BY c.startAt ASC")
+    Page<Consultation> findCoachUpcomingConsultationsWithDetails(
             @Param("coachId") UUID coachId,
             @Param("now") LocalDateTime now,
             @Param("type") Consultation.Type type,
             Pageable pageable
     );
 
-    // 코치의 지난 상담 조회 (type 필터링 X)
-    @Query("SELECT c FROM Consultation c " +
+    @Query("SELECT DISTINCT c FROM Consultation c " +
             "JOIN FETCH c.coach coach " +
-            "LEFT JOIN FETCH coach.coachInfo coachInfo " +
-            "LEFT JOIN FETCH coachInfo.coachCertificatesList " +
-            "LEFT JOIN FETCH coach.organizations org " +
+            "LEFT JOIN FETCH coach.coachInfo ci " +
+            "LEFT JOIN FETCH ci.coachCertificatesList certs " +
+            "LEFT JOIN FETCH coach.organizations " +
             "WHERE c.coach.id = :coachId " +
-            "AND c.endAt < :now " +
+            "AND c.startAt < :now " +
+            "AND c.type = :type " +
             "AND c.type != 'BREAK' " +
             "ORDER BY c.startAt DESC")
-    Page<Consultation> findCoachPastConsultations(
-            @Param("coachId") UUID coachId,
-            @Param("now") LocalDateTime now,
-            Pageable pageable
-    );
-
-    // 코치의 예정된 상담 조회 (type 필터링 O)
-    @Query("SELECT c FROM Consultation c " +
-            "JOIN FETCH c.coach coach " +
-            "LEFT JOIN FETCH coach.coachInfo coachInfo " +
-            "LEFT JOIN FETCH coachInfo.coachCertificatesList " +
-            "LEFT JOIN FETCH coach.organizations org " +
-            "WHERE c.coach.id = :coachId " +
-            "AND c.endAt >= :now " +
-            "AND c.type = :type " +
-            "ORDER BY c.startAt ASC")
-    Page<Consultation> findCoachUpcomingConsultations(
+    Page<Consultation> findCoachPastConsultationsWithDetails(
             @Param("coachId") UUID coachId,
             @Param("now") LocalDateTime now,
             @Param("type") Consultation.Type type,
             Pageable pageable
     );
-
-    // 코치의 예정된 상담 조회 (type 필터링 X)
-    @Query("SELECT c FROM Consultation c " +
-            "JOIN FETCH c.coach coach " +
-            "LEFT JOIN FETCH coach.coachInfo coachInfo " +
-            "LEFT JOIN FETCH coachInfo.coachCertificatesList " +
-            "LEFT JOIN FETCH coach.organizations org " +
-            "WHERE c.coach.id = :coachId " +
-            "AND c.endAt >= :now " +
-            "AND c.type != 'BREAK' " +
-            "ORDER BY c.startAt ASC")
-    Page<Consultation> findCoachUpcomingConsultations(
-            @Param("coachId") UUID coachId,
-            @Param("now") LocalDateTime now,
-            Pageable pageable
-    );
-
     // 참가자 수 조회용 쿼리 (GroupConsultation용)
     @Query("SELECT COUNT(p) FROM Participant p WHERE p.consultation.id = :consultationId")
     int countParticipantsByConsultationId(@Param("consultationId") Long consultationId);

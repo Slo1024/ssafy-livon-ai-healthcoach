@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/coaches/consultations")
+@RequestMapping("/coaches/consultations")
 @RequiredArgsConstructor
 @Tag(name = "코치 상담 관리", description = "코치의 상담 조회 API")
 public class CoachConsultationController {

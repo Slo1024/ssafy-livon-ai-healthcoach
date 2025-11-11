@@ -11,7 +11,7 @@ import { ParticipantPanel } from '../../components/streaming/participant/Partici
 import { VideoGrid } from '../../components/streaming/video/VideoGrid';
 import { StreamingControls } from '../../components/streaming/button/StreamingControls';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+const APPLICATION_SERVER_URL = CONFIG.LIVEKIT.APPLICATION_SERVER_URL;
 
 const StreamingContainer = styled.div`
   width: 100vw;
@@ -183,7 +183,7 @@ export const StreamingPage: React.FC = () => {
 
   // 토큰 발급 API 호출
   const getToken = async (): Promise<string> => {
-    const tokenUrl = `${API_BASE_URL}/token`;
+    const tokenUrl = `${APPLICATION_SERVER_URL}/token`;
     const requestBody = {
       roomName,
       participantName,
@@ -192,7 +192,7 @@ export const StreamingPage: React.FC = () => {
 
     console.log('🔑 토큰 발급 요청:', {
       url: tokenUrl,
-      server: API_BASE_URL,
+      server: APPLICATION_SERVER_URL,
       body: requestBody,
       environment: process.env.NODE_ENV,
     });
@@ -236,7 +236,7 @@ export const StreamingPage: React.FC = () => {
       // 개발 환경에서는 백엔드 서버가 실행되지 않았을 수 있음
       // 실제 배포 환경에서는 백엔드 API가 필수입니다
       const errorMessage = error instanceof Error ? error.message : '토큰 발급 실패';
-      throw new Error(`토큰 발급에 실패했습니다. 백엔드 서버(${API_BASE_URL})가 실행 중인지 확인해주세요. 오류: ${errorMessage}`);
+      throw new Error(`토큰 발급에 실패했습니다. 백엔드 서버(${APPLICATION_SERVER_URL})가 실행 중인지 확인해주세요. 오류: ${errorMessage}`);
     }
   };
 

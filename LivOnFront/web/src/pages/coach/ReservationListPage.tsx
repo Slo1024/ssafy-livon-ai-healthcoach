@@ -25,6 +25,14 @@ const TitleAndMessageContainer = styled.div`
   justify-content: space-between;
   margin-bottom: 24px;
   position: relative;
+  gap: 12px;
+
+  @media (max-width: 1200px) {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 16px;
+  }
 `;
 
 const PageTitle = styled.h1`
@@ -32,6 +40,28 @@ const PageTitle = styled.h1`
   font-size: 40px;
   color: #000000;
   margin: 0;
+  align-self: flex-start;
+
+  @media (max-width: 1200px) {
+    align-self: center;
+    text-align: center;
+    font-size: 34px;
+  }
+
+  @media (max-width: 900px) {
+    align-self: center;
+    font-size: 30px;
+  }
+
+  @media (max-width: 768px) {
+    align-self: center;
+    text-align: center;
+    font-size: 26px;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 24px;
+  }
 `;
 
 const ScheduleMessage = styled.div`
@@ -45,7 +75,21 @@ const ScheduleMessage = styled.div`
   line-height: 1.5;
   white-space: pre-line;
   text-align: center;
-  
+  max-width: 90%;
+
+  @media (max-width: 1200px) {
+    position: static;
+    transform: none;
+    align-self: center;
+    text-align: center;
+    max-width: 100%;
+    font-size: 24px;
+  }
+
+  @media (max-width: 900px) {
+    font-size: 22px;
+  }
+
   @media (max-width: 768px) {
     font-size: 20px;
   }

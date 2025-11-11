@@ -28,8 +28,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.DisposableEffect
 import android.util.Log
+import kotlinx.coroutines.awaitCancellation
+import androidx.lifecycle.Observer
+import com.livon.app.feature.member.reservation.ui.ReservationDetailType
+import com.livon.app.feature.member.reservation.ui.CoachMini
+import com.livon.app.feature.member.reservation.ui.SessionInfo
 
 fun isDebugBuild(): Boolean {
     return try {
@@ -112,10 +116,13 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         LaunchedEffect(Unit) { reservationVm.loadUpcoming() }
 
         // Observe health_updated flag set by AppNavGraph when health survey completes
-        val savedHandle = nav.currentBackStackEntry?.savedStateHandle
-        DisposableEffect(savedHandle) {
-            val live = savedHandle?.getLiveData<Boolean>("health_updated")
-            val observer = androidx.lifecycle.Observer<Boolean> { flag ->
+        // Use the current backStackEntry as a LifecycleOwner to observe the savedStateHandle LiveData.
+        // This avoids DisposableEffect/onDispose issues and registers an observer that is lifecycle-aware.
+        val backEntry = nav.currentBackStackEntry
+        LaunchedEffect(backEntry) {
+            if (backEntry == null) return@LaunchedEffect
+            val live = backEntry.savedStateHandle.getLiveData<Boolean>("health_updated")
+            val observer = Observer<Boolean> { flag ->
                 if (flag == true) {
                     try {
                         userVm.load()
@@ -127,12 +134,15 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                     } catch (t: Throwable) {
                         Log.w("MemberNavGraph", "Failed to reload reservation data", t)
                     }
-                    savedHandle?.remove<Boolean>("health_updated")
+                    backEntry.savedStateHandle.remove<Boolean>("health_updated")
                 }
             }
-            live?.observeForever(observer)
-            onDispose {
-                live?.removeObserver(observer)
+            // Observe using the NavBackStackEntry as LifecycleOwner so it's removed automatically
+            live.observe(backEntry, observer)
+            try {
+                awaitCancellation()
+            } finally {
+                live.removeObserver(observer)
             }
         }
 
@@ -322,7 +332,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
 
         // When reservation action completes, navigate to reservations (success or failure)
         LaunchedEffect(actionState.success) {
-            if (actionState.success != null) {
+            if (actionState.success == true) {
                 nav.navigate("reservations") {
                     popUpTo(Routes.MemberHome) { inclusive = false }
                 }
@@ -393,7 +403,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
 
         val actionState by reservationVmForQna.actionState.collectAsState()
         LaunchedEffect(actionState.success) {
-            if (actionState.success != null) {
+            if (actionState.success == true) {
                 nav.navigate("reservations") { popUpTo(Routes.MemberHome) { inclusive = false } }
             }
         }
@@ -460,7 +470,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         val actionState by reservationVmForQna.actionState.collectAsState()
 
         LaunchedEffect(actionState.success) {
-            if (actionState.success != null) {
+            if (actionState.success == true) {
                 nav.navigate("reservations") {
                     popUpTo(Routes.MemberHome) { inclusive = false }
                 }
@@ -794,19 +804,19 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         if (found != null) {
             // derive detail type
             val detailType = when {
-                found.isLive -> com.livon.app.feature.member.reservation.ui.ReservationDetailType.Current
-                (found.sessionTypeLabel ?: "").contains("개인") -> com.livon.app.feature.member.reservation.ui.ReservationDetailType.PastPersonal
-                else -> com.livon.app.feature.member.reservation.ui.ReservationDetailType.PastGroup
+                found.isLive -> ReservationDetailType.Current
+                (found.sessionTypeLabel ?: "").contains("개인") -> ReservationDetailType.PastPersonal
+                else -> ReservationDetailType.PastGroup
             }
 
-            val coachMini = com.livon.app.feature.member.reservation.ui.CoachMini(
+            val coachMini = CoachMini(
                 name = found.coachName.ifEmpty { "코치" },
                 title = found.coachRole.ifEmpty { "" },
                 specialties = found.coachIntro.ifEmpty { "" },
                 workplace = ""
             )
 
-            val sessionInfo = com.livon.app.feature.member.reservation.ui.SessionInfo(
+            val sessionInfo = SessionInfo(
                 dateText = "${found.date.monthValue}월 ${found.date.dayOfMonth}일",
                 timeText = found.timeText,
                 modelText = found.className,

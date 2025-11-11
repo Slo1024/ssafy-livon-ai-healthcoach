@@ -387,12 +387,10 @@ fun NavGraphBuilder.authNavGraph(navController: NavHostController) {
                         Log.d("AppNavGraph","Health survey posted successfully, returning to QnA submit")
                         // Try to return to a qna_submit route by popping the back stack safely.
                         try {
-                            // We'll pop back until we reach a destination whose route contains "qna_submit".
                             var safety = 0
                             var reached = false
-                            // set flag on current entry so caller screens can detect update if we don't find qna
-                            navController.currentBackStackEntry?.savedStateHandle?.set("health_updated", true)
-                            while (safety < 20) {
+                            // Pop back until we find a route that contains "qna_submit"
+                            while (safety < 30) {
                                 val currentRoute = navController.currentDestination?.route
                                 if (currentRoute != null && currentRoute.contains("qna_submit")) {
                                     // mark the found entry so QnA screen can react
@@ -400,13 +398,14 @@ fun NavGraphBuilder.authNavGraph(navController: NavHostController) {
                                     reached = true
                                     break
                                 }
-                                // try to pop one
+                                // If we can't pop further, break
                                 val popped = navController.popBackStack()
                                 if (!popped) break
                                 safety++
                             }
+
                             if (!reached) {
-                                // fallback: navigate to reservations screen directly
+                                // fallback: if qna_submit wasn't found, navigate back conservatively to reservations
                                 try {
                                     navController.navigate("reservations") { popUpTo(Routes.MemberHome) { inclusive = false } }
                                 } catch (t: Throwable) {

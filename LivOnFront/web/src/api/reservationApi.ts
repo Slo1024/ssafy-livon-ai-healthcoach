@@ -346,3 +346,65 @@ export const getMemberInfoApi = async (
   });
   return response.data.result;
 };
+
+// ===== 참여자 정보 조회 =====
+
+interface HealthData {
+  height?: number;
+  weight?: number;
+  steps?: number;
+  sleepTime?: number; // 분 단위
+  activityLevel?: string;
+  sleepQuality?: string;
+  stressLevel?: string;
+}
+
+interface ParticipantMemberInfo {
+  nickname: string;
+  gender: string;
+  ageGroup: string;
+  healthData: HealthData;
+}
+
+interface ParticipantInfoResponse {
+  memberInfo: ParticipantMemberInfo;
+}
+
+/**
+ * 코치가 1:1 상담 참여자 정보 조회 API
+ * GET /api/v1/coaches/consultations/{consultationId}/participant-info
+ * @param token - 인증 토큰
+ * @param consultationId - 상담 ID
+ */
+export const getParticipantInfoApi = async (
+  token: string,
+  consultationId: number
+): Promise<ParticipantInfoResponse> => {
+  // 토큰 검증
+  if (!token || token.trim() === "") {
+    throw new Error("인증 토큰이 없습니다. 로그인이 필요합니다.");
+  }
+
+  const response = await axios.get<{
+    isSuccess: boolean;
+    code: string;
+    message: string;
+    result: ParticipantInfoResponse;
+  }>(
+    `${API_BASE_URL}/coaches/consultations/${consultationId}/participant-info`,
+    {
+      headers: {
+        Authorization: `Bearer ${token.trim()}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  if (!response.data.isSuccess) {
+    throw new Error(
+      response.data.message || "참여자 정보 조회에 실패했습니다."
+    );
+  }
+
+  return response.data.result;
+};

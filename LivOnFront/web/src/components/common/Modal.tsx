@@ -2,7 +2,10 @@ import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import profilePictureIcon from "../../assets/images/profile_picture.png";
 import { SegmentedTabs } from "../common/Button";
-import { getMemberInfoApi } from "../../api/reservationApi";
+import {
+  getMemberInfoApi,
+  getParticipantInfoApi,
+} from "../../api/reservationApi";
 import { CONFIG } from "../../constants/config";
 
 interface BaseModalProps {
@@ -860,6 +863,7 @@ const ErrorText = styled.div`
 export interface MemberInfoModalProps extends BaseModalProps {
   memberName?: string;
   memberId?: string; // userId를 받을 수 있도록 추가
+  consultationId?: number; // 1:1 상담 ID (있으면 getParticipantInfoApi 사용)
   memberData?: {
     height?: number;
     weight?: number;
@@ -873,6 +877,7 @@ export const MemberInfoModal: React.FC<MemberInfoModalProps> = ({
   onClose,
   memberName,
   memberId,
+  consultationId,
   memberData,
   question,
   className,
@@ -892,60 +897,126 @@ export const MemberInfoModal: React.FC<MemberInfoModalProps> = ({
   // 회원 정보 가져오기
   useEffect(() => {
     const fetchMemberInfo = async () => {
-      if (!open || !memberId) {
-        // memberId가 없으면 기존 방식 사용 (memberData 사용)
-        if (memberName) {
+      if (!open) {
+        return;
+      }
+
+      // consultationId가 있으면 getParticipantInfoApi 사용 (1:1 상담)
+      if (consultationId) {
+        try {
+          setLoading(true);
+          setError(null);
+          const token = localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
+
+          if (!token || token.trim() === "") {
+            throw new Error("인증 토큰이 없습니다. 로그인이 필요합니다.");
+          }
+
+          console.log("참여자 정보 조회 시작:", {
+            consultationId,
+            hasToken: !!token,
+            tokenLength: token.length,
+          });
+
+          const response = await getParticipantInfoApi(token, consultationId);
+          const participantInfo = response.memberInfo;
+          const healthData = participantInfo.healthData;
+
+          // sleepTime은 분 단위이므로 시간 단위로 변환
+          const sleepTimeInHours = healthData.sleepTime
+            ? Math.round(healthData.sleepTime / 60)
+            : undefined;
+
           setMemberInfo({
-            nickname: memberName,
+            nickname: participantInfo.nickname || memberName || "회원",
+            height: healthData.height,
+            weight: healthData.weight,
+            sleepTime: sleepTimeInHours,
+            preQna: question,
+          });
+        } catch (err) {
+          console.error("참여자 정보 조회 오류:", {
+            error: err,
+            consultationId,
+            hasToken: !!localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY),
+            errorMessage: err instanceof Error ? err.message : String(err),
+          });
+
+          const errorMessage =
+            err instanceof Error
+              ? err.message
+              : "참여자 정보를 불러오는데 실패했습니다.";
+          setError(errorMessage);
+
+          // 에러 발생 시 기본값 사용
+          setMemberInfo({
+            nickname: memberName || "회원",
             height: memberData?.height,
             weight: memberData?.weight,
             sleepTime: memberData?.sleepTime,
             preQna: question,
           });
+        } finally {
+          setLoading(false);
         }
         return;
       }
 
-      try {
-        setLoading(true);
-        setError(null);
-        const token = localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
+      // memberId가 있으면 getMemberInfoApi 사용
+      if (memberId) {
+        try {
+          setLoading(true);
+          setError(null);
+          const token = localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
 
-        if (!token) {
-          throw new Error("인증 토큰이 없습니다.");
+          if (!token) {
+            throw new Error("인증 토큰이 없습니다.");
+          }
+
+          const info = await getMemberInfoApi(token, memberId);
+          setMemberInfo({
+            nickname: info.nickname || memberName || "회원",
+            profileImage: info.profileImage,
+            height: info.height,
+            weight: info.weight,
+            sleepTime: info.sleepTime,
+            preQna: info.preQna || question,
+          });
+        } catch (err) {
+          const errorMessage =
+            err instanceof Error
+              ? err.message
+              : "회원 정보를 불러오는데 실패했습니다.";
+          setError(errorMessage);
+          console.error("회원 정보 조회 오류:", err);
+          // 에러 발생 시 기본값 사용
+          setMemberInfo({
+            nickname: memberName || "회원",
+            height: memberData?.height,
+            weight: memberData?.weight,
+            sleepTime: memberData?.sleepTime,
+            preQna: question,
+          });
+        } finally {
+          setLoading(false);
         }
+        return;
+      }
 
-        const info = await getMemberInfoApi(token, memberId);
+      // memberId와 consultationId가 모두 없으면 기존 방식 사용 (memberData 사용)
+      if (memberName) {
         setMemberInfo({
-          nickname: info.nickname || memberName || "회원",
-          profileImage: info.profileImage,
-          height: info.height,
-          weight: info.weight,
-          sleepTime: info.sleepTime,
-          preQna: info.preQna || question,
-        });
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error
-            ? err.message
-            : "회원 정보를 불러오는데 실패했습니다.";
-        setError(errorMessage);
-        console.error("회원 정보 조회 오류:", err);
-        // 에러 발생 시 기본값 사용
-        setMemberInfo({
-          nickname: memberName || "회원",
+          nickname: memberName,
           height: memberData?.height,
           weight: memberData?.weight,
           sleepTime: memberData?.sleepTime,
           preQna: question,
         });
-      } finally {
-        setLoading(false);
       }
     };
 
     fetchMemberInfo();
-  }, [open, memberId, memberName, memberData, question]);
+  }, [open, memberId, consultationId, memberName, memberData, question]);
 
   // 모달이 닫힐 때 상태 초기화
   useEffect(() => {

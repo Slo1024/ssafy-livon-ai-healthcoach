@@ -491,10 +491,18 @@ export const ReservationListPage: React.FC = () => {
   };
 
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [selectedConsultationId, setSelectedConsultationId] = useState<
+    number | null
+  >(null);
 
-  const handleViewMember = (memberName: string, memberId?: string) => {
+  const handleViewMember = (
+    memberName: string,
+    memberId?: string,
+    consultationId?: number
+  ) => {
     setSelectedMemberName(memberName);
     setSelectedMemberId(memberId || null);
+    setSelectedConsultationId(consultationId || null);
     setShowMemberInfoModal(true);
   };
 
@@ -657,7 +665,8 @@ export const ReservationListPage: React.FC = () => {
                               onClick={() =>
                                 handleViewMember(
                                   firstParticipant.nickname,
-                                  firstParticipant.userId
+                                  firstParticipant.userId,
+                                  reservation.consultationId
                                 )
                               }
                             >
@@ -741,9 +750,16 @@ export const ReservationListPage: React.FC = () => {
           onClose={() => {
             setShowMemberInfoModal(false);
             setSelectedMemberId(null);
+            setSelectedConsultationId(null);
           }}
           memberName={selectedMemberName}
           memberId={selectedMemberId || undefined}
+          consultationId={selectedConsultationId || undefined}
+          question={
+            reservations.find(
+              (r) => r.consultationId === selectedConsultationId
+            )?.preQna
+          }
         />
 
         {/* 신청 회원 예약 승인 모달 */}

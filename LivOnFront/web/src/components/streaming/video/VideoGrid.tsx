@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { LocalVideoTrack, RemoteVideoTrack, RemoteAudioTrack, Track } from 'livekit-client';
 import { VideoComponent } from './VideoComponent';
 import { AudioComponent } from './AudioComponent';
+import infoIcon from '../../../assets/images/Vector.png';
 
 const VideoGridOuterContainer = styled.div`
   position: relative;
@@ -475,6 +476,32 @@ const ScrollButton = styled.button`
   }
 `;
 
+const ParticipantInfoButton = styled.button`
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background-color: rgba(17, 24, 39, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: rgba(17, 24, 39, 0.85);
+  }
+
+  img {
+    width: 14px;
+    height: 14px;
+  }
+`;
+
 interface RemoteTrackInfo {
   trackPublication: any;
   participantIdentity: string;
@@ -492,6 +519,9 @@ interface VideoGridProps {
   } | null;
   viewMode: 'gallery' | 'speaker' | 'shared';
   participantName: string;
+  showInfoButtons: boolean;
+  onOpenParticipantInfo: (participantIdentity: string) => void;
+  isParticipantInfoAvailable: (participantIdentity: string) => boolean;
 }
 
 export const VideoGrid: React.FC<VideoGridProps> = ({
@@ -502,6 +532,9 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
   sharedContent,
   viewMode,
   participantName,
+  showInfoButtons,
+  onOpenParticipantInfo,
+  isParticipantInfoAvailable,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
@@ -590,7 +623,7 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
           $participantCount={hasMoreThan15 ? displayVideoTracks.length : participantCount}
           $isPaginationMode={hasMoreThan15}
         >
-      {isScreenSharing && sharedContent ? (
+      {isScreenSharing && !sharedContent ? (
         <SharedContentPanel>
           <SharedContentCard>
             <SharedContentHeader>
@@ -601,22 +634,12 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
                 </svg>
               </ProfileIcon>
               <SharedContentInfo>
-                <SharedContentName>{sharedContent.memberName}님의 AI 분석본</SharedContentName>
+                <SharedContentName>화면 공유가 시작되었습니다</SharedContentName>
                 <SharedContentData>
-                  <div>생성일: {new Date().toLocaleDateString('ko-KR')}</div>
-                  <div>분석 유형: 건강 상태 분석</div>
+                  <div>다른 참가자들에게 공유 중인 화면을 확인해 주세요.</div>
                 </SharedContentData>
               </SharedContentInfo>
             </SharedContentHeader>
-            <SharedContentAnalysis>
-              <AnalysisText>
-                현재 혈압 수치와 건강 상태를 종합적으로 분석한 결과, 규칙적인 운동과 건강한 식습관 유지가 필요합니다.
-              </AnalysisText>
-              <TipBox>
-                <TipLabel>TIP</TipLabel>
-                <TipText>혈압약 복용 중이므로 격렬한 운동은 피하세요.</TipText>
-              </TipBox>
-            </SharedContentAnalysis>
           </SharedContentCard>
         </SharedContentPanel>
       ) : (
@@ -758,6 +781,15 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
                 $paginationLastPageTotalItems={isPaginationLastPageIncomplete ? lastRowItemCount : undefined}
                 $paginationRowIndex={isPaginationLastPageIncomplete ? rowIndex : undefined}
               >
+                {showInfoButtons && isParticipantInfoAvailable(videoItem.identity) && (
+                  <ParticipantInfoButton
+                    type="button"
+                    onClick={() => onOpenParticipantInfo(videoItem.identity)}
+                    aria-label={`${videoItem.identity} 정보 보기`}
+                  >
+                    <img src={infoIcon} alt="" />
+                  </ParticipantInfoButton>
+                )}
                 <VideoComponent
                   track={videoItem.track}
                   participantIdentity={videoItem.identity}

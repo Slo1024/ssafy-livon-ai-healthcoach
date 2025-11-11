@@ -28,6 +28,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.DisposableEffect
+import android.util.Log
 
 fun isDebugBuild(): Boolean {
     return try {
@@ -109,6 +111,31 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         val resState by reservationVm.uiState.collectAsState()
         LaunchedEffect(Unit) { reservationVm.loadUpcoming() }
 
+        // Observe health_updated flag set by AppNavGraph when health survey completes
+        val savedHandle = nav.currentBackStackEntry?.savedStateHandle
+        DisposableEffect(savedHandle) {
+            val live = savedHandle?.getLiveData<Boolean>("health_updated")
+            val observer = androidx.lifecycle.Observer<Boolean> { flag ->
+                if (flag == true) {
+                    try {
+                        userVm.load()
+                    } catch (t: Throwable) {
+                        Log.w("MemberNavGraph", "Failed to reload user data", t)
+                    }
+                    try {
+                        reservationVm.loadUpcoming()
+                    } catch (t: Throwable) {
+                        Log.w("MemberNavGraph", "Failed to reload reservation data", t)
+                    }
+                    savedHandle?.remove<Boolean>("health_updated")
+                }
+            }
+            live?.observeForever(observer)
+            onDispose {
+                live?.removeObserver(observer)
+            }
+        }
+
         MemberHomeRoute(
             onTapBooking = { nav.navigate("reservation_model_select") },
             onTapReservations = { nav.navigate("reservations") },
@@ -146,28 +173,31 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         }
 
         if (featureMyInfoEnabled) {
-            // Provide a minimal default state here; in real app this should come from ViewModel or nav arguments
-            val defaultState = MyInfoUiState(
+            // ✅ 서버 연동 추가
+            val userApi = com.livon.app.core.network.RetrofitProvider
+                .createService(com.livon.app.data.remote.api.UserApiService::class.java)
+            val userRepo = remember { com.livon.app.domain.repository.UserRepository(userApi) }
+            val userVm = androidx.lifecycle.viewmodel.compose.viewModel(
+                factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                    @Suppress("UNCHECKED_CAST")
+                    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                        return com.livon.app.feature.member.home.vm.UserViewModel(userRepo) as T
+                    }
+                }
+            ) as com.livon.app.feature.member.home.vm.UserViewModel
+
+            val userState by userVm.uiState.collectAsState()
+            LaunchedEffect(Unit) { userVm.load() }
+
+            val state = userState.info ?: MyInfoUiState(
                 nickname = "",
-                gender = null,
-                birthday = null,
-                profileImageUri = null,
-                heightCm = null,
-                weightKg = null,
-                condition = null,
-                sleepQuality = null,
-                medication = null,
-                painArea = null,
-                stress = null,
-                smoking = null,
-                alcohol = null,
-                sleepHours = null,
-                activityLevel = null,
-                caffeine = null
+                gender = null, birthday = null, profileImageUri = null,
+                heightCm = null, weightKg = null, condition = null, sleepQuality = null,
+                medication = null, painArea = null, stress = null, smoking = null,
+                alcohol = null, sleepHours = null, activityLevel = null, caffeine = null
             )
-            MyInfoScreen(state = defaultState, onBack = { nav.popBackStack() })
+            MyInfoScreen(state = state, onBack = { nav.popBackStack() })
         } else {
-            // Fallback UI when feature disabled: redirect back to MyPage (or show a disabled screen)
             MyPageScreen(onBack = { nav.popBackStack() })
         }
     }
@@ -313,7 +343,9 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 reservationVmForQna.reserveCoach(coachIdArg, startAt, endAt, preQnA)
             },
             onNavigateHome = { nav.navigate(Routes.MemberHome) },
-            onNavigateToMyHealthInfo = { /* noop */ },
+            onNavigateToMyHealthInfo = {
+                nav.navigate(Routes.HealthHeight) // 건강설문 플로우 시작 (키→몸무게→헬스→라이프스타일)
+            },
             navController = nav,
             externalError = actionState.errorMessage
         )
@@ -378,7 +410,9 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 reservationVmForQna.reserveCoach(coachIdArg, startAt, endAt, preQnA)
             },
             onNavigateHome = { nav.navigate(Routes.MemberHome) },
-            onNavigateToMyHealthInfo = { /* noop */ },
+            onNavigateToMyHealthInfo = {
+                nav.navigate(Routes.HealthHeight) // 건강설문 플로우 시작 (키→몸무게→헬스→라이프스타일)
+            },
             navController = nav,
             externalError = actionState.errorMessage
         )
@@ -447,7 +481,9 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 reservationVmForQna.reserveCoach(coachIdArg, startAt, endAt, preQnA)
             },
             onNavigateHome = { nav.navigate(Routes.MemberHome) },
-            onNavigateToMyHealthInfo = { /* noop */ },
+            onNavigateToMyHealthInfo = {
+                nav.navigate(Routes.HealthHeight) // 건강설문 플로우 시작 (키→몸무게→헬스→라이프스타일)
+            },
             navController = nav,
             externalError = actionState.errorMessage
         )
@@ -528,7 +564,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                         reservationVmForQna.reserveClass(item.id)
                     },
                     onNavigateHome = { nav.navigate(Routes.MemberHome) },
-                    onNavigateToMyHealthInfo = { /* noop */ },
+                    onNavigateToMyHealthInfo = { nav.navigate(Routes.HealthHeight) },
                     navController = nav,
                     externalError = actionState.errorMessage
                 )

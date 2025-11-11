@@ -104,7 +104,7 @@ export const createGroupConsultationApi = async (
 
   // API 호출
   const response = await axios.post<CreateGroupConsultationResponse>(
-    `${API_BASE_URL}/api/v1/group-consultations`,
+    `${API_BASE_URL}/group-consultations`,
     formData,
     {
       headers: {

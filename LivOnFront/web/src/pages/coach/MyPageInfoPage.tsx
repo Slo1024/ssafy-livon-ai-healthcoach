@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { useAuth } from '../../hooks/useAuth';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Input as CommonInput } from '../../components/common/Input';
 import { Dropdown as CommonDropdown } from '../../components/common/Dropdown';
 import { DateTimePickerModal } from '../../components/common/Modal';
@@ -11,11 +11,12 @@ import { ROUTES } from '../../constants/routes';
 const PageContainer = styled.div`
   min-height: 100vh;
   background-color: #ffffff;
-  padding: 40px 20px;
+  padding: clamp(24px, 5vw, 40px) clamp(16px, 4vw, 32px);
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 `;
 
 const ContentWrapper = styled.div`
+  width: 100%;
   max-width: 1200px;
   margin: 0 auto;
 `;
@@ -25,55 +26,24 @@ const PageTitle = styled.h1`
   font-size: 40px;
   color: #000000;
   margin: 0 0 24px 0;
-`;
+  text-align: left;
 
-const Tabs = styled.div`
-  display: flex;
-  gap: 0;
-  
-  /* 두 버튼이 맞닿도록 인접 모서리 처리 */
-  button {
-    border-radius: 6px;
+  @media (max-width: 1200px) {
+    text-align: center;
+    font-size: 34px;
   }
-  button:last-child {
-    margin-left: -1px; /* 테두리 겹치기 */
+
+  @media (max-width: 900px) {
+    font-size: 30px;
   }
-`;
 
-const PrimaryTabButton = styled.button`
-  width: 120px;
-  height: 48px;
-  border: 1px solid #4965f6;
-  background-color: #4965f6;
-  color: #ffffff;
-  font-weight: 500; /* Pretendard Medium */
-  font-size: 16px;
-  cursor: pointer;
-  border-radius: 6px;
-  white-space: nowrap;
-`;
+  @media (max-width: 768px) {
+    font-size: 26px;
+  }
 
-const OutlineTabButton = styled.button`
-  width: 120px;
-  height: 48px;
-  border: 1px solid #4965f6;
-  background-color: #ffffff;
-  color: #4965f6;
-  font-weight: 500; /* Pretendard Medium */
-  font-size: 16px;
-  cursor: pointer;
-  border-radius: 6px;
-  white-space: nowrap;
-`;
-
-const Divider = styled.div`
-  width: 100vw; /* 화면 전체 폭 */
-  height: 2px;
-  background-color: #4965f6;
-  margin: 0;
-  position: relative;
-  left: 50%;
-  transform: translateX(-50%); /* 중앙 기준으로 좌우 끝까지 */
+  @media (max-width: 480px) {
+    font-size: 24px;
+  }
 `;
 
 // 프로필 사진 업로드 섹션 스타일
@@ -82,11 +52,18 @@ const ProfileSection = styled.div`
   gap: 20px;
   margin-top: 16px; /* 탭 가로줄과 약간의 간격 */
   align-items: flex-start;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    gap: 24px;
+  }
 `;
 
 const ProfileImageContainer = styled.div`
-  width: 197px;
-  height: 263px;
+  width: clamp(160px, 30vw, 197px);
+  height: clamp(200px, 36vw, 263px);
   border-radius: 8px;
   background-color: #ffffff;
   border: 1px solid #dee2e6;
@@ -120,6 +97,7 @@ const ProfileInfo = styled.div`
   display: flex;
   flex-direction: column;
   gap: 10px;
+  width: 100%;
 `;
 
 const ProfileLabel = styled.h3`
@@ -135,6 +113,7 @@ const FileNameContainer = styled.div`
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
+  width: 100%;
 `;
 
 const FileNameLabel = styled.label`
@@ -189,8 +168,8 @@ const ProfileDescription = styled.div`
 // SignupPage 유사 폼 레이아웃
 const FormGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: clamp(16px, 3vw, 24px);
   margin-top: 24px;
 `;
 
@@ -206,6 +185,12 @@ const FormField = styled.div`
   align-items: center;
   gap: 3px;
   width: 100%;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
 `;
 
 const FormLabel = styled.label`
@@ -216,6 +201,11 @@ const FormLabel = styled.label`
   width: 100px;
   flex-shrink: 0;
   white-space: nowrap;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    white-space: normal;
+  }
 `;
 
 const InputWithButton = styled.div`
@@ -224,6 +214,12 @@ const InputWithButton = styled.div`
   align-items: center;
   flex: 1;
   width: 100%;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
 `;
 
 const SmallButton = styled.button`
@@ -247,6 +243,7 @@ const RadioGroup = styled.div`
   gap: 20px;
   align-items: center;
   flex: 1;
+  flex-wrap: wrap;
 `;
 
 const EmailInputContainer = styled.div`
@@ -255,6 +252,12 @@ const EmailInputContainer = styled.div`
   align-items: center;
   flex: 1;
   width: 100%;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
 `;
 
 const EmailSeparator = styled.span`
@@ -314,6 +317,11 @@ const Field = styled.div`
   align-items: center;
   gap: 8px;
   margin-bottom: 14px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 
 const Label = styled.div`
@@ -322,6 +330,10 @@ const Label = styled.div`
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 14px;
   color: #000;
+
+  @media (max-width: 768px) {
+    width: 100%;
+  }
 `;
 
 const Input = styled.input`
@@ -349,46 +361,21 @@ const SubmitButton = styled.button`
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 `;
 
-const ModalOverlay = styled.div`
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-`;
-
-const ModalCard = styled.div`
-  width: 560px;
-  max-width: 90vw;
-  background: #fff;
-  border-radius: 12px;
-  padding: 24px 20px;
-  text-align: center;
-`;
-
 export const MyPageInfoPage: React.FC = () => {
   const { user } = useAuth();
-  const location = useLocation();
   const navigate = useNavigate();
-  const [showModal, setShowModal] = useState(false);
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [profileFileName, setProfileFileName] = useState('');
   const [emailDomains] = useState(['gmail.com', 'naver.com', 'daum.net', 'kakao.com']);
   const [formData, setFormData] = useState({
-    userId: '',
-    name: '',
     nickname: '',
     password: '',
     confirmPassword: '',
     gender: 'male',
     birthDate: '',
-    contact: '',
     emailId: '',
     emailDomain: '',
     affiliation: '',
-    job: '',
     introduction: '',
   });
   const [qualificationFields, setQualificationFields] = useState<string[]>(['']);
@@ -402,36 +389,13 @@ export const MyPageInfoPage: React.FC = () => {
   };
 
   const handleAddQualification = () => setQualificationFields(prev => [...prev, '']);
-
-  const isInfoPage = location.pathname.includes('/coach/mypage/info');
   const nickname = user?.nickname;
-
-  const handleInfoClick = () => {
-    navigate(ROUTES.COACH_MYPAGE_INFO);
-  };
-
-  const handleVerificationClick = () => {
-    navigate(ROUTES.COACH_MYPAGE_VERIFICATION);
-  };
+  const navigateToVerification = () => navigate(ROUTES.COACH_MYPAGE_VERIFICATION);
 
   return (
     <PageContainer>
       <ContentWrapper>
         <PageTitle>{nickname ? `${nickname} 코치님 마이페이지` : '코치님 마이페이지'}</PageTitle>
-        <Tabs>
-          {isInfoPage ? (
-            <>
-              <PrimaryTabButton onClick={handleInfoClick}>코치님 정보</PrimaryTabButton>
-              <OutlineTabButton onClick={handleVerificationClick}>코치 인증 여부</OutlineTabButton>
-            </>
-          ) : (
-            <>
-              <OutlineTabButton onClick={handleInfoClick}>코치님 정보</OutlineTabButton>
-              <PrimaryTabButton onClick={handleVerificationClick}>코치 인증 여부</PrimaryTabButton>
-            </>
-          )}
-        </Tabs>
-        <Divider />
 
       {/* 프로필 사진 업로드 섹션 */}
       <ProfileSection>
@@ -488,29 +452,6 @@ export const MyPageInfoPage: React.FC = () => {
       <FormGrid>
         <FormColumn>
           <FormField>
-            <FormLabel>아이디</FormLabel>
-            <InputWithButton>
-              <CommonInput
-                placeholder="아이디를 입력하세요"
-                value={formData.userId}
-                onChange={(e) => handleInputChange('userId', e.target.value)}
-                style={{ flex: 1 }}
-              />
-              <SmallButton type="button">중복확인</SmallButton>
-            </InputWithButton>
-          </FormField>
-
-          <FormField>
-            <FormLabel>이름</FormLabel>
-            <CommonInput
-              placeholder="이름을 입력해주세요."
-              value={formData.name}
-              onChange={(e) => handleInputChange('name', e.target.value)}
-              style={{ flex: 1 }}
-            />
-          </FormField>
-
-          <FormField>
             <FormLabel>닉네임</FormLabel>
             <InputWithButton>
               <CommonInput
@@ -565,16 +506,6 @@ export const MyPageInfoPage: React.FC = () => {
         </FormColumn>
 
         <FormColumn>
-          <FormField>
-            <FormLabel>연락처</FormLabel>
-            <CommonInput
-              placeholder="연락처를 입력해주세요."
-              value={formData.contact}
-              onChange={(e) => handleInputChange('contact', e.target.value)}
-              style={{ flex: 1 }}
-            />
-          </FormField>
-
           <FormField style={{ alignItems: 'flex-start' }}>
             <FormLabel style={{ marginTop: '17px' }}>이메일</FormLabel>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
@@ -607,21 +538,6 @@ export const MyPageInfoPage: React.FC = () => {
             />
           </FormField>
 
-          <FormField>
-            <FormLabel>직무</FormLabel>
-            <CommonDropdown
-              options={[
-                { value: '', label: '코칭할 분야를 선택해 주세요.' },
-                { value: 'exercise-fitness', label: '운동/피트니스' },
-                { value: 'diet-nutrition', label: '식단/영양' },
-                { value: 'physical-health', label: '신체건강/통증 관리' },
-                { value: 'mental-health', label: '정신건강/멘탈케어' }
-              ]}
-              value={formData.job}
-              onChange={(e) => handleInputChange('job', e.target.value)}
-              style={{ flex: 1 }}
-            />
-          </FormField>
         </FormColumn>
       </FormGrid>
 
@@ -633,7 +549,7 @@ export const MyPageInfoPage: React.FC = () => {
             취득한 자격증을 입력해 주세요.
           </div>
         </div>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', position: 'relative' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', position: 'relative', width: '100%' }}>
           {qualificationFields.map((value, index) => (
             <CommonInput
               key={index}
@@ -643,6 +559,7 @@ export const MyPageInfoPage: React.FC = () => {
                 const v = (e.target as HTMLInputElement).value;
                 setQualificationFields(prev => prev.map((pv, i) => (i === index ? v : pv)));
               }}
+              style={{ width: '100%' }}
             />
           ))}
           <AddButton type="button" onClick={handleAddQualification}>추가 +</AddButton>
@@ -656,7 +573,7 @@ export const MyPageInfoPage: React.FC = () => {
             회원들에게 코치님을<br />소개하는 글을 입력해 주세요.
           </div>
         </div>
-        <div style={{ flex: 1, alignSelf: 'flex-start' }}>
+        <div style={{ flex: 1, alignSelf: 'flex-start', width: '100%' }}>
           <TextArea
             placeholder="소개 글을 입력해 주세요."
             value={formData.introduction}
@@ -697,19 +614,8 @@ export const MyPageInfoPage: React.FC = () => {
       />
 
       <div style={{ marginTop: '24px' }}>
-        <SubmitButton onClick={() => setShowModal(true)}>정보 수정</SubmitButton>
+        <SubmitButton onClick={navigateToVerification}>정보 수정</SubmitButton>
       </div>
-
-      {showModal && (
-        <ModalOverlay onClick={() => setShowModal(false)}>
-          <ModalCard onClick={(e) => e.stopPropagation()}>
-            <div style={{ fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', fontWeight: 800, fontSize: '22px', marginBottom: '18px' }}>
-              코치님의 정보가<br />수정되었습니다.
-            </div>
-            <SubmitButton style={{ width: '90%', margin: '0 auto' }} onClick={() => setShowModal(false)}>확인</SubmitButton>
-          </ModalCard>
-        </ModalOverlay>
-      )}
       </ContentWrapper>
     </PageContainer>
   );

@@ -136,7 +136,7 @@ export const StreamingPage: React.FC = () => {
     }
     
     // 기본값: 사용자 닉네임 또는 '코치'
-    return `${user?.nickname || '코치'} 코치님`;
+    return user?.nickname ? `${user.nickname} 코치님` : '코치님';
   });
 
   const participantInfoMap = useMemo<Record<string, ParticipantDetail>>(() => ({
@@ -657,7 +657,7 @@ export const StreamingPage: React.FC = () => {
       {isScreenSharing && (
         <ScreenShareBar>
           <ScreenShareInfo>
-            {user?.nickname || '코치'} 코치님 화면 공유 중
+            {(user?.nickname ? `${user.nickname} 코치님` : '코치님')} 화면 공유 중
           </ScreenShareInfo>
           <ZoomControls>
             <ZoomButton>-</ZoomButton>

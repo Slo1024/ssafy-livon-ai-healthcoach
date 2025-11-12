@@ -24,6 +24,24 @@ const PageTitle = styled.h1`
   font-size: 40px;
   color: #000000;
   margin: 0 0 24px 0;
+  text-align: left;
+
+  @media (max-width: 1200px) {
+    text-align: center;
+    font-size: 34px;
+  }
+
+  @media (max-width: 900px) {
+    font-size: 30px;
+  }
+
+  @media (max-width: 768px) {
+    font-size: 26px;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 24px;
+  }
 `;
 
 const TabsAndFilterContainer = styled.div`
@@ -79,10 +97,12 @@ const TableHeaderCell = styled.th`
   }
   &:nth-child(2) {
     width: auto;
+    white-space: nowrap;
+    word-break: keep-all;
   }
   &:nth-child(3) {
     width: 150px;
-    text-align: right;
+    text-align: center;
   }
   &:nth-child(4) {
     width: 200px;
@@ -94,9 +114,10 @@ const TableBody = styled.tbody``;
 
 const TableRow = styled.tr`
   border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.2s ease;
   
   &:hover {
-    background-color: #f9fafb;
+    background-color: transparent;
   }
 `;
 
@@ -105,8 +126,12 @@ const TableCell = styled.td`
   font-size: 14px;
   color: #111827;
   
+  &:nth-child(2) {
+    white-space: nowrap;
+    word-break: keep-all;
+  }
   &:nth-child(3) {
-    text-align: right;
+    text-align: center;
     color: #6b7280;
   }
   &:nth-child(4) {
@@ -249,8 +274,6 @@ export const ClassListPage: React.FC = () => {
             />
           </FilterDropdown>
         </TabsAndFilterContainer>
-
-        <Divider />
 
         <ClassTable>
           <TableHeader>

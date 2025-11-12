@@ -2,48 +2,45 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../../hooks/useAuth';
-import { Button } from '../common/Button';
 
-const StyledLoginButton = styled.div`
-  button {
-    appearance: none;
-    background-color: transparent;
-    border: 0.125em solid #4965f6;
-    border-radius: 5px;
-    box-sizing: border-box;
-    color: #4965f6;
-    cursor: pointer;
-    display: inline-block;
-    font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-    font-size: 14px;
-    font-weight: 600;
-    line-height: normal;
-    margin: 0;
-    width: 87px;
-    height: 42px;
-    outline: none;
-    text-align: center;
-    text-decoration: none;
-    transition: all 300ms cubic-bezier(.23, 1, 0.32, 1);
-    user-select: none;
-    -webkit-user-select: none;
-    touch-action: manipulation;
-    will-change: transform;
-  }
+const AuthButton = styled.button`
+  appearance: none;
+  background-color: #ffffff;
+  border: 1px solid #4965f6;
+  border-radius: 8px;
+  box-sizing: border-box;
+  color: #4965f6;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: normal;
+  width: 96px;
+  height: 42px;
+  outline: none;
+  text-align: center;
+  text-decoration: none;
+  transition: all 300ms cubic-bezier(.23, 1, 0.32, 1);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  will-change: transform;
 
-  button:disabled {
+  &:disabled {
     pointer-events: none;
+    opacity: 0.6;
   }
 
-  button:hover {
-    color: #fff;
+  &:hover {
+    color: #ffffff;
     background-color: #4965f6;
-    box-shadow: rgba(73, 101, 246, 0.25) 0 8px 15px;
     transform: translateY(-2px);
   }
 
-  button:active {
-    box-shadow: none;
+  &:active {
     transform: translateY(0);
   }
 `;
@@ -201,19 +198,22 @@ const DesktopNavLink = styled(Link)`
 
   &:hover {
     color: #4965f6;
-    background-color: #f7fafc;
+    background-color: transparent;
+    text-decoration: none;
   }
 
   &:focus {
     outline: none;
     border: none;
     box-shadow: none;
+    text-decoration: none;
   }
 
   &:active {
     outline: none;
     border: none;
     box-shadow: none;
+    text-decoration: none;
   }
 
   &.active {
@@ -226,7 +226,7 @@ const DesktopNavLink = styled(Link)`
 const WelcomeMessage = styled.div`
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-weight: 600;
-  font-size: 20px;
+  font-size: clamp(14px, 1.8vw, 20px);
   color: #000000;
   white-space: nowrap;
 `;
@@ -336,30 +336,29 @@ export const Header: React.FC<HeaderProps> = ({
           </MobileMenuWrapper>
           
           {/* User Menu */}
-          {finalIsAuthenticated && finalUserRole === 'coach' && user?.nickname ? (
-            <WelcomeMessage>
-              {user.nickname} 코치님, 환영합니다.
-            </WelcomeMessage>
-          ) : finalIsAuthenticated ? (
-            <>
-              {finalUserRole === 'coach' && (
-                <Link to="/coach/dashboard" className="text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium">
+          {finalIsAuthenticated ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {finalUserRole === 'coach' && user?.nickname && (
+                <WelcomeMessage>
+                  {user.nickname} 코치님, 환영합니다.
+                </WelcomeMessage>
+              )}
+              {finalUserRole === 'coach' && !user?.nickname && (
+                <Link
+                  to="/coach/dashboard"
+                  className="text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium"
+                >
                   코치 대시보드
                 </Link>
               )}
-              <button
-                onClick={handleLogout}
-                className="text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium"
-              >
+              <AuthButton type="button" onClick={handleLogout}>
                 로그아웃
-              </button>
-            </>
+              </AuthButton>
+            </div>
           ) : (
-            <StyledLoginButton>
-              <Link to="/auth/login">
-                <Button variant="outline" size="medium">로그인</Button>
-              </Link>
-            </StyledLoginButton>
+            <Link to="/auth/login" style={{ textDecoration: 'none' }}>
+              <AuthButton type="button">로그인</AuthButton>
+            </Link>
           )}
         </div>
       </div>

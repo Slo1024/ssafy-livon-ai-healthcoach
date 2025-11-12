@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
-import { Room, RoomEvent, LocalVideoTrack, RemoteVideoTrack, RemoteAudioTrack, RemoteTrackPublication, RemoteParticipant, RemoteTrack, Track, DataPacket_Kind } from 'livekit-client';
+import { Room, RoomEvent, LocalVideoTrack, LocalTrackPublication, RemoteVideoTrack, RemoteAudioTrack, RemoteTrackPublication, RemoteParticipant, RemoteTrack, Track, TrackEvent, DataPacket_Kind } from 'livekit-client';
 import { StreamingEndModal } from '../../components/common/Modal';
 import { ROUTES } from '../../constants/routes';
 import { CONFIG } from '../../constants/config';
@@ -10,8 +10,9 @@ import { ChatPanel } from '../../components/streaming/chat/ChatPanel';
 import { ParticipantPanel } from '../../components/streaming/participant/ParticipantPanel';
 import { VideoGrid } from '../../components/streaming/video/VideoGrid';
 import { StreamingControls } from '../../components/streaming/button/StreamingControls';
+import { ParticipantInfo, ParticipantDetail } from '../../components/streaming/participant/ParticipantInfo';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+const APPLICATION_SERVER_URL = CONFIG.LIVEKIT.APPLICATION_SERVER_URL;
 
 const StreamingContainer = styled.div`
   width: 100vw;
@@ -21,50 +22,6 @@ const StreamingContainer = styled.div`
   flex-direction: column;
   overflow: hidden;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-`;
-
-const TopBar = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  background-color: rgba(0, 0, 0, 0.8);
-  color: #ffffff;
-  font-size: 14px;
-  z-index: 10;
-`;
-
-const TopBarLeft = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-`;
-
-const OriginalSoundIndicator = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #10b981;
-  font-size: 12px;
-`;
-
-const TopBarRight = styled.div`
-  display: flex;
-  gap: 12px;
-`;
-
-const ViewButton = styled.button`
-  padding: 6px 12px;
-  background-color: transparent;
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-  
-  &:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-  }
 `;
 
 const ScreenShareBar = styled.div`
@@ -149,6 +106,7 @@ export const StreamingPage: React.FC = () => {
     type: 'ai-analysis';
     memberName: string;
   } | null>(null);
+  const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null);
   const [roomName] = useState(() => {
     // URL 쿼리 파라미터에서 roomName 가져오기 (같은 방 참여용)
     const searchParams = new URLSearchParams(location.search);
@@ -181,9 +139,34 @@ export const StreamingPage: React.FC = () => {
     return `${user?.nickname || '코치'} 코치님`;
   });
 
+  const participantInfoMap = useMemo<Record<string, ParticipantDetail>>(() => ({
+    '김싸피': {
+      name: '김싸피',
+      badges: ['고혈압', '수면 질 저하', '활동 부족'],
+      notes: '혈압약 복용 중이므로 격렬한 운동은 피해주세요.',
+      questions: ['전완근을 키우고 싶어요.', '겟폴다운을 잘하고 싶어요.'],
+      analysis: {
+        generatedAt: '2025. 11. 11.',
+        type: '건강 상태 분석',
+        summary: '현재 혈압 수치와 건강 상태를 종합적으로 분석한 결과, 규칙적인 운동과 건강한 식습관 유지가 필요합니다.',
+        tip: '혈압약 복용 중이므로 격렬한 운동은 피하세요.',
+      },
+    },
+  }), []);
+
+  const handleOpenParticipantInfo = useCallback((identity: string) => {
+    if (participantInfoMap[identity]) {
+      setSelectedParticipantId(identity);
+    }
+  }, [participantInfoMap]);
+
+  const handleCloseParticipantInfo = useCallback(() => {
+    setSelectedParticipantId(null);
+  }, []);
+
   // 토큰 발급 API 호출
   const getToken = async (): Promise<string> => {
-    const tokenUrl = `${API_BASE_URL}/token`;
+    const tokenUrl = `${APPLICATION_SERVER_URL}/token`;
     const requestBody = {
       roomName,
       participantName,
@@ -192,7 +175,7 @@ export const StreamingPage: React.FC = () => {
 
     console.log('🔑 토큰 발급 요청:', {
       url: tokenUrl,
-      server: API_BASE_URL,
+      server: APPLICATION_SERVER_URL,
       body: requestBody,
       environment: process.env.NODE_ENV,
     });
@@ -236,7 +219,7 @@ export const StreamingPage: React.FC = () => {
       // 개발 환경에서는 백엔드 서버가 실행되지 않았을 수 있음
       // 실제 배포 환경에서는 백엔드 API가 필수입니다
       const errorMessage = error instanceof Error ? error.message : '토큰 발급 실패';
-      throw new Error(`토큰 발급에 실패했습니다. 백엔드 서버(${API_BASE_URL})가 실행 중인지 확인해주세요. 오류: ${errorMessage}`);
+      throw new Error(`토큰 발급에 실패했습니다. 백엔드 서버(${APPLICATION_SERVER_URL})가 실행 중인지 확인해주세요. 오류: ${errorMessage}`);
     }
   };
 
@@ -244,6 +227,14 @@ export const StreamingPage: React.FC = () => {
   const isConnectingRef = useRef(false);
   const roomRef = useRef<Room | undefined>(undefined);
   const isMountedRef = useRef(true);
+  const screenShareTrackRef = useRef<LocalVideoTrack | null>(null);
+
+  const clearScreenShareState = useCallback(() => {
+    screenShareTrackRef.current = null;
+    setSharedContent(null);
+    setIsScreenSharing(false);
+    setViewMode('gallery');
+  }, []);
   
   useEffect(() => {
     isMountedRef.current = true;
@@ -484,8 +475,9 @@ export const StreamingPage: React.FC = () => {
         setLocalTrack(undefined);
         setRemoteTracks([]);
       }
+      clearScreenShareState();
     };
-  }, [roomName, participantName]);
+  }, [roomName, participantName, clearScreenShareState]);
 
   const handleToggleVideo = async () => {
     if (!room) return;
@@ -513,16 +505,30 @@ export const StreamingPage: React.FC = () => {
   };
 
   const handleShareScreen = async () => {
+    setSelectedParticipantId(null);
     if (!room) return;
     
     if (!isScreenSharing) {
       try {
         await room.localParticipant.setScreenShareEnabled(true);
-        // AI 분석본 공유
-        setSharedContent({
-          type: 'ai-analysis',
-          memberName: '김싸피',
-        });
+
+        const screenSharePublication = Array.from(room.localParticipant.trackPublications.values()).find(
+          (publication) => publication.source === Track.Source.ScreenShare
+        ) as LocalTrackPublication | undefined;
+
+        const screenShareTrack = screenSharePublication?.track as LocalVideoTrack | undefined;
+
+        if (screenShareTrack) {
+          screenShareTrackRef.current = screenShareTrack;
+          screenShareTrack.once(TrackEvent.Ended, () => {
+            console.log('화면 공유 트랙 종료 감지');
+            screenShareTrackRef.current = null;
+            setSharedContent(null);
+            setIsScreenSharing(false);
+            setViewMode('gallery');
+          });
+        }
+
         setIsScreenSharing(true);
         setViewMode('shared');
       } catch (error) {
@@ -533,22 +539,29 @@ export const StreamingPage: React.FC = () => {
           if (error.name === 'NotAllowedError' || error.message.includes('Permission denied')) {
             alert('화면 공유 권한이 거부되었습니다. 브라우저에서 화면 공유 권한을 허용해주세요.');
           } else if (error.name === 'AbortError' || error.message.includes('canceled')) {
-            // 사용자가 화면 선택을 취소한 경우는 조용히 처리
             console.log('화면 공유가 취소되었습니다.');
+          } else if (error.message.includes('engine not connected within timeout') || error.message.includes('unpublished track')) {
+            console.warn('화면 공유가 중단되었거나 연결이 끊어졌습니다.', error.message);
           } else {
             alert('화면 공유에 실패했습니다. 다시 시도해주세요.');
           }
         }
+        screenShareTrackRef.current = null;
+        setSharedContent(null);
+        setIsScreenSharing(false);
+        setViewMode('gallery');
       }
     } else {
       try {
         await room.localParticipant.setScreenShareEnabled(false);
-        setSharedContent(null);
-        setIsScreenSharing(false);
-        setViewMode('gallery');
       } catch (error) {
         console.error('화면 공유 중지 오류:', error);
         // 중지 오류는 조용히 처리 (이미 중지된 상태일 수 있음)
+      } finally {
+        screenShareTrackRef.current = null;
+        setSharedContent(null);
+        setIsScreenSharing(false);
+        setViewMode('gallery');
       }
     }
   };
@@ -640,16 +653,6 @@ export const StreamingPage: React.FC = () => {
 
   return (
     <StreamingContainer>
-      {/* 상단 바 */}
-      <TopBar>
-        <TopBarLeft>
-          {/* Original Sound Indicator 제거됨 */}
-        </TopBarLeft>
-        <TopBarRight>
-          {/* 보기 버튼 제거됨 */}
-        </TopBarRight>
-      </TopBar>
-
       {/* 화면 공유 바 */}
       {isScreenSharing && (
         <ScreenShareBar>
@@ -676,6 +679,9 @@ export const StreamingPage: React.FC = () => {
             sharedContent={sharedContent}
             viewMode={viewMode}
             participantName={participantName}
+            showInfoButtons={!isScreenSharing}
+            onOpenParticipantInfo={handleOpenParticipantInfo}
+            isParticipantInfoAvailable={(identity) => Boolean(participantInfoMap[identity])}
           />
         </VideoGridWrapper>
 
@@ -720,6 +726,12 @@ export const StreamingPage: React.FC = () => {
         open={showEndModal}
         onClose={() => setShowEndModal(false)}
         onConfirm={handleEndModalConfirm}
+      />
+
+      <ParticipantInfo
+        open={Boolean(selectedParticipantId && participantInfoMap[selectedParticipantId])}
+        participant={selectedParticipantId ? participantInfoMap[selectedParticipantId] : undefined}
+        onClose={handleCloseParticipantInfo}
       />
     </StreamingContainer>
   );

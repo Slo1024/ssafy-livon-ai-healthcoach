@@ -168,7 +168,14 @@ const CancelButton = styled.button`
 
 export const ClassSetupPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+
+  // 코치 전용 가드
+  useEffect(() => {
+    if (!isLoading && user && user.role !== "coach") {
+      navigate(ROUTES.COACH_ONLY, { replace: true });
+    }
+  }, [isLoading, user, navigate]);
   const [showDateTimeModal, setShowDateTimeModal] = useState(false);
   const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false);
   const [showClassCreatedModal, setShowClassCreatedModal] = useState(false);

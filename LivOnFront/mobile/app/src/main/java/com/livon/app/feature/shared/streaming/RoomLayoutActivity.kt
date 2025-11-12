@@ -58,6 +58,7 @@ class RoomLayoutActivity : AppCompatActivity() {
     private val _participantTracks = MutableStateFlow<List<TrackInfo>>(emptyList())
     private val _eglBaseContext = MutableStateFlow<EglBase.Context?>(null)
     private val _room = MutableStateFlow<Room?>(null)
+    private val _isSpeakerMuted = MutableStateFlow(false)
 
     private lateinit var room: Room
     private var eglBase: EglBase? = null
@@ -142,6 +143,7 @@ class RoomLayoutActivity : AppCompatActivity() {
             val roomState = _room.collectAsState().value
 
             if (eglBaseContext != null && roomState != null) {
+                val isSpeakerMuted = _isSpeakerMuted.collectAsState().value
                 LiveStreamingCoachScreen(
                     uiState = uiState,
                     participantTracks = participantTracks,
@@ -150,8 +152,10 @@ class RoomLayoutActivity : AppCompatActivity() {
                     room = roomState,
                     onConnect = ::checkAndRequestPermissions,
                     onToggleCamera = ::toggleCamera,
-                        onToggleMic = ::toggleMicrophone,
-                        onShareScreen = ::toggleScreenShare
+                    onToggleMic = ::toggleMicrophone,
+                    onShareScreen = ::toggleScreenShare,
+                    onToggleSpeaker = ::toggleSpeaker,
+                    isSpeakerMuted = isSpeakerMuted
                 )
             } else {
                 Box(Modifier.fillMaxSize(), Alignment.Center) {
@@ -542,4 +546,23 @@ class RoomLayoutActivity : AppCompatActivity() {
             }
         }
     }
+
+    private fun toggleSpeaker() {
+        lifecycleScope.launch {
+            try {
+                val isMuted = _isSpeakerMuted.value
+                val newMutedState = !isMuted
+                
+                // Room의 setSpeakerMute를 사용하여 스피커 음소거 토글
+                room.setSpeakerMute(newMutedState)
+                
+                _isSpeakerMuted.value = newMutedState
+                Log.d("LiveKitDebug", "Speaker ${if (newMutedState) "muted" else "unmuted"}")
+            } catch (e: Exception) {
+                Log.e("LiveKitDebug", "Failed to toggle speaker: ${e.message}", e)
+                Toast.makeText(this@RoomLayoutActivity, "스피커 제어 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
 }

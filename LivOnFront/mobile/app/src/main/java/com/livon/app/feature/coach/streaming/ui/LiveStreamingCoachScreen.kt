@@ -41,6 +41,8 @@ fun LiveStreamingCoachScreen(
     onToggleCamera: () -> Unit = {},
     onToggleMic: () -> Unit = {},
     onShareScreen: () -> Unit = {},
+    onToggleSpeaker: () -> Unit = {},
+    isSpeakerMuted: Boolean = false,
 ) {
     LaunchedEffect(key1 = true) {
         onConnect()
@@ -79,7 +81,9 @@ fun LiveStreamingCoachScreen(
                                     roomName = uiState.roomName,
                                     onLeaveRoom = onLeaveRoom,
                                     onPersonClick = { currentScreen = "participant" },
-                                    onChatClick = { currentScreen = "chatting" }
+                                    onChatClick = { currentScreen = "chatting" },
+                                    onSoundClick = onToggleSpeaker,
+                                    isSoundMuted = isSpeakerMuted
                                 )
                             }
                         }

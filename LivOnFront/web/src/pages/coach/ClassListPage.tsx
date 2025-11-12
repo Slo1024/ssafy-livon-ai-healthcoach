@@ -125,7 +125,7 @@ const TableBody = styled.tbody``;
 const TableRow = styled.tr`
   border-bottom: 1px solid #e5e7eb;
   transition: background-color 0.2s ease;
-  
+
   &:hover {
     background-color: transparent;
   }
@@ -135,7 +135,7 @@ const TableCell = styled.td`
   padding: 16px;
   font-size: 14px;
   color: #111827;
-  
+
   &:nth-child(2) {
     white-space: nowrap;
     word-break: keep-all;
@@ -391,35 +391,49 @@ export const ClassListPage: React.FC = () => {
           </FilterDropdown>
         </TabsAndFilterContainer>
 
-        <ClassTable>
-          <TableHeader>
-            <tr>
-              <TableHeaderCell>번호</TableHeaderCell>
-              <TableHeaderCell>클래스명</TableHeaderCell>
-              <TableHeaderCell>개설일</TableHeaderCell>
-              <TableHeaderCell></TableHeaderCell>
-            </tr>
-          </TableHeader>
-          <TableBody>
-            {classes.map((classItem, index) => (
-              <TableRow key={classItem.id}>
-                <TableCell>{index + 1}</TableCell>
-                <TableCell>{classItem.name}</TableCell>
-                <TableCell>{classItem.date} 개설</TableCell>
-                <TableCell>
-                  <ActionButtonContainer>
-                    <Button variant="info-edit" onClick={() => handleEditClick(classItem)}>
-                      정보 및 수정
-                    </Button>
-                    <Button variant="delete" onClick={() => handleDeleteClick(classItem.id)}>
-                      클래스 삭제
-                    </Button>
-                  </ActionButtonContainer>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </ClassTable>
+        {loading ? (
+          <LoadingMessage>클래스 목록을 불러오는 중...</LoadingMessage>
+        ) : error ? (
+          <ErrorMessage>{error}</ErrorMessage>
+        ) : classes.length === 0 ? (
+          <EmptyMessage>등록된 클래스가 없습니다.</EmptyMessage>
+        ) : (
+          <>
+            <ClassTable>
+              <TableHeader>
+                <tr>
+                  <TableHeaderCell>번호</TableHeaderCell>
+                  <TableHeaderCell>클래스명</TableHeaderCell>
+                  <TableHeaderCell>개설일</TableHeaderCell>
+                  <TableHeaderCell></TableHeaderCell>
+                </tr>
+              </TableHeader>
+              <TableBody>
+                {classes.map((classItem, index) => (
+                  <TableRow key={classItem.id}>
+                    <TableCell>{index + 1}</TableCell>
+                    <TableCell>{classItem.title}</TableCell>
+                    <TableCell>{formatDate(classItem.startAt)} 개설</TableCell>
+                    <TableCell>
+                      <ActionButtonContainer>
+                        <Button
+                          variant="info-edit"
+                          onClick={() => handleEditClick(classItem)}
+                        >
+                          정보 및 수정
+                        </Button>
+                        <Button
+                          variant="delete"
+                          onClick={() => handleDeleteClick(classItem.id)}
+                        >
+                          클래스 삭제
+                        </Button>
+                      </ActionButtonContainer>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </ClassTable>
 
             {totalPages > 1 && (
               <PaginationContainer>
@@ -466,22 +480,20 @@ export const ClassListPage: React.FC = () => {
       </ContentWrapper>
 
       {/* 클래스 정보 수정 모달 */}
-      <ClassEditModal
-        open={showEditModal}
-        onClose={() => setShowEditModal(false)}
-        classNameData={
-          editingClass
-            ? {
-                name: editingClass.title,
-                description: "",
-                targetMember: "",
-                dateTime: formatDate(editingClass.startAt),
-                file: editingClass.imageUrl || "",
-              }
-            : undefined
-        }
-        onSave={handleSave}
-      />
+      {editingClass && (
+        <ClassEditModal
+          open={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          classNameData={{
+            name: editingClass.title,
+            description: "",
+            targetMember: "",
+            dateTime: formatDate(editingClass.startAt),
+            file: editingClass.imageUrl || "",
+          }}
+          onSave={handleSave}
+        />
+      )}
 
       {/* 저장 확인 모달 */}
       <ConfirmModal

@@ -154,7 +154,7 @@ const TableBody = styled.tbody``;
 const TableRow = styled.tr`
   border-bottom: 1px solid #e5e7eb;
   transition: background-color 0.2s ease;
-  
+
   &:hover {
     background-color: transparent;
   }
@@ -167,7 +167,7 @@ const TableCell = styled.td`
   vertical-align: middle;
   word-break: keep-all;
   white-space: normal;
-  
+
   &:nth-child(1) {
     width: 200px;
     white-space: nowrap;
@@ -623,44 +623,36 @@ export const PastReservationPage: React.FC = () => {
           </FilterDropdown>
         </TabsAndFilterContainer>
 
-        <ReservationTable>
-          <TableHeader>
-            <tr>
-              <TableHeaderCell>날짜 / 시간</TableHeaderCell>
-              <TableHeaderCell>클래스</TableHeaderCell>
-              <TableHeaderCell>클래스 형태</TableHeaderCell>
-              <TableHeaderCell></TableHeaderCell>
-            </tr>
-          </TableHeader>
-          <TableBody>
-            {filteredReservations.map((reservation) => (
-              <TableRow key={reservation.id}>
-                <TableCell>{reservation.date} {reservation.time}</TableCell>
-                <TableCell>
-                  <ClassTitle>{reservation.classTitle}</ClassTitle>
-                  <ClassDescription>{reservation.classDescription}</ClassDescription>
-                </TableCell>
-                <TableCell style={{ color: '#4965f6' }}>{reservation.classType}</TableCell>
-                <TableCell>
-                  <ActionButtonContainer>
-                    {reservation.memberName ? (
-                      <>
-                        <MemberInfoButton onClick={() => handleViewMember(reservation.memberName!)}>
-                          회원 정보
-                        </MemberInfoButton>
-                        <ConsultationSummaryButton onClick={() => handleViewConsultationSummary(reservation.id, reservation.memberName!)}>
-                          상담 요약본
-                        </ConsultationSummaryButton>
-                      </>
-                    ) : (
-                      <ViewMemberButton onClick={handleViewAppliedMembers}>신청 회원</ViewMemberButton>
-                    )}
-                  </ActionButtonContainer>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </ReservationTable>
+        {loading ? (
+          <LoadingMessage>예약 목록을 불러오는 중...</LoadingMessage>
+        ) : error ? (
+          <ErrorMessage>{error}</ErrorMessage>
+        ) : reservations.length === 0 ? (
+          <EmptyMessage>지난 상담 예약 내역이 없습니다.</EmptyMessage>
+        ) : (
+          <>
+            <ReservationTable>
+              <TableHeader>
+                <tr>
+                  <TableHeaderCell>날짜 / 시간</TableHeaderCell>
+                  <TableHeaderCell>클래스</TableHeaderCell>
+                  <TableHeaderCell>클래스 형태</TableHeaderCell>
+                  <TableHeaderCell></TableHeaderCell>
+                </tr>
+              </TableHeader>
+              <TableBody>
+                {reservations.map((reservation) => {
+                  const { date, time } = formatDateTime(
+                    reservation.startAt,
+                    reservation.endAt
+                  );
+                  const classType = getClassType(reservation.type);
+                  const isIndividual = reservation.type === "ONE";
+                  const firstParticipant =
+                    reservation.participants &&
+                    reservation.participants.length > 0
+                      ? reservation.participants[0]
+                      : null;
 
                   return (
                     <TableRow key={reservation.consultationId}>

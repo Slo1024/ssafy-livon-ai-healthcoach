@@ -1,4 +1,4 @@
-package com.s406.livon.domain.ai.dto.gms;
+package com.s406.livon.domain.ai.gms.dto.gms;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

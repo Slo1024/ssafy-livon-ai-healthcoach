@@ -29,7 +29,6 @@ import androidx.navigation.NavType
 import com.livon.app.feature.shared.auth.ui.HealthInfoConditionScreen
 import com.livon.app.feature.shared.auth.ui.LifestyleSmokingScreen
 import com.livon.app.feature.shared.auth.ui.SignupState
-import com.livon.app.feature.member.home.ui.DataMetric
 import com.livon.app.feature.shared.auth.ui.HealthInfoMedicationScreen
 import com.livon.app.feature.shared.auth.ui.HealthInfoPainDiscomfortScreen
 import com.livon.app.feature.shared.auth.ui.HealthInfoSleepQualityScreen
@@ -40,6 +39,8 @@ import com.livon.app.feature.shared.auth.ui.LifestyleCaffeinIntakeScreen
 import com.livon.app.feature.shared.auth.ui.LifestyleSleepDurationScreen
 import java.net.URLDecoder
 import java.net.URLEncoder
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 
 object Routes {
     const val Landing = "landing"
@@ -355,11 +356,77 @@ fun NavGraphBuilder.authNavGraph(navController: NavHostController) {
         })
     }
     composable("lifestyle_caffeine") {
+        val coroutineScope = rememberCoroutineScope()
         LifestyleCaffeinIntakeScreen(onBack = { navController.popBackStack() }, onNext = { caffeine ->
             SignupState.caffeine = caffeine
             Log.d("AppNavGraph","Lifestyle(caffeine) finished (caffeine=$caffeine)")
-            // Navigate to member home; MemberNavGraph will read SignupState to build metrics and nickname
-            navController.navigate(Routes.MemberHome)
+            // Build request from SignupState and post to backend, then navigate home on success
+            val userApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.UserApiService::class.java)
+            val userRepo = com.livon.app.domain.repository.UserRepository(userApi)
+
+            coroutineScope.launch {
+                try {
+                    val req = com.livon.app.data.remote.api.HealthSurveyRequest(
+                        steps = 0,
+                        sleepTime = SignupState.sleepHours?.toIntOrNull() ?: 0,
+                        disease = SignupState.condition,
+                        sleepQuality = SignupState.sleepQuality,
+                        medicationsInfo = SignupState.medication,
+                        painArea = SignupState.painArea,
+                        stressLevel = SignupState.stress,
+                        smokingStatus = SignupState.smoking,
+                        avgSleepHours = SignupState.sleepHours?.toIntOrNull() ?: 0,
+                        activityLevel = SignupState.activityLevel,
+                        caffeineIntakeLevel = SignupState.caffeine,
+                        height = SignupState.heightCm?.toIntOrNull() ?: 0,
+                        weight = SignupState.weightKg?.toIntOrNull() ?: 0
+                    )
+
+                    val res = userRepo.postHealthSurvey(req)
+                    if (res.isSuccess) {
+                        Log.d("AppNavGraph","Health survey posted successfully, returning to QnA submit")
+                        // Try to return to a qna_submit route by popping the back stack safely.
+                        try {
+                            // We'll pop back until we reach a destination whose route contains "qna_submit".
+                            var safety = 0
+                            var reached = false
+                            // set flag on current entry so caller screens can detect update if we don't find qna
+                            navController.currentBackStackEntry?.savedStateHandle?.set("health_updated", true)
+                            while (safety < 20) {
+                                val currentRoute = navController.currentDestination?.route
+                                if (currentRoute != null && currentRoute.contains("qna_submit")) {
+                                    // mark the found entry so QnA screen can react
+                                    navController.currentBackStackEntry?.savedStateHandle?.set("health_updated", true)
+                                    reached = true
+                                    break
+                                }
+                                // try to pop one
+                                val popped = navController.popBackStack()
+                                if (!popped) break
+                                safety++
+                            }
+                            if (!reached) {
+                                // fallback: navigate to reservations screen directly
+                                try {
+                                    navController.navigate("reservations") { popUpTo(Routes.MemberHome) { inclusive = false } }
+                                } catch (t: Throwable) {
+                                    navController.popBackStack()
+                                }
+                            }
+                        } catch (t: Throwable) {
+                            Log.d("AppNavGraph", "Failed to pop back to QnA submit: ${t.message}")
+                            navController.popBackStack()
+                        }
+                    } else {
+                        Log.d("AppNavGraph","Health survey post failed: ${res.exceptionOrNull()?.message}")
+                        // navigate back conservatively
+                        navController.popBackStack()
+                    }
+                } catch (t: Throwable) {
+                    Log.d("AppNavGraph","Health survey post exception: ${t.message}")
+                    navController.popBackStack()
+                }
+            }
         })
     }
 }

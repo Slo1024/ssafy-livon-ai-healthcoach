@@ -31,7 +31,9 @@ object RetrofitProvider {
     }
 
     private val logging = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BODY
+        // Level.BODY can trigger reading of empty/chunked bodies and cause EOF exceptions in some setups.
+        // Switch to BASIC to keep useful request/response logging without forcing body reads.
+        level = HttpLoggingInterceptor.Level.BASIC
     }
 
     private val okHttp = OkHttpClient.Builder()

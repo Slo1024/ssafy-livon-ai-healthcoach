@@ -3,7 +3,6 @@ package com.s406.livon.domain.goodsChat.service;
 
 import com.s406.livon.domain.coach.entity.Consultation;
 import com.s406.livon.domain.coach.repository.ConsultationReservationRepository;
-import com.s406.livon.domain.coach.entity.Participant;
 import com.s406.livon.domain.coach.repository.ParticipantRepository;
 import com.s406.livon.domain.goodsChat.document.GoodsChatMessage;
 import com.s406.livon.domain.goodsChat.dto.response.ChatRoomUserResponseDto;

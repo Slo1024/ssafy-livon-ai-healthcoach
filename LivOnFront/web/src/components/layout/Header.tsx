@@ -78,7 +78,7 @@ const MobileMenuWrapper = styled.div`
 
   .hamburger-bar::before,
   .hamburger-bar::after {
-    content: '';
+    content: "";
     position: absolute;
     width: 25px;
     height: 3px;
@@ -137,7 +137,8 @@ const MobileMenuWrapper = styled.div`
     padding: 12px 20px;
     color: #374151;
     text-decoration: none;
-    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+      Roboto, sans-serif;
     font-weight: 500;
     font-size: 16px;
     transition: background-color 0.2s;
@@ -184,7 +185,8 @@ const DesktopNav = styled.nav`
 `;
 
 const DesktopNavLink = styled(Link)`
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
   font-weight: 500;
   font-size: 16px;
   color: #4a5568;
@@ -224,7 +226,8 @@ const DesktopNavLink = styled(Link)`
 `;
 
 const WelcomeMessage = styled.div`
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
   font-weight: 600;
   font-size: clamp(14px, 1.8vw, 20px);
   color: #000000;
@@ -233,7 +236,7 @@ const WelcomeMessage = styled.div`
 
 interface HeaderProps {
   isAuthenticated?: boolean;
-  userRole?: 'coach' | 'member';
+  userRole?: "coach" | "member";
   onLogout?: () => void;
 }
 
@@ -244,65 +247,108 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const location = useLocation();
   const { isAuthenticated, user, logout } = useAuth();
-  
+
   // Props가 제공되면 props 우선 사용, 없으면 useAuth hook 사용
-  const finalIsAuthenticated = propIsAuthenticated !== undefined ? propIsAuthenticated : isAuthenticated;
+  const finalIsAuthenticated =
+    propIsAuthenticated !== undefined ? propIsAuthenticated : isAuthenticated;
   const finalUserRole = propUserRole || user?.role;
   const handleLogout = propOnLogout || logout;
-  
+
   const getLinkStyle = (path: string) => {
     const isActive = location.pathname === path;
     return {
-      fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      fontFamily:
+        'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       fontWeight: isActive ? 800 : 500,
-      fontSize: isActive ? '20px' : '16px',
-      color: isActive ? '#000000' : '#4a5568',
-      textDecoration: 'none'
+      fontSize: isActive ? "20px" : "16px",
+      color: isActive ? "#000000" : "#4a5568",
+      textDecoration: "none",
     };
   };
 
   const navItems = [
-    { path: '/about', label: '서비스 소개', activePaths: ['/about'] },
-    { path: '/reservations', label: '예약 현황', activePaths: ['/reservations', '/coach/past-reservation'] },
-    { path: '/classes', label: '나의 클래스', activePaths: ['/classes', '/coach/class-setup'] },
-    { path: '/support/faq', label: '고객센터', activePaths: ['/support/faq', '/support/inquiry'] },
-    { path: '/download', label: '앱 다운로드', activePaths: ['/download'] },
-    { path: '/coach/mypage/info', label: '마이페이지', activePaths: ['/coach/mypage/info', '/mypage/coach-verification'] },
+    { path: "/about", label: "서비스 소개", activePaths: ["/about"] },
+    {
+      path: "/reservations",
+      label: "예약 현황",
+      activePaths: ["/reservations", "/coach/past-reservation"],
+    },
+    {
+      path: "/classes",
+      label: "나의 클래스",
+      activePaths: ["/classes", "/coach/class-setup"],
+    },
+    {
+      path: "/support/faq",
+      label: "고객센터",
+      activePaths: ["/support/faq", "/support/inquiry"],
+    },
+    { path: "/download", label: "앱 다운로드", activePaths: ["/download"] },
+    {
+      path: "/coach/mypage/info",
+      label: "마이페이지",
+      activePaths: ["/coach/mypage/info", "/mypage/coach-verification"],
+    },
   ];
 
   return (
-    <header className="bg-white shadow-sm border-b" style={{ width: '100%', height: '79px', margin: '0 auto', boxSizing: 'border-box', position: 'relative' }}>
-      <div style={{ width: '100%', maxWidth: '100%', height: '100%', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', boxSizing: 'border-box', overflow: 'hidden' }}>
+    <header
+      className="bg-white shadow-sm border-b"
+      style={{
+        width: "100%",
+        height: "79px",
+        margin: "0 auto",
+        boxSizing: "border-box",
+        position: "relative",
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "100%",
+          height: "100%",
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 20px",
+          boxSizing: "border-box",
+          overflow: "hidden",
+        }}
+      >
         {/* Logo */}
         <div style={{ flexShrink: 0 }}>
-          <Link 
-            to="/" 
-            style={{ 
-              fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', 
-              fontWeight: 600, 
-              fontSize: '40px', 
-              color: '#4965f6', 
-              textDecoration: 'none', 
-              whiteSpace: 'nowrap',
-              outline: 'none',
-              border: 'none'
+          <Link
+            to="/"
+            style={{
+              fontFamily:
+                'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+              fontWeight: 600,
+              fontSize: "40px",
+              color: "#4965f6",
+              textDecoration: "none",
+              whiteSpace: "nowrap",
+              outline: "none",
+              border: "none",
             }}
-            onFocus={(e) => e.target.style.outline = 'none'}
-            onBlur={(e) => e.target.style.outline = 'none'}
+            onFocus={(e) => (e.target.style.outline = "none")}
+            onBlur={(e) => (e.target.style.outline = "none")}
           >
             LIVON
           </Link>
         </div>
-        
+
         {/* Desktop Navigation */}
         <DesktopNav>
           {navItems.map((item) => {
-            const isActive = item.activePaths?.includes(location.pathname) || location.pathname === item.path;
+            const isActive =
+              item.activePaths?.includes(location.pathname) ||
+              location.pathname === item.path;
             return (
               <DesktopNavLink
                 key={item.path}
                 to={item.path}
-                className={isActive ? 'active' : ''}
+                className={isActive ? "active" : ""}
               >
                 {item.label}
               </DesktopNavLink>
@@ -311,10 +357,21 @@ export const Header: React.FC<HeaderProps> = ({
         </DesktopNav>
 
         {/* Right Section - Mobile Menu + User Menu */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexShrink: 0 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "15px",
+            flexShrink: 0,
+          }}
+        >
           {/* Mobile Menu */}
           <MobileMenuWrapper>
-            <input type="checkbox" id="mobile-menu" className="mobile-menu-input" />
+            <input
+              type="checkbox"
+              id="mobile-menu"
+              className="mobile-menu-input"
+            />
             <label htmlFor="mobile-menu" className="mobile-menu-label">
               <div className="hamburger-bar"></div>
             </label>
@@ -325,7 +382,9 @@ export const Header: React.FC<HeaderProps> = ({
                   to={item.path}
                   className="mobile-menu-item"
                   onClick={() => {
-                    const checkbox = document.getElementById('mobile-menu') as HTMLInputElement;
+                    const checkbox = document.getElementById(
+                      "mobile-menu"
+                    ) as HTMLInputElement;
                     if (checkbox) checkbox.checked = false;
                   }}
                 >
@@ -334,7 +393,7 @@ export const Header: React.FC<HeaderProps> = ({
               ))}
             </div>
           </MobileMenuWrapper>
-          
+
           {/* User Menu */}
           {finalIsAuthenticated ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

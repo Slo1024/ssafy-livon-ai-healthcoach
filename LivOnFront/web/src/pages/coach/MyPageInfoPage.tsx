@@ -83,7 +83,8 @@ const ProfileImagePlaceholder = styled.div`
   justify-content: center;
   font-size: 64px;
   color: #adb5bd;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
 `;
 
 const ProfileImage = styled.img`
@@ -105,7 +106,8 @@ const ProfileLabel = styled.h3`
   font-weight: 800;
   color: #000000;
   margin: 0;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
 `;
 
 const FileNameContainer = styled.div`
@@ -120,7 +122,8 @@ const FileNameLabel = styled.label`
   font-size: 13px;
   font-weight: 500;
   color: #000000;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
   margin-right: 10px;
   white-space: nowrap;
 `;
@@ -132,7 +135,8 @@ const FileNameInput = styled.input`
   border-radius: 12px;
   padding: 0 10px;
   font-size: 13px;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
 
   &:focus {
     outline: none;
@@ -140,21 +144,25 @@ const FileNameInput = styled.input`
   }
 `;
 
-const FileButton = styled.button<{ variant?: 'primary' | 'danger' }>`
+const FileButton = styled.button<{ variant?: "primary" | "danger" }>`
   height: 36px;
   padding: 0 16px;
-  border: ${props => props.variant === 'danger' ? '1px solid #ff0000' : 'none'};
+  border: ${(props) =>
+    props.variant === "danger" ? "1px solid #ff0000" : "none"};
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  background-color: ${props => props.variant === 'danger' ? '#ffffff' : '#2d79f3'};
-  color: ${props => props.variant === 'danger' ? '#ff0000' : 'white'};
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: ${(props) =>
+    props.variant === "danger" ? "#ffffff" : "#2d79f3"};
+  color: ${(props) => (props.variant === "danger" ? "#ff0000" : "white")};
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
 
   &:hover {
-    background-color: ${props => props.variant === 'danger' ? '#ff0000' : '#1a5fd9'};
-    color: ${props => props.variant === 'danger' ? '#ffffff' : 'white'};
+    background-color: ${(props) =>
+      props.variant === "danger" ? "#ff0000" : "#1a5fd9"};
+    color: ${(props) => (props.variant === "danger" ? "#ffffff" : "white")};
   }
 `;
 
@@ -162,7 +170,8 @@ const ProfileDescription = styled.div`
   font-size: 11px;
   color: #666666;
   line-height: 1.5;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
 `;
 
 // SignupPage 유사 폼 레이아웃
@@ -197,7 +206,8 @@ const FormLabel = styled.label`
   font-size: 13px;
   font-weight: 500;
   color: #000000;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
   width: 100px;
   flex-shrink: 0;
   white-space: nowrap;
@@ -233,9 +243,12 @@ const SmallButton = styled.button`
   background-color: #2d79f3;
   color: white;
   white-space: nowrap;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
 
-  &:hover { background-color: #1a5fd9; }
+  &:hover {
+    background-color: #1a5fd9;
+  }
 `;
 
 const RadioGroup = styled.div`
@@ -263,7 +276,8 @@ const EmailInputContainer = styled.div`
 const EmailSeparator = styled.span`
   font-size: 16px;
   color: #000000;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
 `;
 
 // SignupPage의 자격/소개 섹션 스타일
@@ -278,7 +292,8 @@ const AddButton = styled.button`
   font-weight: 500;
   color: #000000;
   cursor: pointer;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
 `;
 
 const TextArea = styled.textarea`
@@ -289,17 +304,27 @@ const TextArea = styled.textarea`
   border-radius: 12px;
   padding: 0 12px;
   font-size: 13px;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
   line-height: 48px;
   resize: none;
   overflow: hidden;
   -ms-overflow-style: none;
   scrollbar-width: none;
-  &::-webkit-scrollbar { display: none; }
+  &::-webkit-scrollbar {
+    display: none;
+  }
 
-  &:focus { outline: none; border-color: #2d79f3; }
+  &:focus {
+    outline: none;
+    border-color: #2d79f3;
+  }
 
-  &::placeholder { color: #999999; font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  &::placeholder {
+    color: #999999;
+    font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+      Roboto, sans-serif;
+  }
 `;
 
 const CharacterCounter = styled.div`
@@ -308,9 +333,9 @@ const CharacterCounter = styled.div`
   color: #999999;
   margin-top: 2px;
   margin-bottom: 16px;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
 `;
-
 
 const Field = styled.div`
   display: flex;
@@ -327,7 +352,8 @@ const Field = styled.div`
 const Label = styled.div`
   width: 100px;
   flex-shrink: 0;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
   font-size: 14px;
   color: #000;
 
@@ -343,7 +369,8 @@ const Input = styled.input`
   border-radius: 12px;
   padding: 0 12px;
   font-size: 13px;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
 `;
 
 // (기존 TextArea 삭제됨 - 위의 TextArea 스타일을 사용)
@@ -358,15 +385,21 @@ const SubmitButton = styled.button`
   cursor: pointer;
   background-color: #2d79f3;
   color: white;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
 `;
 
 export const MyPageInfoPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [profileImage, setProfileImage] = useState<File | null>(null);
-  const [profileFileName, setProfileFileName] = useState('');
-  const [emailDomains] = useState(['gmail.com', 'naver.com', 'daum.net', 'kakao.com']);
+  const [profileFileName, setProfileFileName] = useState("");
+  const [emailDomains] = useState([
+    "gmail.com",
+    "naver.com",
+    "daum.net",
+    "kakao.com",
+  ]);
   const [formData, setFormData] = useState({
     nickname: '',
     password: '',
@@ -378,19 +411,130 @@ export const MyPageInfoPage: React.FC = () => {
     affiliation: '',
     introduction: '',
   });
-  const [qualificationFields, setQualificationFields] = useState<string[]>(['']);
+  const [qualificationFields, setQualificationFields] = useState<string[]>([
+    "",
+  ]);
   const [introductionCount, setIntroductionCount] = useState(0);
   const [showDateTimeModal, setShowDateTimeModal] = useState(false);
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [selectedTimes, setSelectedTimes] = useState<string[]>([]);
+  const [blockedTimesByDate, setBlockedTimesByDate] = useState<
+    Map<string, string[]>
+  >(new Map());
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+
+  // 사용자 정보 조회
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const token = localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
+
+        if (!token) {
+          throw new Error("인증 토큰이 없습니다. 로그인이 필요합니다.");
+        }
+
+        const response = await getMyProfileApi(token);
+
+        if (response.isSuccess && response.result) {
+          const userData = response.result;
+
+          // 이메일 분리
+          let emailId = "";
+          let emailDomain = "";
+          if (userData.email) {
+            const emailParts = userData.email.split("@");
+            emailId = emailParts[0] || "";
+            emailDomain = emailParts[1] || "";
+          }
+
+          // 성별 변환: "여자" -> "female", "남자" -> "male"
+          let genderValue = "male";
+          if (userData.gender === "여자") {
+            genderValue = "female";
+          } else if (userData.gender === "남자") {
+            genderValue = "male";
+          }
+
+          // 생일 형식 변환: "2000-10-10" -> "2000.10.10"
+          let birthDateValue = "";
+          if (userData.birthdate) {
+            birthDateValue = userData.birthdate.replace(/-/g, ".");
+          }
+
+          // formData 업데이트
+          setFormData((prev) => ({
+            ...prev,
+            userId: userData.userId || "",
+            nickname: userData.nickname || "",
+            contact: userData.phoneNumber || "",
+            emailId: emailId,
+            emailDomain: emailDomain,
+            gender: genderValue,
+            birthDate: birthDateValue,
+            affiliation: userData.organizations || "",
+          }));
+
+          // 프로필 이미지 설정
+          if (userData.profileImage) {
+            setProfileImageUrl(userData.profileImage);
+          }
+        } else {
+          throw new Error(
+            response.message || "사용자 정보를 불러오는데 실패했습니다."
+          );
+        }
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : "사용자 정보를 불러오는데 실패했습니다.";
+        setError(errorMessage);
+        console.error("사용자 정보 조회 오류:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserInfo();
+  }, []);
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleAddQualification = () => setQualificationFields(prev => [...prev, '']);
   const nickname = user?.nickname;
   const navigateToVerification = () => navigate(ROUTES.COACH_MYPAGE_VERIFICATION);
+
+  // 코치 전용 가드
+  useEffect(() => {
+    if (!isLoading && user && user.role !== "coach") {
+      navigate(ROUTES.COACH_ONLY, { replace: true });
+    }
+  }, [isLoading, user, navigate]);
+  if (loading) {
+    return (
+      <PageContainer>
+        <ContentWrapper>
+          <LoadingMessage>사용자 정보를 불러오는 중...</LoadingMessage>
+        </ContentWrapper>
+      </PageContainer>
+    );
+  }
+
+  if (error) {
+    return (
+      <PageContainer>
+        <ContentWrapper>
+          <ErrorMessage>{error}</ErrorMessage>
+        </ContentWrapper>
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer>
@@ -516,13 +660,19 @@ export const MyPageInfoPage: React.FC = () => {
                   onChange={(e) => handleInputChange('emailId', e.target.value)}
                   style={{ flex: 1 }}
                 />
-                <EmailSeparator>@</EmailSeparator>
-              </EmailInputContainer>
-              <CommonDropdown
-                options={[{ value: '', label: '이메일 주소를 입력하세요.' }, ...emailDomains.map(d => ({ value: d, label: d }))]}
-                value={formData.emailDomain}
-                onChange={(e) => handleInputChange('emailDomain', e.target.value)}
-                style={{ width: '100%' }}
+              </ProfileImagePlaceholder>
+            )}
+          </ProfileImageContainer>
+          <ProfileInfo>
+            <ProfileLabel>프로필 사진</ProfileLabel>
+            <FileNameContainer>
+              <FileNameLabel>파일명</FileNameLabel>
+              <FileNameInput
+                type="text"
+                value={
+                  profileFileName || (profileImageUrl ? "프로필 이미지" : "")
+                }
+                readOnly
               />
               {/* 인증번호 보내기 / 인증하기 섹션 제거 */}
             </div>
@@ -556,15 +706,24 @@ export const MyPageInfoPage: React.FC = () => {
               placeholder="자격증 명을 입력해 주세요."
               value={value}
               onChange={(e) => {
-                const v = (e.target as HTMLInputElement).value;
-                setQualificationFields(prev => prev.map((pv, i) => (i === index ? v : pv)));
+                const file = e.target.files?.[0];
+                if (!file) return;
+                if (file.size > 2 * 1024 * 1024) {
+                  alert("파일 용량은 2MB 이하만 가능합니다.");
+                  return;
+                }
+                const valid = ["image/jpeg", "image/jpg", "image/png"];
+                if (!valid.includes(file.type)) {
+                  alert("파일 형식은 JPG, JPEG 또는 PNG만 지원합니다.");
+                  return;
+                }
+                setProfileImage(file);
+                setProfileFileName(file.name);
               }}
               style={{ width: '100%' }}
             />
-          ))}
-          <AddButton type="button" onClick={handleAddQualification}>추가 +</AddButton>
-        </div>
-      </FormField>
+          </ProfileInfo>
+        </ProfileSection>
 
       <FormField style={{ alignItems: 'flex-start' }}>
         <div style={{ width: '120px', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
@@ -584,34 +743,30 @@ export const MyPageInfoPage: React.FC = () => {
         </div>
       </FormField>
 
-      {/* 예약 받지 않는 날 */}
-      <FormField style={{ marginTop: '18px' }}>
-        <FormLabel>예약 받지 않는 날</FormLabel>
-        <CommonInput
-          placeholder="클릭하여 선택"
-          value={
-            selectedDates.length > 0
-              ? selectedDates.map(date => 
-                  `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`
-                ).join(', ') + (selectedTimes.length > 0 ? ` (${selectedTimes.filter(t => t.startsWith('AM ') || t.startsWith('PM ')).map(t => t.replace('AM ', '오전 ').replace('PM ', '오후 ')).join(', ')})` : '')
-              : ''
-          }
-          readOnly
-          onClick={() => setShowDateTimeModal(true)}
-          style={{ flex: 1, cursor: 'pointer' }}
-        />
-      </FormField>
+            <FormField>
+              <FormLabel>이름</FormLabel>
+              <CommonInput
+                placeholder="이름을 입력해주세요."
+                value={formData.name}
+                onChange={(e) => handleInputChange("name", e.target.value)}
+                style={{ flex: 1 }}
+              />
+            </FormField>
 
-      <DateTimePickerModal
-        open={showDateTimeModal}
-        onClose={() => setShowDateTimeModal(false)}
-        onSelect={(dates, times) => {
-          setSelectedDates(dates);
-          setSelectedTimes(times);
-        }}
-        initialDates={selectedDates}
-        initialTimes={selectedTimes}
-      />
+            <FormField>
+              <FormLabel>닉네임</FormLabel>
+              <InputWithButton>
+                <CommonInput
+                  placeholder="닉네임을 입력하세요"
+                  value={formData.nickname}
+                  onChange={(e) =>
+                    handleInputChange("nickname", e.target.value)
+                  }
+                  style={{ flex: 1 }}
+                />
+                <SmallButton type="button">중복확인</SmallButton>
+              </InputWithButton>
+            </FormField>
 
       <div style={{ marginTop: '24px' }}>
         <SubmitButton onClick={navigateToVerification}>정보 수정</SubmitButton>

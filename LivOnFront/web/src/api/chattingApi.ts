@@ -309,7 +309,7 @@ export class StompChatClient {
 
           // 채팅방 구독
           if (this.client && this.chatRoomId) {
-            const subscriptionTopic = `/sub/chat/goods/${this.chatRoomId}`;
+            const subscriptionTopic = `/sub/chat/good/${this.chatRoomId}`;
             console.log("🔵 [STOMP] 채팅방 구독 시작:", {
               topic: subscriptionTopic,
               chatRoomId: this.chatRoomId,

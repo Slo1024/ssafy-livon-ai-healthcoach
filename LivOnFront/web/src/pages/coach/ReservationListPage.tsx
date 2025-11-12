@@ -486,8 +486,10 @@ export const ReservationListPage: React.FC = () => {
     setCurrentPage(0); // 필터 변경 시 첫 페이지로
   };
 
-  const handleStartConsultation = () => {
-    navigate(ROUTES.STREAMING);
+  const handleStartConsultation = (consultationId: number) => {
+    navigate(ROUTES.STREAMING, {
+      state: { consultationId },
+    });
   };
 
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
@@ -655,7 +657,11 @@ export const ReservationListPage: React.FC = () => {
                       <TableCell>
                         <ActionButtonContainer>
                           <StartConsultationButton
-                            onClick={handleStartConsultation}
+                            onClick={() =>
+                              handleStartConsultation(
+                                reservation.consultationId
+                              )
+                            }
                           >
                             상담 시작
                           </StartConsultationButton>

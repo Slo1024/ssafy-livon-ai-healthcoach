@@ -71,6 +71,9 @@ public class IndividualConsultationService {
                 .build();
         consultationRepository.save(consultation);
 
+        consultation.generateSessionId();  // 세션 ID 생성
+        consultationRepository.save(consultation);  // 업데이트
+
         // 5. participant 생성 및 저장
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CoachHandler(ErrorStatus.USER_NOT_FOUND));

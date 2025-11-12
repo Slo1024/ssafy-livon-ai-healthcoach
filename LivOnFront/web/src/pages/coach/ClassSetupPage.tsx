@@ -1,18 +1,23 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import styled from 'styled-components';
-import { SegmentedTabs } from '../../components/common/Button';
-import { DateTimePickerModal, SaveConfirmModal, ClassCreatedModal } from '../../components/common/Modal';
-import { Dropdown } from '../../components/common/Dropdown';
-import { Input } from '../../components/common/Input';
-import { useAuth } from '../../hooks/useAuth';
-import { ROUTES } from '../../constants/routes';
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import styled from "styled-components";
+import { SegmentedTabs } from "../../components/common/Button";
+import {
+  DateTimePickerModal,
+  SaveConfirmModal,
+  ClassCreatedModal,
+} from "../../components/common/Modal";
+import { Dropdown } from "../../components/common/Dropdown";
+import { Input } from "../../components/common/Input";
+import { useAuth } from "../../hooks/useAuth";
+import { ROUTES } from "../../constants/routes";
 
 const PageContainer = styled.div`
   min-height: 100vh;
   background-color: #ffffff;
   padding: 40px 20px;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
 `;
 
 const ContentWrapper = styled.div`
@@ -48,7 +53,8 @@ const IntroMessage = styled.p`
   font-weight: 500;
   color: #374151;
   margin: 24px 0;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
 `;
 
 const FormContainer = styled.div`
@@ -68,7 +74,8 @@ const FormLabel = styled.label`
   font-size: 14px;
   font-weight: 500;
   color: #374151;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
 `;
 
 const FormInput = styled.input`
@@ -78,8 +85,9 @@ const FormInput = styled.input`
   border-radius: 8px;
   padding: 0 12px;
   font-size: 14px;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+
   &:focus {
     outline: none;
     border-color: #3b5dd8;
@@ -93,9 +101,10 @@ const FormTextArea = styled.textarea`
   border-radius: 8px;
   padding: 12px;
   font-size: 14px;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
   resize: vertical;
-  
+
   &:focus {
     outline: none;
     border-color: #3b5dd8;
@@ -110,7 +119,8 @@ const FormDropdown = styled.select`
   padding: 0 12px;
   padding-right: 36px;
   font-size: 14px;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
   background-color: white;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%234965f6' d='M1 0l4 4 4-4 1 1-5 5-5-5z'/></svg>");
   background-repeat: no-repeat;
@@ -120,7 +130,7 @@ const FormDropdown = styled.select`
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
-  
+
   &:focus {
     outline: none;
     border-color: #3b5dd8;
@@ -143,8 +153,9 @@ const SaveButton = styled.button`
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+
   &:hover {
     background-color: #3b5dd8;
   }
@@ -159,8 +170,9 @@ const CancelButton = styled.button`
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+
   &:hover {
     background-color: #f9fafb;
   }
@@ -185,15 +197,17 @@ export const ClassSetupPage: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
-    classType: '',
-    className: '',
-    classInfo: '',
-    dateTime: '',
-    file: '',
+    classType: "",
+    className: "",
+    classInfo: "",
+    dateTime: "",
+    file: "",
   });
 
-  const nickname = user?.nickname || '';
-  const pageTitle = nickname ? `${nickname} 코치님의 클래스` : '코치님의 클래스';
+  const nickname = user?.nickname || "";
+  const pageTitle = nickname
+    ? `${nickname} 코치님의 클래스`
+    : "코치님의 클래스";
 
   const handleListClick = () => {
     navigate(ROUTES.CLASS_LIST);
@@ -204,7 +218,7 @@ export const ClassSetupPage: React.FC = () => {
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleDateTimeClick = () => {
@@ -214,26 +228,38 @@ export const ClassSetupPage: React.FC = () => {
   const handleDateTimeSelect = (dates: Date[], times: string[]) => {
     setSelectedDates(dates);
     setSelectedTimes(times);
-    
+
     // 날짜와 시간을 문자열로 포맷팅
     if (dates.length > 0 && times.length > 0) {
-      const dateStr = dates.map(date => 
-        `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`
-      ).join(', ');
-      const timeStr = times.map(t => {
-        if (t.startsWith('AM ')) {
-          return `오전 ${t.replace('AM ', '')}`;
-        } else if (t.startsWith('PM ')) {
-          return `오후 ${t.replace('PM ', '')}`;
-        }
-        return t;
-      }).join(', ');
-      handleInputChange('dateTime', `${dateStr} ${timeStr}`);
+      const dateStr = dates
+        .map(
+          (date) =>
+            `${date.getFullYear()}년 ${
+              date.getMonth() + 1
+            }월 ${date.getDate()}일`
+        )
+        .join(", ");
+      const timeStr = times
+        .map((t) => {
+          if (t.startsWith("AM ")) {
+            return `오전 ${t.replace("AM ", "")}`;
+          } else if (t.startsWith("PM ")) {
+            return `오후 ${t.replace("PM ", "")}`;
+          }
+          return t;
+        })
+        .join(", ");
+      handleInputChange("dateTime", `${dateStr} ${timeStr}`);
     } else if (dates.length > 0) {
-      const dateStr = dates.map(date => 
-        `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`
-      ).join(', ');
-      handleInputChange('dateTime', dateStr);
+      const dateStr = dates
+        .map(
+          (date) =>
+            `${date.getFullYear()}년 ${
+              date.getMonth() + 1
+            }월 ${date.getDate()}일`
+        )
+        .join(", ");
+      handleInputChange("dateTime", dateStr);
     }
   };
 
@@ -245,7 +271,7 @@ export const ClassSetupPage: React.FC = () => {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
-      handleInputChange('file', file.name);
+      handleInputChange("file", file.name);
     }
   };
 
@@ -255,7 +281,7 @@ export const ClassSetupPage: React.FC = () => {
 
   const handleSaveConfirm = () => {
     // 저장 로직 (추후 API 연동)
-    console.log('Form Data:', formData);
+    console.log("Form Data:", formData);
     setShowSaveConfirmModal(false);
     setShowClassCreatedModal(true);
   };
@@ -269,9 +295,9 @@ export const ClassSetupPage: React.FC = () => {
   };
 
   const classTypeOptions = [
-    { value: '기업 클래스', label: '기업 클래스' },
-    { value: '일반 클래스', label: '일반 클래스' },
-    { value: '개인 상담 / 코칭', label: '개인 상담 / 코칭' },
+    { value: "기업 클래스", label: "기업 클래스" },
+    { value: "일반 클래스", label: "일반 클래스" },
+    { value: "개인 상담 / 코칭", label: "개인 상담 / 코칭" },
   ];
 
   return (
@@ -302,9 +328,11 @@ export const ClassSetupPage: React.FC = () => {
             <FormLabel>클래스 형태 선택</FormLabel>
             <FormDropdown
               value={formData.classType}
-              onChange={(e) => handleInputChange('classType', e.target.value)}
+              onChange={(e) => handleInputChange("classType", e.target.value)}
             >
-              <option value="" disabled>클래스 형태를 선택해 주세요.</option>
+              <option value="" disabled>
+                클래스 형태를 선택해 주세요.
+              </option>
               {classTypeOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -318,7 +346,7 @@ export const ClassSetupPage: React.FC = () => {
             <FormInput
               type="text"
               value={formData.className}
-              onChange={(e) => handleInputChange('className', e.target.value)}
+              onChange={(e) => handleInputChange("className", e.target.value)}
               placeholder="클래스 명을 입력해 주세요."
             />
           </FormField>
@@ -327,7 +355,7 @@ export const ClassSetupPage: React.FC = () => {
             <FormLabel>클래스 정보</FormLabel>
             <FormTextArea
               value={formData.classInfo}
-              onChange={(e) => handleInputChange('classInfo', e.target.value)}
+              onChange={(e) => handleInputChange("classInfo", e.target.value)}
               placeholder="클래스에 대한 설명을 입력해 주세요."
             />
           </FormField>
@@ -337,11 +365,11 @@ export const ClassSetupPage: React.FC = () => {
             <FormInput
               type="text"
               value={formData.dateTime}
-              onChange={(e) => handleInputChange('dateTime', e.target.value)}
+              onChange={(e) => handleInputChange("dateTime", e.target.value)}
               placeholder="클릭하여 선택"
               readOnly
               onClick={handleDateTimeClick}
-              style={{ cursor: 'pointer' }}
+              style={{ cursor: "pointer" }}
             />
           </FormField>
 
@@ -350,23 +378,25 @@ export const ClassSetupPage: React.FC = () => {
             <input
               ref={fileInputRef}
               type="file"
-              style={{ display: 'none' }}
+              style={{ display: "none" }}
               onChange={handleFileChange}
               accept="*/*"
             />
             <FormDropdown
-              value={formData.file || ''}
+              value={formData.file || ""}
               onChange={() => {}}
               onMouseDown={(e) => {
                 e.preventDefault();
                 fileInputRef.current?.click();
               }}
               onFocus={(e) => e.target.blur()}
-              style={{ cursor: 'pointer' }}
+              style={{ cursor: "pointer" }}
               tabIndex={0}
             >
               <option value="">파일 찾기</option>
-              {selectedFile && <option value={selectedFile.name}>{selectedFile.name}</option>}
+              {selectedFile && (
+                <option value={selectedFile.name}>{selectedFile.name}</option>
+              )}
             </FormDropdown>
           </FormField>
         </FormContainer>

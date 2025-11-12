@@ -155,16 +155,36 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             upcomingReservations = if (resState.items.isNotEmpty()) resState.items else if (isDebugBuild()) listOf() else emptyList(),
             companyName = null,
             nickname = userState.info?.nickname,
+            profileImageUri = userState.info?.profileImageUri,
             modifier = Modifier
         )
     }
 
     // MyPage route: shows user's profile/settings page
     composable("mypage") {
+        // Provide userViewModel so we can display server-provided name and profile image
+        val userApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.UserApiService::class.java)
+        val userRepo = remember { com.livon.app.domain.repository.UserRepository(userApi) }
+        val userVm = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return com.livon.app.feature.member.home.vm.UserViewModel(userRepo) as T
+            }
+        }) as com.livon.app.feature.member.home.vm.UserViewModel
+
+        val userState by userVm.uiState.collectAsState()
+        LaunchedEffect(Unit) { userVm.load() }
+
+        val displayName = userState.info?.nickname
+        // userState.info already exposes profileImageUri (Uri?) from UserRepository
+        val profileUri = userState.info?.profileImageUri
+
         MyPageScreen(
             onBack = { nav.popBackStack() },
             onClickHealthInfo = { nav.navigate("myinfo") },
-            onClickFaq = { /* TODO: navigate to FAQ */ }
+            onClickFaq = { /* TODO: navigate to FAQ */ },
+            userName = displayName,
+            profileImageUri = profileUri
         )
     }
 

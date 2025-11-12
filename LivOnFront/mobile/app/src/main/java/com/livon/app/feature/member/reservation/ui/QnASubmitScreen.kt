@@ -58,8 +58,6 @@ fun QnASubmitScreen(
     LaunchedEffect(healthUpdated) {
         if (healthUpdated) {
             showDialog = true
-            // clear flag so it won't reopen repeatedly
-            savedStateHandle?.remove<Boolean>("health_updated")
         }
     }
 

@@ -332,7 +332,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
 
         // When reservation action completes, navigate to reservations (success or failure)
         LaunchedEffect(actionState.success) {
-            if (actionState.success == true) {
+            if (actionState.success != null) {
                 nav.navigate("reservations") {
                     popUpTo(Routes.MemberHome) { inclusive = false }
                 }
@@ -349,12 +349,115 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 val startAt = java.time.LocalDateTime.of(parsedDate, java.time.LocalTime.of(hour,0))
                 val endAt = startAt.plusHours(1)
 
-                // delegate to ViewModel
-                reservationVmForQna.reserveCoach(coachIdArg, startAt, endAt, preQnA)
+                // Try to resolve coachId/startAt from savedStateHandle if nav-args were lost during health flow
+                fun findSavedString(vararg keys: String): String? {
+                    // check current backStackEntry (the composable's own savedStateHandle)
+                    val ownSaved = backStackEntry.savedStateHandle
+                    for (k in keys) {
+                        val v = ownSaved.get<String>(k)
+                        if (!v.isNullOrBlank()) return v
+                    }
+                    // check NavController current & previous entries' savedStateHandle for fallbacks
+                    val currentSaved = nav.currentBackStackEntry?.savedStateHandle
+                    if (currentSaved != null) {
+                        for (k in keys) {
+                            val v = currentSaved.get<String>(k)
+                            if (!v.isNullOrBlank()) return v
+                        }
+                    }
+                    val prevSaved = nav.previousBackStackEntry?.savedStateHandle
+                    if (prevSaved != null) {
+                        for (k in keys) {
+                            val v = prevSaved.get<String>(k)
+                            if (!v.isNullOrBlank()) return v
+                        }
+                    }
+                    // finally try to look for a qna_origin map on any of these savedStateHandles
+                    val originCandidates = listOf(ownSaved, currentSaved, prevSaved)
+                    for (saved in originCandidates) {
+                        if (saved == null) continue
+                        try {
+                            val origin = saved.get<Map<String, String>>("qna_origin")
+                            if (origin != null) {
+                                // try common keys
+                                val candidate = origin["coachId"] ?: origin["classId"] ?: origin["id"]
+                                if (!candidate.isNullOrBlank()) return candidate
+                            }
+                        } catch (_: Throwable) {
+                        }
+                    }
+                    return null
+                }
+
+                val resolvedCoachId = when {
+                    coachIdArg.isNotBlank() -> coachIdArg
+                    else -> findSavedString("qna_coachId", "coachId", "qna_coachId") ?: ""
+                }
+
+                // Resolve date/time from saved handles if needed
+                fun findSavedDateTime(): Pair<java.time.LocalDateTime, java.time.LocalDateTime>? {
+                    // check saved for qna_date / qna_time or origin map
+                    val dateStr = findSavedString("qna_date", "date")
+                    val timeStr = findSavedString("qna_time", "time")
+                    if (!dateStr.isNullOrBlank() && !timeStr.isNullOrBlank()) {
+                        return try {
+                            val h = timeTokenToHour(timeStr)
+                            val s = java.time.LocalDateTime.of(java.time.LocalDate.parse(dateStr), java.time.LocalTime.of(h,0))
+                            s to s.plusHours(1)
+                        } catch (t: Throwable) {
+                            null
+                        }
+                    }
+                    return null
+                }
+
+                val resolvedStartEnd = findSavedDateTime()
+                var resolvedStart = startAt
+                var resolvedEnd = endAt
+                if (resolvedStartEnd != null) {
+                    resolvedStart = resolvedStartEnd.first
+                    resolvedEnd = resolvedStartEnd.second
+                } else {
+                    // if coachId was resolved but date/time were stored differently, try to use backStackEntry saved
+                    val altDate = findSavedString("qna_date","date")
+                    val altTime = findSavedString("qna_time","time")
+                    if (!altDate.isNullOrBlank() && !altTime.isNullOrBlank()) {
+                        try {
+                            val h = timeTokenToHour(altTime)
+                            val s = java.time.LocalDateTime.of(java.time.LocalDate.parse(altDate), java.time.LocalTime.of(h,0))
+                            resolvedStart = s
+                            resolvedEnd = s.plusHours(1)
+                        } catch (_: Throwable) {
+                        }
+                    }
+                }
+
+                if (resolvedCoachId.isBlank()) {
+                    android.util.Log.e("MemberNavGraph", "Cannot resolve coachId for reservation; aborting reserveCoach call (coachIdArg='$coachIdArg')")
+                } else {
+                    android.util.Log.d("MemberNavGraph", "reserveCoach called from QnA (coachId=$resolvedCoachId, startAt=$resolvedStart, preQnA='${preQnA.take(60)}')")
+                    reservationVmForQna.reserveCoach(resolvedCoachId, resolvedStart, resolvedEnd, preQnA)
+                }
             },
             onNavigateHome = { nav.navigate(Routes.MemberHome) },
+            // when user wants to change health info from reservation dialog, start the health survey flow
             onNavigateToMyHealthInfo = {
-                nav.navigate(Routes.HealthHeight) // 건강설문 플로우 시작 (키→몸무게→헬스→라이프스타일)
+                // store a marker route so AppNavGraph can pop back reliably to this QnA entry after health flow
+                try {
+                    // Store qna_origin map directly on the current backStackEntry.savedStateHandle
+                    val originMap = mapOf(
+                        "type" to "coach",
+                        "coachId" to coachIdArg,
+                        "coachName" to decodedName,
+                        "date" to dateStr,
+                        "time" to decodedTime
+                    )
+                    nav.currentBackStackEntry?.savedStateHandle?.set("qna_origin", originMap)
+                    android.util.Log.d("MemberNavGraph", "Set qna_origin on savedStateHandle=$originMap before navigating to health flow")
+                } catch (t: Throwable) {
+                    android.util.Log.d("MemberNavGraph", "Failed to set qna_origin: ${t.message}")
+                }
+                nav.navigate(com.livon.app.navigation.Routes.HealthHeight)
             },
             navController = nav,
             externalError = actionState.errorMessage
@@ -403,7 +506,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
 
         val actionState by reservationVmForQna.actionState.collectAsState()
         LaunchedEffect(actionState.success) {
-            if (actionState.success == true) {
+            if (actionState.success != null) {
                 nav.navigate("reservations") { popUpTo(Routes.MemberHome) { inclusive = false } }
             }
         }
@@ -417,11 +520,27 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 val hour = timeTokenToHour(decodedTime)
                 val startAt = java.time.LocalDateTime.of(parsedDate, java.time.LocalTime.of(hour,0))
                 val endAt = startAt.plusHours(1)
+
+                android.util.Log.d("MemberNavGraph", "reserveCoach (no id route) called (coachId=$coachIdArg, startAt=$startAt)")
                 reservationVmForQna.reserveCoach(coachIdArg, startAt, endAt, preQnA)
             },
             onNavigateHome = { nav.navigate(Routes.MemberHome) },
             onNavigateToMyHealthInfo = {
-                nav.navigate(Routes.HealthHeight) // 건강설문 플로우 시작 (키→몸무게→헬스→라이프스타일)
+                try {
+                    // Store qna_origin map directly on the current backStackEntry.savedStateHandle
+                    val originMap = mapOf(
+                        "type" to "coach",
+                        "coachId" to coachIdArg,
+                        "coachName" to decodedName,
+                        "date" to dateStr,
+                        "time" to decodedTime
+                    )
+                    nav.currentBackStackEntry?.savedStateHandle?.set("qna_origin", originMap)
+                    android.util.Log.d("MemberNavGraph", "Set qna_origin on savedStateHandle=$originMap before navigating to health flow")
+                } catch (t: Throwable) {
+                    android.util.Log.d("MemberNavGraph", "Failed to set qna_origin: ${t.message}")
+                }
+                nav.navigate(com.livon.app.navigation.Routes.HealthHeight)
             },
             navController = nav,
             externalError = actionState.errorMessage
@@ -470,7 +589,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         val actionState by reservationVmForQna.actionState.collectAsState()
 
         LaunchedEffect(actionState.success) {
-            if (actionState.success == true) {
+            if (actionState.success != null) {
                 nav.navigate("reservations") {
                     popUpTo(Routes.MemberHome) { inclusive = false }
                 }
@@ -487,12 +606,51 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 val startAt = java.time.LocalDateTime.of(parsedDate, java.time.LocalTime.of(hour,0))
                 val endAt = startAt.plusHours(1)
 
-                // delegate to ViewModel
-                reservationVmForQna.reserveCoach(coachIdArg, startAt, endAt, preQnA)
+                // Try to resolve coachId/startAt from savedStateHandle if nav-args were lost during health flow
+                val resolvedCoachId = if (coachIdArg.isNotBlank()) coachIdArg else backStackEntry.savedStateHandle.get<String>("qna_coachId") ?: ""
+                var resolvedStart = startAt
+                var resolvedEnd = endAt
+                if (resolvedCoachId.isBlank()) {
+                    // attempt to reconstruct from saved handle date/time
+                    val sDate = backStackEntry.savedStateHandle.get<String>("qna_date")
+                    val sTime = backStackEntry.savedStateHandle.get<String>("qna_time")
+                    if (!sDate.isNullOrBlank() && !sTime.isNullOrBlank()) {
+                        try {
+                            val h = timeTokenToHour(sTime)
+                            resolvedStart = java.time.LocalDateTime.of(java.time.LocalDate.parse(sDate), java.time.LocalTime.of(h,0))
+                            resolvedEnd = resolvedStart.plusHours(1)
+                        } catch (t: Throwable) {
+                            // keep previously computed startAt
+                        }
+                    }
+                }
+
+                if (resolvedCoachId.isBlank()) {
+                    android.util.Log.e("MemberNavGraph", "Cannot resolve coachId for reservation; aborting reserveCoach call (coachIdArg='$coachIdArg')")
+                } else {
+                    android.util.Log.d("MemberNavGraph", "reserveCoach called from QnA (coachId=$resolvedCoachId, startAt=$resolvedStart, preQnA='${preQnA.take(60)}')")
+                    reservationVmForQna.reserveCoach(resolvedCoachId, resolvedStart, resolvedEnd, preQnA)
+                }
             },
             onNavigateHome = { nav.navigate(Routes.MemberHome) },
+            // when user wants to change health info from reservation dialog, start the health survey flow
             onNavigateToMyHealthInfo = {
-                nav.navigate(Routes.HealthHeight) // 건강설문 플로우 시작 (키→몸무게→헬스→라이프스타일)
+                // store a marker route so AppNavGraph can pop back reliably to this QnA entry after health flow
+                try {
+                    // Store qna_origin map directly on the current backStackEntry.savedStateHandle
+                    val originMap = mapOf(
+                        "type" to "coach",
+                        "coachId" to coachIdArg,
+                        "coachName" to decodedName,
+                        "date" to dateStr,
+                        "time" to decodedTime
+                    )
+                    nav.currentBackStackEntry?.savedStateHandle?.set("qna_origin", originMap)
+                    android.util.Log.d("MemberNavGraph", "Set qna_origin on savedStateHandle=$originMap before navigating to health flow")
+                } catch (t: Throwable) {
+                    android.util.Log.d("MemberNavGraph", "Failed to set qna_origin: ${t.message}")
+                }
+                nav.navigate(com.livon.app.navigation.Routes.HealthHeight)
             },
             navController = nav,
             externalError = actionState.errorMessage

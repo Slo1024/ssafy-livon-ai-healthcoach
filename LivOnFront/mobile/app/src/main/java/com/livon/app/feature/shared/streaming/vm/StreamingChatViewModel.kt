@@ -3,7 +3,6 @@ package com.livon.app.feature.shared.streaming.vm
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.livon.app.BuildConfig
 import com.livon.app.data.remote.socket.ChatStompManager
 import com.livon.app.data.repository.ChatRepositoryImpl
 import com.livon.app.domain.model.ChatMessage
@@ -28,27 +27,53 @@ data class StreamingChatUiState(
 
 class StreamingChatViewModel(
     private val repository: ChatRepository = ChatRepositoryImpl(),
-    private val chatRoomId: Int = 43
+    private val consultationId: Long,
+    private val jwtToken: String
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(StreamingChatUiState())
     val uiState: StateFlow<StreamingChatUiState> = _uiState
 
     init {
-        // 1) STOMP 연결 (viewModelScope을 넘겨서 SharedFlow emit이 안전하게 동작하도록 함)
+        // 1) STOMP 연결 (웹소켓 접속)
         viewModelScope.launch {
             try {
                 ChatStompManager.connect(
-                    token = BuildConfig.WEBSOCKET_TOKEN,
-                    roomId = chatRoomId.toLong(),
+                    token = jwtToken,
+                    roomId = consultationId,
                     scope = viewModelScope
                 )
+                
+                // 2) 연결 완료 대기
+                ChatStompManager.subscriptionReady.collect { isReady ->
+                    if (isReady) {
+                        Log.d("StreamingChatViewModel", "웹소켓 연결 완료, POST 요청 시작")
+                        
+                        // 3) POST /api/v1/goods/chat?consultationId=방번호 요청 (구독 전에 먼저 실행)
+                        Log.d("StreamingChatViewModel", "채팅방 정보 조회 시작: consultationId=$consultationId")
+                        repository.getChatRoomInfo(consultationId, jwtToken)
+                            .onSuccess { chatRoomInfo ->
+                                Log.d("StreamingChatViewModel", "채팅방 정보 조회 성공: chatRoomId=${chatRoomInfo.chatRoomId}, consultationId=${chatRoomInfo.consultationId}, status=${chatRoomInfo.chatRoomStatus}")
+                                
+                                // 4) POST 요청 성공 후 구독 시작
+                                Log.d("StreamingChatViewModel", "구독 시작")
+                                ChatStompManager.subscribe(consultationId, viewModelScope)
+                            }
+                            .onFailure { e ->
+                                Log.e("StreamingChatViewModel", "채팅방 정보 조회 실패: ${e.message}", e)
+                                // 실패해도 구독은 시도
+                                Log.d("StreamingChatViewModel", "구독 시작 (POST 실패했지만 시도)")
+                                ChatStompManager.subscribe(consultationId, viewModelScope)
+                            }
+                        return@collect // 첫 번째 ready 신호만 처리
+                    }
+                }
             } catch (e: Exception) {
                 Log.e("StreamingChatViewModel", "STOMP connect 실패: ${e.message}", e)
             }
         }
 
-        // 2) 수신된 메시지를 collect 하여 UI 상태 갱신
+        // 5) 수신된 메시지를 collect 하여 UI 상태 갱신
         viewModelScope.launch {
             ChatStompManager.incomingMessages.collect { payload ->
                 Log.d("StreamingChatViewModel", "수신 payload: $payload")
@@ -57,7 +82,7 @@ class StreamingChatViewModel(
                     val json = JSONObject(payload)
                     ChatMessage(
                         id = json.optString("id", UUID.randomUUID().toString()),
-                        chatRoomId = json.optInt("roomId", chatRoomId),
+                        chatRoomId = json.optInt("roomId", consultationId.toInt()),
                         userId = json.optString("senderId", json.optString("userId", "unknown")),
                         content = json.optString("message", ""),
                         sentAt = json.optString("sentAt", Instant.now().toString()),
@@ -71,10 +96,32 @@ class StreamingChatViewModel(
 
                 if (message != null) {
                     _uiState.update { state ->
-                        val updated = (state.messages + message)
-                            .distinctBy { it.id }
-                            .sortedBy { it.sentAt }
-                        state.copy(messages = updated)
+                        // 중복 체크: 같은 내용의 메시지가 최근 3초 이내에 있으면 제외
+                        val now = Instant.now()
+                        val recentMessages = state.messages.filter { msg ->
+                            try {
+                                val msgTime = Instant.parse(msg.sentAt)
+                                now.epochSecond - msgTime.epochSecond <= 3 // 3초 이내
+                            } catch (e: Exception) {
+                                false
+                            }
+                        }
+                        
+                        // 같은 내용의 메시지가 최근에 있으면 추가하지 않음
+                        val isDuplicate = recentMessages.any { msg ->
+                            msg.content == message.content && 
+                            msg.chatRoomId == message.chatRoomId
+                        }
+                        
+                        if (isDuplicate) {
+                            Log.d("StreamingChatViewModel", "중복 메시지 감지, 추가하지 않음: ${message.content}")
+                            state // 변경 없음
+                        } else {
+                            val updated = (state.messages + message)
+                                .distinctBy { it.id }
+                                .sortedBy { it.sentAt }
+                            state.copy(messages = updated)
+                        }
                     }
                 }
             }
@@ -82,8 +129,8 @@ class StreamingChatViewModel(
     }
 
     fun loadChatMessages(
-        chatRoomId: Int = 43,
-        accessToken: String? = BuildConfig.WEBSOCKET_TOKEN,
+        chatRoomId: Int = consultationId.toInt(),
+        accessToken: String? = jwtToken,
         isInitialLoad: Boolean = true
     ) {
         viewModelScope.launch {
@@ -143,8 +190,8 @@ class StreamingChatViewModel(
 
     fun sendMessage(
         message: String,
-        accessToken: String,
-        chatRoomId: Int = 43,
+        accessToken: String = jwtToken,
+        chatRoomId: Int = consultationId.toInt(),
         senderUUID: UUID = UUID.fromString("00000000-0000-0000-0000-000000000001")
     ) {
         if (message.isBlank()) return

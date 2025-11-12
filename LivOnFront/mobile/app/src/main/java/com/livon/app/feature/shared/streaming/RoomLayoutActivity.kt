@@ -143,8 +143,10 @@ class RoomLayoutActivity : AppCompatActivity() {
             val participantTracks = _participantTracks.collectAsState().value
             val eglBaseContext = _eglBaseContext.collectAsState().value
             val roomState = _room.collectAsState().value
+            val consultationId = intent.getLongExtra("consultationId", -1L)
+            val jwtToken = SessionManager.getTokenSync() ?: ""
 
-            if (eglBaseContext != null && roomState != null) {
+            if (eglBaseContext != null && roomState != null && consultationId != -1L && jwtToken.isNotEmpty()) {
                 LiveStreamingCoachScreen(
                     uiState = uiState,
                     participantTracks = participantTracks,
@@ -153,8 +155,10 @@ class RoomLayoutActivity : AppCompatActivity() {
                     room = roomState,
                     onConnect = ::checkAndRequestPermissions,
                     onToggleCamera = ::toggleCamera,
-                        onToggleMic = ::toggleMicrophone,
-                        onShareScreen = ::toggleScreenShare
+                    onToggleMic = ::toggleMicrophone,
+                    onShareScreen = ::toggleScreenShare,
+                    consultationId = consultationId,
+                    jwtToken = jwtToken
                 )
             } else {
                 Box(Modifier.fillMaxSize(), Alignment.Center) {

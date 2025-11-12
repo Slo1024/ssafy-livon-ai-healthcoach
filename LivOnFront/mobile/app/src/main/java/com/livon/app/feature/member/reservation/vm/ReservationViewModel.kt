@@ -82,7 +82,10 @@ class ReservationViewModel(
                                     startAtIso = dto.startAt,
                                     sessionId = dto.sessionId,
                                     sessionTypeLabel = if ((dto.type ?: "ONE") == "ONE") "개인 상담" else "그룹 상담",
-                                    hasAiReport = dto.aiSummary != null
+                                    hasAiReport = dto.aiSummary != null,
+                                    // new fields
+                                    coachProfileImageUrl = dto.coach?.profileImage,
+                                    qnas = dto.preQnA?.split("\n")?.filter { it.isNotBlank() } ?: emptyList()
                                 )
                             } catch (t: Throwable) {
                                 android.util.Log.w("ReservationVM", "Failed to map reservation item", t)
@@ -124,7 +127,10 @@ class ReservationViewModel(
                         },
                         isLive = isLive,
                         startAtIso = lr.startAt,
-                        sessionId = null
+                        sessionId = null,
+                        // local reservations have no remote coach image or qna stored
+                        coachProfileImageUrl = null,
+                        qnas = emptyList()
                     )
                 }
 

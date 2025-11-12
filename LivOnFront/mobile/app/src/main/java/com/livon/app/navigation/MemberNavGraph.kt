@@ -226,7 +226,36 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 medication = null, painArea = null, stress = null, smoking = null,
                 alcohol = null, sleepHours = null, activityLevel = null, caffeine = null
             )
-            MyInfoScreen(state = state, onBack = { nav.popBackStack() })
+            // Observe health update marker on this entry's savedStateHandle so MyInfo refreshes after the health survey flow
+            val backEntry = nav.currentBackStackEntry
+            LaunchedEffect(backEntry) {
+                if (backEntry == null) return@LaunchedEffect
+                val live = backEntry.savedStateHandle.getLiveData<Boolean>("health_updated")
+                val observer = androidx.lifecycle.Observer<Boolean> { flag ->
+                    if (flag == true) {
+                        // reload user info and clear marker
+                        try { userVm.load() } catch (t: Throwable) { Log.w("MemberNavGraph", "Failed to reload user data in myinfo", t) }
+                        backEntry.savedStateHandle.remove<Boolean>("health_updated")
+                    }
+                }
+                live.observe(backEntry, observer)
+                try { kotlinx.coroutines.awaitCancellation() } finally { live.removeObserver(observer) }
+            }
+
+            MyInfoScreen(
+                state = state,
+                onBack = { nav.popBackStack() },
+                onEditConfirm = {
+                    // set a simple marker so AppNavGraph will detect and return here after health flow
+                    try {
+                        val origin = mapOf("type" to "myinfo")
+                        nav.currentBackStackEntry?.savedStateHandle?.set("qna_origin", origin)
+                    } catch (t: Throwable) {
+                        Log.w("MemberNavGraph", "Failed to set qna_origin for myinfo: ${t.message}")
+                    }
+                    nav.navigate(com.livon.app.navigation.Routes.HealthHeight)
+                }
+            )
         } else {
             MyPageScreen(onBack = { nav.popBackStack() })
         }
@@ -284,7 +313,18 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             showLoadMore = loadMore,
             onLoadMore = {},
             // navigate with coach id so detail can receive which coach to show
-            onCoachClick = { coach -> nav.navigate("coach_detail/${coach.id}/personal") }
+            onCoachClick = { coach ->
+                // Guard: only navigate when coach id is present
+                if (!coach.id.isNullOrBlank()) {
+                    try {
+                        nav.navigate("coach_detail/${coach.id}/personal")
+                    } catch (t: Throwable) {
+                        Log.w("MemberNavGraph", "Navigation to coach_detail failed for id=${coach.id}", t)
+                      }
+                } else {
+                    Log.w("MemberNavGraph", "Attempted to open coach detail but coach.id is blank")
+                }
+            }
         )
     }
 
@@ -318,16 +358,17 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                     try { nav.navigate(Routes.MemberHome) } catch (_: Throwable) {}
                 }
             },
+            // navigate to a dedicated group coach detail route to avoid route-matching issues
             onCoachClick = { coachId ->
                 try {
-                    nav.navigate("coach_detail/$coachId/group")
+                    nav.navigate("coach_detail_group/$coachId")
                 } catch (t: Throwable) {
-                    Log.w("MemberNavGraph", "Navigation to coach_detail/$coachId/group failed, falling back to MemberHome", t)
+                    Log.w("MemberNavGraph", "Navigation to coach_detail_group/$coachId failed, falling back to MemberHome", t)
                     try { nav.navigate(Routes.MemberHome) } catch (_: Throwable) {}
                 }
             },
-             navController = nav
-         )
+              navController = nav
+          )
     }
 
     // coach_detail accepts coachId and mode (personal/group)
@@ -336,29 +377,40 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         val mode = backStackEntry.arguments?.getString("mode") ?: "personal"
         val showSchedule = mode == "personal"
 
-        // Provide a ViewModel factory so CoachDetailScreen can load remote detail
-        val coachApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.CoachApiService::class.java)
-        val coachRepo = remember { com.livon.app.domain.repository.CoachRepository(coachApi) }
-        val factory = object : androidx.lifecycle.ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                return com.livon.app.feature.member.reservation.vm.CoachDetailViewModel(coachRepo) as T
+        if (coachId.isNullOrBlank()) {
+            // show friendly error UI instead of attempting API call with empty id
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = "코치 정보를 불러올 수 없습니다. (ID 없음)")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(onClick = { nav.popBackStack() }) { Text(text = "뒤로가기") }
+                }
             }
-        }
+        } else {
+            // Provide a ViewModel factory so CoachDetailScreen can load remote detail
+            val coachApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.CoachApiService::class.java)
+            val coachRepo = remember { com.livon.app.domain.repository.CoachRepository(coachApi) }
+            val factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                    return com.livon.app.feature.member.reservation.vm.CoachDetailViewModel(coachRepo) as T
+                }
+            }
 
-        CoachDetailScreen(
-            coachId = coachId ?: "",
-            onBack = { nav.popBackStack() },
-            showSchedule = showSchedule,
-            viewModelFactory = factory,
-            onReserve = { coachName, date, time ->
-                // encode coachId, coachName, date and time into route so QnA screen can perform reservation
-                val encodedName = java.net.URLEncoder.encode(coachName, "UTF-8")
-                val iso = date.toString() // yyyy-MM-dd
-                val timeEnc = java.net.URLEncoder.encode(time, "UTF-8")
-                nav.navigate("qna_submit/${coachId}/${encodedName}/${iso}/${timeEnc}")
-            }
-        )
+            CoachDetailScreen(
+                coachId = coachId ?: "",
+                onBack = { nav.popBackStack() },
+                showSchedule = showSchedule,
+                viewModelFactory = factory,
+                onReserve = { coachName, date, time ->
+                    // encode coachId, coachName, date and time into route so QnA screen can perform reservation
+                    val encodedName = java.net.URLEncoder.encode(coachName, "UTF-8")
+                    val iso = date.toString() // yyyy-MM-dd
+                    val timeEnc = java.net.URLEncoder.encode(time, "UTF-8")
+                    nav.navigate("qna_submit/${coachId}/${encodedName}/${iso}/${timeEnc}")
+                }
+            )
+        }
     }
 
     // qna_submit now accepts coachId and time so we can call reservation API from here
@@ -1017,7 +1069,10 @@ composable("qna_submit_class/{classId}") { backStackEntry ->
                 name = found.coachName.ifEmpty { "코치" },
                 title = found.coachRole.ifEmpty { "" },
                 specialties = found.coachIntro.ifEmpty { "" },
-                workplace = ""
+                workplace = "",
+                // map remote URL -> local resId will be handled by UI; leave null here
+                profileResId = null,
+                profileImageUrl = found.coachProfileImageUrl
             )
 
             val sessionInfo = SessionInfo(
@@ -1031,8 +1086,10 @@ composable("qna_submit_class/{classId}") { backStackEntry ->
                 type = detailType,
                 coach = coachMini,
                 session = sessionInfo,
+                sessionTypeLabel = found.sessionTypeLabel,
                 aiSummary = null,
-                qnas = emptyList(),
+                // pass QnAs from ReservationUi
+                qnas = found.qnas,
                 onBack = { nav.popBackStack() },
                 onDelete = { /* TODO: delete past reservation from server/local */ },
                 onSeeCoach = { /* TODO: navigate to coach detail if id available */ },
@@ -1121,6 +1178,45 @@ composable("qna_submit_class/{classId}") { backStackEntry ->
                     }
                 }
             }
+        }
+    }
+
+    // Dedicated coach detail route for GROUP flow (ensures showSchedule=false)
+    composable("coach_detail_group/{coachId}") { backStackEntry ->
+        val coachId = backStackEntry.arguments?.getString("coachId") ?: ""
+        if (coachId.isBlank()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = "코치 정보를 불러올 수 없습니다. (ID 없음)")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(onClick = { nav.popBackStack() }) { Text(text = "뒤로가기") }
+                }
+            }
+        } else {
+            // Provide ViewModel factory like other coach_detail route
+            val coachApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.CoachApiService::class.java)
+            val coachRepo = remember { com.livon.app.domain.repository.CoachRepository(coachApi) }
+            val factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                    return com.livon.app.feature.member.reservation.vm.CoachDetailViewModel(coachRepo) as T
+                }
+            }
+
+            CoachDetailScreen(
+                coachId = coachId,
+                onBack = { nav.popBackStack() },
+                showSchedule = false,
+                navController = nav,
+                viewModelFactory = factory,
+                onReserve = { coachName, date, time ->
+                    // reuse qna route used for coach flow: encode and navigate
+                    val encodedName = java.net.URLEncoder.encode(coachName, "UTF-8")
+                    val iso = date.toString()
+                    val timeEnc = java.net.URLEncoder.encode(time, "UTF-8")
+                    nav.navigate("qna_submit/${coachId}/${encodedName}/${iso}/${timeEnc}")
+                }
+            )
         }
     }
 }

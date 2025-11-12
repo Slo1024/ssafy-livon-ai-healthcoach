@@ -31,6 +31,12 @@ data class ReservationUi(
     val classIntro: String,
     val imageResId: Int? = null,
 
+    // coach image URL from server (nullable). If provided, UI should show remote image; otherwise use local res fallback.
+    val coachProfileImageUrl: String? = null,
+
+    // QnA lines submitted when reserving (preQnA split by newline). Used on detail page.
+    val qnas: List<String> = emptyList(),
+
     // 현재 예약 전용
     val isLive: Boolean = false,  // 진행중/임박
     val startAtIso: String? = null, // ISO time from server

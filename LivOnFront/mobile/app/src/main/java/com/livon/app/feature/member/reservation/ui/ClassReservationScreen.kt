@@ -103,7 +103,16 @@ fun ClassReservationScreen(
                                     onCardClick(item)
                                 }
                             },
-                            onCoachClick = { onCoachClick(item.coachId) }
+                            onCoachClick = {
+                                // Debug logging: show submitted coachId and guard empty ids
+                                try {
+                                    android.util.Log.d("ClassReservationScreen", "CoachView clicked: coachId=${item.coachId}")
+                                } catch (t: Throwable) { }
+                                if (item.coachId.isNullOrBlank()) {
+                                    android.util.Log.w("ClassReservationScreen", "coachId is blank; cannot navigate to coach detail")
+                                }
+                                onCoachClick(item.coachId)
+                            }
                         )
                     }
                 }

@@ -34,6 +34,24 @@ const PageTitle = styled.h1`
   font-size: 40px;
   color: #000000;
   margin: 0 0 24px 0;
+  text-align: left;
+
+  @media (max-width: 1200px) {
+    text-align: center;
+    font-size: 34px;
+  }
+
+  @media (max-width: 900px) {
+    font-size: 30px;
+  }
+
+  @media (max-width: 768px) {
+    font-size: 26px;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 24px;
+  }
 `;
 
 const TabsAndFilterContainer = styled.div`
@@ -89,10 +107,12 @@ const TableHeaderCell = styled.th`
   }
   &:nth-child(2) {
     width: auto;
+    white-space: nowrap;
+    word-break: keep-all;
   }
   &:nth-child(3) {
     width: 150px;
-    text-align: right;
+    text-align: center;
   }
   &:nth-child(4) {
     width: 200px;
@@ -104,9 +124,10 @@ const TableBody = styled.tbody``;
 
 const TableRow = styled.tr`
   border-bottom: 1px solid #e5e7eb;
-
+  transition: background-color 0.2s ease;
+  
   &:hover {
-    background-color: #f9fafb;
+    background-color: transparent;
   }
 `;
 
@@ -114,9 +135,13 @@ const TableCell = styled.td`
   padding: 16px;
   font-size: 14px;
   color: #111827;
-
+  
+  &:nth-child(2) {
+    white-space: nowrap;
+    word-break: keep-all;
+  }
   &:nth-child(3) {
-    text-align: right;
+    text-align: center;
     color: #6b7280;
   }
   &:nth-child(4) {
@@ -366,51 +391,35 @@ export const ClassListPage: React.FC = () => {
           </FilterDropdown>
         </TabsAndFilterContainer>
 
-        <Divider />
-
-        {loading ? (
-          <LoadingMessage>클래스 목록을 불러오는 중...</LoadingMessage>
-        ) : error ? (
-          <ErrorMessage>{error}</ErrorMessage>
-        ) : classes.length === 0 ? (
-          <EmptyMessage>등록된 클래스가 없습니다.</EmptyMessage>
-        ) : (
-          <>
-            <ClassTable>
-              <TableHeader>
-                <tr>
-                  <TableHeaderCell>번호</TableHeaderCell>
-                  <TableHeaderCell>클래스명</TableHeaderCell>
-                  <TableHeaderCell>개설일</TableHeaderCell>
-                  <TableHeaderCell></TableHeaderCell>
-                </tr>
-              </TableHeader>
-              <TableBody>
-                {classes.map((classItem, index) => (
-                  <TableRow key={classItem.id}>
-                    <TableCell>{currentPage * pageSize + index + 1}</TableCell>
-                    <TableCell>{classItem.title}</TableCell>
-                    <TableCell>{formatDate(classItem.startAt)} 개설</TableCell>
-                    <TableCell>
-                      <ActionButtonContainer>
-                        <Button
-                          variant="info-edit"
-                          onClick={() => handleEditClick(classItem)}
-                        >
-                          정보 및 수정
-                        </Button>
-                        <Button
-                          variant="delete"
-                          onClick={() => handleDeleteClick(classItem.id)}
-                        >
-                          클래스 삭제
-                        </Button>
-                      </ActionButtonContainer>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </ClassTable>
+        <ClassTable>
+          <TableHeader>
+            <tr>
+              <TableHeaderCell>번호</TableHeaderCell>
+              <TableHeaderCell>클래스명</TableHeaderCell>
+              <TableHeaderCell>개설일</TableHeaderCell>
+              <TableHeaderCell></TableHeaderCell>
+            </tr>
+          </TableHeader>
+          <TableBody>
+            {classes.map((classItem, index) => (
+              <TableRow key={classItem.id}>
+                <TableCell>{index + 1}</TableCell>
+                <TableCell>{classItem.name}</TableCell>
+                <TableCell>{classItem.date} 개설</TableCell>
+                <TableCell>
+                  <ActionButtonContainer>
+                    <Button variant="info-edit" onClick={() => handleEditClick(classItem)}>
+                      정보 및 수정
+                    </Button>
+                    <Button variant="delete" onClick={() => handleDeleteClick(classItem.id)}>
+                      클래스 삭제
+                    </Button>
+                  </ActionButtonContainer>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </ClassTable>
 
             {totalPages > 1 && (
               <PaginationContainer>

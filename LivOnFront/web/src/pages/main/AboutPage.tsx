@@ -17,10 +17,22 @@ const AnimatedText = styled.p<{ $visible: boolean }>`
   opacity: 0;
   animation: ${props => props.$visible ? fadeInUp : 'none'} 0.8s ease-out forwards;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 40px;
+  font-size: 32px;
   color: #374151;
-  line-height: 1.5;
+  line-height: 1.6;
   margin: 0;
+
+  @media (max-width: 1024px) {
+    font-size: 28px;
+  }
+
+  @media (max-width: 768px) {
+    font-size: 24px;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 20px;
+  }
 `;
 
 const PageContainer = styled.div`
@@ -65,7 +77,7 @@ const ImageContainer = styled.div`
   align-items: center;
   margin-top: 40px;
   
-  @media (min-width: 768px) {
+  @media (min-width: 1024px) {
     position: absolute;
     bottom: 0;
     right: 5%;
@@ -79,11 +91,25 @@ const ImageContainer = styled.div`
     max-width: 500px;
     height: auto;
     
-    @media (min-width: 768px) {
+    @media (min-width: 1024px) {
       width: auto;
       max-width: 500px;
       max-height: 500px;
     }
+  }
+`;
+
+const PageTitle = styled.h1`
+  font-weight: 700;
+  font-size: clamp(12px, 4vw, 48px);
+  color: #111827;
+  margin: 0 0 32px 0;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  white-space: nowrap;
+  word-break: keep-all;
+
+  @media (max-width: 768px) {
+    text-align: center;
   }
 `;
 
@@ -107,10 +133,10 @@ export const AboutPage: React.FC = () => {
     <PageContainer>
       <ContentWrapper>
         <TextSection>
-          <h1 className="text-4xl font-bold text-gray-900 mb-8">
+          <PageTitle>
             더 새롭고, 더 스마트한 건강 코칭{' '}
             <span style={{ color: '#4965f6' }}>리브온</span>
-          </h1>
+          </PageTitle>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <AnimatedText $visible={firstVisible} style={{ fontWeight: 400 }}>

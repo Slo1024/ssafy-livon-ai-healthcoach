@@ -20,55 +20,54 @@ const PageTitle = styled.h1`
   font-size: 40px;
   color: #000000;
   margin: 0 0 24px 0;
+  text-align: left;
+
+  @media (max-width: 1200px) {
+    text-align: center;
+    font-size: 34px;
+  }
+
+  @media (max-width: 900px) {
+    font-size: 30px;
+  }
+
+  @media (max-width: 768px) {
+    font-size: 26px;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 24px;
+  }
 `;
 
 const Tabs = styled.div`
   display: flex;
-  gap: 0;
-  
-  /* 두 버튼이 맞닿도록 인접 모서리 처리 */
-  button {
-    border-radius: 6px;
-  }
-  button:last-child {
-    margin-left: -1px; /* 테두리 겹치기 */
-  }
+  gap: 24px;
+  margin-bottom: 16px;
 `;
 
-const PrimaryTabButton = styled.button`
-  width: 120px;
-  height: 48px;
-  border: 1px solid #4965f6;
-  background-color: #4965f6;
-  color: #ffffff;
-  font-weight: 500; /* Pretendard Medium */
-  font-size: 16px;
+const TabButton = styled.button<{ $active?: boolean }>`
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  font-weight: ${p => (p.$active ? 700 : 500)};
+  color: ${p => (p.$active ? '#111827' : '#9ca3af')};
   cursor: pointer;
-  border-radius: 6px;
-  white-space: nowrap;
-`;
-
-const OutlineTabButton = styled.button`
-  width: 120px;
-  height: 48px;
-  border: 1px solid #4965f6;
-  background-color: #ffffff;
-  color: #4965f6;
-  font-weight: 500; /* Pretendard Medium */
-  font-size: 16px;
-  cursor: pointer;
-  border-radius: 6px;
-  white-space: nowrap;
-`;
-
-const Divider = styled.div`
-  width: 100vw; /* 화면 전체 폭 */
-  height: 2px;
-  background-color: #4965f6;
-  margin: 0;
+  padding: 8px 0;
   position: relative;
-  left: 50%;
-  transform: translateX(-50%); /* 중앙 기준으로 좌우 끝까지 */
+  transition: color 0.2s ease;
+
+  &:after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -6px;
+    width: 100%;
+    height: 3px;
+    background: ${p => (p.$active ? '#4965f6' : 'transparent')};
+    border-radius: 999px;
+    transition: background 0.2s ease;
+  }
 `;
 
 const FAQList = styled.div`
@@ -148,11 +147,9 @@ export const FAQPage: React.FC = () => {
         <PageTitle>고객센터 - 자주 묻는 질문</PageTitle>
 
         <Tabs>
-          <PrimaryTabButton onClick={() => setActiveTab('faq')}>자주 묻는 질문</PrimaryTabButton>
-          <OutlineTabButton onClick={goInquiry}>고객 문의</OutlineTabButton>
+          <TabButton $active={activeTab === 'faq'} onClick={() => setActiveTab('faq')}>자주 묻는 질문</TabButton>
+          <TabButton $active={activeTab === 'inquiry'} onClick={goInquiry}>고객 문의</TabButton>
         </Tabs>
-
-        <Divider />
 
         <FAQList>
           {faqList.map((faq) => (

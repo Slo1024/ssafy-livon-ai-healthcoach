@@ -30,12 +30,42 @@ const PageTitle = styled.h1`
   font-size: 40px;
   color: #000000;
   margin: 0 0 24px 0;
+  text-align: left;
+
+  @media (max-width: 1200px) {
+    text-align: center;
+    font-size: 34px;
+  }
+
+  @media (max-width: 900px) {
+    font-size: 30px;
+  }
+
+  @media (max-width: 768px) {
+    font-size: 26px;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 24px;
+  }
 `;
 
 const TabsContainer = styled.div`
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 0;
+`;
+
+const TabsWrapper = styled.div`
+  display: flex;
+  align-items: center;
+`;
+
+const FilterPlaceholder = styled.div`
+  width: 180px;
+  flex-shrink: 0;
 `;
 
 const Divider = styled.div`
@@ -52,16 +82,15 @@ const IntroMessage = styled.p`
   font-size: 20px;
   font-weight: 500;
   color: #374151;
-  margin: 24px 0;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
+  margin: 36px 0 28px 0;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 `;
 
 const FormContainer = styled.div`
   display: flex;
   flex-direction: column;
   gap: 24px;
-  margin-top: 24px;
+  margin-top: 32px;
 `;
 
 const FormField = styled.div`
@@ -306,18 +335,19 @@ export const ClassSetupPage: React.FC = () => {
         <PageTitle>{pageTitle}</PageTitle>
 
         <TabsContainer>
-          <SegmentedTabs
-            leftLabel="클래스 목록"
-            rightLabel="클래스 개설"
-            active="right"
-            onLeftClick={handleListClick}
-            onRightClick={handleSetupClick}
-            tabWidth={120}
-            showDivider={false}
-          />
+          <TabsWrapper>
+            <SegmentedTabs
+              leftLabel="클래스 목록"
+              rightLabel="클래스 개설"
+              active="right"
+              onLeftClick={handleListClick}
+              onRightClick={handleSetupClick}
+              tabWidth={120}
+              showDivider={false}
+            />
+          </TabsWrapper>
+          <FilterPlaceholder />
         </TabsContainer>
-
-        <Divider />
 
         <IntroMessage>
           회원들을 위한 새로운 클래스를 개설할 수 있습니다.

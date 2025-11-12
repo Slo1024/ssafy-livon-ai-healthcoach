@@ -455,12 +455,12 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 // Resolve date/time from saved handles if needed
                 fun findSavedDateTime(): Pair<java.time.LocalDateTime, java.time.LocalDateTime>? {
                     // check saved for qna_date / qna_time or origin map
-                    val dateStr = findSavedString("qna_date", "date")
+                    val savedDate = findSavedString("qna_date", "date")
                     val timeStr = findSavedString("qna_time", "time")
-                    if (!dateStr.isNullOrBlank() && !timeStr.isNullOrBlank()) {
+                    if (!savedDate.isNullOrBlank() && !timeStr.isNullOrBlank()) {
                         return try {
                             val h = timeTokenToHour(timeStr)
-                            val s = java.time.LocalDateTime.of(java.time.LocalDate.parse(dateStr), java.time.LocalTime.of(h,0))
+                            val s = java.time.LocalDateTime.of(java.time.LocalDate.parse(savedDate), java.time.LocalTime.of(h,0))
                             s to s.plusHours(1)
                         } catch (t: Throwable) {
                             null
@@ -715,84 +715,130 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         )
     }
 
-    // NEW: class reservation QnA flow (route used by class detail "예약 하기" button)
-    composable("qna_submit_class/{classId}") { backStackEntry ->
-        val classId = backStackEntry.arguments?.getString("classId") ?: ""
 
-        // fetch class detail (network-backed)
-        val groupApiForQna = com.livon.app.core.network.RetrofitProvider.createService(
-            com.livon.app.data.remote.api.GroupConsultationApiService::class.java
-        )
-        val groupRepoForQna = remember { com.livon.app.domain.repository.GroupConsultationRepository(groupApiForQna) }
 
-        val detailState = remember { mutableStateOf<SampleClassInfo?>(null) }
-        val loadingDetail = remember { mutableStateOf(true) }
-        val errorDetail = remember { mutableStateOf<String?>(null) }
 
-        LaunchedEffect(classId) {
-            loadingDetail.value = true
-            errorDetail.value = null
-            try {
-                val res = groupRepoForQna.fetchClassDetail(classId)
-                if (res.isSuccess) detailState.value = res.getOrNull()
-                else errorDetail.value = res.exceptionOrNull()?.message ?: "클래스 정보를 불러올 수 없습니다."
-            } catch (t: Throwable) {
-                errorDetail.value = t.message
-            } finally {
-                loadingDetail.value = false
-            }
+
+// NEW: class reservation QnA flow (route used by class detail "예약 하기" button)
+composable("qna_submit_class/{classId}") { backStackEntry ->
+    // 1. savedStateHandle에서 classId를 먼저 확인하고, 없으면 arguments에서 가져옵니다.
+    //    이렇게 하면 건강 설문 완료 후 돌아왔을 때 ID를 복원할 수 있습니다.
+    val savedOrigin = backStackEntry.savedStateHandle.get<Map<String, String>>("qna_origin")
+    val resolvedClassId = if (savedOrigin?.get("type") == "class") {
+        savedOrigin["classId"] ?: ""
+    } else {
+        backStackEntry.arguments?.getString("classId") ?: ""
+    }
+
+    // 클래스 상세 정보 fetch
+    val groupApiForQna = com.livon.app.core.network.RetrofitProvider.createService(
+        com.livon.app.data.remote.api.GroupConsultationApiService::class.java
+    )
+    val groupRepoForQna = remember { com.livon.app.domain.repository.GroupConsultationRepository(groupApiForQna) }
+
+    val detailState = remember { mutableStateOf<SampleClassInfo?>(null) }
+    val loadingDetail = remember { mutableStateOf(true) }
+    val errorDetail = remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(resolvedClassId) {
+        if (resolvedClassId.isBlank()) {
+            errorDetail.value = "클래스 ID를 찾을 수 없습니다."
+            loadingDetail.value = false
+            return@LaunchedEffect
         }
-
-        // ViewModel to perform reservation
-        val reservationRepoForQna = remember { com.livon.app.data.repository.ReservationRepositoryImpl() }
-        val reservationVmForQna = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                return com.livon.app.feature.member.reservation.vm.ReservationViewModel(reservationRepoForQna) as T
-            }
-        }) as com.livon.app.feature.member.reservation.vm.ReservationViewModel
-
-        val actionState by reservationVmForQna.actionState.collectAsState()
-
-        // navigate to reservations when action completes (same behavior as coach flow)
-        LaunchedEffect(actionState.success) {
-            if (actionState.success == true) {
-                nav.navigate("reservations") { popUpTo(Routes.MemberHome) { inclusive = false } }
-            }
-        }
-
-        if (loadingDetail.value) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else {
-            val item = detailState.value
-            if (item != null) {
-                QnASubmitScreen(
-                    coachName = item.coachName,
-                    selectedDate = item.date,
-                    onBack = { nav.popBackStack() },
-                    onConfirmReservation = { questions ->
-                        // For class reservation API we only need classId; pre-QnA currently ignored by backend
-                        reservationVmForQna.reserveClass(item.id)
-                    },
-                    onNavigateHome = { nav.navigate(Routes.MemberHome) },
-                    // when user wants to change health info from reservation dialog, start the health survey flow
-                    onNavigateToMyHealthInfo = { nav.navigate(com.livon.app.navigation.Routes.HealthHeight) },
-                    navController = nav,
-                    externalError = actionState.errorMessage
-                )
+        loadingDetail.value = true
+        errorDetail.value = null
+        try {
+            val res = groupRepoForQna.fetchClassDetail(resolvedClassId)
+            if (res.isSuccess) {
+                detailState.value = res.getOrNull()
             } else {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = errorDetail.value ?: "클래스 정보를 불러올 수 없습니다.")
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = { nav.popBackStack() }) { Text(text = "뒤로가기") }
+                errorDetail.value = res.exceptionOrNull()?.message ?: "클래스 정보를 불러올 수 없습니다."
+            }
+        } catch (t: Throwable) {
+            errorDetail.value = t.message
+        } finally {
+            loadingDetail.value = false
+        }
+    }
+
+    // 예약 요청을 위한 ViewModel
+    val reservationRepoForQna = remember { com.livon.app.data.repository.ReservationRepositoryImpl() }
+    val reservationVmForQna = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+            return com.livon.app.feature.member.reservation.vm.ReservationViewModel(reservationRepoForQna) as T
+        }
+    }) as com.livon.app.feature.member.reservation.vm.ReservationViewModel
+
+    val actionState by reservationVmForQna.actionState.collectAsState()
+
+    // 예약 성공 시 예약 현황 화면으로 이동
+    LaunchedEffect(actionState.success) {
+        if (actionState.success == true) {
+            backStackEntry.savedStateHandle.remove<Map<String, String>>("qna_origin") // 상태 정리
+            nav.navigate("reservations") {
+                popUpTo(Routes.MemberHome) { inclusive = false }
+            }
+        }
+    }
+
+    if (loadingDetail.value) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+    } else {
+        val item = detailState.value
+        if (item != null) {
+            QnASubmitScreen(
+                coachName = item.coachName,
+                selectedDate = item.date,
+                onBack = { nav.popBackStack() },
+                onConfirmReservation = { questions ->
+                    // 2. 예약 요청 시, 복원된 resolvedClassId를 사용합니다.
+                    if (resolvedClassId.isNotBlank()) {
+                        reservationVmForQna.reserveClass(resolvedClassId)
+                    } else {
+                        android.util.Log.e("MemberNavGraph", "Cannot reserve class, classId is blank.")
                     }
+                },
+                onNavigateHome = { nav.navigate(Routes.MemberHome) },
+                // 3. 건강 정보 변경 시, 개인 상담 예약과 동일하게 현재 상태를 저장합니다.
+                onNavigateToMyHealthInfo = {
+                    try {
+                        val originMap = mapOf(
+                            "type" to "class",
+                            "classId" to resolvedClassId
+                        )
+                        nav.currentBackStackEntry?.savedStateHandle?.set("qna_origin", originMap)
+                        android.util.Log.d("MemberNavGraph", "Set qna_origin for class: $originMap")
+                    } catch (t: Throwable) {
+                        android.util.Log.e("MemberNavGraph", "Failed to set qna_origin for class: ${t.message}")
+                    }
+                    nav.navigate(com.livon.app.navigation.Routes.HealthHeight)
+                },
+                navController = nav,
+                externalError = actionState.errorMessage
+            )
+        } else {
+            // 클래스 정보 로딩 실패 시 UI
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = errorDetail.value ?: "오류가 발생했습니다.")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(onClick = { nav.popBackStack() }) { Text(text = "뒤로가기") }
                 }
             }
         }
     }
+}
+
+// =================================================================
+// >>>>>>>> 여기까지 추가 <<<<<<<<
+// =================================================================
+
+// Reservation (예약 현황) screen
+
 
     // Reservation (예약 현황) screen
     composable("reservations") {
@@ -986,7 +1032,6 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
 
     // Live member screen: entry point for members to join LiveKit session
     composable("live_member/{sessionId}") { backStackEntry ->
-        val sessionId = backStackEntry.arguments?.getString("sessionId") ?: ""
         // For now show a simple placeholder screen; wiring livekit is out of scope here
         com.livon.app.feature.member.streaming.ui.LiveStreamingMemberScreen() // implement minimal composable
     }

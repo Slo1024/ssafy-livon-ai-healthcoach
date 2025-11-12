@@ -72,6 +72,17 @@ class ReservationRepositoryImpl : ReservationRepository {
                 Result.success(res.result)
             } else Result.failure(Exception(res.message ?: "Unknown"))
         } catch (t: Throwable) {
+            // Improved error logging: if this is an HTTP exception, try to extract server error body
+            try {
+                if (t is retrofit2.HttpException) {
+                    val errorBody = t.response()?.errorBody()?.string()
+                    Log.e("ReservationRepo", "reserveClass failed: http ${t.code()} ${t.message()} body=$errorBody", t)
+                    return Result.failure(Exception(errorBody ?: t.message))
+                }
+            } catch (t2: Throwable) {
+                Log.e("ReservationRepo", "Failed to extract http error body", t2)
+            }
+            Log.e("ReservationRepo", "reserveClass failed", t)
             Result.failure(t)
         }
     }

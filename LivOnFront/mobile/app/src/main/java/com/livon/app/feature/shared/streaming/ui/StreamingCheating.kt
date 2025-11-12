@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.livon.app.feature.shared.streaming.util.DateFormatter
 import com.livon.app.feature.shared.streaming.vm.StreamingChatViewModel
@@ -116,15 +117,29 @@ fun StreamingCheating(
 
         Scaffold(
             topBar = {
-                StreamingCheatingHeader(onBackClick = onBackClick)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .windowInsetsPadding(WindowInsets.statusBars)
+                        .zIndex(1f)
+                ) {
+                    StreamingCheatingHeader(onBackClick = onBackClick)
+                }
             },
             bottomBar = {
-                CheatingBar(
-                    modifier = Modifier.fillMaxWidth(),
-                    onSend = { message ->
-                        viewModel.sendMessage(message, BuildConfig.WEBSOCKET_TOKEN, chatRoomId = chatRoomId)
-                    }
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .windowInsetsPadding(WindowInsets.navigationBars)
+                        .zIndex(1f)
+                ) {
+                    CheatingBar(
+                        modifier = Modifier.fillMaxWidth(),
+                        onSend = { message ->
+                            viewModel.sendMessage(message, BuildConfig.WEBSOCKET_TOKEN, chatRoomId = chatRoomId)
+                        }
+                    )
+                }
             }
         ) { paddingValues ->
             val error = uiState.error

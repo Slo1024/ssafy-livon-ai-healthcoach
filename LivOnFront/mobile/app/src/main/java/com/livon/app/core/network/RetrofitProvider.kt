@@ -43,8 +43,8 @@ object RetrofitProvider {
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    // Build Moshi with Kotlin adapter so Kotlin data classes are supported
-    private val moshi = Moshi.Builder()
+    // Expose Moshi publicly so other repositories can reuse the exact same configured instance
+    val moshi: Moshi = Moshi.Builder()
         .add(KotlinJsonAdapterFactory())
         .build()
 

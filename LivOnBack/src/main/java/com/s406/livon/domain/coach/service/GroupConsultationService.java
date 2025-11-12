@@ -77,6 +77,8 @@ public class GroupConsultationService {
                 .build();
         
         Consultation savedConsultation = consultationRepository.save(consultation);
+        consultation.generateSessionId();  // 세션 ID 생성
+        consultationRepository.save(consultation);  // 업데이트
         
         // 4. 클래스 이미지 저장
         String Url = "";

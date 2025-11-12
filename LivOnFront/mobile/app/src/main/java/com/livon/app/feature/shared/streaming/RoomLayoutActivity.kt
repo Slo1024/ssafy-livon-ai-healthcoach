@@ -21,14 +21,17 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.livon.app.feature.coach.streaming.ui.LiveStreamingCoachScreen
 import com.livon.app.feature.shared.streaming.*
+import com.livon.app.data.session.SessionManager
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.request.header
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
 import io.livekit.android.ConnectOptions
 import io.livekit.android.LiveKit
@@ -180,10 +183,16 @@ class RoomLayoutActivity : AppCompatActivity() {
     private fun connectToRoom() {
         val participantName = intent.getStringExtra("participantName") ?: "Participant1"
         val roomName = intent.getStringExtra("roomName") ?: "Test Room"
+        val consultationId = intent.getLongExtra("consultationId", -1L)
 
         lifecycleScope.launch {
             try {
-                val token = getToken(roomName, participantName)
+                val token = if (consultationId != -1L) {
+                    getToken(consultationId, participantName)
+                } else {
+                    // Fallback for old flow (JoinRoomScreen)
+                    getToken(roomName, participantName)
+                }
 
                 room.connect(
                     Urls.livekitUrl,
@@ -472,14 +481,40 @@ class RoomLayoutActivity : AppCompatActivity() {
         finish()
     }
 
-    private suspend fun getToken(roomName: String, participantName: String): String {
-        val response = client.post(Urls.applicationServerUrl + "token") {
-            contentType(ContentType.Application.Json)
-            setBody(TokenRequest(roomName, participantName))
+    private suspend fun getToken(consultationId: Long, participantName: String): String {
+        val jwtToken = SessionManager.getTokenSync()
+        if (jwtToken == null) {
+            throw IllegalStateException("JWT token is not available")
         }
 
-        Log.d("token", response.body<TokenResponse>().token)
-        return response.body<TokenResponse>().token
+        val response = client.post(Urls.applicationServerUrl + "token") {
+            contentType(ContentType.Application.Json)
+            header(HttpHeaders.Authorization, "Bearer $jwtToken")
+            setBody(TokenRequest(consultationId, participantName))
+        }
+
+        val apiResponse = response.body<TokenApiResponse>()
+        if (!apiResponse.isSuccess || apiResponse.result == null) {
+            throw IllegalStateException("Failed to get token: ${apiResponse.message ?: "Unknown error"}")
+        }
+
+        val token = apiResponse.result["token"]
+        if (token == null) {
+            throw IllegalStateException("Token not found in response result")
+        }
+
+        Log.d("token", token)
+        return token
+    }
+
+    // Fallback for old flow (JoinRoomScreen) - deprecated
+    private suspend fun getToken(roomName: String, participantName: String): String {
+        // For backward compatibility, try to parse roomName as consultationId
+        val consultationId = roomName.toLongOrNull() ?: -1L
+        if (consultationId == -1L) {
+            throw IllegalArgumentException("roomName must be a valid consultationId (Long)")
+        }
+        return getToken(consultationId, participantName)
     }
 
     private fun toggleCamera() {

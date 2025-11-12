@@ -43,7 +43,7 @@ const TitleAndMessageContainer = styled.div`
     flex-direction: column;
     align-items: center;
     text-align: center;
-    gap: 16px;
+    gap: 8px;
   }
 `;
 
@@ -89,6 +89,13 @@ const ScheduleMessage = styled.div`
   white-space: pre-line;
   text-align: center;
 
+  @media (max-width: 1200px) {
+    position: static;
+    transform: none;
+    width: 100%;
+    margin-top: 0;
+  }
+
   @media (max-width: 768px) {
     font-size: 20px;
   }
@@ -118,16 +125,6 @@ const FilterDropdown = styled.div`
   margin-left: auto;
 `;
 
-const Divider = styled.div`
-  width: 100vw;
-  height: 2px;
-  background-color: #4965f6;
-  margin: 0;
-  position: relative;
-  left: 50%;
-  transform: translateX(-50%);
-`;
-
 const ReservationTable = styled.table`
   width: 100%;
   border-collapse: collapse;
@@ -145,44 +142,71 @@ const TableHeaderCell = styled.th`
   font-size: 14px;
   color: #374151;
   border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+  width: auto;
+
+  @media (max-width: 768px) {
+    font-size: 13px;
+  }
 `;
 
 const TableBody = styled.tbody``;
 
 const TableRow = styled.tr`
   border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.2s ease;
 
   &:hover {
-    background-color: #f9fafb;
+    background-color: transparent;
   }
 `;
 
 const TableCell = styled.td`
   padding: 16px;
   font-size: 14px;
-  color: #111827;
+  color: #374151;
+  vertical-align: middle;
+  word-break: keep-all;
+  white-space: normal;
 
   &:nth-child(1) {
     width: 200px;
+    white-space: nowrap;
   }
-  &:nth-child(4) {
-    color: #4965f6;
+  @media (max-width: 900px) {
+    padding: 14px 12px;
+  }
+
+  @media (max-width: 768px) {
+    padding: 12px 10px;
+    font-size: 13px;
+
+    &:nth-child(1) {
+      width: 170px;
+      white-space: nowrap;
+    }
   }
 `;
 
 const ClassTitle = styled.span`
-  font-weight: 700;
-  margin-right: 8px;
+  display: block;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 4px;
 `;
 
 const ClassDescription = styled.span`
+  display: block;
+  font-size: 13px;
   color: #6b7280;
 `;
 
 const ActionButtonContainer = styled.div`
   display: flex;
   gap: 8px;
+  align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
 `;
 
 const StartConsultationButton = styled.button`
@@ -203,18 +227,25 @@ const StartConsultationButton = styled.button`
   }
 `;
 
-const ViewMemberButton = styled.button<{ $hasLongText?: boolean }>`
-  padding: 8px 16px;
+const ViewMemberButton = styled.button<{ $compact?: boolean }>`
+  width: ${(props) => (props.$compact ? "85px" : "86px")};
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
   background-color: #ffffff;
   color: #4965f6;
   border: 1px solid #4965f6;
   border-radius: 8px;
-  font-size: ${(props) => (props.$hasLongText ? "10px" : "14px")};
+  font-size: ${(props) => (props.$compact ? "14px" : "12px")};
   font-weight: 500;
   cursor: pointer;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
+  text-align: center;
   white-space: nowrap;
+  line-height: 1;
 
   &:hover {
     background-color: #f7fafc;
@@ -605,8 +636,6 @@ export const ReservationListPage: React.FC = () => {
           </FilterDropdown>
         </TabsAndFilterContainer>
 
-        <Divider />
-
         {loading ? (
           <LoadingMessage>예약 목록을 불러오는 중...</LoadingMessage>
         ) : error ? (
@@ -667,7 +696,6 @@ export const ReservationListPage: React.FC = () => {
                           </StartConsultationButton>
                           {isIndividual && firstParticipant ? (
                             <ViewMemberButton
-                              $hasLongText={true}
                               onClick={() =>
                                 handleViewMember(
                                   firstParticipant.nickname,
@@ -680,6 +708,7 @@ export const ReservationListPage: React.FC = () => {
                             </ViewMemberButton>
                           ) : (
                             <ViewMemberButton
+                              $compact
                               onClick={() =>
                                 handleViewAppliedMembers(
                                   reservation.participants

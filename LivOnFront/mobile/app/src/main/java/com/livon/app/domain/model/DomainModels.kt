@@ -54,7 +54,7 @@ data class GroupConsultation(
 data class IndividualConsultation(
     val id: Long,
     val aiSummary: String?,
-    val preQna: String?
+    val preQnA: String?
 )
 
 /* ---------- Participant ---------- */

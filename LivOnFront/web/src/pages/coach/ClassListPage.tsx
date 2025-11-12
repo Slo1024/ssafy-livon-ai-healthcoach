@@ -34,6 +34,24 @@ const PageTitle = styled.h1`
   font-size: 40px;
   color: #000000;
   margin: 0 0 24px 0;
+  text-align: left;
+
+  @media (max-width: 1200px) {
+    text-align: center;
+    font-size: 34px;
+  }
+
+  @media (max-width: 900px) {
+    font-size: 30px;
+  }
+
+  @media (max-width: 768px) {
+    font-size: 26px;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 24px;
+  }
 `;
 
 const TabsAndFilterContainer = styled.div`
@@ -89,10 +107,12 @@ const TableHeaderCell = styled.th`
   }
   &:nth-child(2) {
     width: auto;
+    white-space: nowrap;
+    word-break: keep-all;
   }
   &:nth-child(3) {
     width: 150px;
-    text-align: right;
+    text-align: center;
   }
   &:nth-child(4) {
     width: 200px;
@@ -104,9 +124,10 @@ const TableBody = styled.tbody``;
 
 const TableRow = styled.tr`
   border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.2s ease;
 
   &:hover {
-    background-color: #f9fafb;
+    background-color: transparent;
   }
 `;
 
@@ -115,8 +136,12 @@ const TableCell = styled.td`
   font-size: 14px;
   color: #111827;
 
+  &:nth-child(2) {
+    white-space: nowrap;
+    word-break: keep-all;
+  }
   &:nth-child(3) {
-    text-align: right;
+    text-align: center;
     color: #6b7280;
   }
   &:nth-child(4) {
@@ -366,8 +391,6 @@ export const ClassListPage: React.FC = () => {
           </FilterDropdown>
         </TabsAndFilterContainer>
 
-        <Divider />
-
         {loading ? (
           <LoadingMessage>클래스 목록을 불러오는 중...</LoadingMessage>
         ) : error ? (
@@ -388,7 +411,7 @@ export const ClassListPage: React.FC = () => {
               <TableBody>
                 {classes.map((classItem, index) => (
                   <TableRow key={classItem.id}>
-                    <TableCell>{currentPage * pageSize + index + 1}</TableCell>
+                    <TableCell>{index + 1}</TableCell>
                     <TableCell>{classItem.title}</TableCell>
                     <TableCell>{formatDate(classItem.startAt)} 개설</TableCell>
                     <TableCell>
@@ -457,22 +480,20 @@ export const ClassListPage: React.FC = () => {
       </ContentWrapper>
 
       {/* 클래스 정보 수정 모달 */}
-      <ClassEditModal
-        open={showEditModal}
-        onClose={() => setShowEditModal(false)}
-        classNameData={
-          editingClass
-            ? {
-                name: editingClass.title,
-                description: "",
-                targetMember: "",
-                dateTime: formatDate(editingClass.startAt),
-                file: editingClass.imageUrl || "",
-              }
-            : undefined
-        }
-        onSave={handleSave}
-      />
+      {editingClass && (
+        <ClassEditModal
+          open={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          classNameData={{
+            name: editingClass.title,
+            description: "",
+            targetMember: "",
+            dateTime: formatDate(editingClass.startAt),
+            file: editingClass.imageUrl || "",
+          }}
+          onSave={handleSave}
+        />
+      )}
 
       {/* 저장 확인 모달 */}
       <ConfirmModal

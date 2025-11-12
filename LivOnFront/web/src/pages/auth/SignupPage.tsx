@@ -15,32 +15,32 @@ const SignupContainer = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding: 40px 20px;
+  padding: clamp(24px, 5vw, 40px) clamp(16px, 4vw, 24px);
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  overflow-x: auto;
   width: 100%;
 `;
 
 const SignupContentWrapper = styled.div`
-  width: 810px;
-  min-width: 810px;
+  width: 100%;
+  max-width: 810px;
   background-color: #ffffff;
-  padding: 30px 40px;
+  padding: clamp(20px, 4vw, 40px);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   border-radius: 12px;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
 `;
 
 const WelcomeMessage = styled.div`
   text-align: center;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 32px;
+  font-size: clamp(20px, 5vw, 32px);
   font-weight: 700;
   color: #000000;
-  margin-bottom: 40px;
-  line-height: 1.5;
+  margin-bottom: clamp(24px, 4vw, 40px);
+  line-height: 1.4;
 `;
 
 const SignupTitle = styled.div`
@@ -48,17 +48,18 @@ const SignupTitle = styled.div`
   align-items: baseline;
   gap: 8px;
   margin-bottom: 25px;
+  flex-wrap: wrap;
 `;
 
 const SignupTitleMain = styled.span`
-  font-size: 32px;
+  font-size: clamp(24px, 4vw, 32px);
   font-weight: 800;
   color: #000000;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 `;
 
 const SignupTitleSub = styled.span`
-  font-size: 20px;
+  font-size: clamp(16px, 3vw, 20px);
   font-weight: 200;
   color: #000000;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -69,11 +70,16 @@ const ProfileSection = styled.div`
   gap: 20px;
   margin-bottom: 25px;
   align-items: flex-start;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: center;
+  }
 `;
 
 const ProfileImageContainer = styled.div`
-  width: 197px;
-  height: 263px;
+  width: clamp(160px, 30vw, 197px);
+  height: clamp(200px, 40vw, 263px);
   border-radius: 8px;
   background-color: #ffffff;
   border: 1px solid #dee2e6;
@@ -111,6 +117,7 @@ const ProfileInfo = styled.div`
   display: flex;
   flex-direction: column;
   gap: 10px;
+  width: 100%;
 `;
 
 const ProfileLabel = styled.h3`
@@ -135,6 +142,7 @@ const FileNameContainer = styled.div`
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
+  width: 100%;
 `;
 
 const FileNameInput = styled.input`
@@ -179,8 +187,8 @@ const ProfileDescription = styled.div`
 
 const FormGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px; /* add space between left inputs and right labels */
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: clamp(16px, 3vw, 24px); /* add space between left inputs and right labels */
   margin-bottom: 25px;
 `;
 
@@ -188,6 +196,22 @@ const FormColumn = styled.div`
   display: flex;
   flex-direction: column;
   gap: 15px;
+
+  &:nth-child(2) {
+    padding-left: 32px;
+  }
+
+  @media (max-width: 1024px) {
+    &:nth-child(2) {
+      padding-left: 24px;
+    }
+  }
+
+  @media (max-width: 900px) {
+    &:nth-child(2) {
+      padding-left: 0;
+    }
+  }
 `;
 
 const FormField = styled.div`
@@ -196,6 +220,12 @@ const FormField = styled.div`
   align-items: center;
   gap: 3px; /* tighter label-input spacing */
   width: 100%;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
 `;
 
 const FormLabel = styled.label`
@@ -207,6 +237,11 @@ const FormLabel = styled.label`
   flex-shrink: 0;
   white-space: nowrap;
   margin-left: 0;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    white-space: normal;
+  }
 `;
 
 const InputWithButton = styled.div`
@@ -215,12 +250,41 @@ const InputWithButton = styled.div`
   align-items: center;
   flex: 1;
   width: 100%;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
 `;
 
 const FieldColumn = styled.div`
   display: flex;
   flex-direction: column;
   flex: 1;
+`;
+
+const RadioGroup = styled.div`
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  flex: 1;
+  flex-wrap: wrap;
+`;
+
+const RadioLabel = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+`;
+
+const RadioInput = styled.input`
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
 `;
 
 
@@ -247,6 +311,7 @@ const PasswordInputContainer = styled.div`
   display: flex;
   align-items: center;
   flex: 1;
+  width: 100%;
 `;
 
 const PasswordToggleButton = styled.button`
@@ -269,7 +334,6 @@ const PasswordMatchIndicator = styled.div`
   font-size: 12px;
   color: #28a745;
   margin-top: 5px;
-  margin-left: 135px;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   white-space: nowrap;
   width: 100%;
@@ -279,33 +343,13 @@ const ErrorIndicator = styled(PasswordMatchIndicator)`
   color: #ff0000;
 `;
 
+
 const PasswordConfirmWrapper = styled.div`
   display: flex;
   flex-direction: column;
   flex: 1;
   gap: 5px;
-`;
-
-const RadioGroup = styled.div`
-  display: flex;
-  gap: 20px;
-  align-items: center;
-  flex: 1;
-`;
-
-const RadioLabel = styled.label`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  cursor: pointer;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-`;
-
-const RadioInput = styled.input`
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
+  width: 100%;
 `;
 
 const QualificationInput = styled.div`
@@ -386,6 +430,12 @@ const EmailInputContainer = styled.div`
   align-items: center;
   flex: 1;
   width: 100%;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
 `;
 
 const EmailSeparator = styled.span`
@@ -514,8 +564,6 @@ const CrossIcon = styled.span`
 export const SignupPage: React.FC = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    userId: '',
-    name: '',
     nickname: '',
     password: '',
     confirmPassword: '',
@@ -524,12 +572,10 @@ export const SignupPage: React.FC = () => {
     qualifications: [] as string[],
     qualificationInput: '',
     introduction: '',
-    contact: '',
     emailId: '',
     emailDomain: '',
     verificationCode: '',
     affiliation: '',
-    job: '',
     profileImage: null as File | null,
     profileFileName: '',
   });
@@ -543,7 +589,6 @@ export const SignupPage: React.FC = () => {
   const [emailDomains] = useState(['gmail.com', 'naver.com', 'daum.net', 'kakao.com']);
 
   // ID / Nickname duplication check states
-  const [idCheckStatus, setIdCheckStatus] = useState<'idle' | 'available' | 'taken'>('idle');
   const [nicknameCheckStatus, setNicknameCheckStatus] = useState<'idle' | 'available' | 'taken'>('idle');
   const [showPersonalModal, setShowPersonalModal] = useState(false);
   const [showThirdPartyModal, setShowThirdPartyModal] = useState(false);
@@ -564,7 +609,6 @@ export const SignupPage: React.FC = () => {
     }
 
     // 입력이 바뀌면 중복결과 초기화
-    if (field === 'userId') setIdCheckStatus('idle');
     if (field === 'nickname') setNicknameCheckStatus('idle');
   };
 
@@ -572,11 +616,6 @@ export const SignupPage: React.FC = () => {
   const isTaken = (value: string) => {
     const blacklist = ['admin', 'test', 'user', 'guest', 'root'];
     return blacklist.includes(value.trim().toLowerCase());
-  };
-
-  const handleCheckUserId = () => {
-    if (!formData.userId.trim()) return;
-    setIdCheckStatus(isTaken(formData.userId) ? 'taken' : 'available');
   };
 
   const handleCheckNickname = () => {
@@ -699,45 +738,6 @@ export const SignupPage: React.FC = () => {
         <FormGrid>
           <FormColumn>
             <FormField>
-              <FormLabel>아이디</FormLabel>
-              <FieldColumn>
-                <InputWithButton>
-                  <Input
-                    type="text"
-                    placeholder="아이디를 입력하세요"
-                    value={formData.userId}
-                    onChange={(e) => handleInputChange('userId', e.target.value)}
-                    style={{ flex: 1 }}
-                  />
-                  <SmallButton type="button" onClick={handleCheckUserId}>중복확인</SmallButton>
-                </InputWithButton>
-                {idCheckStatus === 'available' && (
-                  <PasswordMatchIndicator style={{ marginLeft: '0' }}>
-                    <CheckIcon>✓</CheckIcon>
-                    사용 가능한 아이디입니다.
-                  </PasswordMatchIndicator>
-                )}
-                {idCheckStatus === 'taken' && (
-                  <ErrorIndicator style={{ marginLeft: '0' }}>
-                    <CrossIcon>✕</CrossIcon>
-                    이미 사용중인 아이디입니다.
-                  </ErrorIndicator>
-                )}
-              </FieldColumn>
-            </FormField>
-
-            <FormField>
-              <FormLabel>이름</FormLabel>
-              <Input
-                type="text"
-                placeholder="이름을 입력해주세요."
-                value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-                style={{ flex: 1 }}
-              />
-            </FormField>
-
-            <FormField>
               <FormLabel>닉네임</FormLabel>
               <FieldColumn>
                 <InputWithButton>
@@ -798,7 +798,7 @@ export const SignupPage: React.FC = () => {
                     placeholder="비밀번호를 한 번 더 입력해주세요."
                     value={formData.confirmPassword}
                     onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                    style={{ paddingRight: '40px', flex: 1 }}
+                  style={{ paddingRight: '40px', flex: 1, width: '100%' }}
                   />
                   <PasswordToggleButton
                     type="button"
@@ -863,22 +863,9 @@ export const SignupPage: React.FC = () => {
                 style={{ flex: 1 }}
               />
             </FormField>
-
-            
           </FormColumn>
 
           <FormColumn>
-            <FormField style={{ gap: '0px' }}>
-              <FormLabel style={{ width: '90px' }}>연락처</FormLabel>
-              <Input
-                type="tel"
-                placeholder="연락처를 입력해주세요."
-                value={formData.contact}
-                onChange={(e) => handleInputChange('contact', e.target.value)}
-                style={{ flex: 1 }}
-              />
-            </FormField>
-
             <FormField style={{ alignItems: 'flex-start', gap: '0px' }}>
               <FormLabel style={{ marginTop: '17px', width: '90px' }}>이메일</FormLabel>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
@@ -928,22 +915,6 @@ export const SignupPage: React.FC = () => {
                 style={{ flex: 1 }}
               />
             </FormField>
-
-            <FormField style={{ gap: '0px' }}>
-              <FormLabel style={{ width: '90px' }}>직무</FormLabel>
-              <Dropdown
-                value={formData.job}
-                onChange={(e) => handleInputChange('job', e.target.value)}
-                options={[
-                  { value: 'exercise-fitness', label: '운동/피트니스' },
-                  { value: 'diet-nutrition', label: '식단/영양' },
-                  { value: 'physical-health', label: '신체건강/통증 관리' },
-                  { value: 'mental-health', label: '정신건강/멘탈케어' }
-                ]}
-                placeholder="코칭할 분야를 선택해 주세요."
-                style={{ flex: 1 }}
-              />
-            </FormField>
           </FormColumn>
         </FormGrid>
 
@@ -955,7 +926,7 @@ export const SignupPage: React.FC = () => {
               취득한 자격증을 입력해 주세요.
             </div>
           </div>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', position: 'relative' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', position: 'relative', width: '100%' }}>
             {qualificationFields.map((value, index) => (
               <Input
                 key={index}
@@ -965,7 +936,7 @@ export const SignupPage: React.FC = () => {
                 onChange={(e) =>
                   setQualificationFields(prev => prev.map((v, i) => (i === index ? e.target.value : v)))
                 }
-                style={{ flex: 1 }}
+                style={{ flex: 1, width: '100%' }}
               />
             ))}
             <AddButton type="button" onClick={handleAddQualification}>추가 +</AddButton>
@@ -979,7 +950,7 @@ export const SignupPage: React.FC = () => {
               회원들에게 코치님을<br />소개하는 글을 입력해 주세요.
             </div>
           </div>
-          <div style={{ flex: 1, alignSelf: 'flex-start' }}>
+          <div style={{ flex: 1, alignSelf: 'flex-start', width: '100%' }}>
             <TextArea
               placeholder="소개 글을 입력해 주세요."
               value={formData.introduction}

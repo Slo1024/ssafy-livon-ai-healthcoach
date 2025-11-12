@@ -1,28 +1,25 @@
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { useAuth } from "../../hooks/useAuth";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Input as CommonInput } from "../../components/common/Input";
 import { Dropdown as CommonDropdown } from "../../components/common/Dropdown";
 import { DateTimePickerModal } from "../../components/common/Modal";
 import profilePictureIcon from "../../assets/images/profile_picture.png";
 import { ROUTES } from "../../constants/routes";
-import { getMyProfileApi } from "../../api/authApi";
 import { CONFIG } from "../../constants/config";
-import {
-  updateCoachBlockedTimesApi,
-  getCoachBlockedTimesApi,
-} from "../../api/reservationApi";
+import { getMyProfileApi } from "../../api/authApi";
 
 const PageContainer = styled.div`
   min-height: 100vh;
   background-color: #ffffff;
-  padding: 40px 20px;
+  padding: clamp(24px, 5vw, 40px) clamp(16px, 4vw, 32px);
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
 `;
 
 const ContentWrapper = styled.div`
+  width: 100%;
   max-width: 1200px;
   margin: 0 auto;
 `;
@@ -32,55 +29,24 @@ const PageTitle = styled.h1`
   font-size: 40px;
   color: #000000;
   margin: 0 0 24px 0;
-`;
+  text-align: left;
 
-const Tabs = styled.div`
-  display: flex;
-  gap: 0;
-
-  /* 두 버튼이 맞닿도록 인접 모서리 처리 */
-  button {
-    border-radius: 6px;
+  @media (max-width: 1200px) {
+    text-align: center;
+    font-size: 34px;
   }
-  button:last-child {
-    margin-left: -1px; /* 테두리 겹치기 */
+
+  @media (max-width: 900px) {
+    font-size: 30px;
   }
-`;
 
-const PrimaryTabButton = styled.button`
-  width: 120px;
-  height: 48px;
-  border: 1px solid #4965f6;
-  background-color: #4965f6;
-  color: #ffffff;
-  font-weight: 500; /* Pretendard Medium */
-  font-size: 16px;
-  cursor: pointer;
-  border-radius: 6px;
-  white-space: nowrap;
-`;
+  @media (max-width: 768px) {
+    font-size: 26px;
+  }
 
-const OutlineTabButton = styled.button`
-  width: 120px;
-  height: 48px;
-  border: 1px solid #4965f6;
-  background-color: #ffffff;
-  color: #4965f6;
-  font-weight: 500; /* Pretendard Medium */
-  font-size: 16px;
-  cursor: pointer;
-  border-radius: 6px;
-  white-space: nowrap;
-`;
-
-const Divider = styled.div`
-  width: 100vw; /* 화면 전체 폭 */
-  height: 2px;
-  background-color: #4965f6;
-  margin: 0;
-  position: relative;
-  left: 50%;
-  transform: translateX(-50%); /* 중앙 기준으로 좌우 끝까지 */
+  @media (max-width: 480px) {
+    font-size: 24px;
+  }
 `;
 
 // 프로필 사진 업로드 섹션 스타일
@@ -89,11 +55,18 @@ const ProfileSection = styled.div`
   gap: 20px;
   margin-top: 16px; /* 탭 가로줄과 약간의 간격 */
   align-items: flex-start;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    gap: 24px;
+  }
 `;
 
 const ProfileImageContainer = styled.div`
-  width: 197px;
-  height: 263px;
+  width: clamp(160px, 30vw, 197px);
+  height: clamp(200px, 36vw, 263px);
   border-radius: 8px;
   background-color: #ffffff;
   border: 1px solid #dee2e6;
@@ -128,6 +101,7 @@ const ProfileInfo = styled.div`
   display: flex;
   flex-direction: column;
   gap: 10px;
+  width: 100%;
 `;
 
 const ProfileLabel = styled.h3`
@@ -144,6 +118,7 @@ const FileNameContainer = styled.div`
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
+  width: 100%;
 `;
 
 const FileNameLabel = styled.label`
@@ -205,8 +180,8 @@ const ProfileDescription = styled.div`
 // SignupPage 유사 폼 레이아웃
 const FormGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: clamp(16px, 3vw, 24px);
   margin-top: 24px;
 `;
 
@@ -222,6 +197,12 @@ const FormField = styled.div`
   align-items: center;
   gap: 3px;
   width: 100%;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
 `;
 
 const FormLabel = styled.label`
@@ -233,6 +214,11 @@ const FormLabel = styled.label`
   width: 100px;
   flex-shrink: 0;
   white-space: nowrap;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    white-space: normal;
+  }
 `;
 
 const InputWithButton = styled.div`
@@ -241,6 +227,12 @@ const InputWithButton = styled.div`
   align-items: center;
   flex: 1;
   width: 100%;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
 `;
 
 const SmallButton = styled.button`
@@ -267,6 +259,7 @@ const RadioGroup = styled.div`
   gap: 20px;
   align-items: center;
   flex: 1;
+  flex-wrap: wrap;
 `;
 
 const EmailInputContainer = styled.div`
@@ -275,6 +268,12 @@ const EmailInputContainer = styled.div`
   align-items: center;
   flex: 1;
   width: 100%;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
 `;
 
 const EmailSeparator = styled.span`
@@ -346,6 +345,11 @@ const Field = styled.div`
   align-items: center;
   gap: 8px;
   margin-bottom: 14px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 
 const Label = styled.div`
@@ -355,6 +359,10 @@ const Label = styled.div`
     Roboto, sans-serif;
   font-size: 14px;
   color: #000;
+
+  @media (max-width: 768px) {
+    width: 100%;
+  }
 `;
 
 const Input = styled.input`
@@ -384,25 +392,6 @@ const SubmitButton = styled.button`
     Roboto, sans-serif;
 `;
 
-const ModalOverlay = styled.div`
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-`;
-
-const ModalCard = styled.div`
-  width: 560px;
-  max-width: 90vw;
-  background: #fff;
-  border-radius: 12px;
-  padding: 24px 20px;
-  text-align: center;
-`;
-
 const LoadingMessage = styled.div`
   text-align: center;
   padding: 80px 20px;
@@ -424,10 +413,8 @@ const ErrorMessage = styled.div`
 `;
 
 export const MyPageInfoPage: React.FC = () => {
-  const { user, isLoading } = useAuth();
-  const location = useLocation();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [showModal, setShowModal] = useState(false);
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [profileFileName, setProfileFileName] = useState("");
   const [emailDomains] = useState([
@@ -437,18 +424,14 @@ export const MyPageInfoPage: React.FC = () => {
     "kakao.com",
   ]);
   const [formData, setFormData] = useState({
-    userId: "",
-    name: "",
     nickname: "",
     password: "",
     confirmPassword: "",
     gender: "male",
     birthDate: "",
-    contact: "",
     emailId: "",
     emailDomain: "",
     affiliation: "",
-    job: "",
     introduction: "",
   });
   const [qualificationFields, setQualificationFields] = useState<string[]>([
@@ -508,14 +491,13 @@ export const MyPageInfoPage: React.FC = () => {
           // formData 업데이트
           setFormData((prev) => ({
             ...prev,
-            userId: userData.userId || "",
             nickname: userData.nickname || "",
-            contact: userData.phoneNumber || "",
             emailId: emailId,
             emailDomain: emailDomain,
             gender: genderValue,
             birthDate: birthDateValue,
             affiliation: userData.organizations || "",
+            introduction: "",
           }));
 
           // 프로필 이미지 설정
@@ -548,24 +530,16 @@ export const MyPageInfoPage: React.FC = () => {
 
   const handleAddQualification = () =>
     setQualificationFields((prev) => [...prev, ""]);
-
-  const isInfoPage = location.pathname.includes("/coach/mypage/info");
-  const nickname = user?.nickname || formData.nickname;
-
-  const handleInfoClick = () => {
-    navigate(ROUTES.COACH_MYPAGE_INFO);
-  };
-
-  const handleVerificationClick = () => {
+  const nickname = user?.nickname;
+  const navigateToVerification = () =>
     navigate(ROUTES.COACH_MYPAGE_VERIFICATION);
-  };
 
   // 코치 전용 가드
   useEffect(() => {
-    if (!isLoading && user && user.role !== "coach") {
+    if (!loading && user && user.role !== "coach") {
       navigate(ROUTES.COACH_ONLY, { replace: true });
     }
-  }, [isLoading, user, navigate]);
+  }, [loading, user, navigate]);
   if (loading) {
     return (
       <PageContainer>
@@ -592,28 +566,6 @@ export const MyPageInfoPage: React.FC = () => {
         <PageTitle>
           {nickname ? `${nickname} 코치님 마이페이지` : "코치님 마이페이지"}
         </PageTitle>
-        <Tabs>
-          {isInfoPage ? (
-            <>
-              <PrimaryTabButton onClick={handleInfoClick}>
-                코치님 정보
-              </PrimaryTabButton>
-              <OutlineTabButton onClick={handleVerificationClick}>
-                코치 인증 여부
-              </OutlineTabButton>
-            </>
-          ) : (
-            <>
-              <OutlineTabButton onClick={handleInfoClick}>
-                코치님 정보
-              </OutlineTabButton>
-              <PrimaryTabButton onClick={handleVerificationClick}>
-                코치 인증 여부
-              </PrimaryTabButton>
-            </>
-          )}
-        </Tabs>
-        <Divider />
 
         {/* 프로필 사진 업로드 섹션 */}
         <ProfileSection>
@@ -660,9 +612,8 @@ export const MyPageInfoPage: React.FC = () => {
                 onClick={() => {
                   setProfileImage(null);
                   setProfileFileName("");
-                  setProfileImageUrl(null);
                 }}
-                disabled={!profileImage && !profileImageUrl}
+                disabled={!profileImage}
               >
                 파일 삭제
               </FileButton>
@@ -701,29 +652,6 @@ export const MyPageInfoPage: React.FC = () => {
         {/* SignupPage 형태의 폼 (이메일 인증 관련 요소 제외) */}
         <FormGrid>
           <FormColumn>
-            <FormField>
-              <FormLabel>아이디</FormLabel>
-              <InputWithButton>
-                <CommonInput
-                  placeholder="아이디를 입력하세요"
-                  value={formData.userId}
-                  onChange={(e) => handleInputChange("userId", e.target.value)}
-                  style={{ flex: 1 }}
-                />
-                <SmallButton type="button">중복확인</SmallButton>
-              </InputWithButton>
-            </FormField>
-
-            <FormField>
-              <FormLabel>이름</FormLabel>
-              <CommonInput
-                placeholder="이름을 입력해주세요."
-                value={formData.name}
-                onChange={(e) => handleInputChange("name", e.target.value)}
-                style={{ flex: 1 }}
-              />
-            </FormField>
-
             <FormField>
               <FormLabel>닉네임</FormLabel>
               <InputWithButton>
@@ -799,16 +727,6 @@ export const MyPageInfoPage: React.FC = () => {
           </FormColumn>
 
           <FormColumn>
-            <FormField>
-              <FormLabel>연락처</FormLabel>
-              <CommonInput
-                placeholder="연락처를 입력해주세요."
-                value={formData.contact}
-                onChange={(e) => handleInputChange("contact", e.target.value)}
-                style={{ flex: 1 }}
-              />
-            </FormField>
-
             <FormField style={{ alignItems: "flex-start" }}>
               <FormLabel style={{ marginTop: "17px" }}>이메일</FormLabel>
               <div
@@ -830,19 +748,18 @@ export const MyPageInfoPage: React.FC = () => {
                     style={{ flex: 1 }}
                   />
                   <EmailSeparator>@</EmailSeparator>
+                  <CommonDropdown
+                    options={emailDomains.map((domain) => ({
+                      value: domain,
+                      label: domain,
+                    }))}
+                    value={formData.emailDomain}
+                    onChange={(e) =>
+                      handleInputChange("emailDomain", e.target.value)
+                    }
+                    style={{ flex: 1 }}
+                  />
                 </EmailInputContainer>
-                <CommonDropdown
-                  options={[
-                    { value: "", label: "이메일 주소를 입력하세요." },
-                    ...emailDomains.map((d) => ({ value: d, label: d })),
-                  ]}
-                  value={formData.emailDomain}
-                  onChange={(e) =>
-                    handleInputChange("emailDomain", e.target.value)
-                  }
-                  style={{ width: "100%" }}
-                />
-                {/* 인증번호 보내기 / 인증하기 섹션 제거 */}
               </div>
             </FormField>
 
@@ -854,22 +771,6 @@ export const MyPageInfoPage: React.FC = () => {
                 onChange={(e) =>
                   handleInputChange("affiliation", e.target.value)
                 }
-                style={{ flex: 1 }}
-              />
-            </FormField>
-
-            <FormField>
-              <FormLabel>직무</FormLabel>
-              <CommonDropdown
-                options={[
-                  { value: "", label: "코칭할 분야를 선택해 주세요." },
-                  { value: "exercise-fitness", label: "운동/피트니스" },
-                  { value: "diet-nutrition", label: "식단/영양" },
-                  { value: "physical-health", label: "신체건강/통증 관리" },
-                  { value: "mental-health", label: "정신건강/멘탈케어" },
-                ]}
-                value={formData.job}
-                onChange={(e) => handleInputChange("job", e.target.value)}
                 style={{ flex: 1 }}
               />
             </FormField>
@@ -898,6 +799,7 @@ export const MyPageInfoPage: React.FC = () => {
               flexDirection: "column",
               gap: "6px",
               position: "relative",
+              width: "100%",
             }}
           >
             {qualificationFields.map((value, index) => (
@@ -906,15 +808,15 @@ export const MyPageInfoPage: React.FC = () => {
                 placeholder="자격증 명을 입력해 주세요."
                 value={value}
                 onChange={(e) => {
-                  const v = (e.target as HTMLInputElement).value;
-                  setQualificationFields((prev) =>
-                    prev.map((pv, i) => (i === index ? v : pv))
-                  );
+                  const newFields = [...qualificationFields];
+                  newFields[index] = e.target.value;
+                  setQualificationFields(newFields);
                 }}
+                style={{ width: "100%" }}
               />
             ))}
             <AddButton type="button" onClick={handleAddQualification}>
-              추가 +
+              + 자격 추가
             </AddButton>
           </div>
         </FormField>
@@ -942,7 +844,7 @@ export const MyPageInfoPage: React.FC = () => {
               소개하는 글을 입력해 주세요.
             </div>
           </div>
-          <div style={{ flex: 1, alignSelf: "flex-start" }}>
+          <div style={{ flex: 1, alignSelf: "flex-start", width: "100%" }}>
             <TextArea
               placeholder="소개 글을 입력해 주세요."
               value={formData.introduction}
@@ -961,180 +863,11 @@ export const MyPageInfoPage: React.FC = () => {
           </div>
         </FormField>
 
-        {/* 예약 받지 않는 날 */}
-        <FormField style={{ marginTop: "18px" }}>
-          <FormLabel>예약 받지 않는 날</FormLabel>
-          <CommonInput
-            placeholder="클릭하여 선택"
-            value={
-              selectedDates.length > 0
-                ? selectedDates
-                    .map(
-                      (date) =>
-                        `${date.getFullYear()}.${String(
-                          date.getMonth() + 1
-                        ).padStart(2, "0")}.${String(date.getDate()).padStart(
-                          2,
-                          "0"
-                        )}`
-                    )
-                    .join(", ") +
-                  (selectedTimes.length > 0
-                    ? ` (${selectedTimes
-                        .filter(
-                          (t) => t.startsWith("AM ") || t.startsWith("PM ")
-                        )
-                        .map((t) =>
-                          t.replace("AM ", "오전 ").replace("PM ", "오후 ")
-                        )
-                        .join(", ")})`
-                    : "")
-                : ""
-            }
-            readOnly
-            onClick={() => setShowDateTimeModal(true)}
-            style={{ flex: 1, cursor: "pointer" }}
-          />
-        </FormField>
-
-        <DateTimePickerModal
-          open={showDateTimeModal}
-          onClose={() => {
-            setShowDateTimeModal(false);
-            setBlockedTimesByDate(new Map());
-          }}
-          blockedTimesByDate={blockedTimesByDate}
-          onDateChange={async (dates) => {
-            // 날짜 변경 시 막힌 시간 조회
-            if (dates.length === 0) {
-              setBlockedTimesByDate(new Map());
-              return;
-            }
-
-            try {
-              const token = localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
-              if (!token) {
-                return;
-              }
-
-              // 각 날짜별로 막힌 시간 조회
-              const promises = dates.map(async (date) => {
-                const dateStr = `${date.getFullYear()}-${String(
-                  date.getMonth() + 1
-                ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-                try {
-                  const response = await getCoachBlockedTimesApi(
-                    token,
-                    dateStr
-                  );
-                  return { dateStr, blockedTimes: response.blockedTimes || [] };
-                } catch (err) {
-                  console.error(`날짜 ${dateStr}의 막힌 시간 조회 오류:`, err);
-                  return { dateStr, blockedTimes: [] };
-                }
-              });
-
-              const results = await Promise.all(promises);
-              const newBlockedTimesMap = new Map<string, string[]>();
-              results.forEach(({ dateStr, blockedTimes }) => {
-                if (blockedTimes.length > 0) {
-                  newBlockedTimesMap.set(dateStr, blockedTimes);
-                }
-              });
-              setBlockedTimesByDate(newBlockedTimesMap);
-            } catch (err) {
-              console.error("막힌 시간 조회 오류:", err);
-            }
-          }}
-          onSelect={async (dates, times) => {
-            setSelectedDates(dates);
-            setSelectedTimes(times);
-
-            // API 호출: 각 날짜별로 선택된 시간을 막기
-            try {
-              const token = localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
-              if (!token) {
-                throw new Error("인증 토큰이 없습니다.");
-              }
-
-              // 시간 형식 변환: "AM 8:00" -> "08:00", "PM 1:00" -> "13:00"
-              const convertTimeToHHmm = (timeStr: string): string => {
-                const [period, time] = timeStr.split(" ");
-                const [hour, minute] = time.split(":");
-                let hour24 = parseInt(hour, 10);
-
-                if (period === "PM" && hour24 !== 12) {
-                  hour24 += 12;
-                } else if (period === "AM" && hour24 === 12) {
-                  hour24 = 0;
-                }
-
-                return `${String(hour24).padStart(2, "0")}:${minute}`;
-              };
-
-              // 각 날짜별로 선택된 시간들을 그룹화
-              const dateTimeMap = new Map<string, string[]>();
-
-              // 모든 날짜에 대해 선택된 시간들을 매핑
-              dates.forEach((date) => {
-                const dateStr = `${date.getFullYear()}-${String(
-                  date.getMonth() + 1
-                ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-                const blockedTimes = times.map(convertTimeToHHmm);
-                dateTimeMap.set(dateStr, blockedTimes);
-              });
-
-              // 각 날짜별로 API 호출
-              const promises = Array.from(dateTimeMap.entries()).map(
-                ([dateStr, blockedTimes]) =>
-                  updateCoachBlockedTimesApi(token, dateStr, blockedTimes)
-              );
-
-              await Promise.all(promises);
-            } catch (err) {
-              console.error("예약 불가 시간 설정 오류:", err);
-              alert(
-                err instanceof Error
-                  ? err.message
-                  : "예약 불가 시간 설정에 실패했습니다."
-              );
-            }
-          }}
-          initialDates={selectedDates}
-          initialTimes={selectedTimes}
-        />
-
         <div style={{ marginTop: "24px" }}>
-          <SubmitButton onClick={() => setShowModal(true)}>
+          <SubmitButton onClick={navigateToVerification}>
             정보 수정
           </SubmitButton>
         </div>
-
-        {showModal && (
-          <ModalOverlay onClick={() => setShowModal(false)}>
-            <ModalCard onClick={(e) => e.stopPropagation()}>
-              <div
-                style={{
-                  fontFamily:
-                    'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                  fontWeight: 800,
-                  fontSize: "22px",
-                  marginBottom: "18px",
-                }}
-              >
-                코치님의 정보가
-                <br />
-                수정되었습니다.
-              </div>
-              <SubmitButton
-                style={{ width: "90%", margin: "0 auto" }}
-                onClick={() => setShowModal(false)}
-              >
-                확인
-              </SubmitButton>
-            </ModalCard>
-          </ModalOverlay>
-        )}
       </ContentWrapper>
     </PageContainer>
   );

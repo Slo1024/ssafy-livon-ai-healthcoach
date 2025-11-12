@@ -27,6 +27,9 @@ object SignupState {
     var activityLevel: String? by mutableStateOf(null)
     var caffeine: String? by mutableStateOf(null)
 
+    // used during reservation -> health flow roundtrip to identify originating qna route
+    var qnaMarkerRoute: String? by mutableStateOf(null)
+
     fun clear() {
         role = "member"
         nickname = ""
@@ -44,5 +47,6 @@ object SignupState {
         sleepHours = null
         activityLevel = null
         caffeine = null
+        qnaMarkerRoute = null
     }
 }

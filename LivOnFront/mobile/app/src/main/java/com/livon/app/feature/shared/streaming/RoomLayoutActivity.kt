@@ -3,7 +3,6 @@ package io.openvidu.android
 import android.Manifest
 import android.content.pm.PackageManager
 import android.app.Activity
-import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -43,7 +42,15 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import livekit.org.webrtc.EglBase
-// removed unused options imports
+import android.hardware.display.DisplayManager
+import android.hardware.display.VirtualDisplay
+import android.media.MediaRecorder
+import android.media.MediaScannerConnection
+import android.media.projection.MediaProjection
+import android.os.Environment
+import java.io.File
+import kotlin.coroutines.cancellation.CancellationException
+
 
 class RoomLayoutActivity : AppCompatActivity() {
 
@@ -51,6 +58,7 @@ class RoomLayoutActivity : AppCompatActivity() {
     private val _participantTracks = MutableStateFlow<List<TrackInfo>>(emptyList())
     private val _eglBaseContext = MutableStateFlow<EglBase.Context?>(null)
     private val _room = MutableStateFlow<Room?>(null)
+    private val _isSpeakerMuted = MutableStateFlow(false)
 
     private lateinit var room: Room
     private var eglBase: EglBase? = null
@@ -65,6 +73,13 @@ class RoomLayoutActivity : AppCompatActivity() {
             })
         }
     }
+
+    private lateinit var mediaProjectionManager: MediaProjectionManager
+    private var mediaProjection: MediaProjection? = null
+    private var mediaRecorder: MediaRecorder? = null
+    private var virtualDisplay: VirtualDisplay? = null
+    private var isRecording: Boolean = false
+    private var videoFile: File? = null
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -93,16 +108,33 @@ class RoomLayoutActivity : AppCompatActivity() {
         }
     }
 
+    private val screenRecordLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            val intent = Intent(this, ScreenRecordService::class.java).apply {
+                putExtra("resultCode", result.resultCode)
+                putExtra("data", result.data)
+            }
+
+        } else {
+            Toast.makeText(this, "화면 녹화 권한이 거부되었습니다.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // EglBase 초기화
         eglBase = EglBase.create()
         _eglBaseContext.value = eglBase?.eglBaseContext
 
-        // Room 객체 생성
         room = LiveKit.create(applicationContext)
         _room.value = room
+
+
+        mediaProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
         setContent {
             val uiState = _uiState.collectAsState().value
@@ -111,6 +143,7 @@ class RoomLayoutActivity : AppCompatActivity() {
             val roomState = _room.collectAsState().value
 
             if (eglBaseContext != null && roomState != null) {
+                val isSpeakerMuted = _isSpeakerMuted.collectAsState().value
                 LiveStreamingCoachScreen(
                     uiState = uiState,
                     participantTracks = participantTracks,
@@ -119,8 +152,10 @@ class RoomLayoutActivity : AppCompatActivity() {
                     room = roomState,
                     onConnect = ::checkAndRequestPermissions,
                     onToggleCamera = ::toggleCamera,
-                        onToggleMic = ::toggleMicrophone,
-                        onShareScreen = ::toggleScreenShare
+                    onToggleMic = ::toggleMicrophone,
+                    onShareScreen = ::toggleScreenShare,
+                    onToggleSpeaker = ::toggleSpeaker,
+                    isSpeakerMuted = isSpeakerMuted
                 )
             } else {
                 Box(Modifier.fillMaxSize(), Alignment.Center) {
@@ -153,7 +188,7 @@ class RoomLayoutActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 val token = getToken(roomName, participantName)
-                // Ensure we auto-subscribe to remote tracks
+
                 room.connect(
                     Urls.livekitUrl,
                     token,
@@ -161,24 +196,23 @@ class RoomLayoutActivity : AppCompatActivity() {
                 )
                 Log.d("LiveKitDebug", "Connected to room: ${room.name}, local participant: ${room.localParticipant.identity?.value}")
 
-                // 이벤트 수집 시작
+                startRecordingRequest()
                 launch { collectRoomEvents() }
+                launch { collectLocalParticipantEvents() }
 
                 val localParticipant = room.localParticipant
 
-                // 카메라와 마이크 활성화
                 localParticipant.setMicrophoneEnabled(true)
                 localParticipant.setCameraEnabled(true)
                 Log.d("LiveKitDebug", "Camera enabled: ${localParticipant.isCameraEnabled()}, Microphone enabled: ${localParticipant.isMicrophoneEnabled()}")
 
-                // 로컬 비디오 트랙을 flow로 모니터링 (튜토리얼 방식)
                 launch {
                     localParticipant::videoTrackPublications.flow.collect { publications ->
                         val screenShareTrack = publications.firstOrNull { it.first.source == Track.Source.SCREEN_SHARE }?.second as? VideoTrack
                         val cameraTrackPub = publications.firstOrNull { it.first.source == Track.Source.CAMERA }
                         val selectedTrack = screenShareTrack ?: (cameraTrackPub?.second as? VideoTrack)
                         Log.d("LiveKitDebug", "Video track publications updated: ${publications.size}, selected: $selectedTrack, hasScreenShare=${screenShareTrack != null}")
-                        
+
                         if (selectedTrack != null) {
                             val participantName = localParticipant.identity?.value ?: "Participant"
                             _participantTracks.update { currentTracks ->
@@ -211,22 +245,36 @@ class RoomLayoutActivity : AppCompatActivity() {
         }
     }
 
+
     private suspend fun collectRoomEvents() {
-        room.events.collect { event ->
-            when (event) {
-                is RoomEvent.ParticipantConnected -> {
-                    Log.d("LiveKitDebug", "Participant connected: ${event.participant.identity?.value}")
-                }
-                is RoomEvent.ParticipantDisconnected -> {
-                    Log.d("LiveKitDebug", "Participant disconnected: ${event.participant.identity?.value}")
-                }
-                is RoomEvent.TrackPublished -> {
-                    Log.d("LiveKitDebug", "Track published by ${event.participant.identity?.value}: ${event.publication.sid}")
-                }
-                    is RoomEvent.TrackSubscribed -> onTrackSubscribed(event)
-                is RoomEvent.TrackUnsubscribed -> onTrackUnsubscribed(event)
+        Log.d("STT_INIT", "🎤 Starting to collect room events...")
+
+        try {
+            room.events.collect { event ->
+                Log.v("ROOM_ALL_EVENTS", "Event: ${event::class.simpleName}")
+
+                @OptIn(io.livekit.android.annotations.Beta::class)
+                when (event) {
+                    is RoomEvent.ParticipantConnected -> {
+                        Log.d("LiveKitDebug", "Participant connected: ${event.participant.identity?.value}")
+                    }
+                    is RoomEvent.ParticipantDisconnected -> {
+                        Log.d("LiveKitDebug", "Participant disconnected: ${event.participant.identity?.value}")
+                    }
+                    is RoomEvent.TrackPublished -> {
+                        Log.d("LiveKitDebug", "Track published by ${event.participant.identity?.value}: ${event.publication.sid}")
+                    }
+                    is RoomEvent.TrackSubscribed -> {
+                        Log.d("LiveKitDebug", "Track subscribed from ${event.participant.identity?.value}")
+                        onTrackSubscribed(event)
+                    }
+                    is RoomEvent.TrackUnsubscribed -> {
+                        Log.d("LiveKitDebug", "Track unsubscribed from ${event.participant.identity?.value}")
+                        onTrackUnsubscribed(event)
+                    }
                     is RoomEvent.TrackMuted -> {
                         val pub = event.publication
+                        Log.d("LiveKitDebug", "Track muted: ${pub.sid}, source: ${pub.source}")
                         if (pub.source == Track.Source.CAMERA) {
                             val pid = event.participant.identity?.value
                             if (pid != null) {
@@ -238,6 +286,7 @@ class RoomLayoutActivity : AppCompatActivity() {
                     }
                     is RoomEvent.TrackUnmuted -> {
                         val pub = event.publication
+                        Log.d("LiveKitDebug", "Track unmuted: ${pub.sid}, source: ${pub.source}")
                         if (pub.source == Track.Source.CAMERA) {
                             val pid = event.participant.identity?.value
                             if (pid != null) {
@@ -247,20 +296,39 @@ class RoomLayoutActivity : AppCompatActivity() {
                             }
                         }
                     }
-                else -> {}
+                    else -> {}
+                }
             }
+        } catch (e: CancellationException) {
+            Log.d("STT_INIT", "collectRoomEvents cancelled due to Activity destruction")
         }
     }
 
+
+
     private suspend fun collectLocalParticipantEvents() {
-        room.localParticipant.events.collect { event ->
-            when (event) {
-                is io.livekit.android.events.ParticipantEvent.LocalTrackPublished -> {
-                    updateLocalParticipantInfo()
+        try {
+            room.localParticipant.events.collect { event ->
+                when (event) {
+                    is io.livekit.android.events.ParticipantEvent.LocalTrackPublished -> {
+                        val track = event.publication.track
+                        if (track is LocalAudioTrack) {
+                            Log.i("LiveKit_Setup", "오디오 트랙이 성공적으로 게시되었습니다: ${track.name}")
+                        } else if (track is LocalVideoTrack) {
+                            Log.i("LiveKit_Setup", "비디오 트랙이 성공적으로 게시되었습니다: ${track.name}")
+                        }
+                        updateLocalParticipantInfo()
+                    }
+
+                    else -> {}
                 }
-                else -> {}
             }
+        } catch (e: CancellationException) {
+            Log.d("LiveKitDebug", "collectLocalParticipantEvents cancelled")
+        } catch (e: Exception) {
+            Log.e("LiveKitDebug", "Error in collectLocalParticipantEvents: ${e.message}", e)
         }
+
     }
 
     private fun onTrackSubscribed(event: RoomEvent.TrackSubscribed) {
@@ -287,7 +355,121 @@ class RoomLayoutActivity : AppCompatActivity() {
         }
     }
 
+    private fun startRecordingRequest() {
+        val intent = mediaProjectionManager.createScreenCaptureIntent()
+        screenRecordLauncher.launch(intent)
+    }
+
+    private fun startScreenRecording(resultCode: Int, data: Intent) {
+        if (isRecording) return
+
+        val dm = resources.displayMetrics
+        val width = dm.widthPixels
+        val height = dm.heightPixels
+        val density = dm.densityDpi
+
+        val moviesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES)
+        if (!moviesDir.exists()) moviesDir.mkdirs()
+        videoFile = File(moviesDir, "record_${System.currentTimeMillis()}.mp4")
+
+        mediaRecorder = MediaRecorder().apply {
+            setAudioSource(MediaRecorder.AudioSource.MIC)
+            setVideoSource(MediaRecorder.VideoSource.SURFACE)
+            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            setOutputFile(videoFile!!.absolutePath)
+            setVideoEncoder(MediaRecorder.VideoEncoder.H264)
+            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            setVideoSize(width, height)
+            setVideoEncodingBitRate(5 * 1024 * 1024)
+            setVideoFrameRate(30)
+            prepare()
+        }
+
+        mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data)
+
+        mediaProjection?.registerCallback(object : MediaProjection.Callback() {
+            override fun onStop() {
+                super.onStop()
+                if (isRecording) {
+                    try {
+                        stopScreenRecording()
+                    } catch (e: RuntimeException) {
+                        Log.e("ScreenRecord", "MediaRecorder stop failed: ${e.message}")
+                        videoFile?.delete()
+                    }
+                }
+            }
+        }, null)
+
+        virtualDisplay = mediaProjection?.createVirtualDisplay(
+            "ScreenRecording",
+            width, height, density,
+            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+            mediaRecorder?.surface, null, null
+        )
+
+
+        mediaRecorder?.start()
+        isRecording = true
+        Toast.makeText(this, "화면 녹화 시작!", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun stopScreenRecording() {
+        if (!isRecording) return
+
+        try {
+            mediaRecorder?.apply {
+                stop()
+                reset()
+                release()
+            }
+            virtualDisplay?.release()
+            mediaProjection?.stop()
+
+            videoFile?.let { file ->
+                MediaScannerConnection.scanFile(this, arrayOf(file.absolutePath), null) { path, uri ->
+                    Log.d("ScreenRecord", "Saved to gallery: $path")
+                }
+                Toast.makeText(this, "영상 저장 완료! 갤러리에서 확인하세요.", Toast.LENGTH_LONG).show()
+            }
+
+        } catch (e: Exception) {
+            Log.e("ScreenRecord", "Error stopping recording", e)
+        } finally {
+            mediaRecorder = null
+            virtualDisplay = null
+            mediaProjection = null
+            isRecording = false
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+
+        stopScreenRecording()
+
+        try {
+            room.disconnect()
+        } catch (e: Exception) {
+            Log.w("RoomLayoutActivity", "Error during room disconnect: ${e.message}")
+        }
+
+        eglBase?.let { base ->
+            try {
+                base.release()
+                Log.d("RoomLayoutActivity", "EglBase released")
+            } catch (e: RuntimeException) {
+                Log.w("RoomLayoutActivity", "EglBase release failed (already released)", e)
+            }
+        }
+        eglBase = null
+
+        client.close()
+    }
+
     private fun leaveRoom() {
+        stopScreenRecording()
+
         room.disconnect()
         client.close()
         eglBase?.release()
@@ -311,7 +493,6 @@ class RoomLayoutActivity : AppCompatActivity() {
             updateLocalParticipantInfo()
         }
     }
-
     private fun toggleMicrophone() {
         lifecycleScope.launch {
             val localParticipant = room.localParticipant
@@ -365,4 +546,23 @@ class RoomLayoutActivity : AppCompatActivity() {
             }
         }
     }
+
+    private fun toggleSpeaker() {
+        lifecycleScope.launch {
+            try {
+                val isMuted = _isSpeakerMuted.value
+                val newMutedState = !isMuted
+                
+                // Room의 setSpeakerMute를 사용하여 스피커 음소거 토글
+                room.setSpeakerMute(newMutedState)
+                
+                _isSpeakerMuted.value = newMutedState
+                Log.d("LiveKitDebug", "Speaker ${if (newMutedState) "muted" else "unmuted"}")
+            } catch (e: Exception) {
+                Log.e("LiveKitDebug", "Failed to toggle speaker: ${e.message}", e)
+                Toast.makeText(this@RoomLayoutActivity, "스피커 제어 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
 }

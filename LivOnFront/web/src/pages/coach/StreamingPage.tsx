@@ -140,21 +140,6 @@ export const StreamingPage: React.FC = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [participantSearchQuery, setParticipantSearchQuery] = useState("");
-  const [sharedContent, setSharedContent] = useState<{
-    type: "ai-analysis";
-    memberName: string;
-  } | null>(null);
-  const [selectedParticipantId, setSelectedParticipantId] = useState<
-    string | null
-  >(null);
-  const [chatRoomId, setChatRoomId] = useState<number | null>(null);
-  const stompChatClientRef = useRef<StompChatClient | null>(null);
-  const [roomName] = useState(() => {
-    const consultationId =
-      location.state?.consultationId || location.state?.reservationId;
-    return `consultation-${consultationId}`;
-  });
-
   const [participantName] = useState(() => {
     // URL 쿼리 파라미터에서 participantName 가져오기 (참가자 이름 구분용)
     const searchParams = new URLSearchParams(location.search);
@@ -165,7 +150,67 @@ export const StreamingPage: React.FC = () => {
     }
 
     // 기본값: 사용자 닉네임 또는 '코치'
-    return `${user?.nickname || "코치"} 코치님`;
+    return user?.nickname ? `${user.nickname} 코치님` : "코치님";
+  });
+  const [selectedParticipantId, setSelectedParticipantId] = useState<
+    string | null
+  >(null);
+  const [localScreenShareTrack, setLocalScreenShareTrack] =
+    useState<LocalVideoTrack | null>(null);
+  const remoteScreenSharePublication = useMemo(
+    () =>
+      remoteTracks.find((item) => {
+        const publication = item.trackPublication;
+        const source = publication.source ?? publication.track?.source;
+        const kind = publication.kind ?? publication.track?.kind;
+        return (
+          kind === Track.Kind.Video && source === Track.Source.ScreenShare
+        );
+      }),
+    [remoteTracks]
+  );
+  const screenShareTrackInfo = useMemo(() => {
+    if (localScreenShareTrack) {
+      return {
+        track: localScreenShareTrack as LocalVideoTrack | RemoteVideoTrack | null,
+        identity: room?.localParticipant?.identity || "__local__",
+        displayName: participantName,
+        isLocal: true,
+      };
+    }
+
+    if (remoteScreenSharePublication) {
+      const track =
+        (remoteScreenSharePublication.trackPublication
+          .track as RemoteVideoTrack | null | undefined) || null;
+      return {
+        track,
+        identity:
+          remoteScreenSharePublication.participant?.identity ||
+          remoteScreenSharePublication.participantIdentity,
+        displayName:
+          remoteScreenSharePublication.participant?.name ||
+          remoteScreenSharePublication.participantIdentity,
+        isLocal: false,
+      };
+    }
+
+    return null;
+  }, [localScreenShareTrack, participantName, remoteScreenSharePublication, room]);
+  const hasActiveScreenShare = Boolean(
+    localScreenShareTrack || remoteScreenSharePublication
+  );
+  const screenShareOwnerName =
+    screenShareTrackInfo?.displayName ||
+    remoteScreenSharePublication?.participant?.name ||
+    remoteScreenSharePublication?.participantIdentity ||
+    participantName;
+  const localParticipantIdentity =
+    room?.localParticipant?.identity || "__local__";
+  const [roomName] = useState(() => {
+    const consultationId =
+      location.state?.consultationId || location.state?.reservationId;
+    return `consultation-${consultationId}`;
   });
 
   const participantInfoMap = useMemo<Record<string, ParticipantDetail>>(
@@ -265,9 +310,9 @@ export const StreamingPage: React.FC = () => {
 
   const clearScreenShareState = useCallback(() => {
     screenShareTrackRef.current = null;
-    setSharedContent(null);
     setIsScreenSharing(false);
     setViewMode("gallery");
+  setLocalScreenShareTrack(null);
   }, []);
 
   useEffect(() => {
@@ -744,8 +789,6 @@ export const StreamingPage: React.FC = () => {
       if (videoTrack) {
         setLocalTrack(videoTrack);
       }
-    } else {
-      setLocalTrack(undefined);
     }
   };
 
@@ -780,10 +823,11 @@ export const StreamingPage: React.FC = () => {
           screenShareTrack.once(TrackEvent.Ended, () => {
             console.log("화면 공유 트랙 종료 감지");
             screenShareTrackRef.current = null;
-            setSharedContent(null);
             setIsScreenSharing(false);
             setViewMode("gallery");
+            setLocalScreenShareTrack(null);
           });
+          setLocalScreenShareTrack(screenShareTrack);
         }
 
         setIsScreenSharing(true);
@@ -818,9 +862,9 @@ export const StreamingPage: React.FC = () => {
           }
         }
         screenShareTrackRef.current = null;
-        setSharedContent(null);
         setIsScreenSharing(false);
         setViewMode("gallery");
+    setLocalScreenShareTrack(null);
       }
     } else {
       try {
@@ -830,9 +874,9 @@ export const StreamingPage: React.FC = () => {
         // 중지 오류는 조용히 처리 (이미 중지된 상태일 수 있음)
       } finally {
         screenShareTrackRef.current = null;
-        setSharedContent(null);
         setIsScreenSharing(false);
         setViewMode("gallery");
+    setLocalScreenShareTrack(null);
       }
     }
   };
@@ -990,10 +1034,10 @@ export const StreamingPage: React.FC = () => {
   return (
     <StreamingContainer>
       {/* 화면 공유 바 */}
-      {isScreenSharing && (
+      {hasActiveScreenShare && (
         <ScreenShareBar>
           <ScreenShareInfo>
-            {user?.nickname || "코치"} 코치님 화면 공유 중
+            {`${screenShareOwnerName} 화면 공유 중`}
           </ScreenShareInfo>
           <ZoomControls>
             <ZoomButton>-</ZoomButton>
@@ -1011,11 +1055,12 @@ export const StreamingPage: React.FC = () => {
             localTrack={localTrack}
             remoteTracks={remoteTracks}
             isVideoEnabled={isVideoEnabled}
-            isScreenSharing={isScreenSharing}
-            sharedContent={sharedContent}
+            hasActiveScreenShare={hasActiveScreenShare}
+            screenShareTrackInfo={screenShareTrackInfo}
             viewMode={viewMode}
             participantName={participantName}
-            showInfoButtons={!isScreenSharing}
+            localParticipantIdentity={localParticipantIdentity}
+            showInfoButtons={!hasActiveScreenShare}
             onOpenParticipantInfo={handleOpenParticipantInfo}
             isParticipantInfoAvailable={(identity) =>
               Boolean(participantInfoMap[identity])

@@ -28,8 +28,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.DisposableEffect
 import android.util.Log
+import kotlinx.coroutines.awaitCancellation
+import androidx.lifecycle.Observer
+import com.livon.app.feature.member.reservation.ui.ReservationDetailType
+import com.livon.app.feature.member.reservation.ui.CoachMini
+import com.livon.app.feature.member.reservation.ui.SessionInfo
 
 fun isDebugBuild(): Boolean {
     return try {
@@ -112,10 +116,13 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         LaunchedEffect(Unit) { reservationVm.loadUpcoming() }
 
         // Observe health_updated flag set by AppNavGraph when health survey completes
-        val savedHandle = nav.currentBackStackEntry?.savedStateHandle
-        DisposableEffect(savedHandle) {
-            val live = savedHandle?.getLiveData<Boolean>("health_updated")
-            val observer = androidx.lifecycle.Observer<Boolean> { flag ->
+        // Use the current backStackEntry as a LifecycleOwner to observe the savedStateHandle LiveData.
+        // This avoids DisposableEffect/onDispose issues and registers an observer that is lifecycle-aware.
+        val backEntry = nav.currentBackStackEntry
+        LaunchedEffect(backEntry) {
+            if (backEntry == null) return@LaunchedEffect
+            val live = backEntry.savedStateHandle.getLiveData<Boolean>("health_updated")
+            val observer = Observer<Boolean> { flag ->
                 if (flag == true) {
                     try {
                         userVm.load()
@@ -127,12 +134,15 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                     } catch (t: Throwable) {
                         Log.w("MemberNavGraph", "Failed to reload reservation data", t)
                     }
-                    savedHandle?.remove<Boolean>("health_updated")
+                    backEntry.savedStateHandle.remove<Boolean>("health_updated")
                 }
             }
-            live?.observeForever(observer)
-            onDispose {
-                live?.removeObserver(observer)
+            // Observe using the NavBackStackEntry as LifecycleOwner so it's removed automatically
+            live.observe(backEntry, observer)
+            try {
+                awaitCancellation()
+            } finally {
+                live.removeObserver(observer)
             }
         }
 
@@ -322,7 +332,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
 
         // When reservation action completes, navigate to reservations (success or failure)
         LaunchedEffect(actionState.success) {
-            if (actionState.success != null) {
+            if (actionState.success == true) {
                 nav.navigate("reservations") {
                     popUpTo(Routes.MemberHome) { inclusive = false }
                 }
@@ -339,12 +349,115 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 val startAt = java.time.LocalDateTime.of(parsedDate, java.time.LocalTime.of(hour,0))
                 val endAt = startAt.plusHours(1)
 
-                // delegate to ViewModel
-                reservationVmForQna.reserveCoach(coachIdArg, startAt, endAt, preQnA)
+                // Try to resolve coachId/startAt from savedStateHandle if nav-args were lost during health flow
+                fun findSavedString(vararg keys: String): String? {
+                    // check current backStackEntry (the composable's own savedStateHandle)
+                    val ownSaved = backStackEntry.savedStateHandle
+                    for (k in keys) {
+                        val v = ownSaved.get<String>(k)
+                        if (!v.isNullOrBlank()) return v
+                    }
+                    // check NavController current & previous entries' savedStateHandle for fallbacks
+                    val currentSaved = nav.currentBackStackEntry?.savedStateHandle
+                    if (currentSaved != null) {
+                        for (k in keys) {
+                            val v = currentSaved.get<String>(k)
+                            if (!v.isNullOrBlank()) return v
+                        }
+                    }
+                    val prevSaved = nav.previousBackStackEntry?.savedStateHandle
+                    if (prevSaved != null) {
+                        for (k in keys) {
+                            val v = prevSaved.get<String>(k)
+                            if (!v.isNullOrBlank()) return v
+                        }
+                    }
+                    // finally try to look for a qna_origin map on any of these savedStateHandles
+                    val originCandidates = listOf(ownSaved, currentSaved, prevSaved)
+                    for (saved in originCandidates) {
+                        if (saved == null) continue
+                        try {
+                            val origin = saved.get<Map<String, String>>("qna_origin")
+                            if (origin != null) {
+                                // try common keys
+                                val candidate = origin["coachId"] ?: origin["classId"] ?: origin["id"]
+                                if (!candidate.isNullOrBlank()) return candidate
+                            }
+                        } catch (_: Throwable) {
+                        }
+                    }
+                    return null
+                }
+
+                val resolvedCoachId = when {
+                    coachIdArg.isNotBlank() -> coachIdArg
+                    else -> findSavedString("qna_coachId", "coachId", "qna_coachId") ?: ""
+                }
+
+                // Resolve date/time from saved handles if needed
+                fun findSavedDateTime(): Pair<java.time.LocalDateTime, java.time.LocalDateTime>? {
+                    // check saved for qna_date / qna_time or origin map
+                    val dateStr = findSavedString("qna_date", "date")
+                    val timeStr = findSavedString("qna_time", "time")
+                    if (!dateStr.isNullOrBlank() && !timeStr.isNullOrBlank()) {
+                        return try {
+                            val h = timeTokenToHour(timeStr)
+                            val s = java.time.LocalDateTime.of(java.time.LocalDate.parse(dateStr), java.time.LocalTime.of(h,0))
+                            s to s.plusHours(1)
+                        } catch (t: Throwable) {
+                            null
+                        }
+                    }
+                    return null
+                }
+
+                val resolvedStartEnd = findSavedDateTime()
+                var resolvedStart = startAt
+                var resolvedEnd = endAt
+                if (resolvedStartEnd != null) {
+                    resolvedStart = resolvedStartEnd.first
+                    resolvedEnd = resolvedStartEnd.second
+                } else {
+                    // if coachId was resolved but date/time were stored differently, try to use backStackEntry saved
+                    val altDate = findSavedString("qna_date","date")
+                    val altTime = findSavedString("qna_time","time")
+                    if (!altDate.isNullOrBlank() && !altTime.isNullOrBlank()) {
+                        try {
+                            val h = timeTokenToHour(altTime)
+                            val s = java.time.LocalDateTime.of(java.time.LocalDate.parse(altDate), java.time.LocalTime.of(h,0))
+                            resolvedStart = s
+                            resolvedEnd = s.plusHours(1)
+                        } catch (_: Throwable) {
+                        }
+                    }
+                }
+
+                if (resolvedCoachId.isBlank()) {
+                    android.util.Log.e("MemberNavGraph", "Cannot resolve coachId for reservation; aborting reserveCoach call (coachIdArg='$coachIdArg')")
+                } else {
+                    android.util.Log.d("MemberNavGraph", "reserveCoach called from QnA (coachId=$resolvedCoachId, startAt=$resolvedStart, preQnA='${preQnA.take(60)}')")
+                    reservationVmForQna.reserveCoach(resolvedCoachId, resolvedStart, resolvedEnd, preQnA)
+                }
             },
             onNavigateHome = { nav.navigate(Routes.MemberHome) },
+            // when user wants to change health info from reservation dialog, start the health survey flow
             onNavigateToMyHealthInfo = {
-                nav.navigate(Routes.HealthHeight) // 건강설문 플로우 시작 (키→몸무게→헬스→라이프스타일)
+                // store a marker route so AppNavGraph can pop back reliably to this QnA entry after health flow
+                try {
+                    // Store qna_origin map directly on the current backStackEntry.savedStateHandle
+                    val originMap = mapOf(
+                        "type" to "coach",
+                        "coachId" to coachIdArg,
+                        "coachName" to decodedName,
+                        "date" to dateStr,
+                        "time" to decodedTime
+                    )
+                    nav.currentBackStackEntry?.savedStateHandle?.set("qna_origin", originMap)
+                    android.util.Log.d("MemberNavGraph", "Set qna_origin on savedStateHandle=$originMap before navigating to health flow")
+                } catch (t: Throwable) {
+                    android.util.Log.d("MemberNavGraph", "Failed to set qna_origin: ${t.message}")
+                }
+                nav.navigate(com.livon.app.navigation.Routes.HealthHeight)
             },
             navController = nav,
             externalError = actionState.errorMessage
@@ -393,7 +506,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
 
         val actionState by reservationVmForQna.actionState.collectAsState()
         LaunchedEffect(actionState.success) {
-            if (actionState.success != null) {
+            if (actionState.success == true) {
                 nav.navigate("reservations") { popUpTo(Routes.MemberHome) { inclusive = false } }
             }
         }
@@ -407,11 +520,27 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 val hour = timeTokenToHour(decodedTime)
                 val startAt = java.time.LocalDateTime.of(parsedDate, java.time.LocalTime.of(hour,0))
                 val endAt = startAt.plusHours(1)
+
+                android.util.Log.d("MemberNavGraph", "reserveCoach (no id route) called (coachId=$coachIdArg, startAt=$startAt)")
                 reservationVmForQna.reserveCoach(coachIdArg, startAt, endAt, preQnA)
             },
             onNavigateHome = { nav.navigate(Routes.MemberHome) },
             onNavigateToMyHealthInfo = {
-                nav.navigate(Routes.HealthHeight) // 건강설문 플로우 시작 (키→몸무게→헬스→라이프스타일)
+                try {
+                    // Store qna_origin map directly on the current backStackEntry.savedStateHandle
+                    val originMap = mapOf(
+                        "type" to "coach",
+                        "coachId" to coachIdArg,
+                        "coachName" to decodedName,
+                        "date" to dateStr,
+                        "time" to decodedTime
+                    )
+                    nav.currentBackStackEntry?.savedStateHandle?.set("qna_origin", originMap)
+                    android.util.Log.d("MemberNavGraph", "Set qna_origin on savedStateHandle=$originMap before navigating to health flow")
+                } catch (t: Throwable) {
+                    android.util.Log.d("MemberNavGraph", "Failed to set qna_origin: ${t.message}")
+                }
+                nav.navigate(com.livon.app.navigation.Routes.HealthHeight)
             },
             navController = nav,
             externalError = actionState.errorMessage
@@ -460,7 +589,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         val actionState by reservationVmForQna.actionState.collectAsState()
 
         LaunchedEffect(actionState.success) {
-            if (actionState.success != null) {
+            if (actionState.success == true) {
                 nav.navigate("reservations") {
                     popUpTo(Routes.MemberHome) { inclusive = false }
                 }
@@ -477,204 +606,58 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 val startAt = java.time.LocalDateTime.of(parsedDate, java.time.LocalTime.of(hour,0))
                 val endAt = startAt.plusHours(1)
 
-                // delegate to ViewModel
-                reservationVmForQna.reserveCoach(coachIdArg, startAt, endAt, preQnA)
+                // Try to resolve coachId/startAt from savedStateHandle if nav-args were lost during health flow
+                val resolvedCoachId = if (coachIdArg.isNotBlank()) coachIdArg else backStackEntry.savedStateHandle.get<String>("qna_coachId") ?: ""
+                var resolvedStart = startAt
+                var resolvedEnd = endAt
+                if (resolvedCoachId.isBlank()) {
+                    // attempt to reconstruct from saved handle date/time
+                    val sDate = backStackEntry.savedStateHandle.get<String>("qna_date")
+                    val sTime = backStackEntry.savedStateHandle.get<String>("qna_time")
+                    if (!sDate.isNullOrBlank() && !sTime.isNullOrBlank()) {
+                        try {
+                            val h = timeTokenToHour(sTime)
+                            resolvedStart = java.time.LocalDateTime.of(java.time.LocalDate.parse(sDate), java.time.LocalTime.of(h,0))
+                            resolvedEnd = resolvedStart.plusHours(1)
+                        } catch (t: Throwable) {
+                            // keep previously computed startAt
+                        }
+                    }
+                }
+
+                if (resolvedCoachId.isBlank()) {
+                    android.util.Log.e("MemberNavGraph", "Cannot resolve coachId for reservation; aborting reserveCoach call (coachIdArg='$coachIdArg')")
+                } else {
+                    android.util.Log.d("MemberNavGraph", "reserveCoach called from QnA (coachId=$resolvedCoachId, startAt=$resolvedStart, preQnA='${preQnA.take(60)}')")
+                    reservationVmForQna.reserveCoach(resolvedCoachId, resolvedStart, resolvedEnd, preQnA)
+                }
             },
             onNavigateHome = { nav.navigate(Routes.MemberHome) },
+            // when user wants to change health info from reservation dialog, start the health survey flow
             onNavigateToMyHealthInfo = {
-                nav.navigate(Routes.HealthHeight) // 건강설문 플로우 시작 (키→몸무게→헬스→라이프스타일)
+                // store a marker route so AppNavGraph can pop back reliably to this QnA entry after health flow
+                try {
+                    // Store qna_origin map directly on the current backStackEntry.savedStateHandle
+                    val originMap = mapOf(
+                        "type" to "coach",
+                        "coachId" to coachIdArg,
+                        "coachName" to decodedName,
+                        "date" to dateStr,
+                        "time" to decodedTime
+                    )
+                    nav.currentBackStackEntry?.savedStateHandle?.set("qna_origin", originMap)
+                    android.util.Log.d("MemberNavGraph", "Set qna_origin on savedStateHandle=$originMap before navigating to health flow")
+                } catch (t: Throwable) {
+                    android.util.Log.d("MemberNavGraph", "Failed to set qna_origin: ${t.message}")
+                }
+                nav.navigate(com.livon.app.navigation.Routes.HealthHeight)
             },
             navController = nav,
             externalError = actionState.errorMessage
         )
     }
 
-    // qna_submit fallback (no args) kept for previews/tests
-    composable("qna_submit") {
-        QnASubmitScreen(
-            coachName = "코치",
-            selectedDate = LocalDate.now(),
-            onBack = { nav.popBackStack() },
-            onConfirmReservation = { _ -> nav.navigate("reservations") },
-            onNavigateHome = { nav.navigate(Routes.MemberHome) },
-            onNavigateToMyHealthInfo = { /* noop */ },
-            navController = nav
-        )
-    }
-
-    // NEW: route for class reservation QnA flow
-    composable("qna_submit_class/{classId}") { backStackEntry ->
-        val classId = backStackEntry.arguments?.getString("classId") ?: ""
-
-        // fetch class detail (network-backed)
-        val groupApiForQna = com.livon.app.core.network.RetrofitProvider.createService(
-            com.livon.app.data.remote.api.GroupConsultationApiService::class.java
-        )
-        val groupRepoForQna = remember { com.livon.app.domain.repository.GroupConsultationRepository(groupApiForQna) }
-
-        val detailState = remember { mutableStateOf<SampleClassInfo?>(null) }
-        val loadingDetail = remember { mutableStateOf(true) }
-        val errorDetail = remember { mutableStateOf<String?>(null) }
-
-        LaunchedEffect(classId) {
-            loadingDetail.value = true
-            errorDetail.value = null
-            try {
-                val res = groupRepoForQna.fetchClassDetail(classId)
-                if (res.isSuccess) detailState.value = res.getOrNull()
-                else errorDetail.value = res.exceptionOrNull()?.message ?: "클래스 정보를 불러올 수 없습니다."
-            } catch (t: Throwable) {
-                errorDetail.value = t.message
-            } finally {
-                loadingDetail.value = false
-            }
-        }
-
-        // ViewModel to perform reservation
-        val reservationRepoForQna = remember { com.livon.app.data.repository.ReservationRepositoryImpl() }
-        val reservationVmForQna = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                return com.livon.app.feature.member.reservation.vm.ReservationViewModel(reservationRepoForQna) as T
-            }
-        }) as com.livon.app.feature.member.reservation.vm.ReservationViewModel
-
-        val actionState by reservationVmForQna.actionState.collectAsState()
-
-        // navigate to reservations when action completes (same behavior as coach flow)
-        LaunchedEffect(actionState.success) {
-            if (actionState.success != null) {
-                nav.navigate("reservations") { popUpTo(Routes.MemberHome) { inclusive = false } }
-            }
-        }
-
-        if (loadingDetail.value) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else {
-            val item = detailState.value
-            if (item != null) {
-                QnASubmitScreen(
-                    coachName = item.coachName,
-                    selectedDate = item.date,
-                    onBack = { nav.popBackStack() },
-                    onConfirmReservation = { questions ->
-                        // For class reservation API we only need classId; pre-QnA currently ignored by backend
-                        reservationVmForQna.reserveClass(item.id)
-                    },
-                    onNavigateHome = { nav.navigate(Routes.MemberHome) },
-                    onNavigateToMyHealthInfo = { nav.navigate(Routes.HealthHeight) },
-                    navController = nav,
-                    externalError = actionState.errorMessage
-                )
-            } else {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = errorDetail.value ?: "클래스 정보를 불러올 수 없습니다.")
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = { nav.popBackStack() }) { Text(text = "뒤로가기") }
-                    }
-                }
-            }
-        }
-    }
-
-    composable("class_reservation") {
-        // Use network-backed group consultation list when available
-        val groupApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.GroupConsultationApiService::class.java)
-        val groupRepo = remember { com.livon.app.domain.repository.GroupConsultationRepository(groupApi) }
-
-        // Create a simple ViewModel on the fly to fetch classes
-        val factory = object : androidx.lifecycle.ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                return ClassReservationViewModel(groupRepo) as T
-            }
-        }
-
-        val vm = androidx.lifecycle.viewmodel.compose.viewModel(factory = factory) as ClassReservationViewModel
-        val vmState by vm.uiState.collectAsState()
-        LaunchedEffect(Unit) { vm.loadClasses() }
-
-        val classesToShow = if (vmState.items.isNotEmpty()) vmState.items else emptyList()
-
-        ClassReservationScreen(
-            classes = classesToShow,
-            onCardClick = { item -> nav.navigate("class_detail/${item.id}") },
-            onCoachClick = { coachId -> nav.navigate("coach_detail/$coachId/group") },
-            navController = nav
-        )
-    }
-
-    // class_detail/{classId} route: show ClassDetailScreen for the selected class id
-    composable("class_detail/{classId}") { backStackEntry ->
-        val classId = backStackEntry.arguments?.getString("classId") ?: ""
-
-        // Create repo to fetch class detail (network-backed, with dev fallback inside repo)
-        val groupApi = com.livon.app.core.network.RetrofitProvider.createService(
-            com.livon.app.data.remote.api.GroupConsultationApiService::class.java
-        )
-        val groupRepo = remember { com.livon.app.domain.repository.GroupConsultationRepository(groupApi) }
-
-        // Local mutable state to hold loaded class detail
-        val detailState = remember { mutableStateOf<SampleClassInfo?>(null) }
-        val errorState = remember { mutableStateOf<String?>(null) }
-        val loadingState = remember { mutableStateOf(true) }
-
-        // Load detail when entering this composable
-        LaunchedEffect(classId) {
-            loadingState.value = true
-            errorState.value = null
-            try {
-                val res = groupRepo.fetchClassDetail(classId)
-                if (res.isSuccess) {
-                    detailState.value = res.getOrNull()
-                } else {
-                    errorState.value = res.exceptionOrNull()?.message ?: "Unknown error"
-                }
-            } catch (t: Throwable) {
-                errorState.value = t.message
-            } finally {
-                loadingState.value = false
-            }
-        }
-
-        // UI: show loading indicator until detail is available
-        if (loadingState.value) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else {
-            val item = detailState.value
-            if (item != null) {
-                ClassDetailScreen(
-                    className = item.className,
-                    coachName = item.coachName,
-                    classInfo = item.description,
-                    onBack = { nav.popBackStack() },
-                    onReserveClick = { nav.navigate("qna_submit_class/${item.id}") },
-                    onNavigateHome = { nav.navigate(Routes.MemberHome) },
-                    onNavigateToMyPage = { nav.navigate("mypage") },
-                    imageResId = R.drawable.ic_classphoto,
-                    navController = nav
-                )
-            } else {
-                // show error / fallback UI
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = errorState.value ?: "클래스 정보를 불러올 수 없습니다.")
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = { nav.popBackStack() }) {
-                            Text(text = "뒤로가기")
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Reservations (예약 현황) screen
+    // Reservation (예약 현황) screen
     composable("reservations") {
         // Try to use ReservationViewModel to fetch real items; fallback to DevReservationStore on dev
         // Use concrete implementation instead of interface here as well
@@ -692,8 +675,9 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         // If API returned items, use them. Otherwise in dev return our in-memory store
         val currentList = if (resState.items.isNotEmpty()) resState.items else emptyList()
 
-        // dialog state for cancel confirmation
+        // dialog state for cancel confirmation and join-missing
         val showCancelDialog = remember { mutableStateOf(false) }
+        val showJoinMissingDialog = remember { mutableStateOf(false) }
         val selectedReservation = remember { mutableStateOf<ReservationUi?>(null) }
 
         ReservationStatusScreen(
@@ -719,7 +703,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             // navigate to reservation detail by id
             onDetail = { item ->
                 try {
-                    nav.navigate("reservation_detail/${item.id}")
+                    nav.navigate("reservation_detail/${'$'}{item.id}")
                 } catch (t: Throwable) {
                     // if navigation fails, fallback to no-op
                 }
@@ -728,7 +712,19 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 selectedReservation.value = item
                 showCancelDialog.value = true
             },
-            onJoin = { /* TODO: join live session */ },
+            onJoin = { item ->
+                // If sessionId is null or empty, show alert dialog explaining coach hasn't created session yet.
+                if (item.sessionId.isNullOrBlank()) {
+                    selectedReservation.value = item
+                    showJoinMissingDialog.value = true
+                } else {
+                    try {
+                        nav.navigate("live_member/${'$'}{item.sessionId}")
+                    } catch (t: Throwable) {
+                        // ignore
+                    }
+                }
+            },
             onAiAnalyze = { /* TODO: show AI analysis */ }
         )
 
@@ -744,12 +740,8 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                         // Optimistic UI update: remove from local cache and refresh UI immediately
                         val idInt = sel.id.toIntOrNull()
                         if (idInt != null) {
-                            // remove from in-memory cache so ReservationStatusScreen reflects change instantly
                             com.livon.app.data.repository.ReservationRepositoryImpl.localReservations.removeAll { it.id == idInt }
-                            // refresh viewmodel state from server/local cache
                             reservationVm.loadUpcoming()
-
-                            // still call server cancel API (fire-and-forget here)
                             if ((sel.sessionTypeLabel ?: "").contains("개인")) {
                                 reservationVm.cancelIndividual(idInt)
                             } else {
@@ -769,6 +761,25 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 }
             )
         }
+
+        // Join-missing dialog: coach hasn't created live session yet
+        if (showJoinMissingDialog.value && selectedReservation.value != null) {
+            val sel = selectedReservation.value!!
+            AlertDialog(
+                onDismissRequest = { showJoinMissingDialog.value = false; selectedReservation.value = null },
+                title = { Text(text = "세션 준비중") },
+                text = { Text(text = "아직 코치가 상담 세션을 생성하지 않았습니다.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showJoinMissingDialog.value = false
+                        selectedReservation.value = null
+                    }) {
+                        Text(text = "확인")
+                    }
+                }
+            )
+        }
+
     }
 
     // Reservation detail route: show details for a specific reservation id
@@ -794,19 +805,19 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         if (found != null) {
             // derive detail type
             val detailType = when {
-                found.isLive -> com.livon.app.feature.member.reservation.ui.ReservationDetailType.Current
-                (found.sessionTypeLabel ?: "").contains("개인") -> com.livon.app.feature.member.reservation.ui.ReservationDetailType.PastPersonal
-                else -> com.livon.app.feature.member.reservation.ui.ReservationDetailType.PastGroup
+                found.isLive -> ReservationDetailType.Current
+                (found.sessionTypeLabel ?: "").contains("개인") -> ReservationDetailType.PastPersonal
+                else -> ReservationDetailType.PastGroup
             }
 
-            val coachMini = com.livon.app.feature.member.reservation.ui.CoachMini(
+            val coachMini = CoachMini(
                 name = found.coachName.ifEmpty { "코치" },
                 title = found.coachRole.ifEmpty { "" },
                 specialties = found.coachIntro.ifEmpty { "" },
                 workplace = ""
             )
 
-            val sessionInfo = com.livon.app.feature.member.reservation.ui.SessionInfo(
+            val sessionInfo = SessionInfo(
                 dateText = "${found.date.monthValue}월 ${found.date.dayOfMonth}일",
                 timeText = found.timeText,
                 modelText = found.className,
@@ -834,5 +845,12 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 }
             }
         }
+    }
+
+    // Live member screen: entry point for members to join LiveKit session
+    composable("live_member/{sessionId}") { backStackEntry ->
+        val sessionId = backStackEntry.arguments?.getString("sessionId") ?: ""
+        // For now show a simple placeholder screen; wiring livekit is out of scope here
+        com.livon.app.feature.member.streaming.ui.LiveStreamingMemberScreen() // implement minimal composable
     }
 }

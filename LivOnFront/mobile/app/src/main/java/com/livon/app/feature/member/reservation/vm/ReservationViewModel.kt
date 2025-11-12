@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import com.livon.app.data.repository.ReservationType
 import android.util.Log
+import java.time.Duration
+import java.time.LocalDateTime
 
 // We'll use the reservation repository for create actions (reserveCoach / reserveClass).
 class ReservationViewModel(
@@ -61,6 +63,11 @@ class ReservationViewModel(
                             val start = java.time.LocalDateTime.parse(dto.startAt ?: java.time.LocalDateTime.now().toString())
                             val end = java.time.LocalDateTime.parse(dto.endAt ?: start.plusHours(1).toString())
 
+                            // decide isLive: within 10 minutes before start or during session
+                            val now = LocalDateTime.now()
+                            val minutesUntilStart = Duration.between(now, start).toMinutes()
+                            val isLive = minutesUntilStart <= 10 && minutesUntilStart >= -60 // started within last hour or starting within 10 min
+
                             ReservationUi(
                                 id = dto.consultationId.toString(),
                                 date = start.toLocalDate(),
@@ -71,7 +78,9 @@ class ReservationViewModel(
                                 timeText = formatTimeText(start, end),
                                 classIntro = dto.description ?: "",
                                 imageResId = null,
-                                isLive = false,
+                                isLive = isLive,
+                                startAtIso = dto.startAt,
+                                sessionId = dto.sessionId,
                                 sessionTypeLabel = if ((dto.type ?: "ONE") == "ONE") "개인 상담" else "그룹 상담",
                                 hasAiReport = dto.aiSummary != null
                             )
@@ -86,6 +95,10 @@ class ReservationViewModel(
                 val mappedLocal = local.map { lr ->
                     val start = try { java.time.LocalDateTime.parse(lr.startAt) } catch (t: Throwable) { java.time.LocalDateTime.now() }
                     val end = try { java.time.LocalDateTime.parse(lr.endAt) } catch (t: Throwable) { start.plusHours(1) }
+
+                    val minutesUntilStart = Duration.between(LocalDateTime.now(), start).toMinutes()
+                    val isLive = minutesUntilStart <= 10 && minutesUntilStart >= -60
+
                     ReservationUi(
                         id = lr.id.toString(),
                         date = start.toLocalDate(),
@@ -103,7 +116,10 @@ class ReservationViewModel(
                         sessionTypeLabel = when (lr.type) {
                             ReservationType.PERSONAL -> "개인 상담"
                             ReservationType.GROUP -> "그룹 상담"
-                        }
+                        },
+                        isLive = isLive,
+                        startAtIso = lr.startAt,
+                        sessionId = null
                     )
                 }
 

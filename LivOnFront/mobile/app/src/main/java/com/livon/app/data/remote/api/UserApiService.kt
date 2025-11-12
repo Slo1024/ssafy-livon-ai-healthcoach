@@ -12,7 +12,9 @@ data class MyInfoResponse(
     val organizations: String?,
     val gender: String?,
     val birthdate: String?,
-    val healthSurvey: Any? // can be an object or an empty list, so keep generic and parse safely
+    // change: use a Map to represent arbitrary JSON object returned for healthSurvey
+    // this avoids Moshi reflective serialization warnings and lets repository parse safely
+    val healthSurvey: Map<String, Any?>?
 )
 
 // HealthSurvey fields (used for reference parsing in repository)

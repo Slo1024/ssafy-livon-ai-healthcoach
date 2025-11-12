@@ -1,7 +1,7 @@
 package com.livon.app.data.repository
 
 import com.livon.app.core.network.RetrofitProvider
-import com.livon.app.data.remote.api.ReservationApi
+import com.livon.app.data.remote.api.ReservationApiService
 import com.livon.app.data.remote.api.ReserveCoachRequest
 import com.livon.app.domain.repository.ReservationRepository
 import java.time.LocalDateTime
@@ -9,7 +9,7 @@ import java.time.format.DateTimeFormatter
 import android.util.Log
 
 class ReservationRepositoryImpl : ReservationRepository {
-    private val api = RetrofitProvider.createService(ReservationApi::class.java)
+    private val api = RetrofitProvider.createService(ReservationApiService::class.java)
     private val fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
 
     // Local types to represent cached reservations

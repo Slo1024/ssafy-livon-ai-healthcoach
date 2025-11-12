@@ -50,44 +50,52 @@ public class IndividualConsultationService {
         UUID coachId = requestDto.coachId();
         User coach = groupConsultationService.validateCoach(coachId);
 
-        // 2. 시간 형식 검증 추가하기
+        // 2. 시간 형식/범위 검증
         validateReservationTime(requestDto.startAt(), requestDto.endAt());
 
-        // 3. 시간 겹침 검증 (DB 레벨)
-        if (groupConsultationRepository.existsTimeConflict(
-                coachId, requestDto.startAt(), requestDto.endAt())) {
+        // 3. 시간 겹침 검증 (락 안에서 수행 → TOCTTOU 방지)
+        if (groupConsultationRepository.existsTimeConflict(coachId, requestDto.startAt(), requestDto.endAt())) {
             throw new CoachHandler(ErrorStatus.CONSULTATION_TIME_CONFLICT);
         }
 
-        // 4. Consultation 생성 및 저장
+        // 4. Consultation 생성 (세션ID는 사전 생성 or @PrePersist로)
         Consultation consultation = Consultation.builder()
                 .coach(coach)
                 .capacity(1)
                 .startAt(requestDto.startAt())
                 .endAt(requestDto.endAt())
                 .type(Consultation.Type.ONE)
-                .sessionId("")  // WebRTC 세션 생성 시 업데이트
+                .sessionId("")
                 .status(Consultation.Status.OPEN)
                 .build();
         consultationRepository.save(consultation);
+        consultation.generateSessionId();
 
-        consultation.generateSessionId();  // 세션 ID 생성
-        consultationRepository.save(consultation);  // 업데이트
+        // 5. 정원 체크 (회원만 카운트) → 저장 전 체크
+        long currentMembers = participantRepository.countMembersExcludingCoach(consultation.getId(), coachId);
+        if (currentMembers >= consultation.getCapacity()) {
+            throw new CoachHandler(ErrorStatus.CONSULTATION_CAPACITY_FULL);
+        }
 
-        // 5. participant 생성 및 저장
+        // 6. 사용자 참가자 저장 (중복 방지)
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CoachHandler(ErrorStatus.USER_NOT_FOUND));
+        if (!participantRepository.existsByUserIdAndConsultationId(userId, consultation.getId())) {
+            participantRepository.save(Participant.of(user, consultation));
+        }
 
-        Participant participant = Participant.of(user, consultation);
-        participantRepository.save(participant);
+        // 7. 코치 참가자 보장 (중복 방지)
+        if (!participantRepository.existsByUserIdAndConsultationId(coachId, consultation.getId())) {
+            participantRepository.save(Participant.of(coach, consultation)); // coach 이미 로드됨
+        }
 
-        // 6. IndividualConsultation 생성 및 저장
-        IndividualConsultation individualConsultation = IndividualConsultation.builder()
-                .consultation(consultation)
-                .preQnA(requestDto.preQnA())
-                .build();
-        IndividualConsultation saved = individualConsultationRepository.save(individualConsultation);
-
+        // 8. IndividualConsultation 저장
+        IndividualConsultation saved = individualConsultationRepository.save(
+                IndividualConsultation.builder()
+                        .consultation(consultation)
+                        .preQnA(requestDto.preQnA())
+                        .build()
+        );
         return saved.getId();
     }
 

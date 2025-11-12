@@ -6,7 +6,6 @@ const VideoElement = styled.video`
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transform: scaleX(-1);
 `;
 
 const VideoPlaceholder = styled.div`

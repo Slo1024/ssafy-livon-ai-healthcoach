@@ -1,6 +1,5 @@
 package com.s406.livon.domain.coach.repository;
 
-import com.s406.livon.domain.coach.entity.Consultation;
 import com.s406.livon.domain.coach.entity.Participant;
 import com.s406.livon.domain.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -37,15 +36,20 @@ public interface ParticipantRepository extends JpaRepository<Participant, Long> 
 
     boolean existsByConsultationIdAndUserId(Long consultationId, UUID userId);
 
-    /**
-     * 사용자와 상담 ID로 참가자 조회
-     */
+    // N+1 방지: 여러 consultation의 참가자를 한 번에 조회
     @Query("SELECT p FROM Participant p " +
-            "JOIN FETCH p.consultation c " +
-            "WHERE p.user.id = :userId " +
-            "AND p.consultation.id = :consultationId")
-    Optional<Participant> findByUserIdAndConsultationId(
-            @Param("userId") Long userId,
-            @Param("consultationId") Long consultationId
-    );
+            "JOIN FETCH p.user u " +
+            "WHERE p.consultation.id IN :consultationIds")
+    List<Participant> findByConsultationIdInWithUser(@Param("consultationIds") List<Long> consultationIds);
+
+    /**
+     * 특정 상담의 참여자 목록 조회
+     */
+    List<Participant> findParticipantByConsultationId(Long consultationId);
+
+    @Query("select count(p) from Participant p " +
+            "where p.consultation.id = :cid and p.user.id <> :coachId")
+    long countMembersExcludingCoach(@Param("cid") Long consultationId,
+                                    @Param("coachId") UUID coachId);
+
 }

@@ -36,48 +36,45 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // 개발용: 정확한 오리진만 명시 (credentials 쓰면 * 금지)
-        config.setAllowedOrigins(List.of("http://localhost:3000"));
-        config.setAllowedOrigins(List.of("http://localhost:3001"));
-        config.setAllowedOrigins(List.of("https://k13s406.p.ssafy.io:8443"));
-        config.setAllowedOrigins(List.of("https://k13s406.p.ssafy.io"));
+        // 여러 오리진을 한번에 등록
+        config.setAllowedOrigins(List.of(
+                "http://localhost:3000",
+                "http://localhost:3001",
+                "https://k13s406.p.ssafy.io",
+                "https://k13s406.p.ssafy.io:8443"
+        ));
         config.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
-        // 프론트가 보내는 헤더들 추가 (Authorization 자주 빠짐)
         config.setAllowedHeaders(List.of("Content-Type","Authorization","X-Requested-With"));
-        // 응답에서 노출할 헤더 (필요시)
         config.setExposedHeaders(List.of("Location"));
-        // 쿠키/자격증명 사용 시 true (axios withCredentials=true 인 경우)
-        config.setAllowCredentials(true);
-        // preflight 캐시 시간(초)
-        config.setMaxAge(Duration.ofHours(1));
+        config.setAllowCredentials(true); // 쿠키/자격증명 쓸 거면 유지
+        config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
     }
 
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                // ✨ CORS 활성화
+                .cors(c -> c.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
-//                .cors(Customizer.withDefaults())
                 .httpBasic(httpBasic -> httpBasic.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-
-//                        .requestMatchers("/**").hasRole("USER")
-                                .requestMatchers("/swagger-ui/**").permitAll()
-                                .requestMatchers("/swagger-ui.html").permitAll()
-                                .requestMatchers("/**").permitAll()
-
-//                        .requestMatchers("/api/v1/master/**").hasRole("ADMIN")
-                        .anyRequest().authenticated()
+                        // 프리플라이트 허용
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/**").permitAll()
+                        .anyRequest().permitAll()
                 )
-                .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, objectMapper), UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, objectMapper),
+                        UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
+
 
     @Bean
     public PasswordEncoder passwordEncoder() {

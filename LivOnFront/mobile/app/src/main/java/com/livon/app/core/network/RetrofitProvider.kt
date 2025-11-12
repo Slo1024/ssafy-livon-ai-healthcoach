@@ -31,7 +31,9 @@ object RetrofitProvider {
     }
 
     private val logging = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BODY
+        // Level.BODY can trigger reading of empty/chunked bodies and cause EOF exceptions in some setups.
+        // Switch to BASIC to keep useful request/response logging without forcing body reads.
+        level = HttpLoggingInterceptor.Level.BASIC
     }
 
     private val okHttp = OkHttpClient.Builder()
@@ -41,8 +43,8 @@ object RetrofitProvider {
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    // Build Moshi with Kotlin adapter so Kotlin data classes are supported
-    private val moshi = Moshi.Builder()
+    // Expose Moshi publicly so other repositories can reuse the exact same configured instance
+    val moshi: Moshi = Moshi.Builder()
         .add(KotlinJsonAdapterFactory())
         .build()
 

@@ -1,14 +1,15 @@
 package com.livon.app.data.repository
 
 import com.livon.app.core.network.RetrofitProvider
-import com.livon.app.data.remote.api.ReservationApi
+import com.livon.app.data.remote.api.ReservationApiService
 import com.livon.app.data.remote.api.ReserveCoachRequest
 import com.livon.app.domain.repository.ReservationRepository
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import android.util.Log
 
 class ReservationRepositoryImpl : ReservationRepository {
-    private val api = RetrofitProvider.createService(ReservationApi::class.java)
+    private val api = RetrofitProvider.createService(ReservationApiService::class.java)
     private val fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
 
     // Local types to represent cached reservations
@@ -20,7 +21,8 @@ class ReservationRepositoryImpl : ReservationRepository {
         val endAt: String
     )
 
-    enum class ReservationType { PERSONAL, GROUP }
+    // ReservationType moved to a top-level declaration (ReservationModels.kt)
+    // to avoid cross-file nested-type resolution issues when referenced from viewmodels.
 
     override suspend fun reserveCoach(
         coachId: String,
@@ -67,6 +69,103 @@ class ReservationRepositoryImpl : ReservationRepository {
                         endAt = LocalDateTime.now().plusHours(1).format(fmt)
                     )
                 )
+                Result.success(res.result)
+            } else Result.failure(Exception(res.message ?: "Unknown"))
+        } catch (t: Throwable) {
+            Result.failure(t)
+        }
+    }
+
+    // New cancel implementations
+    override suspend fun cancelIndividual(consultationId: Int): Result<Unit> {
+        return try {
+            Log.d("ReservationRepo", "cancelIndividual: calling API for id=$consultationId")
+            val res = api.cancelIndividual(consultationId)
+            Log.d("ReservationRepo", "cancelIndividual: api returned isSuccess=${res.isSuccess}, message=${res.message}")
+            if (res.isSuccess) {
+                // remove from local cache if present
+                localReservations.removeAll { it.id == consultationId }
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(res.message ?: "Unknown"))
+            }
+        } catch (t: Throwable) {
+            Log.e("ReservationRepo", "cancelIndividual failed, attempting recovery check", t)
+            // Recovery: server might have processed the deletion but response parsing failed
+            return try {
+                val check = api.getMyReservations(status = "upcoming")
+                if (check.isSuccess && check.result != null) {
+                    val exists = check.result.items.any { it.consultationId == consultationId }
+                    if (!exists) {
+                        // Item no longer present -> treat as success
+                        localReservations.removeAll { it.id == consultationId }
+                        Log.d("ReservationRepo", "cancelIndividual: recovery -> item not found on server; treating as success id=$consultationId")
+                        Result.success(Unit)
+                    } else {
+                        // If present but marked CANCELLED, treat as success
+                        val remote = check.result.items.first { it.consultationId == consultationId }
+                        if (remote.status == "CANCELLED") {
+                            localReservations.removeAll { it.id == consultationId }
+                            Log.d("ReservationRepo", "cancelIndividual: recovery -> item status=CANCELLED; treating as success id=$consultationId")
+                            Result.success(Unit)
+                        } else {
+                            Result.failure(Exception(t))
+                        }
+                    }
+                } else {
+                    Result.failure(Exception(t))
+                }
+            } catch (t2: Throwable) {
+                Log.e("ReservationRepo", "cancelIndividual: recovery check failed", t2)
+                Result.failure(Exception(t))
+            }
+        }
+    }
+
+    override suspend fun cancelGroupParticipation(consultationId: Int): Result<Unit> {
+        return try {
+            Log.d("ReservationRepo", "cancelGroupParticipation: calling API for id=$consultationId")
+            val res = api.cancelGroupParticipation(consultationId)
+            Log.d("ReservationRepo", "cancelGroupParticipation: api returned isSuccess=${res.isSuccess}, message=${res.message}")
+            if (res.isSuccess) {
+                // remove from local cache if present
+                localReservations.removeAll { it.id == consultationId }
+                Result.success(Unit)
+            } else Result.failure(Exception(res.message ?: "Unknown"))
+        } catch (t: Throwable) {
+            Log.e("ReservationRepo", "cancelGroupParticipation failed, attempting recovery check", t)
+            // Recovery: attempt to verify via my-reservations
+            return try {
+                val check = api.getMyReservations(status = "upcoming")
+                if (check.isSuccess && check.result != null) {
+                    val exists = check.result.items.any { it.consultationId == consultationId }
+                    if (!exists) {
+                        localReservations.removeAll { it.id == consultationId }
+                        Log.d("ReservationRepo", "cancelGroupParticipation: recovery -> item not found on server; treating as success id=$consultationId")
+                        Result.success(Unit)
+                    } else {
+                        val remote = check.result.items.first { it.consultationId == consultationId }
+                        if (remote.status == "CANCELLED") {
+                            localReservations.removeAll { it.id == consultationId }
+                            Log.d("ReservationRepo", "cancelGroupParticipation: recovery -> item status=CANCELLED; treating as success id=$consultationId")
+                            Result.success(Unit)
+                        } else {
+                            Result.failure(Exception(t))
+                        }
+                    }
+                } else Result.failure(Exception(t))
+            } catch (t2: Throwable) {
+                Log.e("ReservationRepo", "cancelGroupParticipation: recovery check failed", t2)
+                Result.failure(Exception(t))
+            }
+        }
+    }
+
+    // New: fetch reservations from server
+    override suspend fun getMyReservations(status: String, type: String?): Result<com.livon.app.data.remote.api.ReservationListResponse> {
+        return try {
+            val res = api.getMyReservations(status = status, type = type)
+            if (res.isSuccess && res.result != null) {
                 Result.success(res.result)
             } else Result.failure(Exception(res.message ?: "Unknown"))
         } catch (t: Throwable) {

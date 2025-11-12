@@ -5,7 +5,7 @@ import { CONFIG } from "../constants/config";
 const API_BASE_URL =
   CONFIG.API_BASE_URL ||
   process.env.REACT_APP_API_BASE_URL ||
-  "http://localhost:8080";
+  "http://localhost:8081";
 
 // 타입 정의
 interface LoginRequest {
@@ -150,13 +150,17 @@ export interface ApiResponse<T> {
 export type SignInResponse = ApiResponse<SignInResult>;
 
 export interface UserProfile {
-  userId: string;
-  email: string;
+  userId?: string;
+  email?: string;
   nickname?: string;
   profileImage?: string;
   phoneNumber?: string;
   roles?: string[];
   role?: string | string[];
+  organizations?: string | null;
+  gender?: string;
+  birthdate?: string;
+  healthSurvey?: Record<string, any>;
 }
 
 // 새로운 로그인 API (POST /api/v1/user/sign-in)

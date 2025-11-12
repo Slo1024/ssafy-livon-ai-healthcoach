@@ -48,6 +48,19 @@ fun QnASubmitScreen(
     var questions by rememberSaveable { mutableStateOf(listOf("", "")) }
     var showDialog by rememberSaveable { mutableStateOf(false) }
 
+    // If we returned from health flow, show the dialog again
+    // Observe savedStateHandle key reliably using StateFlow -> collectAsState
+    val backStackEntry = navController?.currentBackStackEntry
+    val savedStateHandle = backStackEntry?.savedStateHandle
+    val healthUpdatedFlow = remember(savedStateHandle) { savedStateHandle?.getStateFlow("health_updated", false) }
+    val healthUpdated by (healthUpdatedFlow?.collectAsState(initial = false) ?: remember { mutableStateOf(false) })
+
+    LaunchedEffect(healthUpdated) {
+        if (healthUpdated) {
+            showDialog = true
+        }
+    }
+
     val formattedDate = remember(selectedDate) {
         selectedDate.format(DateTimeFormatter.ofPattern("M월 d일"))
     }
@@ -272,11 +285,12 @@ fun ReservationCompleteDialog(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.60f))
-            .clickable(
-                onClick = onDismiss,
-                indication = null,
-                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-            )
+            // Removed global clickable on the scrim to avoid intercepting child clicks
+            // .clickable(
+            //     onClick = onDismiss,
+            //     indication = null,
+            //     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            // )
     ) {
         Card(
             shape = RoundedCornerShape(10.dp),
@@ -288,10 +302,25 @@ fun ReservationCompleteDialog(
             colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
+                // Added a small close control at the top-right so user can dismiss the dialog
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    // spacer to keep title centered
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "X",
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .clickable(onClick = onDismiss)
+                            .padding(12.dp),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 20.dp, horizontal = 16.dp),
+                        .padding(vertical = 8.dp, horizontal = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {

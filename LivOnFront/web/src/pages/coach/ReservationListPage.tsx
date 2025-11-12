@@ -148,7 +148,7 @@ const TableBody = styled.tbody``;
 const TableRow = styled.tr`
   border-bottom: 1px solid #e5e7eb;
   transition: background-color 0.2s ease;
-  
+
   &:hover {
     background-color: transparent;
   }
@@ -161,7 +161,7 @@ const TableCell = styled.td`
   vertical-align: middle;
   word-break: keep-all;
   white-space: normal;
-  
+
   &:nth-child(1) {
     width: 200px;
     white-space: nowrap;
@@ -221,7 +221,7 @@ const StartConsultationButton = styled.button`
 `;
 
 const ViewMemberButton = styled.button<{ $compact?: boolean }>`
-  width: ${props => (props.$compact ? '85px' : '86px')};
+  width: ${(props) => (props.$compact ? "85px" : "86px")};
   height: 36px;
   display: inline-flex;
   align-items: center;
@@ -231,14 +231,15 @@ const ViewMemberButton = styled.button<{ $compact?: boolean }>`
   color: #4965f6;
   border: 1px solid #4965f6;
   border-radius: 8px;
-  font-size: ${props => (props.$compact ? '14px' : '12px')};
+  font-size: ${(props) => (props.$compact ? "14px" : "12px")};
   font-weight: 500;
   cursor: pointer;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
   text-align: center;
   white-space: nowrap;
   line-height: 1;
-  
+
   &:hover {
     background-color: #f7fafc;
   }
@@ -628,50 +629,36 @@ export const ReservationListPage: React.FC = () => {
           </FilterDropdown>
         </TabsAndFilterContainer>
 
-        {filteredReservations.length === 0 && activeTab === 'current' ? (
+        {loading ? (
+          <LoadingMessage>예약 목록을 불러오는 중...</LoadingMessage>
+        ) : error ? (
+          <ErrorMessage>{error}</ErrorMessage>
+        ) : reservations.length === 0 ? (
           <EmptyMessage>현재 상담 예약 신청 내역이 없습니다.</EmptyMessage>
         ) : (
-          <ReservationTable>
-            <TableHeader>
-              <tr>
-                <TableHeaderCell>날짜 / 시간</TableHeaderCell>
-                <TableHeaderCell>클래스</TableHeaderCell>
-                <TableHeaderCell>클래스 형태</TableHeaderCell>
-                <TableHeaderCell></TableHeaderCell>
-              </tr>
-            </TableHeader>
-            <TableBody>
-              {filteredReservations.map((reservation) => (
-                <TableRow key={reservation.id}>
-                  <TableCell>{reservation.date} {reservation.time}</TableCell>
-                  <TableCell>
-                    <ClassTitle>{reservation.classTitle}</ClassTitle>
-                    <ClassDescription>{reservation.classDescription}</ClassDescription>
-                  </TableCell>
-                  <TableCell style={{ color: '#4965f6' }}>{reservation.classType}</TableCell>
-                  <TableCell>
-                    <ActionButtonContainer>
-                      <StartConsultationButton onClick={handleStartConsultation}>
-                        상담 시작
-                      </StartConsultationButton>
-                      {reservation.classType === '개인 상담 / 코칭' && reservation.memberName ? (
-                        <ViewMemberButton onClick={() => handleViewMember(reservation.memberName!)}>
-                          {`${reservation.memberName} 회원 보기`}
-                        </ViewMemberButton>
-                      ) : null}
-                      {(reservation.classType === '기업 클래스' || reservation.classType === '일반 클래스') && (
-                        <ViewMemberButton $compact onClick={handleViewAppliedMembers}>
-                          신청 회원
-                        </ViewMemberButton>
-                      )}
-                      <CancelButton onClick={() => handleCancelClick(reservation.id)}>예약 취소</CancelButton>
-                    </ActionButtonContainer>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </ReservationTable>
-        )}
+          <>
+            <ReservationTable>
+              <TableHeader>
+                <tr>
+                  <TableHeaderCell>날짜 / 시간</TableHeaderCell>
+                  <TableHeaderCell>클래스</TableHeaderCell>
+                  <TableHeaderCell>클래스 형태</TableHeaderCell>
+                  <TableHeaderCell></TableHeaderCell>
+                </tr>
+              </TableHeader>
+              <TableBody>
+                {reservations.map((reservation) => {
+                  const { date, time } = formatDateTime(
+                    reservation.startAt,
+                    reservation.endAt
+                  );
+                  const classType = getClassType(reservation.type);
+                  const isIndividual = reservation.type === "ONE";
+                  const firstParticipant =
+                    reservation.participants &&
+                    reservation.participants.length > 0
+                      ? reservation.participants[0]
+                      : null;
 
                   return (
                     <TableRow key={reservation.consultationId}>
@@ -702,7 +689,6 @@ export const ReservationListPage: React.FC = () => {
                           </StartConsultationButton>
                           {isIndividual && firstParticipant ? (
                             <ViewMemberButton
-                              $hasLongText={true}
                               onClick={() =>
                                 handleViewMember(
                                   firstParticipant.nickname,
@@ -715,6 +701,7 @@ export const ReservationListPage: React.FC = () => {
                             </ViewMemberButton>
                           ) : (
                             <ViewMemberButton
+                              $compact
                               onClick={() =>
                                 handleViewAppliedMembers(
                                   reservation.participants

@@ -1,18 +1,21 @@
-import React, { useState } from 'react';
-import styled from 'styled-components';
-import { useAuth } from '../../hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
-import { Input as CommonInput } from '../../components/common/Input';
-import { Dropdown as CommonDropdown } from '../../components/common/Dropdown';
-import { DateTimePickerModal } from '../../components/common/Modal';
-import profilePictureIcon from '../../assets/images/profile_picture.png';
-import { ROUTES } from '../../constants/routes';
+import React, { useState, useEffect } from "react";
+import styled from "styled-components";
+import { useAuth } from "../../hooks/useAuth";
+import { useNavigate } from "react-router-dom";
+import { Input as CommonInput } from "../../components/common/Input";
+import { Dropdown as CommonDropdown } from "../../components/common/Dropdown";
+import { DateTimePickerModal } from "../../components/common/Modal";
+import profilePictureIcon from "../../assets/images/profile_picture.png";
+import { ROUTES } from "../../constants/routes";
+import { CONFIG } from "../../constants/config";
+import { getMyProfileApi } from "../../api/authApi";
 
 const PageContainer = styled.div`
   min-height: 100vh;
   background-color: #ffffff;
   padding: clamp(24px, 5vw, 40px) clamp(16px, 4vw, 32px);
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
 `;
 
 const ContentWrapper = styled.div`
@@ -389,6 +392,26 @@ const SubmitButton = styled.button`
     Roboto, sans-serif;
 `;
 
+const LoadingMessage = styled.div`
+  text-align: center;
+  padding: 80px 20px;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+  font-weight: 500;
+  font-size: 16px;
+  color: #6b7280;
+`;
+
+const ErrorMessage = styled.div`
+  text-align: center;
+  padding: 80px 20px;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+  font-weight: 500;
+  font-size: 16px;
+  color: #ef4444;
+`;
+
 export const MyPageInfoPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -401,15 +424,15 @@ export const MyPageInfoPage: React.FC = () => {
     "kakao.com",
   ]);
   const [formData, setFormData] = useState({
-    nickname: '',
-    password: '',
-    confirmPassword: '',
-    gender: 'male',
-    birthDate: '',
-    emailId: '',
-    emailDomain: '',
-    affiliation: '',
-    introduction: '',
+    nickname: "",
+    password: "",
+    confirmPassword: "",
+    gender: "male",
+    birthDate: "",
+    emailId: "",
+    emailDomain: "",
+    affiliation: "",
+    introduction: "",
   });
   const [qualificationFields, setQualificationFields] = useState<string[]>([
     "",
@@ -468,14 +491,13 @@ export const MyPageInfoPage: React.FC = () => {
           // formData 업데이트
           setFormData((prev) => ({
             ...prev,
-            userId: userData.userId || "",
             nickname: userData.nickname || "",
-            contact: userData.phoneNumber || "",
             emailId: emailId,
             emailDomain: emailDomain,
             gender: genderValue,
             birthDate: birthDateValue,
             affiliation: userData.organizations || "",
+            introduction: "",
           }));
 
           // 프로필 이미지 설정
@@ -506,16 +528,18 @@ export const MyPageInfoPage: React.FC = () => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleAddQualification = () => setQualificationFields(prev => [...prev, '']);
+  const handleAddQualification = () =>
+    setQualificationFields((prev) => [...prev, ""]);
   const nickname = user?.nickname;
-  const navigateToVerification = () => navigate(ROUTES.COACH_MYPAGE_VERIFICATION);
+  const navigateToVerification = () =>
+    navigate(ROUTES.COACH_MYPAGE_VERIFICATION);
 
   // 코치 전용 가드
   useEffect(() => {
-    if (!isLoading && user && user.role !== "coach") {
+    if (!loading && user && user.role !== "coach") {
       navigate(ROUTES.COACH_ONLY, { replace: true });
     }
-  }, [isLoading, user, navigate]);
+  }, [loading, user, navigate]);
   if (loading) {
     return (
       <PageContainer>
@@ -539,126 +563,26 @@ export const MyPageInfoPage: React.FC = () => {
   return (
     <PageContainer>
       <ContentWrapper>
-        <PageTitle>{nickname ? `${nickname} 코치님 마이페이지` : '코치님 마이페이지'}</PageTitle>
+        <PageTitle>
+          {nickname ? `${nickname} 코치님 마이페이지` : "코치님 마이페이지"}
+        </PageTitle>
 
-      {/* 프로필 사진 업로드 섹션 */}
-      <ProfileSection>
-        <ProfileImageContainer>
-          {profileImage ? (
-            <ProfileImage src={URL.createObjectURL(profileImage)} alt="Profile" />
-          ) : (
-            <ProfileImagePlaceholder>
-              <img src={profilePictureIcon} alt="Profile Placeholder" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            </ProfileImagePlaceholder>
-          )}
-        </ProfileImageContainer>
-        <ProfileInfo>
-          <ProfileLabel>프로필 사진</ProfileLabel>
-          <FileNameContainer>
-            <FileNameLabel>파일명</FileNameLabel>
-            <FileNameInput type="text" value={profileFileName} readOnly />
-            <FileButton type="button" onClick={() => document.getElementById('mypage-profile-input')?.click()}>
-              파일 등록
-            </FileButton>
-            <FileButton
-              type="button"
-              variant="danger"
-              onClick={() => { setProfileImage(null); setProfileFileName(''); }}
-              disabled={!profileImage}
-            >
-              파일 삭제
-            </FileButton>
-          </FileNameContainer>
-          <ProfileDescription>
-            프로필 사진은 300x400px 사이즈를 권장합니다.<br />
-            파일 형식은 JPGE(.jpg, .jpeg) 또는 PNG(.png)만 지원합니다.<br />
-            업로드 파일 용량은 2MB 이하만 가능합니다.
-          </ProfileDescription>
-          <input
-            id="mypage-profile-input"
-            type="file"
-            accept="image/jpeg,image/jpg,image/png"
-            style={{ display: 'none' }}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              if (file.size > 2 * 1024 * 1024) { alert('파일 용량은 2MB 이하만 가능합니다.'); return; }
-              const valid = ['image/jpeg','image/jpg','image/png'];
-              if (!valid.includes(file.type)) { alert('파일 형식은 JPG, JPEG 또는 PNG만 지원합니다.'); return; }
-              setProfileImage(file);
-              setProfileFileName(file.name);
-            }}
-          />
-        </ProfileInfo>
-      </ProfileSection>
-
-      {/* SignupPage 형태의 폼 (이메일 인증 관련 요소 제외) */}
-      <FormGrid>
-        <FormColumn>
-          <FormField>
-            <FormLabel>닉네임</FormLabel>
-            <InputWithButton>
-              <CommonInput
-                placeholder="닉네임을 입력하세요"
-                value={formData.nickname}
-                onChange={(e) => handleInputChange('nickname', e.target.value)}
-                style={{ flex: 1 }}
+        {/* 프로필 사진 업로드 섹션 */}
+        <ProfileSection>
+          <ProfileImageContainer>
+            {profileImage ? (
+              <ProfileImage
+                src={URL.createObjectURL(profileImage)}
+                alt="Profile"
               />
-              <SmallButton type="button">중복확인</SmallButton>
-            </InputWithButton>
-          </FormField>
-
-          <FormField>
-            <FormLabel>비밀번호</FormLabel>
-            <CommonInput
-              type="password"
-              placeholder="비밀번호를 입력해주세요."
-              value={formData.password}
-              onChange={(e) => handleInputChange('password', e.target.value)}
-              style={{ flex: 1 }}
-            />
-          </FormField>
-
-          <FormField>
-            <FormLabel>비밀번호 확인</FormLabel>
-            <CommonInput
-              type="password"
-              placeholder="비밀번호를 한 번 더 입력해주세요."
-              value={formData.confirmPassword}
-              onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-              style={{ flex: 1 }}
-            />
-          </FormField>
-
-          <FormField>
-            <FormLabel>성별</FormLabel>
-            <RadioGroup>
-              <label><input type="radio" name="gender" checked={formData.gender==='male'} onChange={() => handleInputChange('gender','male')} /> 남</label>
-              <label><input type="radio" name="gender" checked={formData.gender==='female'} onChange={() => handleInputChange('gender','female')} /> 여</label>
-            </RadioGroup>
-          </FormField>
-
-          <FormField>
-            <FormLabel>생년월일</FormLabel>
-            <CommonInput
-              placeholder="YYYY.MM.DD"
-              value={formData.birthDate}
-              onChange={(e) => handleInputChange('birthDate', e.target.value)}
-              style={{ flex: 1 }}
-            />
-          </FormField>
-        </FormColumn>
-
-        <FormColumn>
-          <FormField style={{ alignItems: 'flex-start' }}>
-            <FormLabel style={{ marginTop: '17px' }}>이메일</FormLabel>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
-              <EmailInputContainer>
-                <CommonInput
-                  placeholder="이메일을 입력하세요."
-                  value={formData.emailId}
-                  onChange={(e) => handleInputChange('emailId', e.target.value)}
-                  style={{ flex: 1 }}
+            ) : profileImageUrl ? (
+              <ProfileImage src={profileImageUrl} alt="Profile" />
+            ) : (
+              <ProfileImagePlaceholder>
+                <img
+                  src={profilePictureIcon}
+                  alt="Profile Placeholder"
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 />
               </ProfileImagePlaceholder>
             )}
@@ -674,37 +598,38 @@ export const MyPageInfoPage: React.FC = () => {
                 }
                 readOnly
               />
-              {/* 인증번호 보내기 / 인증하기 섹션 제거 */}
-            </div>
-          </FormField>
-
-          <FormField>
-            <FormLabel>소속</FormLabel>
-            <CommonInput
-              placeholder="소속을 입력해 주세요."
-              value={formData.affiliation}
-              onChange={(e) => handleInputChange('affiliation', e.target.value)}
-              style={{ flex: 1 }}
-            />
-          </FormField>
-
-        </FormColumn>
-      </FormGrid>
-
-      {/* SignupPage와 동일한 자격/소개 섹션 */}
-      <FormField style={{ alignItems: 'flex-start', marginTop: '18px' }}>
-        <div style={{ width: '120px', flexShrink: 0 }}>
-          <FormLabel>자격</FormLabel>
-          <div style={{ fontSize: '10px', color: '#666666', marginTop: '0px', whiteSpace: 'nowrap' }}>
-            취득한 자격증을 입력해 주세요.
-          </div>
-        </div>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', position: 'relative', width: '100%' }}>
-          {qualificationFields.map((value, index) => (
-            <CommonInput
-              key={index}
-              placeholder="자격증 명을 입력해 주세요."
-              value={value}
+              <FileButton
+                type="button"
+                onClick={() =>
+                  document.getElementById("mypage-profile-input")?.click()
+                }
+              >
+                파일 등록
+              </FileButton>
+              <FileButton
+                type="button"
+                variant="danger"
+                onClick={() => {
+                  setProfileImage(null);
+                  setProfileFileName("");
+                }}
+                disabled={!profileImage}
+              >
+                파일 삭제
+              </FileButton>
+            </FileNameContainer>
+            <ProfileDescription>
+              프로필 사진은 300x400px 사이즈를 권장합니다.
+              <br />
+              파일 형식은 JPGE(.jpg, .jpeg) 또는 PNG(.png)만 지원합니다.
+              <br />
+              업로드 파일 용량은 2MB 이하만 가능합니다.
+            </ProfileDescription>
+            <input
+              id="mypage-profile-input"
+              type="file"
+              accept="image/jpeg,image/jpg,image/png"
+              style={{ display: "none" }}
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
@@ -720,39 +645,13 @@ export const MyPageInfoPage: React.FC = () => {
                 setProfileImage(file);
                 setProfileFileName(file.name);
               }}
-              style={{ width: '100%' }}
             />
           </ProfileInfo>
         </ProfileSection>
 
-      <FormField style={{ alignItems: 'flex-start' }}>
-        <div style={{ width: '120px', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
-          <FormLabel style={{ marginBottom: '0px' }}>소개</FormLabel>
-          <div style={{ fontSize: '10px', color: '#666666', lineHeight: '1.2', marginTop: '0px' }}>
-            회원들에게 코치님을<br />소개하는 글을 입력해 주세요.
-          </div>
-        </div>
-        <div style={{ flex: 1, alignSelf: 'flex-start', width: '100%' }}>
-          <TextArea
-            placeholder="소개 글을 입력해 주세요."
-            value={formData.introduction}
-            onChange={(e) => { handleInputChange('introduction', (e.target as HTMLTextAreaElement).value); setIntroductionCount((e.target as HTMLTextAreaElement).value.length); }}
-            maxLength={50}
-          />
-          <CharacterCounter>{introductionCount}/50</CharacterCounter>
-        </div>
-      </FormField>
-
-            <FormField>
-              <FormLabel>이름</FormLabel>
-              <CommonInput
-                placeholder="이름을 입력해주세요."
-                value={formData.name}
-                onChange={(e) => handleInputChange("name", e.target.value)}
-                style={{ flex: 1 }}
-              />
-            </FormField>
-
+        {/* SignupPage 형태의 폼 (이메일 인증 관련 요소 제외) */}
+        <FormGrid>
+          <FormColumn>
             <FormField>
               <FormLabel>닉네임</FormLabel>
               <InputWithButton>
@@ -768,9 +667,207 @@ export const MyPageInfoPage: React.FC = () => {
               </InputWithButton>
             </FormField>
 
-      <div style={{ marginTop: '24px' }}>
-        <SubmitButton onClick={navigateToVerification}>정보 수정</SubmitButton>
-      </div>
+            <FormField>
+              <FormLabel>비밀번호</FormLabel>
+              <CommonInput
+                type="password"
+                placeholder="비밀번호를 입력해주세요."
+                value={formData.password}
+                onChange={(e) => handleInputChange("password", e.target.value)}
+                style={{ flex: 1 }}
+              />
+            </FormField>
+
+            <FormField>
+              <FormLabel>비밀번호 확인</FormLabel>
+              <CommonInput
+                type="password"
+                placeholder="비밀번호를 한 번 더 입력해주세요."
+                value={formData.confirmPassword}
+                onChange={(e) =>
+                  handleInputChange("confirmPassword", e.target.value)
+                }
+                style={{ flex: 1 }}
+              />
+            </FormField>
+
+            <FormField>
+              <FormLabel>성별</FormLabel>
+              <RadioGroup>
+                <label>
+                  <input
+                    type="radio"
+                    name="gender"
+                    checked={formData.gender === "male"}
+                    onChange={() => handleInputChange("gender", "male")}
+                  />{" "}
+                  남
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="gender"
+                    checked={formData.gender === "female"}
+                    onChange={() => handleInputChange("gender", "female")}
+                  />{" "}
+                  여
+                </label>
+              </RadioGroup>
+            </FormField>
+
+            <FormField>
+              <FormLabel>생년월일</FormLabel>
+              <CommonInput
+                placeholder="YYYY.MM.DD"
+                value={formData.birthDate}
+                onChange={(e) => handleInputChange("birthDate", e.target.value)}
+                style={{ flex: 1 }}
+              />
+            </FormField>
+          </FormColumn>
+
+          <FormColumn>
+            <FormField style={{ alignItems: "flex-start" }}>
+              <FormLabel style={{ marginTop: "17px" }}>이메일</FormLabel>
+              <div
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                  width: "100%",
+                }}
+              >
+                <EmailInputContainer>
+                  <CommonInput
+                    placeholder="이메일을 입력하세요."
+                    value={formData.emailId}
+                    onChange={(e) =>
+                      handleInputChange("emailId", e.target.value)
+                    }
+                    style={{ flex: 1 }}
+                  />
+                  <EmailSeparator>@</EmailSeparator>
+                  <CommonDropdown
+                    options={emailDomains.map((domain) => ({
+                      value: domain,
+                      label: domain,
+                    }))}
+                    value={formData.emailDomain}
+                    onChange={(e) =>
+                      handleInputChange("emailDomain", e.target.value)
+                    }
+                    style={{ flex: 1 }}
+                  />
+                </EmailInputContainer>
+              </div>
+            </FormField>
+
+            <FormField>
+              <FormLabel>소속</FormLabel>
+              <CommonInput
+                placeholder="소속을 입력해 주세요."
+                value={formData.affiliation}
+                onChange={(e) =>
+                  handleInputChange("affiliation", e.target.value)
+                }
+                style={{ flex: 1 }}
+              />
+            </FormField>
+          </FormColumn>
+        </FormGrid>
+
+        {/* SignupPage와 동일한 자격/소개 섹션 */}
+        <FormField style={{ alignItems: "flex-start", marginTop: "18px" }}>
+          <div style={{ width: "120px", flexShrink: 0 }}>
+            <FormLabel>자격</FormLabel>
+            <div
+              style={{
+                fontSize: "10px",
+                color: "#666666",
+                marginTop: "0px",
+                whiteSpace: "nowrap",
+              }}
+            >
+              취득한 자격증을 입력해 주세요.
+            </div>
+          </div>
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px",
+              position: "relative",
+              width: "100%",
+            }}
+          >
+            {qualificationFields.map((value, index) => (
+              <CommonInput
+                key={index}
+                placeholder="자격증 명을 입력해 주세요."
+                value={value}
+                onChange={(e) => {
+                  const newFields = [...qualificationFields];
+                  newFields[index] = e.target.value;
+                  setQualificationFields(newFields);
+                }}
+                style={{ width: "100%" }}
+              />
+            ))}
+            <AddButton type="button" onClick={handleAddQualification}>
+              + 자격 추가
+            </AddButton>
+          </div>
+        </FormField>
+
+        <FormField style={{ alignItems: "flex-start" }}>
+          <div
+            style={{
+              width: "120px",
+              flexShrink: 0,
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <FormLabel style={{ marginBottom: "0px" }}>소개</FormLabel>
+            <div
+              style={{
+                fontSize: "10px",
+                color: "#666666",
+                lineHeight: "1.2",
+                marginTop: "0px",
+              }}
+            >
+              회원들에게 코치님을
+              <br />
+              소개하는 글을 입력해 주세요.
+            </div>
+          </div>
+          <div style={{ flex: 1, alignSelf: "flex-start", width: "100%" }}>
+            <TextArea
+              placeholder="소개 글을 입력해 주세요."
+              value={formData.introduction}
+              onChange={(e) => {
+                handleInputChange(
+                  "introduction",
+                  (e.target as HTMLTextAreaElement).value
+                );
+                setIntroductionCount(
+                  (e.target as HTMLTextAreaElement).value.length
+                );
+              }}
+              maxLength={50}
+            />
+            <CharacterCounter>{introductionCount}/50</CharacterCounter>
+          </div>
+        </FormField>
+
+        <div style={{ marginTop: "24px" }}>
+          <SubmitButton onClick={navigateToVerification}>
+            정보 수정
+          </SubmitButton>
+        </div>
       </ContentWrapper>
     </PageContainer>
   );

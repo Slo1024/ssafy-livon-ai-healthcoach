@@ -140,6 +140,8 @@ const TableHeader = styled.thead`
   background-color: #f9fafb;
 `;
 
+const TableBody = styled.tbody``;
+
 const TableHeaderCell = styled.th`
   padding: 12px 16px;
   text-align: left;
@@ -154,8 +156,6 @@ const TableHeaderCell = styled.th`
     font-size: 13px;
   }
 `;
-
-const TableBody = styled.tbody``;
 
 const TableRow = styled.tr`
   border-bottom: 1px solid #e5e7eb;
@@ -231,6 +231,14 @@ const ClassDescription = styled.span`
   display: block;
   font-size: 13px;
   color: #6b7280;
+`;
+
+const ClassCapacityInfo = styled.span`
+  display: block;
+  font-size: 12px;
+  color: #4965f6;
+  margin-top: 4px;
+  font-weight: 500;
 `;
 
 const ActionButtonContainer = styled.div`
@@ -375,18 +383,21 @@ const ErrorMessage = styled.div`
   color: #ef4444;
 `;
 
+// 에러 메시지 상수
+const ERROR_MESSAGES = {
+  FETCH_FAILED: "예약 목록을 불러오는데 실패했습니다.",
+  CANCEL_FAILED: "예약 취소에 실패했습니다.",
+  TOKEN_REQUIRED: "인증 토큰이 없습니다. 로그인이 필요합니다.",
+} as const;
+
 interface CoachConsultation {
   consultationId: number;
   type: string;
-  status: string;
   startAt: string;
   endAt: string;
-  sessionId: string;
   preQna?: string;
-  aiSummary?: string;
   title?: string;
   description?: string;
-  imageUrl?: string;
   capacity?: number;
   currentParticipants?: number;
   participants?: Array<{
@@ -407,7 +418,6 @@ export const ReservationListPage: React.FC = () => {
       navigate(ROUTES.COACH_ONLY, { replace: true });
     }
   }, [isLoading, user, navigate]);
-  const [activeTab, setActiveTab] = useState<"current" | "past">("current");
   const [filterValue, setFilterValue] = useState("전체");
   const [showMemberInfoModal, setShowMemberInfoModal] = useState(false);
   const [selectedMemberName, setSelectedMemberName] = useState<string>("");
@@ -428,7 +438,6 @@ export const ReservationListPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  const [totalItems, setTotalItems] = useState(0);
   const pageSize = 10;
 
   const nickname = user?.nickname || "";
@@ -507,7 +516,7 @@ export const ReservationListPage: React.FC = () => {
       const token = localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
 
       if (!token) {
-        throw new Error("인증 토큰이 없습니다. 로그인이 필요합니다.");
+        throw new Error(ERROR_MESSAGES.TOKEN_REQUIRED);
       }
 
       const response = await getCoachConsultationsApi(
@@ -521,12 +530,9 @@ export const ReservationListPage: React.FC = () => {
       setReservations(response.items);
       setCurrentPage(response.page);
       setTotalPages(response.totalPages);
-      setTotalItems(response.totalItems);
     } catch (err) {
       const errorMessage =
-        err instanceof Error
-          ? err.message
-          : "예약 목록을 불러오는데 실패했습니다.";
+        err instanceof Error ? err.message : ERROR_MESSAGES.FETCH_FAILED;
       setError(errorMessage);
       console.error("예약 목록 조회 오류:", err);
     } finally {
@@ -549,11 +555,10 @@ export const ReservationListPage: React.FC = () => {
   };
 
   const handleCurrentClick = () => {
-    setActiveTab("current");
+    // 현재 예약 페이지에 있으므로 아무 동작 없음
   };
 
   const handlePastClick = () => {
-    setActiveTab("past");
     navigate(ROUTES.PAST_RESERVATION);
   };
 
@@ -609,7 +614,7 @@ export const ReservationListPage: React.FC = () => {
     try {
       const token = localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
       if (!token) {
-        throw new Error("인증 토큰이 없습니다.");
+        throw new Error(ERROR_MESSAGES.TOKEN_REQUIRED);
       }
 
       if (cancelReservationType === "ONE") {
@@ -621,27 +626,26 @@ export const ReservationListPage: React.FC = () => {
         );
       }
 
-      setShowCancelConfirmModal(false);
+      closeCancelModal();
       setShowCancelSuccessModal(true);
-      setCancelReservationId(null);
-      setCancelReservationType(null);
 
       // 목록 새로고침
       const type = getFilterType(filterValue);
       fetchReservations(currentPage, type);
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : "예약 취소에 실패했습니다.";
+        err instanceof Error ? err.message : ERROR_MESSAGES.CANCEL_FAILED;
       setError(errorMessage);
-      setShowCancelConfirmModal(false);
-      setCancelReservationId(null);
-      setCancelReservationType(null);
+      closeCancelModal();
       console.error("예약 취소 오류:", err);
     }
   };
 
-  const handleCancelSuccess = () => {
-    setShowCancelSuccessModal(false);
+  // 모달 닫기 핸들러
+  const closeCancelModal = () => {
+    setShowCancelConfirmModal(false);
+    setCancelReservationId(null);
+    setCancelReservationType(null);
   };
 
   const filterOptions = [
@@ -663,7 +667,7 @@ export const ReservationListPage: React.FC = () => {
             <SegmentedTabs
               leftLabel="현재 예약"
               rightLabel="지난 예약"
-              active={activeTab === "current" ? "left" : "right"}
+              active="left"
               onLeftClick={handleCurrentClick}
               onRightClick={handlePastClick}
               tabWidth={120}
@@ -719,11 +723,22 @@ export const ReservationListPage: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <ClassTitle>
-                          {reservation.title || "제목 없음"}
+                          {reservation.type === "ONE"
+                            ? "개인 상담 / 코칭"
+                            : reservation.title || "제목 없음"}
                         </ClassTitle>
-                        <ClassDescription>
-                          {reservation.description || ""}
-                        </ClassDescription>
+                        {reservation.type === "GROUP" && reservation.description && (
+                          <ClassDescription>
+                            {reservation.description}
+                          </ClassDescription>
+                        )}
+                        {reservation.type === "GROUP" &&
+                          reservation.capacity !== undefined &&
+                          reservation.currentParticipants !== undefined && (
+                            <ClassCapacityInfo>
+                              예약 인원: {reservation.currentParticipants} / {reservation.capacity}명
+                            </ClassCapacityInfo>
+                          )}
                       </TableCell>
                       <TableCell style={{ color: "#4965f6" }}>
                         {classType}
@@ -838,7 +853,7 @@ export const ReservationListPage: React.FC = () => {
           question={
             reservations.find(
               (r) => r.consultationId === selectedConsultationId
-            )?.preQna
+            )?.preQna || undefined
           }
         />
 
@@ -855,10 +870,7 @@ export const ReservationListPage: React.FC = () => {
         {/* 예약 취소 확인 모달 */}
         <ReservationCancelConfirmModal
           open={showCancelConfirmModal}
-          onClose={() => {
-            setShowCancelConfirmModal(false);
-            setCancelReservationId(null);
-          }}
+          onClose={closeCancelModal}
           onConfirm={handleCancelConfirm}
         />
 
@@ -866,7 +878,7 @@ export const ReservationListPage: React.FC = () => {
         <ReservationCancelSuccessModal
           open={showCancelSuccessModal}
           onClose={() => setShowCancelSuccessModal(false)}
-          onConfirm={handleCancelSuccess}
+          onConfirm={() => setShowCancelSuccessModal(false)}
         />
       </ContentWrapper>
     </PageContainer>

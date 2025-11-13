@@ -920,19 +920,19 @@ export const MemberInfoModal: React.FC<MemberInfoModalProps> = ({
 
           const response = await getParticipantInfoApi(token, consultationId);
           const participantInfo = response.memberInfo;
-          const healthData = participantInfo.healthData;
+          const healthData = participantInfo?.healthData;
 
           // sleepTime은 분 단위이므로 시간 단위로 변환
-          const sleepTimeInHours = healthData.sleepTime
+          const sleepTimeInHours = healthData?.sleepTime
             ? Math.round(healthData.sleepTime / 60)
             : undefined;
 
           setMemberInfo({
             nickname: participantInfo.nickname || memberName || "회원",
-            height: healthData.height,
-            weight: healthData.weight,
+            height: healthData?.height,
+            weight: healthData?.weight,
             sleepTime: sleepTimeInHours,
-            preQna: question,
+            preQna: question || undefined,
           });
         } catch (err) {
           console.error("참여자 정보 조회 오류:", {
@@ -1030,11 +1030,15 @@ export const MemberInfoModal: React.FC<MemberInfoModalProps> = ({
   if (!open) return null;
 
   const displayName = memberInfo?.nickname || memberName || "회원";
-  const height = memberInfo?.height || memberData?.height || 170;
-  const weight = memberInfo?.weight || memberData?.weight || 50;
-  const sleepTime = memberInfo?.sleepTime || memberData?.sleepTime || 7;
-  const qaQuestion = memberInfo?.preQna || question || "전완근을 키우고 싶어요";
+  const height = memberInfo?.height ?? memberData?.height;
+  const weight = memberInfo?.weight ?? memberData?.weight;
+  const sleepTime = memberInfo?.sleepTime ?? memberData?.sleepTime;
+  const qaQuestion = memberInfo?.preQna || question;
   const profileImage = memberInfo?.profileImage || profilePictureIcon;
+  
+  // 건강 데이터 존재 여부 확인
+  const hasHealthData = height !== undefined || weight !== undefined || sleepTime !== undefined;
+  const hasQnA = qaQuestion && qaQuestion.trim() !== "";
 
   return (
     <Overlay onClick={onClose}>
@@ -1060,15 +1064,35 @@ export const MemberInfoModal: React.FC<MemberInfoModalProps> = ({
               </ProfileIconContainer>
 
               <MemberDataContainer>
-                <MemberDataItem>신장 {height}cm</MemberDataItem>
-                <MemberDataItem>체중 {weight}kg</MemberDataItem>
-                <MemberDataItem>수면 시간 {sleepTime}시간</MemberDataItem>
+                {hasHealthData ? (
+                  <>
+                    {height !== undefined && (
+                      <MemberDataItem>신장 {height}cm</MemberDataItem>
+                    )}
+                    {weight !== undefined && (
+                      <MemberDataItem>체중 {weight}kg</MemberDataItem>
+                    )}
+                    {sleepTime !== undefined && (
+                      <MemberDataItem>수면 시간 {sleepTime}시간</MemberDataItem>
+                    )}
+                  </>
+                ) : (
+                  <MemberDataItem style={{ color: "#6b7280", fontStyle: "italic" }}>
+                    건강 데이터가 없습니다.
+                  </MemberDataItem>
+                )}
               </MemberDataContainer>
             </MemberContentContainer>
 
             <QASection>
               <QATitle>Q&A</QATitle>
-              <QAQuestion>Q. {qaQuestion}</QAQuestion>
+              {hasQnA ? (
+                <QAQuestion>Q. {qaQuestion}</QAQuestion>
+              ) : (
+                <QAQuestion style={{ color: "#6b7280", fontStyle: "italic" }}>
+                  사전 질문이 없습니다.
+                </QAQuestion>
+              )}
             </QASection>
           </>
         )}

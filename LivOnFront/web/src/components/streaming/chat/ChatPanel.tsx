@@ -129,6 +129,7 @@ interface ChatMessage {
   sender: string;
   message: string;
   timestamp: Date;
+  senderUserId?: string;
 }
 
 interface ChatPanelProps {
@@ -137,6 +138,9 @@ interface ChatPanelProps {
   chatInput: string;
   onChatInputChange: (value: string) => void;
   onSendMessage: () => void;
+  onLoadMoreMessages?: () => void;
+  isLoadingMessages?: boolean;
+  isLastPage?: boolean;
 }
 
 export const ChatPanel: React.FC<ChatPanelProps> = ({
@@ -145,17 +149,64 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   chatInput,
   onChatInputChange,
   onSendMessage,
+  onLoadMoreMessages,
+  isLoadingMessages = false,
+  isLastPage = false,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const previousScrollHeightRef = useRef<number>(0);
+  const shouldAutoScrollRef = useRef<boolean>(true);
 
-  // 새 메시지가 추가될 때마다 스크롤을 맨 아래로 이동
+  // 새 메시지가 추가될 때마다 스크롤을 맨 아래로 이동 (사용자가 수동으로 스크롤하지 않은 경우)
   useEffect(() => {
     if (messagesEndRef.current && messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTop =
-        messagesContainerRef.current.scrollHeight;
+      if (shouldAutoScrollRef.current) {
+        messagesContainerRef.current.scrollTop =
+          messagesContainerRef.current.scrollHeight;
+      }
     }
   }, [messages]);
+
+  // 스크롤 이벤트 핸들러: 상단 도달 시 과거 메시지 로드
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container || !onLoadMoreMessages) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+
+      // 사용자가 수동으로 스크롤했는지 확인
+      const isNearBottom =
+        scrollTop + clientHeight >= scrollHeight - 100; // 하단 100px 이내
+      shouldAutoScrollRef.current = isNearBottom;
+
+      // 상단에 도달했고, 로딩 중이 아니고, 마지막 페이지가 아닌 경우
+      if (scrollTop === 0 && !isLoadingMessages && !isLastPage) {
+        console.log("🔵 [채팅] 스크롤 상단 도달 - 과거 메시지 로드");
+        previousScrollHeightRef.current = scrollHeight;
+        onLoadMoreMessages();
+      }
+    };
+
+    container.addEventListener("scroll", handleScroll);
+    return () => {
+      container.removeEventListener("scroll", handleScroll);
+    };
+  }, [onLoadMoreMessages, isLoadingMessages, isLastPage]);
+
+  // 과거 메시지 로드 후 스크롤 위치 유지
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container || previousScrollHeightRef.current === 0) return;
+
+    if (isLoadingMessages === false && previousScrollHeightRef.current > 0) {
+      const newScrollHeight = container.scrollHeight;
+      const scrollDiff = newScrollHeight - previousScrollHeightRef.current;
+      container.scrollTop = scrollDiff;
+      previousScrollHeightRef.current = 0;
+    }
+  }, [messages, isLoadingMessages]);
 
   const getInitials = (name: string) => {
     return name
@@ -170,7 +221,19 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
     <ChatPanelContainer $isOpen={isOpen}>
       <ChatHeader>채팅</ChatHeader>
       <ChatMessages ref={messagesContainerRef}>
-        {messages.length === 0 ? (
+        {isLoadingMessages && (
+          <div
+            style={{
+              textAlign: "center",
+              color: "#9ca3af",
+              padding: "12px",
+              fontSize: "12px",
+            }}
+          >
+            메시지 로딩 중...
+          </div>
+        )}
+        {messages.length === 0 && !isLoadingMessages ? (
           <div
             style={{ textAlign: "center", color: "#9ca3af", padding: "20px" }}
           >

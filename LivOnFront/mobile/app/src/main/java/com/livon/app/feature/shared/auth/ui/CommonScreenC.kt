@@ -48,9 +48,11 @@ fun CommonScreenC(
             fullBleedContent?.let {
                 val bottom = inner.calculateBottomPadding()
                 Spacer(Modifier.height(8.dp))
+                // Give the full-bleed content a weight so it receives a finite height
                 Box(
                     Modifier
                         .fillMaxWidth()
+                        .weight(1f)
                         .padding(bottom = bottom)
                 ) { it() }
             }

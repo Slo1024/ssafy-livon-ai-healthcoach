@@ -206,7 +206,16 @@ fun QnASubmitScreen(
             onDismiss = { showDialog = false },
             onConfirm = {
                 showDialog = false
-                onConfirmReservation(questions.filter { it.isNotBlank() })
+                val submitted = questions.filter { it.isNotBlank() }
+                // 전달: 이전 백스택 엔트리에 저장하여 호출자(ReservationDetailScreen 등)가 이를 읽고 갱신할 수 있게 함
+                try {
+                    navController?.previousBackStackEntry?.savedStateHandle?.set("qna_submitted", true)
+                    navController?.previousBackStackEntry?.savedStateHandle?.set("qna_list", submitted)
+                } catch (_: Exception) {
+                    // ignore if navController not present or setting fails
+                }
+
+                onConfirmReservation(submitted)
                 // NOTE: navigation (to reservations/home) is handled by caller via onConfirmReservation in NavGraph
             },
             onChangeHealthInfo = {

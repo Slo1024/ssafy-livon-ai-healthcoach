@@ -20,7 +20,8 @@ class ReservationRepositoryImpl : ReservationRepository {
         val startAt: String,
         val endAt: String,
         val classTitle: String? = null,
-        val coachName: String? = null
+        val coachName: String? = null,
+        val preQna: String? = null
     )
 
     // ReservationType moved to a top-level declaration (ReservationModels.kt)
@@ -30,7 +31,8 @@ class ReservationRepositoryImpl : ReservationRepository {
         coachId: String,
         startAt: LocalDateTime,
         endAt: LocalDateTime,
-        preQna: String?
+        preQna: String?,
+        coachName: String?
     ): Result<Int> {
         return try {
             val req = ReserveCoachRequest(
@@ -48,7 +50,9 @@ class ReservationRepositoryImpl : ReservationRepository {
                         type = ReservationType.PERSONAL,
                         coachId = coachId,
                         startAt = startAt.format(fmt),
-                        endAt = endAt.format(fmt)
+                        endAt = endAt.format(fmt),
+                        coachName = coachName,
+                        preQna = preQna
                     )
                 )
                 Result.success(res.result)

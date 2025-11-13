@@ -7,7 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -24,6 +24,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
 import com.livon.app.R
 import com.livon.app.ui.theme.Gray2   // 프로젝트 테마에 맞춰주세요
 import com.livon.app.ui.theme.Main   // main 색상
@@ -107,6 +109,7 @@ fun ReservationCard(
     timeText: String,
     classIntro: String,
     imageResId: Int? = null,
+    imageUrl: String? = null,
 
     // 버튼/동작
     onDetail: () -> Unit,
@@ -135,78 +138,77 @@ fun ReservationCard(
                 .fillMaxWidth()
                 .padding(12.dp)
         ) {
-            /* HEADER */
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = headerLeft,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (headerRightIsLive) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(RoundedCornerShape(50))
-                                .background(Color.Red)
-                        )
-                        Spacer(Modifier.width(4.dp))
-                    }
-                    Text(
-                        text = headerRight,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Normal,
-                        color = Color.Black
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(10.dp))
-
-            Divider(
+            /* CONTENT: date (headerLeft) is shown above className; status (headerRight) shown top-end above image */
+            HorizontalDivider(
                 color = MaterialTheme.colorScheme.outline,
-                thickness = 1.dp // 요구: border:outline, 굵기 1
+                thickness = if (dividerBold) 1.dp else 1.dp
             )
 
             Spacer(Modifier.height(10.dp))
 
-            /* CONTENT */
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f)
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(text = className, fontSize = 18.sp, fontWeight = FontWeight.Medium)
-                    Spacer(Modifier.height(6.dp))
-                    Text(text = coachName, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Main)
-                    Spacer(Modifier.height(2.dp))
-                    Text(text = "$coachRole · $coachIntro", fontSize = 10.sp, color = Gray2)
-                    Spacer(Modifier.height(6.dp))
-                    Text(text = timeText, fontSize = 10.sp)
-                    Spacer(Modifier.height(6.dp))
-                    Text(text = classIntro, fontSize = 11.sp, color = Gray2)
-                }
+                    Column(modifier = Modifier.weight(1f)) {
+                        // date above className (left-aligned)
+                        Text(text = headerLeft, fontSize = 11.sp, color = Gray2)
+                        Spacer(Modifier.height(4.dp))
+                        Text(text = className, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                        Spacer(Modifier.height(6.dp))
+                        Text(text = coachName, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Main)
+                        Spacer(Modifier.height(2.dp))
+                        Text(text = "$coachRole · $coachIntro", fontSize = 10.sp, color = Gray2)
+                        Spacer(Modifier.height(6.dp))
+                        Text(text = timeText, fontSize = 10.sp)
+                        Spacer(Modifier.height(6.dp))
+                        Text(text = classIntro, fontSize = 11.sp, color = Gray2)
+                    }
 
-                Spacer(Modifier.width(10.dp))
+                    Spacer(Modifier.width(10.dp))
 
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Image(
-                        painter = painterResource(id = img),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                    )
-                    if (showJoin && onJoin != null) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(top = 8.dp)) {
+                        // status aligned to top-end above the image
+                        Row(
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically) {
+                            if (headerRightIsLive) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(RoundedCornerShape(50))
+                                        .background(Color.Red)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                            }
+                            Text(text = headerRight, fontSize = 10.sp, color = Color.Black)
+                        }
+
                         Spacer(Modifier.height(8.dp))
-                        SessionJoinButton(onClick = onJoin)
+
+                        if (!imageUrl.isNullOrBlank()) {
+                            AsyncImage(
+                                model = imageUrl,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .clip(RoundedCornerShape(6.dp)),
+                                contentScale = ContentScale.Crop,
+                                placeholder = painterResource(id = R.drawable.ic_classphoto),
+                                error = painterResource(id = R.drawable.ic_classphoto)
+                            )
+                        } else {
+                            Image(
+                                painter = painterResource(id = img),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .clip(RoundedCornerShape(6.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
                     }
                 }
             }
@@ -214,7 +216,7 @@ fun ReservationCard(
             Spacer(Modifier.height(10.dp))
 
             /* BUTTONS (가로 배치) */
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 // 예약 상세 (항상 노출)
                 PillOutlineButton(
                     text = "예약 상세",
@@ -226,6 +228,10 @@ fun ReservationCard(
                     onClick = onDetail
                 )
 
+                // session join on same row as reservation 상세
+                if (showJoin && onJoin != null) {
+                    SessionJoinButton(onClick = onJoin)
+                }
                 // 예약 취소 (현재 예약 + 임박/진행중이 아닌 경우)
                 if (showCancel && onCancel != null) {
                     PillOutlineButton(
@@ -255,7 +261,6 @@ fun ReservationCard(
         }
     }
 }
-
 
 fun Modifier.noRippleClickable(onClick: () -> Unit): Modifier = composed {
     clickable(

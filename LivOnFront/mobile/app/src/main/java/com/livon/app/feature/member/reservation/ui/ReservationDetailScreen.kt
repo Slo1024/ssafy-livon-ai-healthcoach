@@ -1,30 +1,32 @@
 package com.livon.app.feature.member.reservation.ui
 
+import androidx.navigation.NavHostController
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.livon.app.R
 import com.livon.app.feature.shared.auth.ui.CommonScreenC
-import com.livon.app.ui.component.button.PrimaryButtonBottom
 import com.livon.app.ui.component.overlay.TopBar
 import com.livon.app.ui.preview.PreviewSurface
 import com.livon.app.ui.theme.Gray2
+import com.livon.app.ui.theme.Main
 import com.livon.app.ui.theme.Spacing
 import com.livon.app.ui.theme.Sub2
 
@@ -60,10 +62,40 @@ fun ReservationDetailScreen(
     onDelete: () -> Unit = {},          // Past* 우상단 '삭제'
     onSeeCoach: () -> Unit = {},
     onSeeAiDetail: () -> Unit = {},
-    onActivateStreaming: () -> Unit = {},
-    onEnterSession: () -> Unit = {},
-    enterEnabled: Boolean = true
+    navController: NavHostController? = null // optional: observe savedStateHandle for qna updates
 ) {
+    // Maintain a local, mutable copy of qnas so we can update it when QnASubmitScreen writes to savedStateHandle
+    var displayedQnas by remember { mutableStateOf(qnas) }
+
+    // Keep displayedQnas in sync if parent re-composes with new qnas
+    LaunchedEffect(qnas) {
+        displayedQnas = qnas
+    }
+
+    // Observe savedStateHandle flags if navController provided
+    val backStackEntry = navController?.currentBackStackEntry
+    val savedStateHandle = backStackEntry?.savedStateHandle
+    val qnaSubmittedFlow = remember(savedStateHandle) { savedStateHandle?.getStateFlow("qna_submitted", false) }
+    val qnaSubmitted by (qnaSubmittedFlow?.collectAsState(initial = false) ?: remember { mutableStateOf(false) })
+    val qnaListFlow = remember(savedStateHandle) { savedStateHandle?.getStateFlow("qna_list", emptyList<String>()) }
+    val qnaList by (qnaListFlow?.collectAsState(initial = emptyList()) ?: remember { mutableStateOf(emptyList<String>()) })
+
+    LaunchedEffect(qnaSubmitted, qnaList) {
+        if (qnaSubmitted || qnaList.isNotEmpty()) {
+            // Prefer explicit qna_list if available; otherwise trigger a refresh (here we use qnaList)
+            if (qnaList.isNotEmpty()) {
+                displayedQnas = qnaList
+            }
+            // clear flags so they don't re-trigger repeatedly
+            try {
+                savedStateHandle?.set("qna_submitted", false)
+                savedStateHandle?.set("qna_list", emptyList<String>())
+            } catch (_: Exception) {
+                // ignore
+            }
+        }
+    }
+
     CommonScreenC(
         // ── TopBar: 지난 예약일 때만 오른쪽 "삭제" 노출
         topBar = { modifier ->
@@ -83,101 +115,77 @@ fun ReservationDetailScreen(
         },
         // 상단바 바로 아래 3개 박스는 full-bleed로(양옆 마진 침범)
         fullBleedContent = {
-            val outerScroll = rememberScrollState()
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(outerScroll),
+                    .fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // 1) 코치 박스 (항상 표시) - 325x140 규격에 맞춰 높이 고정
+                // Use weight proportions: 15 : 18 : 30 (sum 63)
+                // 1) CoachBox - weight 15
                 CoachBox(
                     coach = coach,
                     onSeeCoach = onSeeCoach,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(140.dp)
+                        .weight(15f)
                 )
 
-                // 2) 타입별 두번째 박스 - 325x178 높이 고정
-                // IMPORTANT: AI result must only appear for past personal reservations.
-                // Current reservations (whether personal or group) should show session/class info.
+                // 2) Middle box (Session / Class / AI) - weight 18
                 when (type) {
-                    // 현재 예약: 개인 상담인지 그룹(클래스)인지 구분하여 표시
                     ReservationDetailType.Current -> {
-                        // "그룹" 또는 "클래스" 문자열이 포함되어 있으면 클래스로 간주
                         val isGroup = (sessionTypeLabel ?: "").contains("그룹") || (sessionTypeLabel ?: "").contains("클래스")
                         if (isGroup) {
                             ClassInfoBox(
-                                title = "클래스",
                                 session = session,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(178.dp)
+                                    .weight(18f)
                             )
                         } else {
-                            // 개인 상담 예약 -> 상담 정보 표시
                             SessionInfoBox(
-                                title = "상담",
                                 session = session,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(178.dp)
+                                    .weight(18f)
                             )
                         }
                     }
-                    // Past personal should show AI analysis + Q&A
                     ReservationDetailType.PastPersonal -> {
                         AiResultBox(
-                            title = "분석 결과",
-                            summaryLabel = "AI 분석 결과 요약:",
                             summary = aiSummary ?: "AI 분석 결과 요약이 없습니다.",
                             onSeeDetail = onSeeAiDetail,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(178.dp)
+                                .weight(18f)
                         )
                     }
-
-                    // 지난 예약 (그룹): 클래스 정보 표시
                     ReservationDetailType.PastGroup -> {
                         ClassInfoBox(
-                            title = "클래스",
                             session = session,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(178.dp)
+                                .weight(18f)
                         )
                     }
                 }
 
-                // 3) 등록한 Q&A 박스 - 항상 보여주되 비어있으면 안내 문구 노출
+                // 3) QnA box - weight 30 (scrollable inside)
                 QnaBox(
                     title = if (type == ReservationDetailType.PastPersonal) "Q&A" else "등록한 Q&A",
-                    qnas = qnas,
+                    qnas = displayedQnas,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(1310.dp)
+                        .weight(30f)
                 )
 
-                // 현재 예약일 때만 하단 고정 버튼
-                if (type == ReservationDetailType.Current) {
-                    Spacer(Modifier.height(12.dp))
-                    PrimaryButtonBottom(
-                        text = "세션 입장하기",
-                        enabled = enterEnabled,
-                        onClick = {
-                            onActivateStreaming() // 스트리밍 초기화/활성화
-                            onEnterSession()      // 실제 입장 네비게이션
-                        }
-                    )
-                }
-            }
-        }
-    ) {
-        // CommonScreenC의 content 블록은 사용하지 않음(가로 패딩이 붙기 때문)
-    }
-}
+                // Current type: no bottom action button needed (removed per UX)
+                // NOTE: session entry button intentionally removed
+             }
+         }
+     ) {
+         // CommonScreenC의 content 블록은 사용하지 않음(가로 패딩이 붙기 때문)
+     }
+ }
 
 /* ─────────── 공통 카드 컨테이너 (외각선 0.6dp, 내부 패딩 16/12) ─────────── */
 
@@ -211,88 +219,56 @@ private fun CoachBox(
     onSeeCoach: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    CardContainer(modifier) {
-        Spacer(Modifier.height(6.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
+    CardContainer(modifier = modifier) {
+        Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth()) {
+            // Left: coach text info (name + title on same row)
+            Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = coach.name,
-                        color = MaterialTheme.colorScheme.primary, // main
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = coach.title,
-                        color = Color.Black,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Normal
-                    )
-                }
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = coach.specialties,
-                    color = Gray2,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "근무: ${coach.workplace}",
-                        color = Color.Black,
-                        fontSize = 10.sp
-                    )
-                    Spacer(Modifier.weight(1f))
-                    OutlinedButton(
-                        onClick = onSeeCoach,
-                        shape = RoundedCornerShape(4.dp),
-                        contentPadding = PaddingValues(0.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                        modifier = Modifier
-                            .width(77.dp)
-                            .height(21.dp)
-                    ) {
-                        Text(
-                            text = "코치 보기",
-                            color = Gray2,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium
-                        )
+                    Text(text = coach.name, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = Main)
+                    if (coach.title.isNotBlank()) {
+                        Spacer(Modifier.width(8.dp))
+                        Text(text = coach.title, fontSize = 13.sp, color = Sub2)
                     }
                 }
+                Spacer(Modifier.height(6.dp))
+                if (coach.specialties.isNotBlank()) Text(text = coach.specialties, fontSize = 13.sp)
+                Spacer(Modifier.height(6.dp))
+                if (coach.workplace.isNotBlank()) Text(text = "근무: ${coach.workplace}", fontSize = 12.sp, color = Gray2)
             }
 
             Spacer(Modifier.width(12.dp))
 
-            val resId = coach.profileResId ?: R.drawable.ic_noprofile
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(Sub2),
-                contentAlignment = Alignment.Center
-            ) {
-                // If remote URL provided, use Coil AsyncImage (no tint). Otherwise use painterResource fallback
+            // Right: profile image above the '코치 보기' button
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Top) {
                 if (!coach.profileImageUrl.isNullOrBlank()) {
-                    coil.compose.AsyncImage(
+                    AsyncImage(
                         model = coach.profileImageUrl,
-                        contentDescription = "coach_profile",
-                        modifier = Modifier.size(56.dp),
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        contentDescription = "coach profile",
+                        modifier = Modifier
+                            .size(100.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop,
                         placeholder = painterResource(id = R.drawable.ic_noprofile),
                         error = painterResource(id = R.drawable.ic_noprofile)
                     )
+                } else if (coach.profileResId != null) {
+                    Image(painter = painterResource(id = coach.profileResId), contentDescription = null, modifier = Modifier.size(100.dp).clip(CircleShape))
                 } else {
-                    Icon(
-                        painter = painterResource(id = resId),
-                        contentDescription = "coach_profile",
-                        tint = Color.Unspecified,
-                        modifier = Modifier.size(40.dp)
-                    )
+                    Image(painter = painterResource(id = R.drawable.ic_noprofile), contentDescription = null, modifier = Modifier.size(100.dp).clip(CircleShape))
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                OutlinedButton(
+                    onClick = onSeeCoach,
+                    shape = RoundedCornerShape(4.dp),
+                    contentPadding = PaddingValues(0.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                    modifier = Modifier
+                        .width(77.dp)
+                        .height(21.dp)
+                ) {
+                    Text(text = "코치 보기", color = Gray2, fontSize = 11.sp, fontWeight = FontWeight.Medium)
                 }
             }
         }
@@ -303,12 +279,11 @@ private fun CoachBox(
 
 @Composable
 private fun SessionInfoBox(
-    title: String,
     session: SessionInfo?,
     modifier: Modifier = Modifier
 ) {
     CardContainer(modifier) {
-        Text(text = title, color = Color.Black, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+        Text(text = "상담", color = Color.Black, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(8.dp))
         if (session != null) {
             Text(
@@ -334,16 +309,14 @@ private fun SessionInfoBox(
 
 @Composable
 private fun AiResultBox(
-    title: String,
-    summaryLabel: String,
     summary: String,
     onSeeDetail: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     CardContainer(modifier) {
-        Text(text = title, color = Color.Black, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+        Text(text = "분석 결과", color = Color.Black, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(8.dp))
-        Text(text = summaryLabel, color = Color.Black, fontSize = 14.sp)
+        Text(text = "AI 분석 결과 요약:", color = Color.Black, fontSize = 14.sp)
         Spacer(Modifier.height(6.dp))
         Text(text = summary, color = Color.Black, fontSize = 13.sp)
         Spacer(Modifier.height(8.dp))
@@ -367,12 +340,11 @@ private fun AiResultBox(
 
 @Composable
 private fun ClassInfoBox(
-    title: String,
     session: SessionInfo?,
     modifier: Modifier = Modifier
 ) {
     CardContainer(modifier) {
-        Text(text = title, color = Color.Black, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+        Text(text = "클래스", color = Color.Black, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(8.dp))
         if (session != null) {
             Text(
@@ -471,7 +443,6 @@ private fun Preview_Current() = PreviewSurface {
             appliedText = "신청 인원: 7/10 (잔여 3)"
         ),
         qnas = listOf("척추 측만증에 도움되는 운동 알려주세요", "허리 통증 완화 운동이 포함되나요?"),
-        enterEnabled = true
     )
 }
 

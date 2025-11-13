@@ -29,9 +29,11 @@ data class ReservationUi(
     val coachName: String,
     val coachRole: String,
     val coachIntro: String,
+    val coachWorkplace: String? = null,
     val timeText: String,         // "오전 9:00 ~ 10:00"
     val classIntro: String,
     val imageResId: Int? = null,
+    val classImageUrl: String? = null,
 
     // coach id (nullable) - used for navigation to coach detail
     val coachId: String? = null,
@@ -86,7 +88,7 @@ fun ReservationStatusScreen(
                     .fillMaxSize()
                     .padding(top = 8.dp)
             ) {
-                TabRow(selectedTabIndex = tab.ordinal) {
+                PrimaryTabRow(selectedTabIndex = tab.ordinal) {
                     Tab(
                         selected = tab == ReservationTab.CURRENT,
                         onClick = { tab = ReservationTab.CURRENT },
@@ -126,6 +128,7 @@ fun ReservationStatusScreen(
                                 timeText = item.timeText,
                                 classIntro = item.classIntro,
                                 imageResId = item.imageResId,
+                                imageUrl = item.classImageUrl,
                                 // [핵심 수정] onDetail 호출 시 isPast=false 전달
                                 onDetail = { onDetail(item, false) },
                                 onCancel = if (!item.isLive) ({ onCancel(item) }) else null,
@@ -153,6 +156,7 @@ fun ReservationStatusScreen(
                                 timeText = item.timeText,
                                 classIntro = item.classIntro,
                                 imageResId = item.imageResId,
+                                imageUrl = item.classImageUrl,
                                 // [핵심 수정] onDetail 호출 시 isPast=true 전달
                                 onDetail = { onDetail(item, true) },
                                 onCancel = null,

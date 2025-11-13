@@ -212,8 +212,21 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
 
         LaunchedEffect(actionState.success) {
             if (actionState.success == true) {
-                nav.navigate(Routes.Reservations) {
-                    popUpTo(Routes.MemberHome) { inclusive = false }
+                // If the ViewModel returned a createdReservationId, navigate straight to its detail
+                val createdId = actionState.createdReservationId
+                if (createdId != null) {
+                    val target = "reservation_detail/${createdId}/upcoming"
+                    nav.navigate(target) { popUpTo(Routes.MemberHome) { inclusive = false } }
+
+                    // Try to push qna_list from local cache into the newly-created backStackEntry so ReservationDetailScreen observes it
+                    try {
+                        val entry = nav.currentBackStackEntry
+                        val preQnaRaw = com.livon.app.data.repository.ReservationRepositoryImpl.localReservations.find { it.id == createdId }?.preQna
+                        val parsed = preQnaRaw?.split("\n")?.filter { it.isNotBlank() } ?: emptyList()
+                        if (parsed.isNotEmpty()) entry?.savedStateHandle?.set("qna_list", parsed)
+                    } catch (_: Throwable) { }
+                } else {
+                    nav.navigate(Routes.Reservations) { popUpTo(Routes.MemberHome) { inclusive = false } }
                 }
             }
         }
@@ -231,7 +244,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 // ... (기존의 복잡한 ID, 날짜 복원 로직은 유지)
 
                 // 최종적으로 ViewModel 함수 호출 시 questions를 전달합니다.
-                reservationVmForQna.reserveCoach(coachIdArg, startAt, endAt, questions)
+                reservationVmForQna.reserveCoach(coachIdArg, startAt, endAt, questions, coachName = decodedName)
             },
             // ... (나머지 파라미터는 기존과 동일)
             onNavigateHome = { nav.navigate(Routes.MemberHome) },
@@ -404,7 +417,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 name = found.coachName.ifEmpty { "코치" },
                 title = found.coachRole.ifEmpty { "" },
                 specialties = found.coachIntro.ifEmpty { "" },
-                workplace = "",
+                workplace = found.coachWorkplace ?: "",
                 profileResId = null,
                 profileImageUrl = found.coachProfileImageUrl
             )
@@ -444,13 +457,8 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                         nav.navigate("ai_result/$encMember/$encDate/$encName/$encSummary")
                     } catch (_: Throwable) {}
                 },
-                onActivateStreaming = { /* TODO */ },
-                onEnterSession = {
-                    // navigate to live member if sessionId present
-                    found.sessionId?.takeIf { it.isNotBlank() }?.let { sid -> try { nav.navigate("live_member/$sid") } catch (_: Throwable) {} }
-                },
-                enterEnabled = found.sessionId?.isNotBlank() == true
-            )
+                navController = nav
+             )
         } else {
             // ... (기존 로딩/에러 UI 로직은 동일) ...
         }

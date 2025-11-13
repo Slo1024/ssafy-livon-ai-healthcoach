@@ -26,7 +26,8 @@ class ReservationViewModel(
     data class ReservationActionState(
         val isLoading: Boolean = false,
         val success: Boolean? = null,
-        val errorMessage: String? = null
+        val errorMessage: String? = null,
+        val createdReservationId: Int? = null
     )
 
     private val _uiState = MutableStateFlow(ReservationsUiState())
@@ -87,9 +88,11 @@ class ReservationViewModel(
                                     coachName = dto.coach?.nickname ?: dto.coach?.userId ?: "",
                                     coachRole = dto.coach?.job ?: "",
                                     coachIntro = dto.coach?.introduce ?: "",
+                                    coachWorkplace = dto.coach?.organizations,
                                     timeText = formatTimeText(start, end),
                                     classIntro = dto.description ?: "",
                                     imageResId = null,
+                                    classImageUrl = dto.imageUrl,
                                     isLive = isLive,
                                     startAtIso = dto.startAt,
                                     sessionId = dto.sessionId,
@@ -112,7 +115,7 @@ class ReservationViewModel(
                 } else emptyList()
 
                 // Merge server results with in-memory cache so locally-added reservations are shown as well
-                var finalList = mappedFromServer.toMutableList()
+                val finalList = mappedFromServer.toMutableList()
                 try {
                     if (repo is com.livon.app.data.repository.ReservationRepositoryImpl) {
                         val local = com.livon.app.data.repository.ReservationRepositoryImpl.localReservations
@@ -131,15 +134,16 @@ class ReservationViewModel(
                                     timeText = formatTimeText(start, end),
                                     classIntro = "",
                                     imageResId = null,
+                                    classImageUrl = null,
                                     isLive = false,
                                     startAtIso = lr.startAt,
                                     sessionId = null,
                                     sessionTypeLabel = if (lr.type == com.livon.app.data.repository.ReservationType.PERSONAL) "개인 상담" else "그룹 상담",
                                     hasAiReport = false,
                                     aiSummary = null,
+                                    qnas = lr.preQna?.split("\n")?.filter { it.isNotBlank() } ?: emptyList(),
                                     coachId = lr.coachId,
-                                    coachProfileImageUrl = null,
-                                    qnas = emptyList()
+                                    coachProfileImageUrl = null
                                 )
                             } catch (_: Throwable) { null }
                         }
@@ -180,7 +184,7 @@ class ReservationViewModel(
     }
 
     /* 수정: 예약 생성 - qnas 파라미터를 받아 서버로 전송합니다. */
-    fun reserveCoach(coachId: String, startAt: LocalDateTime, endAt: LocalDateTime, qnas: List<String>) {
+    fun reserveCoach(coachId: String, startAt: LocalDateTime, endAt: LocalDateTime, qnas: List<String>, coachName: String? = null) {
         viewModelScope.launch(Dispatchers.IO) {
             _actionState.value = ReservationActionState(isLoading = true, success = null, errorMessage = null)
             try {
@@ -188,10 +192,20 @@ class ReservationViewModel(
                 val preQnaString = qnas.joinToString("\n") { it.trim() }.takeIf { it.isNotBlank() }
 
                 // Repository에 preQnaString 전달
-                val res = repo.reserveCoach(coachId, startAt, endAt, preQnaString)
+                val res = try {
+                    // If repository supports coachName, pass it along when available
+                    if (repo is com.livon.app.data.repository.ReservationRepositoryImpl) {
+                        repo.reserveCoach(coachId, startAt, endAt, preQnaString, coachName = coachName)
+                    } else {
+                        repo.reserveCoach(coachId, startAt, endAt, preQnaString)
+                    }
+                } catch (t: Throwable) {
+                    Result.failure<Int>(t)
+                }
 
                 if (res.isSuccess) {
-                    _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null)
+                    val createdId = res.getOrNull()
+                    _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null, createdReservationId = createdId)
                     loadUpcoming()
                 } else {
                     val ex = res.exceptionOrNull()
@@ -224,7 +238,8 @@ class ReservationViewModel(
                 val res = repo.reserveClass(classId, preQnaString)
 
                 if (res.isSuccess) {
-                    _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null)
+                    val createdId = res.getOrNull()
+                    _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null, createdReservationId = createdId)
                     loadUpcoming()
                 } else {
                     val ex = res.exceptionOrNull()

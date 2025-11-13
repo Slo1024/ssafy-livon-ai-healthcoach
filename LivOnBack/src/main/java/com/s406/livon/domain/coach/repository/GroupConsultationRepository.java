@@ -84,7 +84,7 @@ public interface GroupConsultationRepository extends JpaRepository<GroupConsulta
     Page<Object[]> findAllWithParticipantCount(Pageable pageable);
 
     /**
-     * 특정 코치가 만든 클래스 목록 조회 (참가 인원 수 포함)
+     * 특정 코치가 만든 클래스 목록 조회 (참가 인원 수 포함, OPEN 상태만)
      */
     @Query(
             value = """
@@ -95,6 +95,7 @@ public interface GroupConsultationRepository extends JpaRepository<GroupConsulta
             JOIN c.coach coach
             LEFT JOIN Participant p ON p.consultation.id = c.id
             WHERE coach.id = :coachId
+              AND c.status = 'OPEN'
             GROUP BY gc.id, c.id, coach.id
             ORDER BY c.startAt ASC
             """,
@@ -104,6 +105,7 @@ public interface GroupConsultationRepository extends JpaRepository<GroupConsulta
             JOIN gc.consultation c
             JOIN c.coach coach
             WHERE coach.id = :coachId
+              AND c.status = 'OPEN'
             """
     )
     Page<Object[]> findByCoachIdWithParticipantCount(

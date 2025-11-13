@@ -11,6 +11,7 @@ import { Dropdown } from "../../components/common/Dropdown";
 import { Input } from "../../components/common/Input";
 import { useAuth } from "../../hooks/useAuth";
 import { ROUTES } from "../../constants/routes";
+import { createGroupConsultationApi } from "../../api/classApi";
 
 const PageContainer = styled.div`
   min-height: 100vh;
@@ -188,6 +189,11 @@ const SaveButton = styled.button`
   &:hover {
     background-color: #3b5dd8;
   }
+
+  &:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+  }
 `;
 
 const CancelButton = styled.button`
@@ -207,6 +213,17 @@ const CancelButton = styled.button`
   }
 `;
 
+const ErrorMessage = styled.div`
+  text-align: center;
+  padding: 16px;
+  color: #ef4444;
+  font-size: 14px;
+  margin-top: 16px;
+  background-color: #fef2f2;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+`;
+
 export const ClassSetupPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, isLoading } = useAuth();
@@ -223,6 +240,8 @@ export const ClassSetupPage: React.FC = () => {
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [selectedTimes, setSelectedTimes] = useState<string[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
@@ -308,11 +327,110 @@ export const ClassSetupPage: React.FC = () => {
     setShowSaveConfirmModal(true);
   };
 
-  const handleSaveConfirm = () => {
-    // 저장 로직 (추후 API 연동)
-    console.log("Form Data:", formData);
-    setShowSaveConfirmModal(false);
-    setShowClassCreatedModal(true);
+  // 시간 문자열을 24시간 형식으로 변환 (예: "AM 9:00" -> "09:00", "PM 2:00" -> "14:00")
+  const convertTimeTo24Hour = (timeStr: string): string => {
+    if (timeStr.startsWith("AM ")) {
+      const time = timeStr.replace("AM ", "");
+      const [hour, minute] = time.split(":");
+      return `${String(hour).padStart(2, "0")}:${minute || "00"}`;
+    } else if (timeStr.startsWith("PM ")) {
+      const time = timeStr.replace("PM ", "");
+      const [hour, minute] = time.split(":");
+      const hour24 = hour === "12" ? 12 : parseInt(hour) + 12;
+      return `${String(hour24).padStart(2, "0")}:${minute || "00"}`;
+    }
+    // 이미 24시간 형식인 경우
+    return timeStr;
+  };
+
+  // Date와 시간 문자열을 ISO 8601 형식으로 변환
+  const createISO8601DateTime = (date: Date, timeStr: string): string => {
+    const [hour, minute] = convertTimeTo24Hour(timeStr).split(":");
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}T${hour}:${minute}:00`;
+  };
+
+  const handleSaveConfirm = async () => {
+    // 유효성 검사
+    if (!formData.className.trim()) {
+      setError("클래스 명을 입력해주세요.");
+      setShowSaveConfirmModal(false);
+      return;
+    }
+
+    if (!formData.classInfo.trim()) {
+      setError("클래스 정보를 입력해주세요.");
+      setShowSaveConfirmModal(false);
+      return;
+    }
+
+    if (selectedDates.length === 0 || selectedTimes.length === 0) {
+      setError("날짜와 시간을 선택해주세요.");
+      setShowSaveConfirmModal(false);
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setError(null);
+
+      // 첫 번째 날짜와 첫 번째 시간을 사용 (여러 개 선택 시 첫 번째만 사용)
+      const firstDate = selectedDates[0];
+      const firstTime = selectedTimes[0];
+      const startAt = createISO8601DateTime(firstDate, firstTime);
+
+      // 종료 시간은 시작 시간 + 1시간으로 설정
+      // toISOString()은 UTC로 변환하므로 로컬 시간을 직접 포맷팅
+      const [startHour, startMinute] = convertTimeTo24Hour(firstTime).split(":");
+      const endHour = (parseInt(startHour) + 1) % 24;
+      const endAt = createISO8601DateTime(
+        firstDate,
+        `${String(endHour).padStart(2, "0")}:${startMinute || "00"}`
+      );
+
+      // API 호출
+      const response = await createGroupConsultationApi(
+        {
+          title: formData.className,
+          description: formData.classInfo,
+          startAt,
+          endAt,
+          capacity: 10, // 기본값 10명
+        },
+        selectedFile || undefined
+      );
+
+      if (response.isSuccess) {
+        setShowSaveConfirmModal(false);
+        setShowClassCreatedModal(true);
+        // 폼 초기화
+        setFormData({
+          classType: "",
+          className: "",
+          classInfo: "",
+          dateTime: "",
+          file: "",
+        });
+        setSelectedDates([]);
+        setSelectedTimes([]);
+        setSelectedFile(null);
+      } else {
+        setError(response.message || "클래스 생성에 실패했습니다.");
+        setShowSaveConfirmModal(false);
+      }
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "클래스 생성에 실패했습니다.";
+      setError(errorMessage);
+      setShowSaveConfirmModal(false);
+      console.error("클래스 생성 오류:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleGoToList = () => {
@@ -326,7 +444,6 @@ export const ClassSetupPage: React.FC = () => {
   const classTypeOptions = [
     { value: "기업 클래스", label: "기업 클래스" },
     { value: "일반 클래스", label: "일반 클래스" },
-    { value: "개인 상담 / 코칭", label: "개인 상담 / 코칭" },
   ];
 
   return (
@@ -404,7 +521,7 @@ export const ClassSetupPage: React.FC = () => {
           </FormField>
 
           <FormField>
-            <FormLabel>파일 첨부</FormLabel>
+            <FormLabel>대표 이미지 설정</FormLabel>
             <input
               ref={fileInputRef}
               type="file"
@@ -432,9 +549,32 @@ export const ClassSetupPage: React.FC = () => {
         </FormContainer>
 
         <ButtonContainer>
-          <SaveButton onClick={handleSave}>저장</SaveButton>
-          <CancelButton onClick={handleCancel}>취소</CancelButton>
+          <SaveButton onClick={handleSave} disabled={isSubmitting}>
+            {isSubmitting ? "저장 중..." : "저장"}
+          </SaveButton>
+          <CancelButton onClick={handleCancel} disabled={isSubmitting}>
+            취소
+          </CancelButton>
         </ButtonContainer>
+
+        {error && (
+          <ErrorMessage>
+            {error}
+            <button
+              onClick={() => setError(null)}
+              style={{
+                marginLeft: "8px",
+                background: "none",
+                border: "none",
+                color: "#ef4444",
+                cursor: "pointer",
+                textDecoration: "underline",
+              }}
+            >
+              닫기
+            </button>
+          </ErrorMessage>
+        )}
 
         {/* 날짜/시간 선택 모달 */}
         <DateTimePickerModal

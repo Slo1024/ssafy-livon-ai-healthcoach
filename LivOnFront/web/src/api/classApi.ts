@@ -55,15 +55,50 @@ export const createGroupConsultationApi = async (
 
   const formData = new FormData();
 
-  // data 필드: JSON Blob으로 추가
-  formData.append(
-    "data",
-    new Blob([JSON.stringify(classData)], { type: "application/json" })
-  );
+  // data 필드: JSON Blob으로 추가 (Content-Type: application/json)
+  // filename을 명시하여 Content-Type이 제대로 전달되도록 함
+  const jsonBlob = new Blob([JSON.stringify(classData)], {
+    type: "application/json",
+  });
+  formData.append("data", jsonBlob, "data.json");
 
-  // classImage 필드: 파일이 있으면 추가
+  // classImage 필드: File 객체를 그대로 사용
   if (classImage) {
-    formData.append("classImage", classImage);
+    formData.append("classImage", classImage, classImage.name);
+  }
+
+  // 디버깅: FormData 내용 확인
+  console.log("=== 클래스 생성 API 요청 디버깅 ===");
+  console.log("URL:", `${API_BASE_URL}/group-consultations`);
+  console.log("Request Data:", classData);
+  console.log("classImage:", classImage ? {
+    name: classImage.name,
+    type: classImage.type,
+    size: classImage.size,
+  } : "없음");
+
+  // FormData의 모든 키 확인
+  console.log("FormData keys:");
+  const formDataKeys: string[] = [];
+  formData.forEach((value, key) => {
+    if (!formDataKeys.includes(key)) {
+      formDataKeys.push(key);
+      console.log(`  - ${key}`);
+    }
+  });
+
+  // FormData의 data 필드 내용 확인
+  const dataValue = formData.get("data");
+  if (dataValue instanceof Blob) {
+    dataValue.text().then((text) => {
+      console.log("FormData 'data' 필드 내용:", text);
+      try {
+        const parsed = JSON.parse(text);
+        console.log("Parsed JSON:", parsed);
+      } catch (e) {
+        console.error("JSON 파싱 실패:", e);
+      }
+    });
   }
 
   const response = await axios.post<CreateGroupConsultationResponse>(
@@ -72,10 +107,22 @@ export const createGroupConsultationApi = async (
     {
       headers: {
         Authorization: `Bearer ${token}`,
-        "Content-Type": "multipart/form-data",
+        // Content-Type 헤더를 명시하지 않아 axios가 자동으로 multipart/form-data와 boundary를 설정하도록 함
       },
-    }
+      // 요청 인터셉터를 통한 디버깅
+      onUploadProgress: (progressEvent: { loaded: number; total?: number }) => {
+        if (progressEvent.total) {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          console.log(`업로드 진행률: ${percentCompleted}%`);
+        }
+      },
+    } as any // onUploadProgress를 위한 타입 캐스팅
   );
+
+  console.log("=== API 응답 ===");
+  console.log("Response:", response.data);
 
   return response.data;
 };
@@ -236,36 +283,6 @@ export const deleteGroupConsultationApi = async (
   return response.data;
 };
 
-// ===== 그룹 상담(클래스) 예약 =====
-
-export type ReserveGroupConsultationResponse = ApiResponse<number>; // participant id 반환
-
-/**
- * 그룹 상담(클래스) 예약 API
- * POST /api/v1/group-consultations/{classId}
- * 일반 사용자가 클래스 참가 신청
- */
-export const reserveGroupConsultationApi = async (
-  classId: number
-): Promise<ReserveGroupConsultationResponse> => {
-  const token = localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
-
-  if (!token) {
-    throw new Error("인증 토큰이 없습니다. 로그인이 필요합니다.");
-  }
-
-  const response = await axios.post<ReserveGroupConsultationResponse>(
-    `${API_BASE_URL}/group-consultations/${classId}`,
-    {},
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
-
-  return response.data;
-};
 
 // ===== 그룹 상담(클래스) 참여 취소 =====
 

@@ -31,7 +31,7 @@ data class ReservationItemDto(
     val endAt: String?,
     val sessionId: String?,
     val coach: CoachDto?,
-    val preQnA: String?,
+    val preQna: String?,
     val aiSummary: String?,
     val title: String?,
     val description: String?,

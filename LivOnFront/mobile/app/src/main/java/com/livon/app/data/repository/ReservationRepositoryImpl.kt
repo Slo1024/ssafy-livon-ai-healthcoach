@@ -18,7 +18,9 @@ class ReservationRepositoryImpl : ReservationRepository {
         val type: ReservationType,
         val coachId: String,
         val startAt: String,
-        val endAt: String
+        val endAt: String,
+        val classTitle: String? = null,
+        val coachName: String? = null
     )
 
     // ReservationType moved to a top-level declaration (ReservationModels.kt)
@@ -28,14 +30,14 @@ class ReservationRepositoryImpl : ReservationRepository {
         coachId: String,
         startAt: LocalDateTime,
         endAt: LocalDateTime,
-        preQnA: String?
+        preQna: String?
     ): Result<Int> {
         return try {
             val req = ReserveCoachRequest(
                 coachId = coachId,
                 startAt = startAt.format(fmt),
                 endAt = endAt.format(fmt),
-                preQnA = preQnA
+                preQnA = preQna
             )
             val res = api.reserveCoach(req)
             if (res.isSuccess && res.result != null) {
@@ -56,8 +58,13 @@ class ReservationRepositoryImpl : ReservationRepository {
         }
     }
 
-    override suspend fun reserveClass(classId: String): Result<Int> {
+    // Adjusted to match interface: include preQna param (backend ignores it for class reservation)
+    override suspend fun reserveClass(classId: String, preQna: String?): Result<Int> {
         return try {
+            // backend does not expect a body for class reservation; log preQna for debugging
+            if (preQna != null) {
+                Log.d("ReservationRepo", "reserveClass: preQna provided but ignored by API: $preQna")
+            }
             val res = api.reserveClass(classId)
             if (res.isSuccess && res.result != null) {
                 localReservations.add(
@@ -72,6 +79,79 @@ class ReservationRepositoryImpl : ReservationRepository {
                 Result.success(res.result)
             } else Result.failure(Exception(res.message ?: "Unknown"))
         } catch (t: Throwable) {
+            // Improved error logging: if this is an HTTP exception, try to extract server error body
+            try {
+                if (t is retrofit2.HttpException) {
+                    val errorBody = try { t.response()?.errorBody()?.string() } catch (_: Throwable) { null }
+                    Log.e("ReservationRepo", "reserveClass failed: http ${t.code()} ${t.message()} body=$errorBody", t)
+                    // if server indicates duplicate participant (DB unique constraint), mark as ALREADY_RESERVED
+                    if (errorBody != null && (errorBody.contains("uk_participant_user_consultation") || errorBody.contains("Duplicate entry"))) {
+                        Log.w("ReservationRepo", "reserveClass: duplicate participant detected -> returning ALREADY_RESERVED body=$errorBody")
+                        // Attempt to enrich local cache entry with class detail (startAt/title/coach)
+                        try {
+                            val numericId = classId.toIntOrNull() ?: -(classId.hashCode())
+                            val exists = localReservations.any { it.id == numericId }
+                            if (!exists) {
+                                // try fetch class detail to get accurate start/end and names
+                                try {
+                                    val groupApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.GroupConsultationApiService::class.java)
+                                    val detailRes = groupApi.findClassDetail(classId)
+                                    if (detailRes.isSuccess && detailRes.result != null) {
+                                        val dto = detailRes.result
+                                        val startIso = dto.startAt ?: java.time.LocalDateTime.now().format(fmt)
+                                        val endIso = dto.endAt ?: java.time.LocalDateTime.now().plusHours(1).format(fmt)
+                                        val title = dto.title
+                                        val coachName = dto.coach?.nickname ?: dto.coach?.id ?: ""
+                                        localReservations.add(
+                                            LocalReservation(
+                                                id = numericId,
+                                                type = ReservationType.GROUP,
+                                                coachId = dto.coach?.id ?: "",
+                                                startAt = startIso,
+                                                endAt = endIso,
+                                                classTitle = title,
+                                                coachName = coachName
+                                            )
+                                        )
+                                    } else {
+                                        // fallback minimal entry
+                                        localReservations.add(
+                                            LocalReservation(
+                                                id = numericId,
+                                                type = ReservationType.GROUP,
+                                                coachId = "",
+                                                startAt = java.time.LocalDateTime.now().format(fmt),
+                                                endAt = java.time.LocalDateTime.now().plusHours(1).format(fmt),
+                                                classTitle = null,
+                                                coachName = null
+                                            )
+                                        )
+                                    }
+                                } catch (_: Throwable) {
+                                    // network/detail fetch failed: still add minimal local reservation
+                                    localReservations.add(
+                                        LocalReservation(
+                                            id = numericId,
+                                            type = ReservationType.GROUP,
+                                            coachId = "",
+                                            startAt = java.time.LocalDateTime.now().format(fmt),
+                                            endAt = java.time.LocalDateTime.now().plusHours(1).format(fmt),
+                                            classTitle = null,
+                                            coachName = null
+                                        )
+                                    )
+                                }
+                            }
+                        } catch (_: Throwable) { }
+                        // Return a failure but with a sentinel message so ViewModel can act idempotently
+                        return Result.failure(Exception("ALREADY_RESERVED:${errorBody}"))
+                    }
+                    return Result.failure(Exception(errorBody ?: t.message))
+                }
+            } catch (t2: Throwable) {
+                Log.e("ReservationRepo", "Failed to extract http error body", t2)
+            }
+            Log.e("ReservationRepo", "reserveClass failed", t)
             Result.failure(t)
         }
     }

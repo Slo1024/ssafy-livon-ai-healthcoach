@@ -23,9 +23,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.livon.app.ui.component.overlay.TopBar
 import com.livon.app.feature.shared.auth.ui.CommonSignUpScreenA
 import com.livon.app.feature.shared.auth.ui.CommonScreenC
-import com.livon.app.ui.preview.PreviewSurface
-import com.livon.app.ui.theme.LivonTheme
-import androidx.compose.ui.tooling.preview.Preview
 import com.livon.app.ui.component.calendar.CalendarMonth
 import com.livon.app.ui.component.button.PrimaryButtonBottom
 import com.livon.app.ui.theme.Basic
@@ -54,12 +51,49 @@ fun CoachDetailScreen(
     var showTimeSelection by remember { mutableStateOf(false) }
     var selectedTime by remember { mutableStateOf<String?>(null) }
 
-    // Placeholder availability data structures
-    // TODO: Replace these with real data coming from ViewModel / API.
-    // Example: vm.loadAvailableDates(coachId) -> sets vm.uiState.availableDates: Set<LocalDate>
-    //          vm.loadAvailableTimes(coachId, date) -> vm.uiState.availableTimesByDate[date] : List<String> (values with AM_/PM_ prefix)
+    // Placeholder availability data structures (can be populated from API later)
     val placeholderAvailableDates = remember { mutableStateOf<Set<LocalDate>>(emptySet()) }
     val placeholderAvailableTimesByDate = remember { mutableStateOf<Map<LocalDate, List<String>>>(emptyMap()) }
+
+    // reservedTimeTokens: set of time token strings like "AM_9:00" or "PM_3:00" representing times that are already reserved
+    val reservedTimeTokens = remember { mutableStateOf<Set<String>>(emptySet()) }
+
+    // Load user's upcoming reservations and mark tokens that conflict with this coach's times
+    LaunchedEffect(coachId) {
+        try {
+            // Load user's upcoming reservations via repository (lightweight call)
+            val repo = com.livon.app.data.repository.ReservationRepositoryImpl()
+            val res = try { repo.getMyReservations(status = "upcoming", type = null) } catch (t: Throwable) { Result.failure(t) }
+            val tokens = mutableSetOf<String>()
+            if (res.isSuccess) {
+                val body = res.getOrNull()
+                body?.items?.forEach { dto ->
+                    try {
+                        // Only consider personal reservations and those for this coach
+                        val coachUserId = dto.coach?.userId
+                        if (dto.type == "ONE" && coachUserId == coachId) {
+                            val startIso = dto.startAt
+                            if (!startIso.isNullOrBlank()) {
+                                val start = java.time.LocalDateTime.parse(startIso)
+                                val token = if (start.hour < 12) {
+                                    val h = if (start.hour % 12 == 0) 12 else (start.hour % 12)
+                                    "AM_${h}:00"
+                                } else {
+                                    val hh = start.hour % 12
+                                    val h = if (hh == 0) 12 else hh
+                                    "PM_${h}:00"
+                                }
+                                tokens.add(token)
+                            }
+                        }
+                    } catch (t: Throwable) {
+                        // ignore parsing issues per-item
+                    }
+                }
+            }
+            reservedTimeTokens.value = tokens
+        } catch (_: Throwable) {}
+    }
 
     // ensure mutual exclusivity: when date changes, clear selectedTime and hide time selection
     LaunchedEffect(selectedDate) {
@@ -198,20 +232,36 @@ fun CoachDetailScreen(
                                 Spacer(Modifier.height(8.dp))
                                 Text(text = "오전", style = MaterialTheme.typography.titleSmall)
 
-                                // Build display/value pairs where value includes AM/PM to ensure uniqueness
-                                val amItems = (1..12).map { hour -> Pair("${hour}:00", "AM_${hour}:00") }
-                                // If available times for the selected date exist in placeholder map, filter, otherwise show all
-                                val availableForDate = selectedDate?.let { d -> placeholderAvailableTimesByDate.value[d] }
-                                val amFiltered = availableForDate?.filter { it.startsWith("AM_") }?.map { valStr -> Pair(valStr.removePrefix("AM_"), valStr) } ?: amItems
+                                // Build display/value pairs limited to allowed personal consultation hours: 09:00~17:00
+                                val allowedAmHours = listOf(9, 10, 11)
+                                val allowedPmHours = listOf(12, 1, 2, 3, 4, 5) // 12 -> 12:00 (noon), 1..5 -> 13:00..17:00
 
-                                TimeGrid(timeItems = amFiltered, selected = selectedTime, onSelect = { t -> selectedTime = t })
+                                val amItems = allowedAmHours.map { hour -> Pair("${hour}:00", "AM_${hour}:00") }
+                                val pmItems = allowedPmHours.map { hour -> Pair("${hour}:00", "PM_${hour}:00") }
+
+                                // If available times for the selected date exist in placeholder map, filter to allowed hours, otherwise show allowed lists
+                                val availableForDate = selectedDate?.let { d -> placeholderAvailableTimesByDate.value[d] }
+
+                                val amFiltered = availableForDate
+                                    ?.filter { it.startsWith("AM_") }
+                                    ?.mapNotNull { valStr ->
+                                        val hour = valStr.removePrefix("AM_").substringBefore(":").toIntOrNull()
+                                        if (hour != null && allowedAmHours.contains(hour)) Pair(valStr.removePrefix("AM_"), valStr) else null
+                                    } ?: amItems
+
+                                TimeGrid(timeItems = amFiltered, selected = selectedTime, onSelect = { t -> selectedTime = t }, disabledTokens = reservedTimeTokens.value)
 
                                 Spacer(Modifier.height(8.dp))
                                 Text(text = "오후", style = MaterialTheme.typography.titleSmall)
-                                val pmItems = (1..12).map { hour -> Pair("${hour}:00", "PM_${hour}:00") }
-                                val pmFiltered = availableForDate?.filter { it.startsWith("PM_") }?.map { valStr -> Pair(valStr.removePrefix("PM_"), valStr) } ?: pmItems
 
-                                TimeGrid(timeItems = pmFiltered, selected = selectedTime, onSelect = { t -> selectedTime = t })
+                                val pmFiltered = availableForDate
+                                    ?.filter { it.startsWith("PM_") }
+                                    ?.mapNotNull { valStr ->
+                                        val hour = valStr.removePrefix("PM_").substringBefore(":").toIntOrNull()
+                                        if (hour != null && allowedPmHours.contains(hour)) Pair(valStr.removePrefix("PM_"), valStr) else null
+                                    } ?: pmItems
+
+                                TimeGrid(timeItems = pmFiltered, selected = selectedTime, onSelect = { t -> selectedTime = t }, disabledTokens = reservedTimeTokens.value)
 
                                 Spacer(Modifier.height(40.dp)) // extra spacing so content not hidden by bottom bar
                             }
@@ -276,10 +326,10 @@ fun CoachDetailScreen(
                     navController = navController,
                     onNavigate = { route ->
                         when (route) {
-                            "home" -> navController?.navigate("member_home")
-                            "booking" -> navController?.navigate("reservation_model_select")
-                            "reservations" -> navController?.navigate("reservations")
-                            "mypage" -> navController?.navigate("mypage")
+                            "home" -> navController?.navigate(com.livon.app.navigation.Routes.MemberHome)
+                            "booking" -> navController?.navigate(com.livon.app.navigation.Routes.ReservationModeSelect)
+                            "reservations" -> navController?.navigate(com.livon.app.navigation.Routes.Reservations)
+                            "mypage" -> navController?.navigate(com.livon.app.navigation.Routes.MyPage)
                             else -> {}
                         }
                     }
@@ -296,20 +346,26 @@ fun CoachDetailScreen(
 }
 
 @Composable
-private fun TimeGrid(timeItems: List<Pair<String, String>>, selected: String?, onSelect: (String?) -> Unit) {
+private fun TimeGrid(timeItems: List<Pair<String, String>>, selected: String?, onSelect: (String?) -> Unit, disabledTokens: Set<String> = emptySet()) {
     Column {
         timeItems.chunked(3).forEach { row ->
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 row.forEach { (display, value) ->
                     val isSelected = value == selected
+                    val isDisabled = disabledTokens.contains(value)
                     OutlinedButton(
-                        onClick = { if (isSelected) onSelect(null) else onSelect(value) },
+                        onClick = { if (!isDisabled) { if (isSelected) onSelect(null) else onSelect(value) } },
+                        enabled = !isDisabled,
                         modifier = Modifier.size(width = 100.dp, height = 35.dp),
                         shape = RoundedCornerShape(6.dp),
                         border = BorderStroke(0.8.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline),
-                        colors = ButtonDefaults.outlinedButtonColors(containerColor = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface)
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface,
+                            disabledContainerColor = MaterialTheme.colorScheme.surface,
+                            disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                        )
                     ) {
-                        Text(text = display, style = MaterialTheme.typography.bodySmall, color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+                        Text(text = display, style = MaterialTheme.typography.bodySmall, color = if (isSelected) MaterialTheme.colorScheme.primary else if (isDisabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else MaterialTheme.colorScheme.onSurface)
                     }
                 }
             }
@@ -317,8 +373,3 @@ private fun TimeGrid(timeItems: List<Pair<String, String>>, selected: String?, o
         }
     }
 }
-
-
-
-
-

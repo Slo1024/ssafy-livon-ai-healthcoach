@@ -3,12 +3,10 @@ package com.livon.app.ui.component.navbar
 import androidx.navigation.NavHostController
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
@@ -91,10 +89,10 @@ fun HomeNavBar(
                         // If navController provided, HomeNavBar will perform default navigation mapping.
                         if (navController != null) {
                             when (route) {
-                                BottomNavRoute.HOME.routeName -> navController.navigate("member_home")
-                                BottomNavRoute.BOOKING.routeName -> navController.navigate("reservation_model_select")
-                                BottomNavRoute.RESERVATIONS.routeName -> navController.navigate("reservations")
-                                BottomNavRoute.MY_PAGE.routeName -> navController.navigate("mypage")
+                                BottomNavRoute.HOME.routeName -> navController.navigate(com.livon.app.navigation.Routes.MemberHome)
+                                BottomNavRoute.BOOKING.routeName -> navController.navigate(com.livon.app.navigation.Routes.ReservationModeSelect)
+                                BottomNavRoute.RESERVATIONS.routeName -> navController.navigate(com.livon.app.navigation.Routes.Reservations)
+                                BottomNavRoute.MY_PAGE.routeName -> navController.navigate(com.livon.app.navigation.Routes.MyPage)
                                 else -> { /* noop */ }
                             }
                         } else {

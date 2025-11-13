@@ -281,16 +281,16 @@ fun ReservationCompleteDialog(
     onConfirm: () -> Unit,
     onChangeHealthInfo: () -> Unit
 ) {
+    try { android.util.Log.d("ReservationDialog", "Composing ReservationCompleteDialog") } catch (_: Throwable) {}
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.60f))
-            // Removed global clickable on the scrim to avoid intercepting child clicks
-            // .clickable(
-            //     onClick = onDismiss,
-            //     indication = null,
-            //     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-            // )
+            .clickable(
+                onClick = onDismiss,
+                indication = null,
+                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            )
     ) {
         Card(
             shape = RoundedCornerShape(10.dp),
@@ -344,7 +344,7 @@ fun ReservationCompleteDialog(
                     )
                 }
 
-                Divider(
+                HorizontalDivider(
                     color = Gray,
                     thickness = 1.dp,
                     modifier = Modifier.fillMaxWidth()

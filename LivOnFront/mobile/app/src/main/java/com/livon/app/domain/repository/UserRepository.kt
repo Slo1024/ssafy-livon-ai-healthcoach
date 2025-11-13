@@ -53,6 +53,7 @@ class UserRepository(private val api: UserApiService) {
                     gender = r.gender,
                     birthday = r.birthdate,
                     profileImageUri = r.profileImage?.toUri(),
+                    organizations = r.organizations,
                     heightCm = formatDoubleToIntString(health?.height),
                     weightKg = formatDoubleToIntString(health?.weight),
                     condition = health?.disease,

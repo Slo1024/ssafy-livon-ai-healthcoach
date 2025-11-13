@@ -35,7 +35,8 @@ data class CoachMini(
     val title: String,          // 트레이너/간호사 등
     val specialties: String,    // 체형 교정 / 재활 전문가 등
     val workplace: String,      // 근무지(소속)
-    val profileResId: Int? = null // null -> ic_noprofile
+    val profileResId: Int? = null, // null -> ic_noprofile
+    val profileImageUrl: String? = null // remote image URL (nullable)
 )
 
 data class SessionInfo(
@@ -50,6 +51,9 @@ fun ReservationDetailScreen(
     type: ReservationDetailType,
     coach: CoachMini,
     session: SessionInfo?,
+    // sessionTypeLabel comes from ReservationUi.sessionTypeLabel (e.g. "개인 상담" / "그룹 상담")
+    // Used to decide whether Current reservation represents a CLASS or a PERSONAL session.
+    sessionTypeLabel: String? = null,
     aiSummary: String? = null,          // PastPersonal에서 사용
     qnas: List<String>,
     onBack: () -> Unit = {},
@@ -96,16 +100,33 @@ fun ReservationDetailScreen(
                 )
 
                 // 2) 타입별 두번째 박스 - 325x178 높이 고정
+                // IMPORTANT: AI result must only appear for past personal reservations.
+                // Current reservations (whether personal or group) should show session/class info.
                 when (type) {
+                    // 현재 예약: 개인 상담인지 그룹(클래스)인지 구분하여 표시
                     ReservationDetailType.Current -> {
-                        SessionInfoBox(
-                            title = "상담",
-                            session = session,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(178.dp)
-                        )
+                        // "그룹" 또는 "클래스" 문자열이 포함되어 있으면 클래스로 간주
+                        val isGroup = (sessionTypeLabel ?: "").contains("그룹") || (sessionTypeLabel ?: "").contains("클래스")
+                        if (isGroup) {
+                            ClassInfoBox(
+                                title = "클래스",
+                                session = session,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(178.dp)
+                            )
+                        } else {
+                            // 개인 상담 예약 -> 상담 정보 표시
+                            SessionInfoBox(
+                                title = "상담",
+                                session = session,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(178.dp)
+                            )
+                        }
                     }
+                    // Past personal should show AI analysis + Q&A
                     ReservationDetailType.PastPersonal -> {
                         AiResultBox(
                             title = "분석 결과",
@@ -117,6 +138,8 @@ fun ReservationDetailScreen(
                                 .height(178.dp)
                         )
                     }
+
+                    // 지난 예약 (그룹): 클래스 정보 표시
                     ReservationDetailType.PastGroup -> {
                         ClassInfoBox(
                             title = "클래스",
@@ -128,7 +151,7 @@ fun ReservationDetailScreen(
                     }
                 }
 
-                // 3) 등록한 Q&A 박스 - 325x1310, 내부 스크롤
+                // 3) 등록한 Q&A 박스 - 항상 보여주되 비어있으면 안내 문구 노출
                 QnaBox(
                     title = if (type == ReservationDetailType.PastPersonal) "Q&A" else "등록한 Q&A",
                     qnas = qnas,
@@ -253,12 +276,24 @@ private fun CoachBox(
                     .background(Sub2),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    painter = painterResource(id = resId),
-                    contentDescription = "coach_profile",
-                    tint = Color.Unspecified,
-                    modifier = Modifier.size(40.dp)
-                )
+                // If remote URL provided, use Coil AsyncImage (no tint). Otherwise use painterResource fallback
+                if (!coach.profileImageUrl.isNullOrBlank()) {
+                    coil.compose.AsyncImage(
+                        model = coach.profileImageUrl,
+                        contentDescription = "coach_profile",
+                        modifier = Modifier.size(56.dp),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        placeholder = painterResource(id = R.drawable.ic_noprofile),
+                        error = painterResource(id = R.drawable.ic_noprofile)
+                    )
+                } else {
+                    Icon(
+                        painter = painterResource(id = resId),
+                        contentDescription = "coach_profile",
+                        tint = Color.Unspecified,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
             }
         }
     }
@@ -377,23 +412,38 @@ private fun QnaBox(
                 .verticalScroll(innerScroll),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            qnas.forEach { q ->
+            if (qnas.isEmpty()) {
+                // show placeholder when no Q&A submitted
                 Surface(
-                    color = Color(0xFFF4B2AA), // 피그마 핑크톤 근사치
-                    shape = RoundedCornerShape(10.dp),
-                    tonalElevation = 0.dp,
-                    shadowElevation = 0.dp,
-                    border = BorderStroke(1.dp, Color(0xFFE19C93)),
+                    color = Color(0xFFF4F4F4),
+                    shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .defaultMinSize(minHeight = 50.dp)
+                        .defaultMinSize(minHeight = 60.dp)
                 ) {
-                    Box(
-                        Modifier
+                    Box(Modifier.padding(12.dp)) {
+                        Text(text = "등록된 질문이 없습니다.", color = Gray2, fontSize = 13.sp)
+                    }
+                }
+            } else {
+                qnas.forEach { q ->
+                    Surface(
+                        color = Color(0xFFF4B2AA), // 피그마 핑크톤 근사치
+                        shape = RoundedCornerShape(10.dp),
+                        tonalElevation = 0.dp,
+                        shadowElevation = 0.dp,
+                        border = BorderStroke(1.dp, Color(0xFFE19C93)),
+                        modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 10.dp)
+                            .defaultMinSize(minHeight = 50.dp)
                     ) {
-                        Text(text = q, color = Color.Black, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 10.dp)
+                        ) {
+                            Text(text = q, color = Color.Black, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        }
                     }
                 }
             }

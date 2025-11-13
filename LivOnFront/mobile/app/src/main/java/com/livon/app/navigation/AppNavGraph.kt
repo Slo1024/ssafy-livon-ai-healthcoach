@@ -24,23 +24,19 @@ import com.livon.app.feature.shared.auth.ui.RoleSelectScreen
 import com.livon.app.feature.shared.auth.ui.SignUpCompleteScreen
 import com.livon.app.feature.shared.auth.ui.TermOfUseScreen
 import com.livon.app.feature.shared.auth.ui.NicknameScreen
-import androidx.navigation.navArgument
-import androidx.navigation.NavType
 import com.livon.app.feature.shared.auth.ui.HealthInfoConditionScreen
-import com.livon.app.feature.shared.auth.ui.LifestyleSmokingScreen
-import com.livon.app.feature.shared.auth.ui.SignupState
 import com.livon.app.feature.shared.auth.ui.HealthInfoMedicationScreen
 import com.livon.app.feature.shared.auth.ui.HealthInfoPainDiscomfortScreen
 import com.livon.app.feature.shared.auth.ui.HealthInfoSleepQualityScreen
 import com.livon.app.feature.shared.auth.ui.HealthInfoStressScreen
 import com.livon.app.feature.shared.auth.ui.LifestyleActivityLevelScreen
 import com.livon.app.feature.shared.auth.ui.LifestyleAlcoholIntakeScreen
-import com.livon.app.feature.shared.auth.ui.LifestyleCaffeinIntakeScreen
 import com.livon.app.feature.shared.auth.ui.LifestyleSleepDurationScreen
-import java.net.URLDecoder
+import com.livon.app.feature.shared.auth.ui.LifestyleCaffeinIntakeScreen
+import com.livon.app.feature.shared.auth.ui.LifestyleSmokingScreen
+import com.livon.app.feature.shared.auth.ui.SignupState
 import java.net.URLEncoder
-import kotlinx.coroutines.launch
-import androidx.compose.runtime.rememberCoroutineScope
+import java.time.LocalDate
 
 object Routes {
     const val Landing = "landing"
@@ -60,8 +56,22 @@ object Routes {
     const val HealthWeight = "health_weight"
     const val HealthSurvey = "health_survey"
     const val LifeStyleSurvey = "life_style_survey"
-
+    const val SignUpComplete = "signup_complete"
+    // Named routes for health sub-steps
+    const val HealthSleep = "health_survey_sleep"
+    const val HealthMedication = "health_survey_medication"
+    const val HealthPain = "health_survey_pain"
+    const val HealthStress = "health_survey_stress"
+    // Lifestyle sub-steps
+    const val LifeAlcohol = "lifestyle_alcohol"
+    const val LifeSleep = "lifestyle_sleep"
+    const val LifeActivity = "lifestyle_activity"
+    const val LifeCaffeine = "lifestyle_caffeine"
+    const val ReservationModeSelect = "reservation_model_select"
+    const val Reservations = "reservations"
+    const val MyPage = "mypage"
     const val MemberHome = "member_home"
+    const val MyInfo = "my_info"
 }
 
 @Composable
@@ -78,6 +88,21 @@ fun AppNavGraph() {
 }
 
 fun NavGraphBuilder.authNavGraph(navController: NavHostController) {
+    // Helper to avoid IllegalArgumentException when navigating to a non-registered route
+    val safeNavigate: (String) -> Unit = { route ->
+        try {
+            if (navController.graph.findNode(route) != null) {
+                navController.navigate(route)
+            } else {
+                Log.w("AppNavGraph", "Requested route not in graph: $route. Navigating to MemberHome instead.")
+                navController.navigate(Routes.MemberHome)
+            }
+        } catch (t: Throwable) {
+            Log.e("AppNavGraph", "safeNavigate failed for route=$route", t)
+            try { navController.navigate(Routes.MemberHome) } catch (_: Throwable) {}
+        }
+    }
+
     composable(Routes.Landing) {
         LandingScreen(
             onKakaoLogin = {},
@@ -125,9 +150,23 @@ fun NavGraphBuilder.authNavGraph(navController: NavHostController) {
         val authState by authVm.state.collectAsState()
         LaunchedEffect(authState.success) {
             if (authState.success) {
-                // Navigate to member_home and clear backstack up to landing
-                navController.navigate(Routes.MemberHome) {
-                    popUpTo(Routes.Landing) { inclusive = true }
+                try {
+                    // give NavHost a moment to finish building graph children to avoid race
+                    kotlinx.coroutines.delay(50)
+                    if (navController.graph.findNode(Routes.MemberHome) != null) {
+                        navController.navigate(Routes.MemberHome) {
+                            // clear auth stack (landing & login) so back doesn't return to login
+                            popUpTo(Routes.Landing) { inclusive = true }
+                        }
+                    } else {
+                        // If destination still missing, log and attempt navigation anyway (best-effort)
+                        Log.w("AppNavGraph", "MemberHome destination not found in nav graph; attempting navigate() anyway")
+                        navController.navigate(Routes.MemberHome) {
+                            popUpTo(Routes.Landing) { inclusive = true }
+                        }
+                    }
+                } catch (t: Throwable) {
+                    Log.e("AppNavGraph", "navigate to MemberHome failed", t)
                 }
             }
         }
@@ -135,291 +174,307 @@ fun NavGraphBuilder.authNavGraph(navController: NavHostController) {
         EmailLoginScreen(
             onBack = { navController.popBackStack() },
             onLogin = { email, pw -> authVm.login(email, pw) },
-            onSignUp = { Log.d("AppNavGraph","navigate to Terms"); navController.navigate(Routes.Terms) },
+            onSignUp = { navController.navigate(Routes.Terms) },
             onFindId = {},
             onFindPassword = {}
         )
     }
 
-    // EmailSetup accepts optional role
-    composable(route = "${Routes.EmailSetup}?role={role}", arguments = listOf(navArgument("role") { type = NavType.StringType; defaultValue = "member" })) { backStackEntry ->
-        val role = backStackEntry.arguments?.getString("role") ?: "member"
+    composable(Routes.EmailSetup) {
         EmailSetupScreen(
-            modifier = androidx.compose.ui.Modifier,
             onBack = { navController.popBackStack() },
-            onNext = { email -> Log.d("AppNavGraph","EmailSetup -> EmailVerify (email=$email,role=$role)"); navController.navigate("${Routes.EmailVerify}?role=${URLEncoder.encode(role, "UTF-8")}") }
+            onNext = { email ->
+                Log.d("AppNavGraph","EmailSetup -> Nickname")
+                navController.navigate(Routes.NickName)
+            }
         )
     }
 
-    // EmailVerify keeps role
-    composable(route = "${Routes.EmailVerify}?role={role}", arguments = listOf(navArgument("role") { type = NavType.StringType; defaultValue = "member" })) { backStackEntry ->
-        val role = backStackEntry.arguments?.getString("role") ?: "member"
+    composable(Routes.EmailVerify) {
         EmailVerifyScreen(
-            modifier = androidx.compose.ui.Modifier,
             onBack = { navController.popBackStack() },
             onVerified = {
-                Log.d("AppNavGraph","EmailVerify -> PasswordSetup (role=$role)")
-                navController.navigate("${Routes.PasswordSetup}?role=${URLEncoder.encode(role, "UTF-8")}")
+                Log.d("AppNavGraph","EmailVerify -> PasswordSetup")
+                navController.navigate(Routes.PasswordSetup)
             }
         )
     }
 
-    // PasswordSetup -> NickName
-    composable(route = "${Routes.PasswordSetup}?role={role}", arguments = listOf(navArgument("role") { type = NavType.StringType; defaultValue = "member" })) { backStackEntry ->
-        val role = backStackEntry.arguments?.getString("role") ?: "member"
+    composable(Routes.PasswordSetup) {
         PasswordSetupScreen(
-            modifier = androidx.compose.ui.Modifier,
             onBack = { navController.popBackStack() },
             onNext = { password ->
-                Log.d("AppNavGraph","PasswordSetup -> NickName (role=$role)")
-                SignupState.passwordSet = true
-                navController.navigate("${Routes.NickName}?role=${URLEncoder.encode(role, "UTF-8")}")
+                Log.d("AppNavGraph","PasswordSetup -> MemberTypeSelect")
+                navController.navigate(Routes.MemberTypeSelect)
             }
         )
     }
 
-    // NickName: navigate from password to nickname, maintain role
-    composable(route = "${Routes.NickName}?role={role}", arguments = listOf(navArgument("role") { type = NavType.StringType; defaultValue = "member" })) { backStackEntry ->
-        val role = backStackEntry.arguments?.getString("role") ?: "member"
+    composable(Routes.NickName) {
         NicknameScreen(
             onBack = { navController.popBackStack() },
             onNext = { nickname ->
-                val enc = URLEncoder.encode(nickname, "UTF-8")
-                Log.d("AppNavGraph","NickName -> MemberTypeSelect (nickname=$nickname, role=$role)")
+                Log.d("AppNavGraph","Nickname -> CompanySelect (nickname=$nickname)")
                 SignupState.nickname = nickname
-                navController.navigate("${Routes.MemberTypeSelect}?role=${URLEncoder.encode(role, "UTF-8")}&nickname=$enc")
+                navController.navigate(Routes.CompanySelect)
             }
         )
     }
 
-    // MemberTypeSelect accepts role & nickname
-    composable(route = "${Routes.MemberTypeSelect}?role={role}&nickname={nickname}", arguments = listOf(navArgument("role") { type = NavType.StringType; defaultValue = "member" }, navArgument("nickname") { type = NavType.StringType; defaultValue = "" })) { backStackEntry ->
-        val role = backStackEntry.arguments?.getString("role") ?: "member"
-        val nickname = backStackEntry.arguments?.getString("nickname") ?: ""
+    composable(Routes.MemberTypeSelect) {
         MemberTypeSelectScreen(
             onBack = { navController.popBackStack() },
-            onComplete = { mode -> Log.d("AppNavGraph","MemberTypeSelect -> next (mode=$mode, role=$role, nickname=$nickname)"); if (mode == "business") navController.navigate("${Routes.CompanySelect}?role=${URLEncoder.encode(role, "UTF-8")}&nickname=${URLEncoder.encode(nickname, "UTF-8")}") else navController.navigate("${Routes.GenderSelect}?role=${URLEncoder.encode(role, "UTF-8")}&nickname=${URLEncoder.encode(nickname, "UTF-8")}") }
+            onComplete = { memberType ->
+                Log.d("AppNavGraph","MemberTypeSelect -> GenderSelect (memberType=$memberType)")
+                SignupState.memberType = memberType
+                navController.navigate(Routes.GenderSelect)
+            }
         )
     }
 
-    // CompanySelect keeps role & nickname
-    composable(route = "${Routes.CompanySelect}?role={role}&nickname={nickname}", arguments = listOf(navArgument("role") { type = NavType.StringType; defaultValue = "member" }, navArgument("nickname") { type = NavType.StringType; defaultValue = "" })) { backStackEntry ->
-        val role = backStackEntry.arguments?.getString("role") ?: "member"
-        val nickname = backStackEntry.arguments?.getString("nickname") ?: ""
+    composable(Routes.CompanySelect) {
         CompanySelectScreen(
             onBack = { navController.popBackStack() },
-            onNext = { navController.navigate("${Routes.GenderSelect}?role=${URLEncoder.encode(role, "UTF-8")}&nickname=${URLEncoder.encode(nickname, "UTF-8")}") }
+            onNext = { company ->
+                Log.d("AppNavGraph","CompanySelect -> Birthday (company=$company)")
+                SignupState.company = company
+                navController.navigate(Routes.Birthday)
+            }
         )
     }
 
-    // GenderSelect keeps role & nickname
-    composable(route = "${Routes.GenderSelect}?role={role}&nickname={nickname}", arguments = listOf(navArgument("role") { type = NavType.StringType; defaultValue = "member" }, navArgument("nickname") { type = NavType.StringType; defaultValue = "" })) { backStackEntry ->
-        val role = backStackEntry.arguments?.getString("role") ?: "member"
-        val nickname = backStackEntry.arguments?.getString("nickname") ?: ""
+    composable(Routes.GenderSelect) {
         GenderSelectScreen(
             onBack = { navController.popBackStack() },
-            onNext = { gender -> Log.d("AppNavGraph","GenderSelect -> Birthday (gender=$gender, role=$role, nickname=$nickname)"); navController.navigate("${Routes.Birthday}?role=${URLEncoder.encode(role, "UTF-8")}&nickname=${URLEncoder.encode(nickname, "UTF-8")}") }
+            onNext = { gender ->
+                Log.d("AppNavGraph","GenderSelect -> HealthHeight (gender=$gender)")
+                SignupState.gender = gender
+                navController.navigate(Routes.HealthHeight)
+            }
         )
     }
 
-    // Birthday keeps role & nickname
-    composable(route = "${Routes.Birthday}?role={role}&nickname={nickname}", arguments = listOf(navArgument("role") { type = NavType.StringType; defaultValue = "member" }, navArgument("nickname") { type = NavType.StringType; defaultValue = "" })) { backStackEntry ->
-        val role = backStackEntry.arguments?.getString("role") ?: "member"
-        val nickname = backStackEntry.arguments?.getString("nickname") ?: ""
+    composable(Routes.Birthday) {
         BirthdayScreen(
             onBack = { navController.popBackStack() },
-            onNext = { year, month, day -> Log.d("AppNavGraph","Birthday -> ProfilePhoto (y=$year,m=$month,d=$day, role=$role, nickname=$nickname)"); navController.navigate("${Routes.ProfilePhoto}?role=${URLEncoder.encode(role, "UTF-8")}&nickname=${URLEncoder.encode(nickname, "UTF-8")}") }
+            onNext = { year, month, day ->
+                try {
+                    val ld = LocalDate.of(year, month, day)
+                    SignupState.birthday = ld
+                } catch (_: Throwable) { /* ignore invalid date */ }
+                Log.d("AppNavGraph","Birthday -> ProfilePhoto (y=$year m=$month d=$day)")
+                navController.navigate(Routes.ProfilePhoto)
+            }
         )
     }
 
-    // ProfilePhoto keeps role & nickname; onComplete -> signup_complete with username & role
-    composable(route = "${Routes.ProfilePhoto}?role={role}&nickname={nickname}", arguments = listOf(navArgument("role") { type = NavType.StringType; defaultValue = "member" }, navArgument("nickname") { type = NavType.StringType; defaultValue = "" })) { backStackEntry ->
-        val role = backStackEntry.arguments?.getString("role") ?: "member"
-        val nickname = backStackEntry.arguments?.getString("nickname") ?: ""
-        ProfilePhotoSelectScreen(onBack = { navController.popBackStack() }, onComplete = {
-            val enc = URLEncoder.encode(nickname, "UTF-8")
-            Log.d("AppNavGraph","ProfilePhoto -> signup_complete (nickname=$nickname, role=$role)")
-            navController.navigate("signup_complete?username=$enc&role=${URLEncoder.encode(role, "UTF-8")}")
-        })
-    }
-
-    // SignUpComplete: accept username and role; decide next navigation based on role
-    composable(
-        route = "signup_complete?username={username}&role={role}",
-        arguments = listOf(navArgument("username") { type = NavType.StringType; defaultValue = "" }, navArgument("role") { type = NavType.StringType; defaultValue = "member" })
-    ) { backStackEntry ->
-        val encoded = backStackEntry.arguments?.getString("username") ?: ""
-        val username = try { URLDecoder.decode(encoded, "UTF-8") } catch (t: Throwable) { encoded }
-        val role = backStackEntry.arguments?.getString("role") ?: "member"
-        SignUpCompleteScreen(username = if (username.isBlank()) "회원" else username, onStart = {
-            Log.d("AppNavGraph","SignUpComplete onStart: role=$role")
-            if (role == "member") {
-                // member: go through health info sequence
-                navController.navigate(Routes.HealthHeight)
-            } else {
-                // coach: go to home
-                navController.navigate(Routes.MemberHome)
-            }
-        })
-    }
-
-    // Health flow
-    composable(Routes.HealthHeight) {
-        HealthInfoHeightScreen(
+    composable(Routes.ProfilePhoto) {
+        ProfilePhotoSelectScreen(
             onBack = { navController.popBackStack() },
-            onNext = { height ->
-                Log.d("AppNavGraph", "HealthHeight -> HealthWeight (height=$height)")
-                SignupState.heightCm = height
+            onComplete = {
+                Log.d("AppNavGraph","ProfilePhoto -> HealthWeight")
+                // ProfilePhotoSelectScreen does not return uri; backend update happens elsewhere
                 navController.navigate(Routes.HealthWeight)
             }
         )
     }
+
+    composable(Routes.HealthHeight) {
+        HealthInfoHeightScreen(
+            onBack = { navController.popBackStack() },
+            onNext = { height ->
+                Log.d("AppNavGraph","HealthHeight -> HealthWeight (height=$height)")
+                SignupState.height = height
+                navController.navigate(Routes.HealthWeight)
+            }
+        )
+    }
+
     composable(Routes.HealthWeight) {
         HealthInfoWeightScreen(
             onBack = { navController.popBackStack() },
             onNext = { weight ->
-                Log.d("AppNavGraph", "HealthWeight -> HealthSurvey (weight=$weight)")
-                SignupState.weightKg = weight
+                Log.d("AppNavGraph","HealthWeight -> HealthSurvey (weight=$weight)")
+                SignupState.weight = weight
                 navController.navigate(Routes.HealthSurvey)
             }
         )
     }
-    // Start of health survey sequence
+
     composable(Routes.HealthSurvey) {
-        // Use first survey screen (condition) as entry point; chain the rest here
+        // HealthSurvey is split across multiple screens; start sequence with HealthInfoConditionScreen
         HealthInfoConditionScreen(
             onBack = { navController.popBackStack() },
             onNext = { condition ->
                 SignupState.condition = condition
                 Log.d("AppNavGraph", "HealthSurvey(condition) -> sleep (condition=$condition)")
-                // push next: sleep quality
-                navController.navigate("health_survey_sleep")
+                safeNavigate(Routes.HealthSleep)
             }
         )
     }
-    composable("health_survey_sleep") {
-        HealthInfoSleepQualityScreen(onBack = { navController.popBackStack() }, onNext = { sleep ->
-            SignupState.sleepQuality = sleep
-            Log.d("AppNavGraph","HealthSurvey(sleep) -> medication (sleep=$sleep)")
-            navController.navigate("health_survey_medication")
-        })
-    }
-    composable("health_survey_medication") {
-        HealthInfoMedicationScreen(onBack = { navController.popBackStack() }, onNext = { med ->
-            SignupState.medication = med
-            Log.d("AppNavGraph","HealthSurvey(med) -> pain (med=$med)")
-            navController.navigate("health_survey_pain")
-        })
-    }
-    composable("health_survey_pain") {
-        HealthInfoPainDiscomfortScreen(onBack = { navController.popBackStack() }, onNext = { pain ->
-            SignupState.painArea = pain
-            Log.d("AppNavGraph","HealthSurvey(pain) -> stress (pain=$pain)")
-            navController.navigate("health_survey_stress")
-        })
-    }
-    composable("health_survey_stress") {
-        HealthInfoStressScreen(onBack = { navController.popBackStack() }, onNext = { stress ->
-            SignupState.stress = stress
-            Log.d("AppNavGraph","HealthSurvey(stress) -> lifestyle (stress=$stress)")
-            navController.navigate(Routes.LifeStyleSurvey)
-        })
+
+    // Health survey: 수면
+    composable(Routes.HealthSleep) {
+        HealthInfoSleepQualityScreen(
+            onBack = { navController.popBackStack() },
+            onNext = { sleep ->
+                SignupState.sleepQuality = sleep
+                Log.d("AppNavGraph", "HealthSurvey(sleep) -> medication (sleep=$sleep)")
+                safeNavigate(Routes.HealthMedication)
+            }
+        )
     }
 
-    // Lifestyle flow chain
+    // Health survey: 복약
+    composable(Routes.HealthMedication) {
+        HealthInfoMedicationScreen(
+            onBack = { navController.popBackStack() },
+            onNext = { med ->
+                SignupState.medication = med
+                Log.d("AppNavGraph", "HealthSurvey(med) -> pain (med=$med)")
+                safeNavigate(Routes.HealthPain)
+            }
+        )
+    }
+
+    // Health survey: 통증/불편함
+    composable(Routes.HealthPain) {
+        HealthInfoPainDiscomfortScreen(
+            onBack = { navController.popBackStack() },
+            onNext = { pain ->
+                SignupState.painArea = pain
+                Log.d("AppNavGraph", "HealthSurvey(pain) -> stress (pain=$pain)")
+                safeNavigate(Routes.HealthStress)
+            }
+        )
+    }
+
+    // Health survey: 스트레스
+    composable(Routes.HealthStress) {
+        HealthInfoStressScreen(
+            onBack = { navController.popBackStack() },
+            onNext = { stress ->
+                SignupState.stress = stress
+                Log.d("AppNavGraph", "HealthSurvey(stress) -> lifestyle (stress=$stress)")
+                safeNavigate(Routes.LifeStyleSurvey)
+            }
+        )
+    }
+
+    // Lifestyle: entry point (shows smoking screen first)
     composable(Routes.LifeStyleSurvey) {
-        LifestyleSmokingScreen(onBack = { navController.popBackStack() }, onNext = { smoking ->
-            SignupState.smoking = smoking
-            Log.d("AppNavGraph","Lifestyle(smoking) -> alcohol (smoking=$smoking)")
-            navController.navigate("lifestyle_alcohol")
-        })
+        LifestyleSmokingScreen(
+            onBack = { navController.popBackStack() },
+            onNext = { smoking ->
+                SignupState.smoking = smoking
+                Log.d("AppNavGraph","Lifestyle(smoking) -> alcohol (smoking=$smoking)")
+                safeNavigate(Routes.LifeAlcohol)
+            }
+        )
     }
-    composable("lifestyle_alcohol") {
-        LifestyleAlcoholIntakeScreen(onBack = { navController.popBackStack() }, onNext = { alcohol ->
-            SignupState.alcohol = alcohol
-            Log.d("AppNavGraph","Lifestyle(alcohol) -> sleepDuration (alcohol=$alcohol)")
-            navController.navigate("lifestyle_sleep")
-        })
-    }
-    composable("lifestyle_sleep") {
-        LifestyleSleepDurationScreen(onBack = { navController.popBackStack() }, onNext = { hours ->
-            SignupState.sleepHours = hours
-            Log.d("AppNavGraph","Lifestyle(sleep) -> activity (hours=$hours)")
-            navController.navigate("lifestyle_activity")
-        })
-    }
-    composable("lifestyle_activity") {
-        LifestyleActivityLevelScreen(onBack = { navController.popBackStack() }, onNext = { activity ->
-            SignupState.activityLevel = activity
-            Log.d("AppNavGraph","Lifestyle(activity) -> caffeine (activity=$activity)")
-            navController.navigate("lifestyle_caffeine")
-        })
-    }
-    composable("lifestyle_caffeine") {
-        val coroutineScope = rememberCoroutineScope()
-        LifestyleCaffeinIntakeScreen(onBack = { navController.popBackStack() }, onNext = { caffeine ->
-            SignupState.caffeine = caffeine
-            Log.d("AppNavGraph","Lifestyle(caffeine) finished (caffeine=$caffeine)")
-            // Build request from SignupState and post to backend, then navigate home on success
-            val userApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.UserApiService::class.java)
-            val userRepo = com.livon.app.domain.repository.UserRepository(userApi)
 
-            coroutineScope.launch {
+    // Lifestyle chain: alcohol
+    composable(Routes.LifeAlcohol) {
+        LifestyleAlcoholIntakeScreen(
+            onBack = { navController.popBackStack() },
+            onNext = { alcohol ->
+                SignupState.alcohol = alcohol
+                Log.d("AppNavGraph","Lifestyle(alcohol) -> sleepDuration (alcohol=$alcohol)")
+                safeNavigate(Routes.LifeSleep)
+            }
+        )
+    }
+
+    // Lifestyle: sleep duration
+    composable(Routes.LifeSleep) {
+        LifestyleSleepDurationScreen(
+            onBack = { navController.popBackStack() },
+            onNext = { hours ->
+                SignupState.sleepHours = hours
+                Log.d("AppNavGraph","Lifestyle(sleep) -> activity (hours=$hours)")
+                safeNavigate(Routes.LifeActivity)
+            }
+        )
+    }
+
+    // Lifestyle: activity level
+    composable(Routes.LifeActivity) {
+        LifestyleActivityLevelScreen(
+            onBack = { navController.popBackStack() },
+            onNext = { activity ->
+                SignupState.activityLevel = activity
+                Log.d("AppNavGraph","Lifestyle(activity) -> caffeine (activity=$activity)")
+                safeNavigate(Routes.LifeCaffeine)
+            }
+        )
+    }
+
+    // Lifestyle: caffeine (final) — for now navigate back to MemberHome; backend posting is handled elsewhere
+    composable(Routes.LifeCaffeine) {
+        LifestyleCaffeinIntakeScreen(
+            onBack = { navController.popBackStack() },
+            onNext = { caffeine ->
+                SignupState.caffeine = caffeine
+                Log.d("AppNavGraph","Lifestyle(caffeine) finished (caffeine=$caffeine)")
+                // Try to post survey to backend here (omitted). After success, check savedStateHandle to determine where to return.
+                // The caller (QnA or MyInfo) saved an origin marker on its own backStackEntry before navigating here.
+                // The immediate previousBackStackEntry should be that caller. Check it for qna_origin/myinfo_origin.
                 try {
-                    val req = com.livon.app.data.remote.api.HealthSurveyRequest(
-                        steps = 0,
-                        sleepTime = SignupState.sleepHours?.toIntOrNull() ?: 0,
-                        disease = SignupState.condition,
-                        sleepQuality = SignupState.sleepQuality,
-                        medicationsInfo = SignupState.medication,
-                        painArea = SignupState.painArea,
-                        stressLevel = SignupState.stress,
-                        smokingStatus = SignupState.smoking,
-                        avgSleepHours = SignupState.sleepHours?.toIntOrNull() ?: 0,
-                        activityLevel = SignupState.activityLevel,
-                        caffeineIntakeLevel = SignupState.caffeine,
-                        height = SignupState.heightCm?.toIntOrNull() ?: 0,
-                        weight = SignupState.weightKg?.toIntOrNull() ?: 0
-                    )
+                    val prev = navController.previousBackStackEntry
+                    val prevSaved = prev?.savedStateHandle
 
-                    val res = userRepo.postHealthSurvey(req)
-                    if (res.isSuccess) {
-                        Log.d("AppNavGraph","Health survey posted successfully, returning to QnA submit")
-
-                        // Pop back until we find an entry that set qna_origin on its savedStateHandle
-                        var safety = 0
-                        var found = false
-                        while (safety < 50) {
-                            val currentEntry = navController.currentBackStackEntry
-                            val saved = currentEntry?.savedStateHandle
-                            if (saved != null && saved.contains("qna_origin")) {
-                                // mark that health was updated and copy origin params for consumer
-                                saved.set("health_updated", true)
-                                val origin = saved.get<Map<String, String>>("qna_origin")
-                                if (origin != null) {
-                                    for ((k, v) in origin) {
-                                        // set both plain and qna_ prefixed keys for compatibility
-                                        saved.set(k, v)
-                                        saved.set("qna_${k}", v)
-                                    }
-                                }
-                                found = true
-                                break
-                            }
-                            val didPop = navController.popBackStack()
-                            if (!didPop) break
-                            safety++
-                        }
-
-                        if (!found) {
-                            // fallback: navigate to home
-                            Log.d("AppNavGraph", "No qna_submit entry found in back stack; navigating to MemberHome")
-                            navController.navigate(Routes.MemberHome) { popUpTo(Routes.Landing) { inclusive = false } }
+                    val qnaOrigin = prevSaved?.get<Map<String, String>>("qna_origin")
+                    if (qnaOrigin != null) {
+                        // clear origin and mark health_updated so QnASubmitScreen will re-open dialog
+                        prevSaved.remove<Map<String, String>>("qna_origin")
+                        prevSaved.set("health_updated", true)
+                        try {
+                            navController.popBackStack(prev.destination.id, false)
+                            return@LifestyleCaffeinIntakeScreen
+                        } catch (t: Throwable) {
+                            Log.w("AppNavGraph", "Failed to popBackStack to QnA entry", t)
                         }
                     }
+
+                    val myinfoOrigin = prevSaved?.get<Boolean>("myinfo_origin")
+                    if (myinfoOrigin == true) {
+                        prevSaved.remove<Boolean>("myinfo_origin")
+                        prevSaved.set("health_updated", true)
+                        safeNavigate(Routes.MyInfo)
+                        return@LifestyleCaffeinIntakeScreen
+                    }
                 } catch (t: Throwable) {
-                    Log.e("AppNavGraph", "Failed to post health survey: ${t.message}", t)
+                    Log.w("AppNavGraph", "Error while handling origin flags on previousBackStackEntry", t)
                 }
+
+                // Fallback: if previous entry wasn't found or didn't have qna_origin, but we have a marker route saved,
+                // navigate to it and set health_updated on the newly-created entry so the QnASubmitScreen will show dialog.
+                try {
+                    val marker = SignupState.qnaMarkerRoute
+                    if (!marker.isNullOrBlank()) {
+                        SignupState.qnaMarkerRoute = null
+                        navController.navigate(marker) {
+                            // open as a new instance on top; we'll set savedStateHandle immediately after
+                        }
+                        // set flag so the new QnASubmitScreen re-opens dialog
+                        navController.currentBackStackEntry?.savedStateHandle?.set("health_updated", true)
+                        return@LifestyleCaffeinIntakeScreen
+                    }
+                } catch (t: Throwable) {
+                    Log.w("AppNavGraph", "Failed to navigate to qnaMarkerRoute", t)
+                }
+
+                // Default fallback: go to MemberHome
+                safeNavigate(Routes.MemberHome)
+             }
+         )
+     }
+
+    composable(Routes.SignUpComplete) {
+        SignUpCompleteScreen(username = SignupState.nickname, onStart = {
+            Log.d("AppNavGraph","SignUpComplete onStart called")
+            navController.navigate(Routes.Landing) {
+                popUpTo(Routes.Landing) { inclusive = true }
             }
         })
     }

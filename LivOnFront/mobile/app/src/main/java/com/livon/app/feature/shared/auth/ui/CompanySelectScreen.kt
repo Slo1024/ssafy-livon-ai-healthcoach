@@ -13,13 +13,12 @@ import com.livon.app.ui.component.button.PrimaryButtonBottom
 import com.livon.app.ui.component.input.LivonTextField
 import com.livon.app.ui.component.overlay.TopBar
 import com.livon.app.ui.theme.LivonTheme
-import com.livon.app.ui.theme.Spacing
 
 @Composable
 fun CompanySelectScreen(
     modifier: Modifier = Modifier,
     onBack: () -> Unit = {},
-    onNext: () -> Unit = {}
+    onNext: (String) -> Unit = {}
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedCompany by remember { mutableStateOf<String?>(null) }
@@ -32,7 +31,7 @@ fun CompanySelectScreen(
             PrimaryButtonBottom(
                 text = "완료",
                 enabled = selectedCompany != null,
-                onClick = { onNext() }
+                onClick = { selectedCompany?.let(onNext) }
             )
         }
     ) {

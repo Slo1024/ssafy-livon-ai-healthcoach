@@ -666,25 +666,80 @@ export const StreamingPage: React.FC = () => {
                             return prev;
                           }
 
-                          // 새 메시지 추가 (다른 참여자의 메시지)
+                          // 내가 보낸 메시지인 경우 임시 메시지를 찾아서 교체
+                          const isFromSelf = message.senderId === user?.id;
+                          if (isFromSelf) {
+                            // 임시 메시지 찾기 (temp-로 시작하는 ID와 메시지 내용이 같은 것)
+                            const tempMessageIndex = prev.findIndex(
+                              (msg) =>
+                                msg.id.startsWith("temp-") &&
+                                msg.message === message.message &&
+                                Math.abs(
+                                  new Date(msg.timestamp).getTime() -
+                                    new Date(message.sentAt).getTime()
+                                ) < 5000 // 5초 이내의 메시지
+                            );
+
+                            if (tempMessageIndex !== -1) {
+                              // 임시 메시지를 실제 메시지로 교체
+                              const newMessage: ChatMessage = {
+                                id: message.id,
+                                sender:
+                                  message.sender?.nickname ||
+                                  user?.nickname ||
+                                  participantName,
+                                message: message.message,
+                                timestamp: new Date(message.sentAt),
+                                senderImage:
+                                  message.sender?.userImage ||
+                                  user?.profileImage,
+                              };
+
+                              console.log(
+                                "🔵 [채팅] 임시 메시지를 실제 메시지로 교체:",
+                                {
+                                  tempId: prev[tempMessageIndex].id,
+                                  realId: newMessage.id,
+                                  message: newMessage.message,
+                                }
+                              );
+
+                              const updated = [...prev];
+                              updated[tempMessageIndex] = newMessage;
+                              return updated;
+                            }
+                          }
+
+                          // 새 메시지 추가 (다른 참여자의 메시지 또는 임시 메시지를 찾지 못한 경우)
                           const newMessage: ChatMessage = {
                             id: message.id,
                             sender:
                               message.sender?.nickname ||
-                              (message.senderId === user.id ? "나" : "회원"),
+                              (isFromSelf
+                                ? user?.nickname || participantName
+                                : "회원"),
                             message: message.message,
                             timestamp: new Date(message.sentAt),
-                            senderImage: message.sender?.userImage,
+                            senderImage:
+                              message.sender?.userImage ||
+                              (isFromSelf ? user?.profileImage : undefined),
                           };
 
                           console.log("🔵 [채팅] 새 메시지 추가:", {
                             id: newMessage.id,
                             sender: newMessage.sender,
                             messageLength: newMessage.message.length,
-                            isFromSelf: message.senderId === user?.id,
+                            isFromSelf,
+                            prevMessagesCount: prev.length,
+                            newMessagesCount: prev.length + 1,
                           });
 
-                          return [...prev, newMessage];
+                          const updated = [...prev, newMessage];
+                          console.log("🔵 [채팅] 업데이트된 메시지 목록:", {
+                            totalCount: updated.length,
+                            lastMessage: updated[updated.length - 1],
+                          });
+                          return updated;
                         });
                       },
                       (error) => {

@@ -1,18 +1,19 @@
-import React from 'react';
-import styled from 'styled-components';
+import React, { useEffect, useRef } from "react";
+import styled from "styled-components";
 
 const ChatPanelContainer = styled.div<{ $isOpen: boolean }>`
-  width: ${props => props.$isOpen ? '320px' : '0'};
+  width: ${(props) => (props.$isOpen ? "320px" : "0")};
   height: 100%;
   background-color: #ffffff;
-  border-left: ${props => props.$isOpen ? '1px solid #e5e7eb' : 'none'};
+  border-left: ${(props) => (props.$isOpen ? "1px solid #e5e7eb" : "none")};
   display: flex;
   flex-direction: column;
-  opacity: ${props => props.$isOpen ? '1' : '0'};
-  visibility: ${props => props.$isOpen ? 'visible' : 'hidden'};
-  transition: width 0.3s ease, opacity 0.3s ease, visibility 0.3s ease, border-left 0.3s ease;
+  opacity: ${(props) => (props.$isOpen ? "1" : "0")};
+  visibility: ${(props) => (props.$isOpen ? "visible" : "hidden")};
+  transition: width 0.3s ease, opacity 0.3s ease, visibility 0.3s ease,
+    border-left 0.3s ease;
   overflow: hidden;
-  pointer-events: ${props => props.$isOpen ? 'auto' : 'none'};
+  pointer-events: ${(props) => (props.$isOpen ? "auto" : "none")};
 `;
 
 const ChatHeader = styled.div`
@@ -85,8 +86,9 @@ const ChatInput = styled.input`
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   font-size: 14px;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+
   &:focus {
     outline: none;
     border-color: #e5e7eb;
@@ -106,16 +108,16 @@ const ChatSendButton = styled.button`
   align-items: center;
   justify-content: center;
   height: 100%;
-  
+
   &:hover {
     background-color: #3b5dd8;
   }
-  
+
   &:focus {
     outline: none;
     box-shadow: none;
   }
-  
+
   &:active {
     outline: none;
     box-shadow: none;
@@ -144,16 +146,34 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   onChatInputChange,
   onSendMessage,
 }) => {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  // 새 메시지가 추가될 때마다 스크롤을 맨 아래로 이동
+  useEffect(() => {
+    if (messagesEndRef.current && messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop =
+        messagesContainerRef.current.scrollHeight;
+    }
+  }, [messages]);
+
   const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .substring(0, 2)
+      .toUpperCase();
   };
 
   return (
     <ChatPanelContainer $isOpen={isOpen}>
       <ChatHeader>채팅</ChatHeader>
-      <ChatMessages>
+      <ChatMessages ref={messagesContainerRef}>
         {messages.length === 0 ? (
-          <div style={{ textAlign: 'center', color: '#9ca3af', padding: '20px' }}>
+          <div
+            style={{ textAlign: "center", color: "#9ca3af", padding: "20px" }}
+          >
             메시지가 없습니다.
           </div>
         ) : (
@@ -167,6 +187,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
             </ChatMessage>
           ))
         )}
+        <div ref={messagesEndRef} />
       </ChatMessages>
       <ChatInputArea>
         <ChatInputWrapper>
@@ -176,14 +197,14 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
             value={chatInput}
             onChange={(e) => onChatInputChange(e.target.value)}
             onKeyPress={(e) => {
-              if (e.key === 'Enter') {
+              if (e.key === "Enter") {
                 onSendMessage();
               }
             }}
           />
           <ChatSendButton onClick={onSendMessage}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
             </svg>
           </ChatSendButton>
         </ChatInputWrapper>

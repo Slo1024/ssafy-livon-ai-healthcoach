@@ -385,46 +385,40 @@ fun NavGraphBuilder.authNavGraph(navController: NavHostController) {
                     val res = userRepo.postHealthSurvey(req)
                     if (res.isSuccess) {
                         Log.d("AppNavGraph","Health survey posted successfully, returning to QnA submit")
-                        // Try to return to a qna_submit route by popping the back stack safely.
-                        try {
-                            // We'll pop back until we reach a destination whose route contains "qna_submit".
-                            var safety = 0
-                            var reached = false
-                            // set flag on current entry so caller screens can detect update if we don't find qna
-                            navController.currentBackStackEntry?.savedStateHandle?.set("health_updated", true)
-                            while (safety < 20) {
-                                val currentRoute = navController.currentDestination?.route
-                                if (currentRoute != null && currentRoute.contains("qna_submit")) {
-                                    // mark the found entry so QnA screen can react
-                                    navController.currentBackStackEntry?.savedStateHandle?.set("health_updated", true)
-                                    reached = true
-                                    break
+
+                        // Pop back until we find an entry that set qna_origin on its savedStateHandle
+                        var safety = 0
+                        var found = false
+                        while (safety < 50) {
+                            val currentEntry = navController.currentBackStackEntry
+                            val saved = currentEntry?.savedStateHandle
+                            if (saved != null && saved.contains("qna_origin")) {
+                                // mark that health was updated and copy origin params for consumer
+                                saved.set("health_updated", true)
+                                val origin = saved.get<Map<String, String>>("qna_origin")
+                                if (origin != null) {
+                                    for ((k, v) in origin) {
+                                        // set both plain and qna_ prefixed keys for compatibility
+                                        saved.set(k, v)
+                                        saved.set("qna_${k}", v)
+                                    }
                                 }
-                                // try to pop one
-                                val popped = navController.popBackStack()
-                                if (!popped) break
-                                safety++
+                                found = true
+                                break
                             }
-                            if (!reached) {
-                                // fallback: navigate to reservations screen directly
-                                try {
-                                    navController.navigate("reservations") { popUpTo(Routes.MemberHome) { inclusive = false } }
-                                } catch (t: Throwable) {
-                                    navController.popBackStack()
-                                }
-                            }
-                        } catch (t: Throwable) {
-                            Log.d("AppNavGraph", "Failed to pop back to QnA submit: ${t.message}")
-                            navController.popBackStack()
+                            val didPop = navController.popBackStack()
+                            if (!didPop) break
+                            safety++
                         }
-                    } else {
-                        Log.d("AppNavGraph","Health survey post failed: ${res.exceptionOrNull()?.message}")
-                        // navigate back conservatively
-                        navController.popBackStack()
+
+                        if (!found) {
+                            // fallback: navigate to home
+                            Log.d("AppNavGraph", "No qna_submit entry found in back stack; navigating to MemberHome")
+                            navController.navigate(Routes.MemberHome) { popUpTo(Routes.Landing) { inclusive = false } }
+                        }
                     }
                 } catch (t: Throwable) {
-                    Log.d("AppNavGraph","Health survey post exception: ${t.message}")
-                    navController.popBackStack()
+                    Log.e("AppNavGraph", "Failed to post health survey: ${t.message}", t)
                 }
             }
         })

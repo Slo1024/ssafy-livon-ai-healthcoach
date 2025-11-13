@@ -49,17 +49,15 @@ fun QnASubmitScreen(
     var showDialog by rememberSaveable { mutableStateOf(false) }
 
     // If we returned from health flow, show the dialog again
-    LaunchedEffect(navController?.currentBackStackEntry?.savedStateHandle) {
-        try {
-            val handle = navController?.currentBackStackEntry?.savedStateHandle
-            val flag = handle?.get<Boolean>("health_updated")
-            if (flag == true) {
-                // open dialog and clear flag
-                showDialog = true
-                handle.remove<Boolean>("health_updated")
-            }
-        } catch (t: Throwable) {
-            // ignore
+    // Observe savedStateHandle key reliably using StateFlow -> collectAsState
+    val backStackEntry = navController?.currentBackStackEntry
+    val savedStateHandle = backStackEntry?.savedStateHandle
+    val healthUpdatedFlow = remember(savedStateHandle) { savedStateHandle?.getStateFlow("health_updated", false) }
+    val healthUpdated by (healthUpdatedFlow?.collectAsState(initial = false) ?: remember { mutableStateOf(false) })
+
+    LaunchedEffect(healthUpdated) {
+        if (healthUpdated) {
+            showDialog = true
         }
     }
 

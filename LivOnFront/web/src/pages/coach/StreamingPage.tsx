@@ -12,19 +12,24 @@ import {
   RoomEvent,
   LocalVideoTrack,
   LocalTrackPublication,
-  RemoteVideoTrack,
-  RemoteAudioTrack,
   RemoteTrackPublication,
   RemoteParticipant,
   RemoteTrack,
+  RemoteVideoTrack,
   Track,
   TrackEvent,
-  DataPacket_Kind,
 } from "livekit-client";
 import { StreamingEndModal } from "../../components/common/Modal";
 import { ROUTES } from "../../constants/routes";
 import { CONFIG } from "../../constants/config";
 import { useAuth } from "../../hooks/useAuth";
+import {
+  StompChatClient,
+  createChatRoom,
+  getChatMessagesSince,
+  GoodsChatMessageResponse,
+  setAuthToken,
+} from "../../api/chattingApi";
 import { ChatPanel } from "../../components/streaming/chat/ChatPanel";
 import { ParticipantPanel } from "../../components/streaming/participant/ParticipantPanel";
 import { VideoGrid } from "../../components/streaming/video/VideoGrid";
@@ -111,12 +116,14 @@ interface ChatMessage {
   sender: string;
   message: string;
   timestamp: Date;
+  senderId?: string;
+  senderImage?: string;
 }
 
 export const StreamingPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [room, setRoom] = useState<Room | undefined>(undefined);
   const [localTrack, setLocalTrack] = useState<LocalVideoTrack | undefined>(
     undefined
@@ -134,19 +141,7 @@ export const StreamingPage: React.FC = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [participantSearchQuery, setParticipantSearchQuery] = useState("");
-  const [sharedContent, setSharedContent] = useState<{
-    type: "ai-analysis";
-    memberName: string;
-  } | null>(null);
-  const [selectedParticipantId, setSelectedParticipantId] = useState<
-    string | null
-  >(null);
-  const [roomName] = useState(() => {
-    const consultationId =
-      location.state?.consultationId || location.state?.reservationId;
-    return `consultation-${consultationId}`;
-  });
-
+  const [chatRoomId, setChatRoomId] = useState<number | null>(null);
   const [participantName] = useState(() => {
     // URL 쿼리 파라미터에서 participantName 가져오기 (참가자 이름 구분용)
     const searchParams = new URLSearchParams(location.search);
@@ -157,7 +152,75 @@ export const StreamingPage: React.FC = () => {
     }
 
     // 기본값: 사용자 닉네임 또는 '코치'
-    return user?.nickname ? `${user.nickname} 코치님` : '코치님';
+    return user?.nickname ? `${user.nickname} 코치님` : "코치님";
+  });
+  const [selectedParticipantId, setSelectedParticipantId] = useState<
+    string | null
+  >(null);
+  const [localScreenShareTrack, setLocalScreenShareTrack] =
+    useState<LocalVideoTrack | null>(null);
+  const remoteScreenSharePublication = useMemo(
+    () =>
+      remoteTracks.find((item) => {
+        const publication = item.trackPublication;
+        const source = publication.source ?? publication.track?.source;
+        const kind = publication.kind ?? publication.track?.kind;
+        return kind === Track.Kind.Video && source === Track.Source.ScreenShare;
+      }),
+    [remoteTracks]
+  );
+  const screenShareTrackInfo = useMemo(() => {
+    if (localScreenShareTrack) {
+      return {
+        track: localScreenShareTrack as
+          | LocalVideoTrack
+          | RemoteVideoTrack
+          | null,
+        identity: room?.localParticipant?.identity || "__local__",
+        displayName: participantName,
+        isLocal: true,
+      };
+    }
+
+    if (remoteScreenSharePublication) {
+      const track =
+        (remoteScreenSharePublication.trackPublication.track as
+          | RemoteVideoTrack
+          | null
+          | undefined) || null;
+      return {
+        track,
+        identity:
+          remoteScreenSharePublication.participant?.identity ||
+          remoteScreenSharePublication.participantIdentity,
+        displayName:
+          remoteScreenSharePublication.participant?.name ||
+          remoteScreenSharePublication.participantIdentity,
+        isLocal: false,
+      };
+    }
+
+    return null;
+  }, [
+    localScreenShareTrack,
+    participantName,
+    remoteScreenSharePublication,
+    room,
+  ]);
+  const hasActiveScreenShare = Boolean(
+    localScreenShareTrack || remoteScreenSharePublication
+  );
+  const screenShareOwnerName =
+    screenShareTrackInfo?.displayName ||
+    remoteScreenSharePublication?.participant?.name ||
+    remoteScreenSharePublication?.participantIdentity ||
+    participantName;
+  const localParticipantIdentity =
+    room?.localParticipant?.identity || "__local__";
+  const [roomName] = useState(() => {
+    const consultationId =
+      location.state?.consultationId || location.state?.reservationId;
+    return `consultation-${consultationId}`;
   });
 
   const participantInfoMap = useMemo<Record<string, ParticipantDetail>>(
@@ -254,12 +317,13 @@ export const StreamingPage: React.FC = () => {
   const roomRef = useRef<Room | undefined>(undefined);
   const isMountedRef = useRef(true);
   const screenShareTrackRef = useRef<LocalVideoTrack | null>(null);
+  const stompChatClientRef = useRef<StompChatClient | null>(null);
 
   const clearScreenShareState = useCallback(() => {
     screenShareTrackRef.current = null;
-    setSharedContent(null);
     setIsScreenSharing(false);
     setViewMode("gallery");
+    setLocalScreenShareTrack(null);
   }, []);
 
   useEffect(() => {
@@ -425,29 +489,6 @@ export const StreamingPage: React.FC = () => {
           }
         );
 
-        newRoom.on(
-          RoomEvent.DataReceived,
-          (
-            payload: Uint8Array,
-            participant?: RemoteParticipant,
-            kind?: DataPacket_Kind
-          ) => {
-            try {
-              const decoder = new TextDecoder();
-              const message = JSON.parse(decoder.decode(payload));
-              const newMessage: ChatMessage = {
-                id: Date.now().toString(),
-                sender: participant?.identity || participant?.name || "Unknown",
-                message: message.text || message.message || "",
-                timestamp: new Date(),
-              };
-              setChatMessages((prev) => [...prev, newMessage]);
-            } catch (error) {
-              console.error("채팅 메시지 파싱 오류:", error);
-            }
-          }
-        );
-
         // 토큰 발급
         const token = await getToken();
 
@@ -517,6 +558,181 @@ export const StreamingPage: React.FC = () => {
             // 초기 상태 설정
             setIsVideoEnabled(true);
             setIsAudioEnabled(false); // 초기에는 오디오 비활성화
+
+            // 채팅방 생성 및 STOMP 연결 (방 입장 후)
+            // user가 로드될 때까지 기다림
+            if (isAuthLoading) {
+              console.log("🔵 [채팅] 사용자 정보 로딩 중...");
+              return;
+            }
+
+            const consultationId =
+              location.state?.consultationId || location.state?.reservationId;
+
+            console.log("🔵 [채팅] 채팅방 생성 조건 확인:", {
+              consultationId,
+              hasUserId: !!user?.id,
+              userId: user?.id,
+              userObject: user,
+              isAuthLoading,
+              locationState: location.state,
+            });
+
+            if (consultationId && user?.id) {
+              try {
+                // JWT 토큰 가져오기 및 설정
+                const accessToken = localStorage.getItem(
+                  CONFIG.TOKEN.ACCESS_TOKEN_KEY
+                );
+                if (!accessToken) {
+                  console.error("❌ [채팅] AccessToken이 없습니다.");
+                  throw new Error("인증 토큰이 없습니다. 로그인이 필요합니다.");
+                }
+
+                // 채팅 API 클라이언트에 토큰 설정
+                setAuthToken(accessToken);
+                console.log("🔵 [채팅] 인증 토큰 설정 완료");
+
+                console.log("🔵 [채팅] 채팅방 생성 시작:", {
+                  consultationId,
+                  userId: user.id,
+                });
+
+                // 채팅방 생성
+                const chatRoom = await createChatRoom(consultationId);
+                console.log("🔵 [채팅] 채팅방 생성 완료:", {
+                  chatRoomId: chatRoom.chatRoomId,
+                  chatRoomStatus: chatRoom.chatRoomStatus,
+                });
+                setChatRoomId(chatRoom.chatRoomId);
+
+                // 과거 메시지 로드 (처음에는 null로 전송하여 전체 메시지 조회)
+                const pastMessages = await getChatMessagesSince(
+                  chatRoom.chatRoomId,
+                  null // 처음 조회 시 null
+                );
+                console.log("🔵 [채팅] 과거 메시지 로드:", {
+                  count: pastMessages.length,
+                });
+
+                // 과거 메시지를 ChatMessage 형식으로 변환
+                const convertedMessages: ChatMessage[] = pastMessages.map(
+                  (msg) => ({
+                    id: msg.id,
+                    sender: msg.role === "COACH" ? "코치" : "회원", // TODO: 실제 닉네임 사용
+                    message: msg.content,
+                    timestamp: new Date(msg.sentAt),
+                    senderId: msg.userId,
+                  })
+                );
+                setChatMessages(convertedMessages);
+
+                // STOMP 웹소켓 연결 (accessToken은 이미 위에서 가져옴)
+                console.log("🔵 [채팅] STOMP 연결 준비:", {
+                  hasAccessToken: !!accessToken,
+                  chatRoomId: chatRoom.chatRoomId,
+                  userId: user.id,
+                });
+
+                if (accessToken) {
+                  const stompClient = new StompChatClient();
+                  stompChatClientRef.current = stompClient;
+
+                  console.log("🔵 [채팅] STOMP 연결 시도 시작...");
+                  try {
+                    await stompClient.connect(
+                      chatRoom.chatRoomId,
+                      user.id,
+                      accessToken,
+                      (message: GoodsChatMessageResponse) => {
+                        console.log("🔵 [채팅] 새 메시지 수신:", {
+                          messageId: message.id,
+                          senderId: message.senderId,
+                        });
+                        // 새 메시지 수신
+                        const newMessage: ChatMessage = {
+                          id: message.id,
+                          sender:
+                            message.sender?.nickname ||
+                            (message.senderId === user.id ? "나" : "회원"),
+                          message: message.message,
+                          timestamp: new Date(message.sentAt),
+                          senderId: message.senderId,
+                          senderImage: message.sender?.userImage,
+                        };
+                        setChatMessages((prev) => [...prev, newMessage]);
+                      },
+                      (error) => {
+                        console.error("❌ [채팅] STOMP 채팅 연결 오류:", error);
+                        console.error("❌ [채팅] 오류 상세:", {
+                          name: error.name,
+                          message: error.message,
+                          stack: error.stack,
+                        });
+                      }
+                    );
+
+                    console.log("🔵 [채팅] STOMP 연결 완료, 연결 상태 확인:", {
+                      isConnected: stompClient.isConnected(),
+                      refCurrent: !!stompChatClientRef.current,
+                    });
+
+                    // 연결 상태 확인 후 입장 메시지 전송
+                    if (stompClient.isConnected()) {
+                      console.log("🔵 [채팅] 입장 메시지 전송 시도...");
+                      stompClient.sendMessage("", "ENTER");
+                      console.log("🔵 [채팅] 입장 메시지 전송 완료");
+                    } else {
+                      console.warn(
+                        "⚠️ [채팅] STOMP 연결이 완료되었지만 isConnected()가 false입니다."
+                      );
+                    }
+                  } catch (connectError) {
+                    console.error(
+                      "❌ [채팅] STOMP connect() 예외 발생:",
+                      connectError
+                    );
+                    console.error("❌ [채팅] connect() 오류 상세:", {
+                      error: connectError,
+                      name:
+                        connectError instanceof Error
+                          ? connectError.name
+                          : "Unknown",
+                      message:
+                        connectError instanceof Error
+                          ? connectError.message
+                          : String(connectError),
+                    });
+                    // STOMP 연결 실패 시 ref 초기화
+                    stompChatClientRef.current = null;
+                  }
+                } else {
+                  console.error("❌ [채팅] AccessToken이 없습니다.");
+                }
+              } catch (error) {
+                console.error("❌ [채팅] 채팅방 생성/연결 오류:", error);
+                console.error("❌ [채팅] 오류 상세:", {
+                  error,
+                  name: error instanceof Error ? error.name : "Unknown",
+                  message:
+                    error instanceof Error ? error.message : String(error),
+                  stack: error instanceof Error ? error.stack : undefined,
+                });
+                // 채팅 오류 발생 시 상태 초기화
+                setChatRoomId(null);
+                stompChatClientRef.current = null;
+                // 채팅 오류는 화상 통화를 방해하지 않도록 조용히 처리
+                // 하지만 사용자에게는 알림 (선택사항)
+                console.warn(
+                  "⚠️ [채팅] 채팅 기능을 사용할 수 없습니다. 화상 통화는 계속됩니다."
+                );
+              }
+            } else {
+              console.warn("⚠️ [채팅] 채팅방 생성 조건 불만족:", {
+                hasConsultationId: !!consultationId,
+                hasUserId: !!user?.id,
+              });
+            }
           } catch (error) {
             console.error("비디오/오디오 활성화 오류:", error);
             // 에러가 발생해도 계속 진행
@@ -539,6 +755,18 @@ export const StreamingPage: React.FC = () => {
     return () => {
       isMountedRef.current = false;
       isConnectingRef.current = false;
+
+      // STOMP 채팅 연결 해제
+      if (stompChatClientRef.current) {
+        try {
+          stompChatClientRef.current.sendMessage("", "LEAVE");
+          stompChatClientRef.current.disconnect();
+        } catch (error) {
+          console.error("STOMP 채팅 연결 해제 오류:", error);
+        }
+        stompChatClientRef.current = null;
+      }
+
       const roomToDisconnect = roomRef.current || newRoom;
       if (roomToDisconnect) {
         try {
@@ -556,7 +784,7 @@ export const StreamingPage: React.FC = () => {
       }
       clearScreenShareState();
     };
-  }, [roomName, participantName, clearScreenShareState]);
+  }, [roomName, participantName, user, isAuthLoading, clearScreenShareState]);
 
   const handleToggleVideo = async () => {
     if (!room) return;
@@ -572,8 +800,6 @@ export const StreamingPage: React.FC = () => {
       if (videoTrack) {
         setLocalTrack(videoTrack);
       }
-    } else {
-      setLocalTrack(undefined);
     }
   };
 
@@ -608,10 +834,11 @@ export const StreamingPage: React.FC = () => {
           screenShareTrack.once(TrackEvent.Ended, () => {
             console.log("화면 공유 트랙 종료 감지");
             screenShareTrackRef.current = null;
-            setSharedContent(null);
             setIsScreenSharing(false);
             setViewMode("gallery");
+            setLocalScreenShareTrack(null);
           });
+          setLocalScreenShareTrack(screenShareTrack);
         }
 
         setIsScreenSharing(true);
@@ -646,9 +873,9 @@ export const StreamingPage: React.FC = () => {
           }
         }
         screenShareTrackRef.current = null;
-        setSharedContent(null);
         setIsScreenSharing(false);
         setViewMode("gallery");
+        setLocalScreenShareTrack(null);
       }
     } else {
       try {
@@ -658,9 +885,9 @@ export const StreamingPage: React.FC = () => {
         // 중지 오류는 조용히 처리 (이미 중지된 상태일 수 있음)
       } finally {
         screenShareTrackRef.current = null;
-        setSharedContent(null);
         setIsScreenSharing(false);
         setViewMode("gallery");
+        setLocalScreenShareTrack(null);
       }
     }
   };
@@ -687,52 +914,104 @@ export const StreamingPage: React.FC = () => {
 
   const handleSendMessage = async () => {
     if (!chatInput.trim()) {
-      console.warn("채팅 메시지가 비어있습니다.");
+      console.warn("🔵 [채팅] 채팅 메시지가 비어있습니다.");
       return;
     }
 
-    if (!room) {
-      console.error("Room이 연결되지 않았습니다.");
-      alert("방에 연결되지 않았습니다. 잠시 후 다시 시도해주세요.");
+    console.log("🔵 [채팅] 메시지 전송 시도:", {
+      message: chatInput,
+      chatRoomId,
+      hasStompClient: !!stompChatClientRef.current,
+      consultationId:
+        location.state?.consultationId || location.state?.reservationId,
+      userId: user?.id,
+    });
+
+    const stompClient = stompChatClientRef.current;
+
+    // 상세한 디버깅 정보
+    if (!stompClient) {
+      console.error("❌ [채팅] STOMP 클라이언트가 없습니다:", {
+        stompChatClientRef: stompChatClientRef.current,
+        chatRoomId,
+        userId: user?.id,
+        consultationId:
+          location.state?.consultationId || location.state?.reservationId,
+        hasUser: !!user,
+        userObject: user,
+      });
+
+      // 채팅방이 초기화되지 않은 경우 재시도
+      const consultationId =
+        location.state?.consultationId || location.state?.reservationId;
+      if (!chatRoomId && consultationId && user?.id) {
+        console.log(
+          "🔵 [채팅] 채팅방이 초기화되지 않았습니다. 재초기화 시도..."
+        );
+        alert("채팅 연결이 초기화되지 않았습니다. 페이지를 새로고침해주세요.");
+        return;
+      }
+
+      alert("채팅 연결이 끊어졌습니다. 잠시 후 다시 시도해주세요.");
+      return;
+    }
+
+    const isConnected = stompClient.isConnected();
+    console.log("🔵 [채팅] STOMP 연결 상태 확인:", {
+      isConnected,
+      hasClient: !!stompClient,
+      chatRoomId,
+    });
+
+    // 내부 client 상태도 확인 (디버깅용)
+    const clientState = (stompClient as any).client;
+    console.log("🔵 [채팅] STOMP 내부 상태:", {
+      hasClient: !!clientState,
+      connected: clientState?.connected,
+      state: clientState?.state,
+    });
+
+    if (!isConnected) {
+      console.error("❌ [채팅] STOMP 채팅이 연결되지 않았습니다:", {
+        isConnected,
+        chatRoomId,
+        userId: user?.id,
+        clientState: {
+          hasClient: !!clientState,
+          connected: clientState?.connected,
+          state: clientState?.state,
+        },
+      });
+      alert("채팅 연결이 끊어졌습니다. 잠시 후 다시 시도해주세요.");
       return;
     }
 
     try {
-      const encoder = new TextEncoder();
-      const message = {
-        text: chatInput,
-        sender: participantName,
-        timestamp: new Date().toISOString(),
-      };
+      console.log("🔵 [채팅] STOMP를 통해 메시지 전송 시작...");
+      // STOMP를 통해 메시지 전송
+      stompClient.sendMessage(chatInput, "TALK");
+      console.log("🔵 [채팅] 메시지 전송 완료");
 
-      // 메시지 전송
-      await room.localParticipant.publishData(
-        encoder.encode(JSON.stringify(message)),
-        {
-          reliable: true,
-        }
-      );
-
-      // 로컬 메시지 추가 (즉시 표시)
+      // 낙관적 업데이트: 즉시 로컬 메시지 추가
       const newMessage: ChatMessage = {
-        id: Date.now().toString(),
-        sender: participantName,
+        id: `temp-${Date.now()}`,
+        sender: user?.nickname || participantName,
         message: chatInput,
         timestamp: new Date(),
+        senderId: user?.id,
+        senderImage: user?.profileImage,
       };
       setChatMessages((prev) => [...prev, newMessage]);
       setChatInput("");
     } catch (error) {
-      console.error("메시지 전송 오류:", error);
-      // 에러 발생 시에도 로컬 메시지로 표시
-      const newMessage: ChatMessage = {
-        id: Date.now().toString(),
-        sender: participantName,
-        message: chatInput,
-        timestamp: new Date(),
-      };
-      setChatMessages((prev) => [...prev, newMessage]);
-      setChatInput("");
+      console.error("❌ [채팅] 메시지 전송 오류:", error);
+      console.error("❌ [채팅] 전송 오류 상세:", {
+        error,
+        name: error instanceof Error ? error.name : "Unknown",
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      alert("메시지 전송에 실패했습니다. 다시 시도해주세요.");
     }
   };
 
@@ -741,6 +1020,17 @@ export const StreamingPage: React.FC = () => {
   };
 
   const handleEndModalConfirm = async () => {
+    // STOMP 채팅 연결 해제
+    if (stompChatClientRef.current) {
+      try {
+        stompChatClientRef.current.sendMessage("", "LEAVE");
+        stompChatClientRef.current.disconnect();
+      } catch (error) {
+        console.error("STOMP 채팅 연결 해제 오류:", error);
+      }
+      stompChatClientRef.current = null;
+    }
+
     // 방 나가기 및 정리
     if (room) {
       await room.disconnect();
@@ -755,10 +1045,10 @@ export const StreamingPage: React.FC = () => {
   return (
     <StreamingContainer>
       {/* 화면 공유 바 */}
-      {isScreenSharing && (
+      {hasActiveScreenShare && (
         <ScreenShareBar>
           <ScreenShareInfo>
-            {(user?.nickname ? `${user.nickname} 코치님` : '코치님')} 화면 공유 중
+            {`${screenShareOwnerName} 화면 공유 중`}
           </ScreenShareInfo>
           <ZoomControls>
             <ZoomButton>-</ZoomButton>
@@ -776,11 +1066,12 @@ export const StreamingPage: React.FC = () => {
             localTrack={localTrack}
             remoteTracks={remoteTracks}
             isVideoEnabled={isVideoEnabled}
-            isScreenSharing={isScreenSharing}
-            sharedContent={sharedContent}
+            hasActiveScreenShare={hasActiveScreenShare}
+            screenShareTrackInfo={screenShareTrackInfo}
             viewMode={viewMode}
             participantName={participantName}
-            showInfoButtons={!isScreenSharing}
+            localParticipantIdentity={localParticipantIdentity}
+            showInfoButtons={!hasActiveScreenShare}
             onOpenParticipantInfo={handleOpenParticipantInfo}
             isParticipantInfoAvailable={(identity) =>
               Boolean(participantInfoMap[identity])

@@ -43,7 +43,7 @@ const TitleAndMessageContainer = styled.div`
     flex-direction: column;
     align-items: center;
     text-align: center;
-    gap: 16px;
+    gap: 8px;
   }
 `;
 
@@ -88,6 +88,13 @@ const ScheduleMessage = styled.div`
   line-height: 1.5;
   white-space: pre-line;
   text-align: center;
+
+  @media (max-width: 1200px) {
+    position: static;
+    transform: none;
+    width: 100%;
+    margin-top: 0;
+  }
 
   @media (max-width: 768px) {
     font-size: 20px;

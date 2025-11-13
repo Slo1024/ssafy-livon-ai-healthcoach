@@ -309,7 +309,7 @@ export class StompChatClient {
 
           // 채팅방 구독
           if (this.client && this.chatRoomId) {
-            const subscriptionTopic = `/sub/chat/goods/${this.chatRoomId}`;
+            const subscriptionTopic = `/sub/chat/good/${this.chatRoomId}`;
             console.log("🔵 [STOMP] 채팅방 구독 시작:", {
               topic: subscriptionTopic,
               chatRoomId: this.chatRoomId,
@@ -418,15 +418,23 @@ export class StompChatClient {
     };
 
     const destination = `/pub/chat/goods/message`;
+
+    // 토큰 가져오기 (localStorage에서)
+    const accessToken = localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
+
     console.log("🔵 [STOMP] 메시지 발행:", {
       destination,
       messageRequest,
+      hasToken: !!accessToken,
     });
 
     try {
       this.client.publish({
         destination,
         body: JSON.stringify(messageRequest),
+        headers: {
+          Authorization: accessToken ? `Bearer ${accessToken}` : "",
+        },
       });
       console.log("✅ [STOMP] 메시지 발행 완료");
     } catch (error) {

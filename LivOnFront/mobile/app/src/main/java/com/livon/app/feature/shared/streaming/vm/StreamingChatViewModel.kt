@@ -80,13 +80,15 @@ class StreamingChatViewModel(
                 // JSON 파싱은 서버 응답 형식에 맞게 조정하세요.
                 val message = try {
                     val json = JSONObject(payload)
+                    // role이 없거나 빈 문자열이면 "MEMBER"로 기본값 설정
+                    val roleString = json.optString("role", "").takeIf { it.isNotBlank() } ?: "MEMBER"
                     ChatMessage(
                         id = json.optString("id", UUID.randomUUID().toString()),
                         chatRoomId = json.optInt("roomId", consultationId.toInt()),
                         userId = json.optString("senderId", json.optString("userId", "unknown")),
                         content = json.optString("message", ""),
                         sentAt = json.optString("sentAt", Instant.now().toString()),
-                        role = json.optString("role", "COACH"),
+                        role = roleString,
                         messageType = json.optString("type", "TEXT")
                     )
                 } catch (e: Exception) {
@@ -207,25 +209,11 @@ class StreamingChatViewModel(
                     senderUUID = senderUUID
                 )
                 Log.d("StreamingChatViewModel", "STOMP 메시지 발행 성공")
+                // 서버에서 받은 메시지만 표시되도록 로컬 메시지 추가 제거
+                // WebSocket을 통해 서버에서 받은 메시지가 init 블록의 incomingMessages.collect에서 처리됨
             } catch (e: Exception) {
                 Log.e("StreamingChatViewModel", "STOMP 메시지 발행 실패: ${e.message}", e)
                 return@launch
-            }
-
-            val newMessage = ChatMessage(
-                id = UUID.randomUUID().toString(),
-                chatRoomId = chatRoomId,
-                userId = "me",
-                content = message,
-                sentAt = Instant.now().toString(),
-                role = "MEMBER",
-                messageType = "TEXT"
-            )
-            _uiState.update { state ->
-                val updated = (state.messages + newMessage)
-                    .distinctBy { it.id }
-                    .sortedBy { it.sentAt }
-                state.copy(messages = updated)
             }
         }
     }

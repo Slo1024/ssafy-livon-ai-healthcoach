@@ -21,17 +21,14 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.livon.app.feature.coach.streaming.ui.LiveStreamingCoachScreen
 import com.livon.app.feature.shared.streaming.*
-import com.livon.app.data.session.SessionManager
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
-import io.ktor.client.request.header
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
-import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
 import io.livekit.android.ConnectOptions
 import io.livekit.android.LiveKit
@@ -147,6 +144,7 @@ class RoomLayoutActivity : AppCompatActivity() {
             val jwtToken = SessionManager.getTokenSync() ?: ""
 
             if (eglBaseContext != null && roomState != null && consultationId != -1L && jwtToken.isNotEmpty()) {
+                val isSpeakerMuted = _isSpeakerMuted.collectAsState().value
                 LiveStreamingCoachScreen(
                     uiState = uiState,
                     participantTracks = participantTracks,
@@ -158,7 +156,9 @@ class RoomLayoutActivity : AppCompatActivity() {
                     onToggleMic = ::toggleMicrophone,
                     onShareScreen = ::toggleScreenShare,
                     consultationId = consultationId,
-                    jwtToken = jwtToken
+                    jwtToken = jwtToken,
+                    onToggleSpeaker = ::toggleSpeaker,
+                    isSpeakerMuted = isSpeakerMuted
                 )
             } else {
                 Box(Modifier.fillMaxSize(), Alignment.Center) {
@@ -581,4 +581,23 @@ class RoomLayoutActivity : AppCompatActivity() {
             }
         }
     }
+
+    private fun toggleSpeaker() {
+        lifecycleScope.launch {
+            try {
+                val isMuted = _isSpeakerMuted.value
+                val newMutedState = !isMuted
+
+                // Room의 setSpeakerMute를 사용하여 스피커 음소거 토글
+                room.setSpeakerMute(newMutedState)
+
+                _isSpeakerMuted.value = newMutedState
+                Log.d("LiveKitDebug", "Speaker ${if (newMutedState) "muted" else "unmuted"}")
+            } catch (e: Exception) {
+                Log.e("LiveKitDebug", "Failed to toggle speaker: ${e.message}", e)
+                Toast.makeText(this@RoomLayoutActivity, "스피커 제어 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
 }

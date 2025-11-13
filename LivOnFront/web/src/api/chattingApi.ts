@@ -15,8 +15,12 @@ import { CONFIG } from "../constants/config";
 const API_BASE_URL =
   process.env.REACT_APP_API_BASE_URL ?? "http://localhost:8081";
 
+// CONFIG를 우선 사용하고, 없으면 환경변수, 마지막으로 기본값 사용
+// SockJS는 일반적으로 /ws 또는 /chat 같은 경로를 사용
 const SOCKET_URL =
-  process.env.REACT_APP_SOCKET_URL ?? "ws://localhost:8081/api/v1/ws/chat";
+  CONFIG.SOCKET_URL ||
+  process.env.REACT_APP_SOCKET_URL ||
+  "ws://localhost:8081/api/v1/ws/chat";
 
 /** 액세스 토큰을 헤더에 붙이는 axios 인스턴스 */
 export const chattingApiClient = axios.create({
@@ -237,9 +241,12 @@ export class StompChatClient {
         wsUrl = wsUrl.replace("wss://", "https://");
       }
 
-      console.log("🔵 [STOMP] SockJS URL 변환:", {
+      console.log("🔵 [STOMP] SockJS 연결 시도:", {
         original: SOCKET_URL,
         converted: wsUrl,
+        chatRoomId,
+        userId,
+        hasAccessToken: !!accessToken,
       });
 
       // SockJS를 사용하여 STOMP 클라이언트 생성
@@ -253,69 +260,107 @@ export class StompChatClient {
         reconnectDelay: 5000,
         heartbeatIncoming: 4000,
         heartbeatOutgoing: 4000,
-        onConnect: () => {
+        onConnect: (frame) => {
           console.log("✅ [STOMP] 채팅 연결 성공:", {
             chatRoomId: this.chatRoomId,
             userId: this.userId,
             clientConnected: this.client?.connected,
+            frameHeaders: frame?.headers,
           });
 
           // 채팅방 구독
           if (this.client && this.chatRoomId) {
-            const subscriptionTopic = `/sub/chat/good/${this.chatRoomId}`;
+            const subscriptionTopic = `/sub/chat/goods/${this.chatRoomId}`;
             console.log("🔵 [STOMP] 채팅방 구독 시작:", {
               topic: subscriptionTopic,
               chatRoomId: this.chatRoomId,
             });
 
-            this.subscription = this.client.subscribe(
-              subscriptionTopic,
-              (message: IMessage) => {
-                try {
-                  console.log("🔵 [STOMP] 메시지 수신:", {
-                    topic: subscriptionTopic,
-                    bodyLength: message.body?.length,
-                  });
-                  const parsedMessage: GoodsChatMessageResponse = JSON.parse(
-                    message.body
-                  );
-                  if (this.onMessageCallback) {
-                    this.onMessageCallback(parsedMessage);
+            try {
+              this.subscription = this.client.subscribe(
+                subscriptionTopic,
+                (message: IMessage) => {
+                  try {
+                    console.log("🔵 [STOMP] 메시지 수신:", {
+                      topic: subscriptionTopic,
+                      bodyLength: message.body?.length,
+                      body: message.body,
+                    });
+                    const parsedMessage: GoodsChatMessageResponse = JSON.parse(
+                      message.body
+                    );
+                    if (this.onMessageCallback) {
+                      this.onMessageCallback(parsedMessage);
+                    }
+                  } catch (error) {
+                    console.error("❌ [STOMP] 메시지 파싱 오류:", error);
+                    console.error("❌ [STOMP] 원본 메시지:", message.body);
                   }
-                } catch (error) {
-                  console.error("❌ [STOMP] 메시지 파싱 오류:", error);
                 }
+              );
+              console.log("✅ [STOMP] 채팅방 구독 완료:", {
+                subscriptionId: this.subscription?.id,
+                topic: subscriptionTopic,
+              });
+            } catch (subscribeError) {
+              console.error("❌ [STOMP] 구독 오류:", subscribeError);
+              const error = new Error("채팅방 구독 실패");
+              if (this.onErrorCallback) {
+                this.onErrorCallback(error);
               }
-            );
-            console.log("✅ [STOMP] 채팅방 구독 완료:", {
-              subscriptionId: this.subscription?.id,
-            });
+              reject(error);
+              return;
+            }
           } else {
             console.warn("⚠️ [STOMP] 채팅방 구독 실패:", {
               hasClient: !!this.client,
               chatRoomId: this.chatRoomId,
             });
+            const error = new Error(
+              "채팅방 구독 실패: 클라이언트 또는 채팅방 ID 없음"
+            );
+            if (this.onErrorCallback) {
+              this.onErrorCallback(error);
+            }
+            reject(error);
+            return;
           }
 
           resolve();
         },
         onStompError: (frame) => {
-          const error = new Error(
-            frame.headers["message"] || "STOMP 연결 오류"
-          );
-          console.error("❌ STOMP 오류:", frame);
+          const errorMessage =
+            frame.headers?.["message"] || frame.body || "STOMP 연결 오류";
+          const error = new Error(errorMessage);
+          console.error("❌ [STOMP] STOMP 프로토콜 오류:", {
+            command: frame.command,
+            headers: frame.headers,
+            body: frame.body,
+            errorMessage,
+          });
           if (this.onErrorCallback) {
             this.onErrorCallback(error);
           }
           reject(error);
         },
         onWebSocketError: (event) => {
-          const error = new Error("웹소켓 연결 오류");
-          console.error("❌ 웹소켓 오류:", event);
+          const error = new Error(
+            `웹소켓 연결 오류: ${event.type || "Unknown error"}`
+          );
+          console.error("❌ [STOMP] 웹소켓 오류:", {
+            type: event.type,
+            target: event.target,
+            error: event,
+            wsUrl,
+            chatRoomId: this.chatRoomId,
+          });
           if (this.onErrorCallback) {
             this.onErrorCallback(error);
           }
           reject(error);
+        },
+        onDisconnect: () => {
+          console.log("🔵 [STOMP] 연결이 끊어졌습니다.");
         },
       });
 
@@ -325,8 +370,25 @@ export class StompChatClient {
         chatRoomId,
         userId,
         hasAccessToken: !!accessToken,
+        accessTokenLength: accessToken?.length,
       });
-      this.client.activate();
+
+      try {
+        this.client.activate();
+      } catch (activateError) {
+        console.error("❌ [STOMP] 클라이언트 활성화 오류:", activateError);
+        const error = new Error(
+          `클라이언트 활성화 실패: ${
+            activateError instanceof Error
+              ? activateError.message
+              : String(activateError)
+          }`
+        );
+        if (this.onErrorCallback) {
+          this.onErrorCallback(error);
+        }
+        reject(error);
+      }
     });
   }
 

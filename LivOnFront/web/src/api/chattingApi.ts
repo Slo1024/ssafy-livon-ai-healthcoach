@@ -89,7 +89,6 @@ export interface GoodsChatMessageRequest {
 export interface GoodsChatMessageResponse {
   id: string;
   roomId: number;
-  senderId: string;
   message: string;
   type: "ENTER" | "TALK" | "LEAVE";
   sentAt: string; // ISO date-time

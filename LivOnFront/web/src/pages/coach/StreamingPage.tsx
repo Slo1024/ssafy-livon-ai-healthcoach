@@ -628,6 +628,7 @@ export const StreamingPage: React.FC = () => {
                           messageId: message.id,
                           type: message.type,
                           message: message.message,
+                          sender: message.sender,
                           currentUserId: user?.id,
                         });
 
@@ -666,10 +667,13 @@ export const StreamingPage: React.FC = () => {
                             return prev;
                           }
 
-                          // 내가 보낸 메시지인 경우 임시 메시지를 찾아서 교체
-                          const isFromSelf = message.senderId === user?.id;
-                          if (isFromSelf) {
-                            // 임시 메시지 찾기 (temp-로 시작하는 ID와 메시지 내용이 같은 것)
+                          // 내가 보낸 메시지인지 확인 (sender.userId 사용)
+                          // sender가 없는 경우는 다른 참여자의 메시지로 처리
+                          const isFromSelf =
+                            message.sender?.userId === user?.id;
+
+                          if (isFromSelf && message.sender) {
+                            // 내가 보낸 메시지인 경우: 임시 메시지를 찾아서 교체
                             const tempMessageIndex = prev.findIndex(
                               (msg) =>
                                 msg.id.startsWith("temp-") &&
@@ -685,13 +689,13 @@ export const StreamingPage: React.FC = () => {
                               const newMessage: ChatMessage = {
                                 id: message.id,
                                 sender:
-                                  message.sender?.nickname ||
+                                  message.sender.nickname ||
                                   user?.nickname ||
                                   participantName,
                                 message: message.message,
                                 timestamp: new Date(message.sentAt),
                                 senderImage:
-                                  message.sender?.userImage ||
+                                  message.sender.userImage ||
                                   user?.profileImage,
                               };
 
@@ -710,35 +714,43 @@ export const StreamingPage: React.FC = () => {
                             }
                           }
 
-                          // 새 메시지 추가 (다른 참여자의 메시지 또는 임시 메시지를 찾지 못한 경우)
+                          // 다른 참여자의 메시지 또는 임시 메시지를 찾지 못한 경우
+                          // sender 정보가 있으면 우선 사용, 없으면 기본값 사용
+                          const senderName = message.sender?.nickname
+                            ? message.sender.nickname
+                            : isFromSelf
+                            ? user?.nickname || participantName
+                            : "회원";
+
                           const newMessage: ChatMessage = {
                             id: message.id,
-                            sender:
-                              message.sender?.nickname ||
-                              (isFromSelf
-                                ? user?.nickname || participantName
-                                : "회원"),
+                            sender: senderName,
                             message: message.message,
                             timestamp: new Date(message.sentAt),
-                            senderImage:
-                              message.sender?.userImage ||
-                              (isFromSelf ? user?.profileImage : undefined),
+                            senderImage: message.sender?.userImage || undefined,
                           };
 
-                          console.log("🔵 [채팅] 새 메시지 추가:", {
-                            id: newMessage.id,
-                            sender: newMessage.sender,
-                            messageLength: newMessage.message.length,
-                            isFromSelf,
-                            prevMessagesCount: prev.length,
-                            newMessagesCount: prev.length + 1,
-                          });
+                          console.log(
+                            "🔵 [채팅] 새 메시지 추가 (다른 참여자):",
+                            {
+                              id: newMessage.id,
+                              sender: newMessage.sender,
+                              senderUserId: message.sender?.userId,
+                              currentUserId: user?.id,
+                              messageLength: newMessage.message.length,
+                              isFromSelf,
+                              prevMessagesCount: prev.length,
+                              newMessagesCount: prev.length + 1,
+                            }
+                          );
 
                           const updated = [...prev, newMessage];
                           console.log("🔵 [채팅] 업데이트된 메시지 목록:", {
                             totalCount: updated.length,
                             lastMessage: updated[updated.length - 1],
                           });
+
+                          // 강제로 상태 업데이트를 보장하기 위해 새 배열 반환
                           return updated;
                         });
                       },

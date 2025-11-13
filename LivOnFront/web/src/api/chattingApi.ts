@@ -1,0 +1,536 @@
+// chattingApi.ts
+// 채팅 웹소켓용 REST 어댑터 + OpenVidu 토큰 발급 헬퍼
+// - axios 사용
+// - 공통 ApiResponse 규약 반영
+// - STOMP 웹소켓 채팅 지원 (SockJS + STOMP)
+// - 초기 메시지 로드는 REST API, 이후 실시간 메시지는 웹소켓으로 수신
+
+import axios from "axios";
+import { Client, IMessage, StompSubscription } from "@stomp/stompjs";
+// @ts-ignore - sockjs-client 타입 정의가 없어서 임시로 무시
+import SockJS from "sockjs-client";
+import { CONFIG } from "../constants/config";
+
+/** 환경설정 */
+const API_BASE_URL =
+  process.env.REACT_APP_API_BASE_URL ?? "http://localhost:8081";
+
+// CONFIG를 우선 사용하고, 없으면 환경변수, 마지막으로 기본값 사용
+// SockJS는 일반적으로 /ws 또는 /chat 같은 경로를 사용
+const SOCKET_URL =
+  CONFIG.SOCKET_URL ||
+  process.env.REACT_APP_SOCKET_URL ||
+  "ws://localhost:8081/api/v1/ws/chat";
+
+/** 액세스 토큰을 헤더에 붙이는 axios 인스턴스 */
+export const chattingApiClient = axios.create({
+  baseURL: API_BASE_URL,
+  withCredentials: false,
+});
+
+// 요청 인터셉터: 모든 요청에 자동으로 토큰 추가
+chattingApiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
+    if (token) {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+export const setAuthToken = (token?: string) => {
+  if (token) {
+    chattingApiClient.defaults.headers.common[
+      "Authorization"
+    ] = `Bearer ${token}`;
+  } else {
+    delete chattingApiClient.defaults.headers.common["Authorization"];
+  }
+};
+
+/** 공통 응답 타입 (ApiResponse<T>) */
+export interface ApiResponse<T> {
+  isSuccess: boolean;
+  code: string;
+  message: string;
+  result: T;
+}
+
+/** === 스키마 타입 (swagger 기반) === */
+export interface GoodsChatRoomResponse {
+  chatRoomId: number; // int64
+  consultationId: number; // int64
+  chatRoomStatus: string;
+}
+
+export interface GoodsChatMessage {
+  id: string;
+  chatRoomId: number; // int64
+  userId: string; // uuid
+  content: string;
+  sentAt: string; // ISO date-time
+  role: "COACH" | "MEMBER";
+  messageType: "ENTER" | "TALK" | "LEAVE";
+}
+
+/** STOMP 메시지 요청 타입 */
+export interface GoodsChatMessageRequest {
+  roomId: number; // Long
+  message: string;
+  type: "ENTER" | "TALK" | "LEAVE";
+}
+
+/** STOMP 메시지 응답 타입 */
+export interface GoodsChatMessageResponse {
+  id: string;
+  roomId: number;
+  message: string;
+  type: "ENTER" | "TALK" | "LEAVE";
+  sentAt: string; // ISO date-time
+  sender?: {
+    userId: string;
+    nickname: string;
+    userImage?: string;
+  };
+  // STOMP 클라이언트에 저장된 userId (비교용)
+  currentUserId?: string;
+  // 원본 메시지의 이메일 정보 (비교용)
+  senderEmail?: string;
+}
+
+/** === 채팅 REST API === */
+/** 채팅방 생성: /goods/chat?consultationId=...  */
+export async function createChatRoom(consultationId: number) {
+  const { data } = await chattingApiClient.post<
+    ApiResponse<GoodsChatRoomResponse>
+  >(`/goods/chat`, null, { params: { consultationId } });
+  return data.result; // GoodsChatRoomResponse
+}
+
+/** 메시지 페이지/증분 조회(시간 기준): /goods/chat/{chatRoomId}/message?lastSentAt=ISO */
+export async function getChatMessagesSince(
+  chatRoomId: number,
+  lastSentAtISO: string | null
+) {
+  // lastSentAt이 null이면 쿼리 파라미터를 보내지 않음 (처음 조회 시)
+  const params: { lastSentAt?: string } = {};
+
+  if (lastSentAtISO !== null && lastSentAtISO !== undefined) {
+    // 서버가 ISO 8601 형식을 파싱하지 못할 수 있으므로,
+    // 다른 API들과 동일한 형식으로 변환: "2025-10-30T09:00:00" (밀리초 없이, Z 없이)
+    // 예: "2025-11-11T05:55:25.331Z" -> "2025-11-11T05:55:25"
+    let formattedDate = lastSentAtISO;
+
+    // 밀리초 제거 (예: ".331" 제거)
+    if (formattedDate.includes(".")) {
+      formattedDate = formattedDate.split(".")[0];
+    }
+
+    // Z 또는 +00:00 같은 타임존 표시 제거
+    formattedDate = formattedDate.replace(/[Zz]|[\+\-]\d{2}:\d{2}$/, "");
+    params.lastSentAt = formattedDate;
+  }
+
+  console.log("🔵 [채팅] 메시지 조회 요청:", {
+    chatRoomId,
+    originalDate: lastSentAtISO,
+    formattedDate: params.lastSentAt,
+    isFirstRequest: lastSentAtISO === null,
+  });
+
+  const { data } = await chattingApiClient.get<ApiResponse<GoodsChatMessage[]>>(
+    `/goods/chat/${chatRoomId}/message`,
+    { params }
+  );
+  return data.result; // GoodsChatMessage[]
+}
+
+/** =========== STOMP 웹소켓 채팅 =========== */
+/**
+ * STOMP 클라이언트 연결 및 채팅 관리
+ */
+export class StompChatClient {
+  private client: Client | null = null;
+  private subscription: StompSubscription | null = null;
+  private chatRoomId: number | null = null;
+  private userId: string | null = null;
+  private onMessageCallback:
+    | ((message: GoodsChatMessageResponse) => void)
+    | null = null;
+  private onErrorCallback: ((error: Error) => void) | null = null;
+
+  /**
+   * STOMP 클라이언트 연결
+   * @param chatRoomId 채팅방 ID
+   * @param userId 사용자 ID (UUID)
+   * @param accessToken JWT 토큰
+   * @param onMessage 메시지 수신 콜백
+   * @param onError 에러 콜백
+   */
+  connect(
+    chatRoomId: number,
+    userId: string,
+    accessToken: string,
+    onMessage: (message: GoodsChatMessageResponse) => void,
+    onError?: (error: Error) => void
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.chatRoomId = chatRoomId;
+      this.userId = userId;
+      this.onMessageCallback = onMessage;
+      this.onErrorCallback = onError || null;
+
+      let wsUrl = SOCKET_URL;
+
+      // SockJS는 ws:// 대신 http:// 또는 https://를 사용해야 함
+      // ws:// 또는 wss://를 http:// 또는 https://로 변환
+      if (wsUrl.startsWith("ws://")) {
+        wsUrl = wsUrl.replace("ws://", "http://");
+      } else if (wsUrl.startsWith("wss://")) {
+        wsUrl = wsUrl.replace("wss://", "https://");
+      }
+
+      console.log("🔵 [STOMP] SockJS 연결 시도:", {
+        original: SOCKET_URL,
+        converted: wsUrl,
+        chatRoomId,
+        userId,
+        hasAccessToken: !!accessToken,
+      });
+
+      // SockJS를 사용하여 STOMP 클라이언트 생성
+      this.client = new Client({
+        webSocketFactory: () => {
+          return new SockJS(wsUrl) as any;
+        },
+        connectHeaders: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        reconnectDelay: 5000,
+        heartbeatIncoming: 4000,
+        heartbeatOutgoing: 4000,
+        onConnect: (frame) => {
+          console.log("✅ [STOMP] 채팅 연결 성공:", {
+            chatRoomId: this.chatRoomId,
+            userId: this.userId,
+            clientConnected: this.client?.connected,
+            frameHeaders: frame?.headers,
+          });
+
+          // 채팅방 구독
+          if (this.client && this.chatRoomId) {
+            const subscriptionTopic = `/sub/chat/goods/${this.chatRoomId}`;
+            console.log("🔵 [STOMP] 채팅방 구독 시작:", {
+              topic: subscriptionTopic,
+              chatRoomId: this.chatRoomId,
+            });
+
+            try {
+              this.subscription = this.client.subscribe(
+                subscriptionTopic,
+                (message: IMessage) => {
+                  try {
+                    console.log("🔵 [STOMP] 메시지 수신:", {
+                      topic: subscriptionTopic,
+                      bodyLength: message.body?.length,
+                      body: message.body,
+                    });
+                    const rawMessage: any = JSON.parse(message.body);
+
+                    // 디버깅: 원본 메시지 로그
+                    console.log("🔵 [STOMP] 원본 메시지 상세:", {
+                      rawMessage,
+                      senderId: rawMessage.senderId,
+                      sender: rawMessage.sender,
+                      senderEmail: rawMessage.senderEmail,
+                      email: rawMessage.email,
+                      hasSenderId: !!rawMessage.senderId,
+                      hasSender: !!rawMessage.sender,
+                      allKeys: Object.keys(rawMessage),
+                    });
+
+                    // 서버 응답 형식을 클라이언트가 기대하는 형식으로 변환
+                    // 서버: { chatMessageId, messageType: "대화", message, senderId, ... }
+                    // 클라이언트: { id, type: "TALK", message, sender, ... }
+
+                    // messageType 또는 type 필드 확인
+                    const messageType =
+                      rawMessage.messageType || rawMessage.type;
+                    let convertedType: "ENTER" | "TALK" | "LEAVE" = "TALK";
+                    if (messageType === "대화" || messageType === "TALK") {
+                      convertedType = "TALK";
+                    } else if (
+                      messageType === "입장" ||
+                      messageType === "ENTER"
+                    ) {
+                      convertedType = "ENTER";
+                    } else if (
+                      messageType === "퇴장" ||
+                      messageType === "LEAVE"
+                    ) {
+                      convertedType = "LEAVE";
+                    }
+
+                    // sender 정보 구성 (sender 객체가 있으면 사용, 없으면 senderId만 사용)
+                    let senderInfo = undefined;
+                    if (rawMessage.sender) {
+                      senderInfo = {
+                        userId:
+                          rawMessage.sender.userId ||
+                          rawMessage.sender.userUUID ||
+                          rawMessage.senderId,
+                        nickname:
+                          rawMessage.sender.nickname || rawMessage.sender.name,
+                        userImage:
+                          rawMessage.sender.userImage ||
+                          rawMessage.sender.profileImage,
+                      };
+                    } else if (rawMessage.senderId) {
+                      // sender 객체가 없고 senderId만 있는 경우
+                      senderInfo = {
+                        userId: rawMessage.senderId,
+                        nickname:
+                          rawMessage.senderNickname ||
+                          rawMessage.senderName ||
+                          undefined,
+                        userImage:
+                          rawMessage.senderImage ||
+                          rawMessage.senderProfileImage ||
+                          undefined,
+                      };
+                    }
+
+                    // 원본 메시지에서 이메일 정보 추출 (비교용)
+                    const senderEmail = 
+                      rawMessage.senderEmail || 
+                      rawMessage.email || 
+                      rawMessage.sender?.email ||
+                      undefined;
+                    
+                    const parsedMessage: GoodsChatMessageResponse = {
+                      id: rawMessage.chatMessageId || rawMessage.id,
+                      roomId: rawMessage.roomId || rawMessage.chatRoomId,
+                      message: rawMessage.message || rawMessage.content,
+                      type: convertedType,
+                      sentAt: rawMessage.sentAt || rawMessage.createdAt,
+                      sender: senderInfo,
+                      currentUserId: this.userId || undefined, // STOMP 연결 시 전달한 userId (null을 undefined로 변환)
+                      senderEmail: senderEmail, // 원본 메시지의 이메일 정보 (비교용)
+                    };
+
+                    console.log("🔵 [STOMP] 파싱된 메시지:", {
+                      ...parsedMessage,
+                      storedUserId: this.userId,
+                      senderUserId: parsedMessage.sender?.userId,
+                      userIdMatch: parsedMessage.sender?.userId === this.userId,
+                    });
+
+                    if (this.onMessageCallback) {
+                      this.onMessageCallback(parsedMessage);
+                    }
+                  } catch (error) {
+                    console.error("❌ [STOMP] 메시지 파싱 오류:", error);
+                    console.error("❌ [STOMP] 원본 메시지:", message.body);
+                  }
+                }
+              );
+              console.log("✅ [STOMP] 채팅방 구독 완료:", {
+                subscriptionId: this.subscription?.id,
+                topic: subscriptionTopic,
+              });
+            } catch (subscribeError) {
+              console.error("❌ [STOMP] 구독 오류:", subscribeError);
+              const error = new Error("채팅방 구독 실패");
+              if (this.onErrorCallback) {
+                this.onErrorCallback(error);
+              }
+              reject(error);
+              return;
+            }
+          } else {
+            console.warn("⚠️ [STOMP] 채팅방 구독 실패:", {
+              hasClient: !!this.client,
+              chatRoomId: this.chatRoomId,
+            });
+            const error = new Error(
+              "채팅방 구독 실패: 클라이언트 또는 채팅방 ID 없음"
+            );
+            if (this.onErrorCallback) {
+              this.onErrorCallback(error);
+            }
+            reject(error);
+            return;
+          }
+
+          resolve();
+        },
+        onStompError: (frame) => {
+          const errorMessage =
+            frame.headers?.["message"] || frame.body || "STOMP 연결 오류";
+          const error = new Error(errorMessage);
+          console.error("❌ [STOMP] STOMP 프로토콜 오류:", {
+            command: frame.command,
+            headers: frame.headers,
+            body: frame.body,
+            errorMessage,
+          });
+          if (this.onErrorCallback) {
+            this.onErrorCallback(error);
+          }
+          reject(error);
+        },
+        onWebSocketError: (event) => {
+          const error = new Error(
+            `웹소켓 연결 오류: ${event.type || "Unknown error"}`
+          );
+          console.error("❌ [STOMP] 웹소켓 오류:", {
+            type: event.type,
+            target: event.target,
+            error: event,
+            wsUrl,
+            chatRoomId: this.chatRoomId,
+          });
+          if (this.onErrorCallback) {
+            this.onErrorCallback(error);
+          }
+          reject(error);
+        },
+        onDisconnect: () => {
+          console.log("🔵 [STOMP] 연결이 끊어졌습니다.");
+        },
+      });
+
+      // 연결 활성화
+      console.log("🔵 [STOMP] 클라이언트 활성화 시작:", {
+        wsUrl,
+        chatRoomId,
+        userId,
+        hasAccessToken: !!accessToken,
+        accessTokenLength: accessToken?.length,
+      });
+
+      try {
+        this.client.activate();
+      } catch (activateError) {
+        console.error("❌ [STOMP] 클라이언트 활성화 오류:", activateError);
+        const error = new Error(
+          `클라이언트 활성화 실패: ${
+            activateError instanceof Error
+              ? activateError.message
+              : String(activateError)
+          }`
+        );
+        if (this.onErrorCallback) {
+          this.onErrorCallback(error);
+        }
+        reject(error);
+      }
+    });
+  }
+
+  /**
+   * 메시지 전송
+   */
+  sendMessage(
+    message: string,
+    type: "ENTER" | "TALK" | "LEAVE" = "TALK"
+  ): void {
+    console.log("🔵 [STOMP] sendMessage 호출:", {
+      message,
+      type,
+      hasClient: !!this.client,
+      clientConnected: this.client?.connected,
+      chatRoomId: this.chatRoomId,
+      userId: this.userId,
+    });
+
+    if (!this.client || !this.client.connected) {
+      console.error("❌ [STOMP] 클라이언트가 연결되지 않았습니다:", {
+        hasClient: !!this.client,
+        connected: this.client?.connected,
+        clientState: this.client?.state,
+      });
+      return;
+    }
+
+    if (!this.chatRoomId || !this.userId) {
+      console.error("❌ [STOMP] 채팅방 ID 또는 사용자 ID가 없습니다:", {
+        chatRoomId: this.chatRoomId,
+        userId: this.userId,
+      });
+      return;
+    }
+
+    const messageRequest: GoodsChatMessageRequest = {
+      roomId: this.chatRoomId,
+      message,
+      type,
+    };
+
+    const destination = `/pub/chat/goods/message`;
+
+    // 토큰 가져오기 (localStorage에서)
+    const accessToken = localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
+
+    console.log("🔵 [STOMP] 메시지 발행:", {
+      destination,
+      messageRequest,
+      hasToken: !!accessToken,
+    });
+
+    try {
+      this.client.publish({
+        destination,
+        body: JSON.stringify(messageRequest),
+        headers: {
+          Authorization: accessToken ? `Bearer ${accessToken}` : "",
+        },
+      });
+      console.log("✅ [STOMP] 메시지 발행 완료");
+    } catch (error) {
+      console.error("❌ [STOMP] 메시지 발행 오류:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * 연결 해제
+   */
+  disconnect(): void {
+    if (this.subscription) {
+      this.subscription.unsubscribe();
+      this.subscription = null;
+    }
+
+    if (this.client) {
+      this.client.deactivate();
+      this.client = null;
+    }
+
+    this.chatRoomId = null;
+    this.userId = null;
+    this.onMessageCallback = null;
+    this.onErrorCallback = null;
+    console.log("STOMP 채팅 연결 해제");
+  }
+
+  /**
+   * 연결 상태 확인
+   */
+  isConnected(): boolean {
+    const connected = this.client?.connected || false;
+    console.log("🔵 [STOMP] isConnected() 호출:", {
+      connected,
+      hasClient: !!this.client,
+      clientState: this.client?.state,
+      chatRoomId: this.chatRoomId,
+      userId: this.userId,
+    });
+    return connected;
+  }
+}

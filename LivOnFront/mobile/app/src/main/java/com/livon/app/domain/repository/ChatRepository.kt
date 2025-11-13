@@ -11,5 +11,10 @@ interface ChatRepository {
         lastSentAt: String? = null,
         accessToken: String? = null
     ): Result<List<ChatMessage>>
+    
+    suspend fun getChatRoomInfo(
+        consultationId: Long,
+        accessToken: String? = null
+    ): Result<com.livon.app.data.remote.dto.ChatRoomInfoDto>
 }
 

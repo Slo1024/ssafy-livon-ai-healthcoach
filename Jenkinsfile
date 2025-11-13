@@ -217,12 +217,12 @@ pipeline {
                     sh """
                         echo "📤 Publishing APK to /downloads..."
                         cp -f "${apk}" "/downloads/${outName}"
-                        ln -sfn "/downloads/${outName}" "/downloads/latest.apk"  # 최신 고정 링크
+                        ln -sfn "/downloads/${outName}" "/downloads/livon-latest.apk"  # 최신 고정 링크
                         ls -lh "/downloads/${outName}"
                     """
 
                     echo "📎 Download URL : ${BASEURL}/download/${outName}"
-                    echo "📎 Latest Link  : ${BASEURL}/download/latest.apk"
+                    echo "📎 Latest Link  : ${BASEURL}/download/livon-latest.apk"
 
                     // post 단계에서 APK 알림을 보내기 위한 플래그 및 URL 기록
                     writeFile file: '.apk_built', text: '1'
@@ -265,9 +265,9 @@ pipeline {
 
                 // APK 최신 링크가 있으면 알림에 포함
                 def apkLatestUrl = null
-                def hasLatest = sh(script: '[ -f /downloads/latest.apk ] && echo yes || echo no', returnStdout: true).trim() == 'yes'
+                def hasLatest = sh(script: '[ -f /downloads/livon-latest.apk ] && echo yes || echo no', returnStdout: true).trim() == 'yes'
                 if (hasLatest) {
-                    apkLatestUrl = "${baseUrl}/download/latest.apk"
+                    apkLatestUrl = "${baseUrl}/download/livon-latest.apk"
                 }
 
                 def attachment = [
@@ -297,7 +297,7 @@ pipeline {
 
                 // APK가 이번 빌드에서 업데이트되었다면, 별도의 카드 추가
                 if (fileExists('.apk_built')) {
-                    def apkUrl = (fileExists('.apk_latest_url') ? readFile('.apk_latest_url').trim() : (apkLatestUrl ?: "${baseUrl}/download/latest.apk"))
+                    def apkUrl = (fileExists('.apk_latest_url') ? readFile('.apk_latest_url').trim() : (apkLatestUrl ?: "${baseUrl}/download/livon-latest.apk"))
                     def apkAttachment = [
                         color   : '#A4C639',
                         pretext : '### :android: New APK Build Ready!',

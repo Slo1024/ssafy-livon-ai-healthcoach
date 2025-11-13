@@ -22,4 +22,19 @@ data class ChatMessageResponseDto(
     val result: List<ChatMessageDto>
 )
 
+@Serializable
+data class ChatRoomInfoDto(
+    val chatRoomId: Long,
+    val consultationId: Long,
+    val chatRoomStatus: String
+)
+
+@Serializable
+data class ChatRoomInfoResponseDto(
+    val isSuccess: Boolean,
+    val code: String,
+    val message: String,
+    val result: ChatRoomInfoDto
+)
+
 

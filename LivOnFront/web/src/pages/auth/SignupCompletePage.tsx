@@ -53,27 +53,22 @@ const HighlightText = styled.span`
 
 const ButtonContainer = styled.div`
   display: flex;
-  gap: 32px;
+  gap: 24px;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    gap: 20px;
-  }
+  flex-wrap: nowrap;
 `;
 
 const ActionButton = styled.button`
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-weight: 800; /* ExtraBold */
-  font-size: 25px;
+  font-size: 20px;
   color: #ffffff;
   background-color: #4965f6;
   border: none;
-  border-radius: 20px;
-  width: 500px;
-  height: 81px;
+  border-radius: 16px;
+  width: clamp(180px, 20vw, 320px);
+  height: clamp(48px, 7vw, 64px);
   cursor: pointer;
   transition: background-color 0.3s ease;
 
@@ -86,8 +81,9 @@ const ActionButton = styled.button`
   }
 
   @media (max-width: 768px) {
-    width: 100%;
-    max-width: 400px;
+    width: clamp(150px, 40vw, 260px);
+    height: clamp(44px, 10vw, 58px);
+    font-size: 18px;
   }
 `;
 
@@ -102,8 +98,8 @@ export const SignupCompletePage: React.FC = () => {
     navigate('/auth/login');
   };
 
-  const handleVerificationClick = () => {
-    navigate('/mypage/coach-verification');
+  const handleHomeClick = () => {
+    navigate('/');
   };
 
   return (
@@ -118,15 +114,16 @@ export const SignupCompletePage: React.FC = () => {
         </WelcomeMessage>
         
         <InstructionText>
-          코치 인증 여부는 <HighlightText>'마이페이지 - 코치 인증 여부'</HighlightText>를 통해 확인하시기 바랍니다.
+          이제 코치님은 리브온의 전문가로서<br />
+          회원들을 위한 편리한 건강 코칭을 시작할 수 있습니다.
         </InstructionText>
         
         <ButtonContainer>
           <ActionButton onClick={handleLoginClick}>
             로그인 바로가기
           </ActionButton>
-          <ActionButton onClick={handleVerificationClick}>
-            코치 인증 여부 확인하기
+          <ActionButton onClick={handleHomeClick}>
+            홈 바로가기
           </ActionButton>
         </ButtonContainer>
       </ContentWrapper>

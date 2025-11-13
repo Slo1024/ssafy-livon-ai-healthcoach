@@ -9,7 +9,6 @@ import java.util.UUID;
 public class GoodsChatMessageRequest {
 
     private Long roomId;
-    private UUID senderId;
     private String message;
     private MessageType type;
 }

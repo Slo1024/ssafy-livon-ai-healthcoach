@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.livon.app.feature.shared.streaming.RoomUiState
 import com.livon.app.feature.shared.streaming.TrackInfo
 import com.livon.app.feature.shared.streaming.ui.StreamingCheating
@@ -40,10 +41,27 @@ fun LiveStreamingCoachScreen(
     onToggleCamera: () -> Unit = {},
     onToggleMic: () -> Unit = {},
     onShareScreen: () -> Unit = {},
+    consultationId: Long,
+    jwtToken: String,
+    onToggleSpeaker: () -> Unit = {},
+    isSpeakerMuted: Boolean = false,
 ) {
     LaunchedEffect(key1 = true) {
         onConnect()
     }
+
+    // 세션 참가 시 웹소켓 연결, 구독, POST 요청 수행
+    val chatViewModel: com.livon.app.feature.shared.streaming.vm.StreamingChatViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return com.livon.app.feature.shared.streaming.vm.StreamingChatViewModel(
+                    consultationId = consultationId,
+                    jwtToken = jwtToken
+                ) as T
+            }
+        }
+    )
 
     var currentScreen by remember { mutableStateOf("streaming") } // "streaming", "participant", "chatting"
     var showHeader by remember { mutableStateOf(false) } // default: header hidden
@@ -60,7 +78,9 @@ fun LiveStreamingCoachScreen(
             "chatting" -> {
                 StreamingCheating(
                     onBackClick = { currentScreen = "streaming" },
-                    onSearch = { /* 검색 기능은 추후 구현 */ }
+                    onSearch = { /* 검색 기능은 추후 구현 */ },
+                    viewModel = chatViewModel,
+                    chatRoomId = consultationId.toInt()
                 )
             }
 
@@ -68,32 +88,48 @@ fun LiveStreamingCoachScreen(
                 Scaffold(
                     topBar = {
                         if (showHeader) {
-                            CoachStreamingHeader(
-                                roomName = uiState.roomName,
-                                onLeaveRoom = onLeaveRoom,
-                                onPersonClick = { currentScreen = "participant" },
-                                onChatClick = { currentScreen = "chatting" }
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .windowInsetsPadding(WindowInsets.statusBars)
+                                    .zIndex(1f)
+                            ) {
+                                CoachStreamingHeader(
+                                    roomName = uiState.roomName,
+                                    onLeaveRoom = onLeaveRoom,
+                                    onPersonClick = { currentScreen = "participant" },
+                                    onChatClick = { currentScreen = "chatting" },
+                                    onSoundClick = onToggleSpeaker,
+                                    isSoundMuted = isSpeakerMuted
+                                )
+                            }
                         }
                     },
                     bottomBar = {
-                        var micEnabled by remember { mutableStateOf(true) }
-                        var cameraEnabled by remember { mutableStateOf(true) }
-                        StreamingNav(
-                            isMicEnabled = micEnabled,
-                            isCameraEnabled = cameraEnabled,
-                            onToggleMic = {
-                                onToggleMic()
-                                micEnabled = !micEnabled
-                            },
-                            onToggleCamera = {
-                                onToggleCamera()
-                                cameraEnabled = !cameraEnabled
-                            },
-                            onShare = { onShareScreen() },
-                            onMore = { showHeader = !showHeader },
-                            onExit = onLeaveRoom
-                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .windowInsetsPadding(WindowInsets.navigationBars)
+                                .zIndex(1f)
+                        ) {
+                            var micEnabled by remember { mutableStateOf(true) }
+                            var cameraEnabled by remember { mutableStateOf(true) }
+                            StreamingNav(
+                                isMicEnabled = micEnabled,
+                                isCameraEnabled = cameraEnabled,
+                                onToggleMic = {
+                                    onToggleMic()
+                                    micEnabled = !micEnabled
+                                },
+                                onToggleCamera = {
+                                    onToggleCamera()
+                                    cameraEnabled = !cameraEnabled
+                                },
+                                onShare = { onShareScreen() },
+                                onMore = { showHeader = !showHeader },
+                                onExit = onLeaveRoom
+                            )
+                        }
                     }
                 ) { paddingValues ->
 

@@ -1,7 +1,7 @@
-package com.s406.livon.domain.ai.controller;
+package com.s406.livon.domain.ai.gms.controller;
 
-import com.s406.livon.domain.ai.dto.response.AiSummaryResponseDto;
-import com.s406.livon.domain.ai.service.AiAnalysisService;
+import com.s406.livon.domain.ai.gms.dto.response.AiSummaryResponseDto;
+import com.s406.livon.domain.ai.gms.service.AiAnalysisService;
 import com.s406.livon.global.security.jwt.JwtTokenProvider;
 import com.s406.livon.global.web.response.ApiResponse;
 import com.s406.livon.global.web.response.code.status.SuccessStatus;
@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController

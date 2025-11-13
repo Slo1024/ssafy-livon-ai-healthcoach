@@ -37,6 +37,28 @@ class ChatRepositoryImpl(
             Log.e("ChatRepository", "채팅 메시지 조회 실패: ${e.message}", e)
         }
     }
+    
+    override suspend fun getChatRoomInfo(
+        consultationId: Long,
+        accessToken: String?
+    ): Result<com.livon.app.data.remote.dto.ChatRoomInfoDto> {
+        return runCatching {
+            Log.d("ChatRepository", "채팅방 정보 조회 시작: consultationId=$consultationId")
+            
+            val response = chatApi.getChatRoomInfo(consultationId, accessToken)
+            
+            if (response.isSuccess) {
+                Log.d("ChatRepository", "채팅방 정보 조회 성공: chatRoomId=${response.result.chatRoomId}, consultationId=${response.result.consultationId}")
+                response.result
+            } else {
+                val errorMsg = response.message ?: "채팅방 정보 조회 실패"
+                Log.e("ChatRepository", "API 응답 실패: $errorMsg")
+                throw Exception(errorMsg)
+            }
+        }.onFailure { e ->
+            Log.e("ChatRepository", "채팅방 정보 조회 실패: ${e.message}", e)
+        }
+    }
 }
 
 

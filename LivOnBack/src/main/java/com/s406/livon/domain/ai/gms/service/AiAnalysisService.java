@@ -1,9 +1,9 @@
-package com.s406.livon.domain.ai.service;
+package com.s406.livon.domain.ai.gms.service;
 
-import com.s406.livon.domain.ai.client.GmsChatClient;
-import com.s406.livon.domain.ai.dto.response.AiSummaryResponseDto;
-import com.s406.livon.domain.ai.entity.AiAnalysis;
-import com.s406.livon.domain.ai.repository.AiAnalysisRepository;
+import com.s406.livon.domain.ai.gms.client.GmsChatClient;
+import com.s406.livon.domain.ai.gms.dto.response.AiSummaryResponseDto;
+import com.s406.livon.domain.ai.gms.entity.AiAnalysis;
+import com.s406.livon.domain.ai.gms.repository.AiAnalysisRepository;
 import com.s406.livon.domain.user.entity.HealthSurvey;
 import com.s406.livon.domain.user.entity.User;
 import com.s406.livon.domain.user.repository.HealthSurveyRepository;

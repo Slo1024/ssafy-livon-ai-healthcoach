@@ -1,8 +1,15 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
-import { LocalVideoTrack, RemoteVideoTrack, RemoteAudioTrack, Track } from 'livekit-client';
+import {
+  LocalVideoTrack,
+  RemoteVideoTrack,
+  RemoteAudioTrack,
+  Track,
+  TrackEvent,
+} from 'livekit-client';
 import { VideoComponent } from './VideoComponent';
 import { AudioComponent } from './AudioComponent';
+import infoIcon from '../../../assets/images/Vector.png';
 
 const VideoGridOuterContainer = styled.div`
   position: relative;
@@ -346,96 +353,221 @@ const VideoTileWrapper = styled.div<{
   }}
 `;
 
-const SharedContentPanel = styled.div`
+const ScreenShareLayout = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 16px;
   width: 100%;
   height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #f3f4f6;
-  padding: 40px;
-  overflow-y: auto;
+  min-height: 0;
+  padding: 8px;
+  box-sizing: border-box;
+
+  @media (max-width: 1200px) {
+    grid-template-columns: minmax(0, 1fr) 240px;
+    gap: 12px;
+    padding: 6px;
+  }
+
+  @media (max-width: 900px) {
+    grid-template-columns: minmax(0, 1fr) 200px;
+    gap: 8px;
+    padding: 4px;
+  }
+
+  @media (max-width: 768px) {
+    grid-template-columns: minmax(0, 1fr) 180px;
+    gap: 6px;
+    padding: 4px;
+  }
 `;
 
-const SharedContentCard = styled.div`
-  background-color: #ffffff;
-  border-radius: 16px;
-  padding: 32px;
-  max-width: 600px;
+const ScreenShareMain = styled.div`
+  position: relative;
   width: 100%;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-`;
-
-const SharedContentHeader = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
-`;
-
-const ProfileIcon = styled.div`
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background-color: #f3f4f6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-`;
-
-const SharedContentInfo = styled.div`
-  flex: 1;
-`;
-
-const SharedContentName = styled.h3`
-  font-size: 18px;
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 8px 0;
-`;
-
-const SharedContentData = styled.div`
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  border-radius: 12px;
+  background-color: #000000;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+`;
+
+const ScreenShareLabel = styled.div`
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+`;
+
+const ScreenShareSidebar = styled.div`
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const ShareParticipantList = styled.div<{ $rows: number }>`
+  flex: 1;
+  display: grid;
+  grid-template-rows: repeat(${(props) => Math.max(props.$rows, 1)}, minmax(0, 1fr));
+  gap: 12px;
+`;
+
+const ShareSidebarTile = styled.div`
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-color: #1f2937;
+  border-radius: 12px;
+  overflow: hidden;
+  min-height: 0;
+`;
+
+const ShareScrollControls = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 8px;
-  font-size: 14px;
-  color: #6b7280;
+  margin-top: 8px;
 `;
 
-const SharedContentAnalysis = styled.div`
-  margin-top: 24px;
-  padding-top: 24px;
-  border-top: 1px solid #e5e7eb;
+const ShareScrollButton = styled.button`
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.6);
+  border: none;
+  color: #ffffff;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover:not(:disabled) {
+    background-color: rgba(0, 0, 0, 0.8);
+  }
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
 `;
 
-const AnalysisText = styled.p`
-  font-size: 14px;
-  color: #374151;
-  line-height: 1.8;
-  margin: 0 0 16px 0;
+const ScreenShareVideoElement = styled.video`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  object-fit: contain;
+  background-color: #000000;
 `;
 
-const TipBox = styled.div`
-  margin-top: 16px;
-  padding: 16px;
-  background-color: #fef3c7;
-  border-left: 4px solid #f59e0b;
-  border-radius: 4px;
+const ScreenSharePlaceholder = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #111827;
+  color: #e5e7eb;
+  font-size: 16px;
+  font-weight: 500;
 `;
 
-const TipLabel = styled.strong`
-  display: block;
-  color: #92400e;
-  margin-bottom: 8px;
+const ScreenShareVideoWrapper = styled.div`
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  display: flex;
 `;
 
-const TipText = styled.p`
-  margin: 0;
-  color: #78350f;
-  font-size: 14px;
-  line-height: 1.6;
-`;
+const ScreenShareVideo: React.FC<{
+  track: LocalVideoTrack | RemoteVideoTrack | null;
+  ownerName: string;
+  isLocal: boolean;
+}> = ({ track, ownerName, isLocal }) => {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [isMuted, setIsMuted] = useState<boolean>(() => !track || track.isMuted);
+
+  useEffect(() => {
+    if (videoRef.current && track) {
+      track.attach(videoRef.current);
+    }
+
+    return () => {
+      if (track && videoRef.current) {
+        track.detach(videoRef.current);
+      }
+    };
+  }, [track]);
+
+  useEffect(() => {
+    if (!track) {
+      setIsMuted(true);
+      return;
+    }
+
+    setIsMuted(track.isMuted);
+
+    const handleMuted = () => setIsMuted(true);
+    const handleUnmuted = () => setIsMuted(false);
+
+    track.on(TrackEvent.Muted, handleMuted);
+    track.on(TrackEvent.Unmuted, handleUnmuted);
+
+    return () => {
+      track.off(TrackEvent.Muted, handleMuted);
+      track.off(TrackEvent.Unmuted, handleUnmuted);
+    };
+  }, [track]);
+
+  const isActive = Boolean(track) && !isMuted;
+
+  return (
+    <>
+      <ScreenShareVideoWrapper>
+        {track && (
+          <ScreenShareVideoElement
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted={isLocal}
+            style={{ display: isActive ? 'block' : 'none' }}
+          />
+        )}
+        {!isActive && (
+          <ScreenSharePlaceholder>
+            화면 공유가 일시 중지되었습니다.
+          </ScreenSharePlaceholder>
+        )}
+      </ScreenShareVideoWrapper>
+    </>
+  );
+};
 
 const ScrollButtonContainer = styled.div`
   position: absolute;
@@ -475,51 +607,159 @@ const ScrollButton = styled.button`
   }
 `;
 
+const ParticipantInfoButton = styled.button`
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background-color: rgba(17, 24, 39, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: rgba(17, 24, 39, 0.85);
+  }
+
+  img {
+    width: 14px;
+    height: 14px;
+  }
+`;
+
 interface RemoteTrackInfo {
   trackPublication: any;
   participantIdentity: string;
   participant: any;
 }
 
+interface ScreenShareTrackInfo {
+  track: LocalVideoTrack | RemoteVideoTrack | null;
+  identity: string;
+  displayName: string;
+  isLocal: boolean;
+}
+
+interface ParticipantTile {
+  track: LocalVideoTrack | RemoteVideoTrack | null;
+  identity: string;
+  displayName: string;
+  isLocal: boolean;
+  isVideoEnabled: boolean;
+}
+
 interface VideoGridProps {
   localTrack: LocalVideoTrack | undefined;
   remoteTracks: RemoteTrackInfo[];
   isVideoEnabled: boolean;
-  isScreenSharing: boolean;
-  sharedContent: {
-    type: 'ai-analysis';
-    memberName: string;
-  } | null;
+  hasActiveScreenShare: boolean;
+  screenShareTrackInfo: ScreenShareTrackInfo | null;
   viewMode: 'gallery' | 'speaker' | 'shared';
   participantName: string;
+  localParticipantIdentity: string;
+  showInfoButtons: boolean;
+  onOpenParticipantInfo: (participantIdentity: string) => void;
+  isParticipantInfoAvailable: (participantIdentity: string) => boolean;
 }
 
 export const VideoGrid: React.FC<VideoGridProps> = ({
   localTrack,
   remoteTracks,
   isVideoEnabled,
-  isScreenSharing,
-  sharedContent,
+  hasActiveScreenShare,
+  screenShareTrackInfo,
   viewMode,
   participantName,
+  localParticipantIdentity,
+  showInfoButtons,
+  onOpenParticipantInfo,
+  isParticipantInfoAvailable,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollUp, setCanScrollUp] = useState(false);
   const [canScrollDown, setCanScrollDown] = useState(false);
   const [currentPage, setCurrentPage] = useState(0); // 현재 표시 중인 페이지 (0부터 시작, 15개씩)
+  const [shareStartIndex, setShareStartIndex] = useState(0);
 
-  // 참가자 수 계산 (로컬 비디오 + 원격 비디오)
-  const localVideoCount = (localTrack && isVideoEnabled) ? 1 : 0;
-  const remoteVideoCount = remoteTracks.filter(item => item.trackPublication.track?.kind === Track.Kind.Video).length;
-  const participantCount = localVideoCount + remoteVideoCount;
+  const participantTiles = useMemo<ParticipantTile[]>(() => {
+    const tiles: ParticipantTile[] = [];
 
-  // 15명 초과 여부 확인 (5x3=15개만 표시, 나머지는 화살표로 이동)
+    const localIdentity = localParticipantIdentity || "__local__";
+    tiles.push({
+      track: localTrack ?? null,
+      identity: localIdentity,
+      displayName: participantName,
+      isLocal: true,
+      isVideoEnabled:
+        Boolean(localTrack) &&
+        isVideoEnabled &&
+        localTrack?.isMuted === false,
+    });
+
+    const remoteMap = new Map<string, ParticipantTile>();
+
+    remoteTracks.forEach((item) => {
+      const publication = item.trackPublication;
+      const track = publication.track as RemoteVideoTrack | undefined;
+      const kind = publication.kind ?? track?.kind;
+      const source = publication.source ?? track?.source;
+      const identity = item.participantIdentity;
+      const displayName =
+        item.participant?.name || item.participantIdentity;
+
+      let entry = remoteMap.get(identity);
+      if (!entry) {
+        entry = {
+          track: null,
+          identity,
+          displayName,
+          isLocal: false,
+          isVideoEnabled: false,
+        };
+      }
+
+      if (kind === Track.Kind.Video && source !== Track.Source.ScreenShare) {
+        const isMuted =
+          Boolean(publication.isMuted) || (track ? track.isMuted : true);
+        entry.track = track ?? null;
+        entry.isVideoEnabled = Boolean(track) && !isMuted;
+      }
+
+      remoteMap.set(identity, entry);
+    });
+
+    const remoteTiles = Array.from(remoteMap.values()).sort((a, b) =>
+      a.displayName.localeCompare(b.displayName, "ko", { sensitivity: "base" })
+    );
+
+    return [
+      ...tiles,
+      ...remoteTiles,
+    ];
+  }, [
+    localTrack,
+    isVideoEnabled,
+    localParticipantIdentity,
+    participantName,
+    remoteTracks,
+  ]);
+
+  const participantCount = participantTiles.length;
   const hasMoreThan15 = participantCount > 15;
   const totalPages = hasMoreThan15 ? Math.ceil(participantCount / 15) : 1;
 
-  // 스크롤 가능 여부 확인 (페이지 기반)
   useEffect(() => {
+    if (hasActiveScreenShare) {
+      return;
+    }
+
     if (hasMoreThan15) {
       setCanScrollUp(currentPage > 0);
       setCanScrollDown(currentPage < totalPages - 1);
@@ -527,9 +767,15 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
       setCanScrollUp(false);
       setCanScrollDown(false);
     }
-  }, [hasMoreThan15, currentPage, totalPages]);
+  }, [hasActiveScreenShare, hasMoreThan15, currentPage, totalPages]);
 
-  // 화살표 버튼으로 페이지 이동
+  useEffect(() => {
+    if (hasActiveScreenShare) {
+      return;
+    }
+    setCurrentPage(0);
+  }, [hasActiveScreenShare, participantCount]);
+
   const scrollUp = () => {
     if (currentPage > 0) {
       setCurrentPage(currentPage - 1);
@@ -542,40 +788,141 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
     }
   };
 
-  // 참가자 수가 변경되면 첫 페이지로 리셋
+  const localTile = participantTiles.find((tile) => tile.isLocal) ?? null;
+  const remoteTiles = participantTiles.filter((tile) => !tile.isLocal);
+  const maxShareVisible = 4;
+  const remoteVisibleSlots = Math.max(
+    maxShareVisible - (localTile ? 1 : 0),
+    0
+  );
+
   useEffect(() => {
-    setCurrentPage(0);
-  }, [participantCount]);
+    if (!hasActiveScreenShare) {
+      setShareStartIndex(0);
+      return;
+    }
+    setShareStartIndex((prev) =>
+      Math.min(prev, Math.max(remoteTiles.length - remoteVisibleSlots, 0))
+    );
+  }, [hasActiveScreenShare, remoteTiles.length, remoteVisibleSlots]);
 
-  // 모든 비디오 트랙 수집 (로컬 + 원격)
-  const allVideoTracks: Array<{
-    track: LocalVideoTrack | RemoteVideoTrack;
-    identity: string;
-    isLocal: boolean;
-  }> = [];
+  const canShareScrollUp = shareStartIndex > 0;
+  const canShareScrollDown =
+    shareStartIndex + remoteVisibleSlots < remoteTiles.length;
 
-  if (localTrack && isVideoEnabled) {
-    allVideoTracks.push({
-      track: localTrack,
-      identity: participantName,
-      isLocal: true,
-    });
+  const visibleRemoteTiles = remoteTiles.slice(
+    shareStartIndex,
+    shareStartIndex + remoteVisibleSlots
+  );
+
+  const visibleShareTiles = localTile
+    ? [localTile, ...visibleRemoteTiles]
+    : remoteTiles.slice(shareStartIndex, shareStartIndex + maxShareVisible);
+
+  const handleShareScrollUp = () => {
+    setShareStartIndex((prev) => Math.max(prev - 1, 0));
+  };
+
+  const handleShareScrollDown = () => {
+    setShareStartIndex((prev) =>
+      Math.min(
+        prev + 1,
+        Math.max(remoteTiles.length - remoteVisibleSlots, 0)
+      )
+    );
+  };
+
+  const audioComponents = remoteTracks
+    .map((item) => {
+      const track = item.trackPublication.track;
+      if (track && track.kind === Track.Kind.Audio) {
+        return (
+          <AudioComponent
+            key={
+              track.sid || `audio-${item.participantIdentity}-${item.participant?.sid}`
+            }
+            track={track as RemoteAudioTrack}
+          />
+        );
+      }
+      return null;
+    })
+    .filter(
+      (component): component is React.ReactElement => component !== null
+    );
+
+  if (hasActiveScreenShare && screenShareTrackInfo) {
+    return (
+      <VideoGridOuterContainer>
+        <ScreenShareLayout>
+          <ScreenShareMain>
+            <ScreenShareVideo
+              track={screenShareTrackInfo.track}
+              ownerName={screenShareTrackInfo.displayName}
+              isLocal={screenShareTrackInfo.isLocal}
+            />
+          </ScreenShareMain>
+          <ScreenShareSidebar>
+            <ShareParticipantList
+              $rows={visibleShareTiles.length || 1}
+            >
+              {visibleShareTiles.map((tile) => (
+                <ShareSidebarTile
+                  key={tile.identity}
+                >
+                  {showInfoButtons &&
+                    !tile.isLocal &&
+                    isParticipantInfoAvailable(tile.identity) && (
+                      <ParticipantInfoButton
+                        type="button"
+                        onClick={() => onOpenParticipantInfo(tile.identity)}
+                        aria-label={`${tile.displayName} 정보 보기`}
+                      >
+                        <img src={infoIcon} alt="" />
+                      </ParticipantInfoButton>
+                    )}
+                  <VideoComponent
+                    track={tile.track ?? undefined}
+                    participantIdentity={tile.displayName}
+                    local={tile.isLocal}
+                    isVideoEnabled={tile.isVideoEnabled}
+                  />
+                </ShareSidebarTile>
+              ))}
+            </ShareParticipantList>
+            {remoteTiles.length > remoteVisibleSlots && (
+              <ShareScrollControls>
+                <ShareScrollButton
+                  onClick={handleShareScrollUp}
+                  disabled={!canShareScrollUp}
+                  aria-label="이전 참가자"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M18 15l-6-6-6 6" />
+                  </svg>
+                </ShareScrollButton>
+                <ShareScrollButton
+                  onClick={handleShareScrollDown}
+                  disabled={!canShareScrollDown}
+                  aria-label="다음 참가자"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </ShareScrollButton>
+              </ShareScrollControls>
+            )}
+          </ScreenShareSidebar>
+        </ScreenShareLayout>
+        {audioComponents}
+      </VideoGridOuterContainer>
+    );
   }
 
-  remoteTracks
-    .filter((item) => item.trackPublication.track?.kind === Track.Kind.Video)
-    .forEach((item) => {
-      allVideoTracks.push({
-        track: item.trackPublication.track as RemoteVideoTrack,
-        identity: item.participantIdentity,
-        isLocal: false,
-      });
-    });
-
   // 15명 이상일 때 현재 페이지에 해당하는 비디오만 필터링
-  const displayVideoTracks = hasMoreThan15
-    ? allVideoTracks.slice(currentPage * 15, currentPage * 15 + 15)
-    : allVideoTracks;
+  const displayParticipantTiles = hasMoreThan15
+    ? participantTiles.slice(currentPage * 15, currentPage * 15 + 15)
+    : participantTiles;
 
   return (
     <VideoGridOuterContainer>
@@ -587,52 +934,19 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
         <VideoGridContainer 
           ref={gridContainerRef}
           $viewMode={viewMode} 
-          $participantCount={hasMoreThan15 ? displayVideoTracks.length : participantCount}
+          $participantCount={hasMoreThan15 ? displayParticipantTiles.length : participantCount}
           $isPaginationMode={hasMoreThan15}
         >
-      {isScreenSharing && sharedContent ? (
-        <SharedContentPanel>
-          <SharedContentCard>
-            <SharedContentHeader>
-              <ProfileIcon>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-              </ProfileIcon>
-              <SharedContentInfo>
-                <SharedContentName>{sharedContent.memberName}님의 AI 분석본</SharedContentName>
-                <SharedContentData>
-                  <div>생성일: {new Date().toLocaleDateString('ko-KR')}</div>
-                  <div>분석 유형: 건강 상태 분석</div>
-                </SharedContentData>
-              </SharedContentInfo>
-            </SharedContentHeader>
-            <SharedContentAnalysis>
-              <AnalysisText>
-                현재 혈압 수치와 건강 상태를 종합적으로 분석한 결과, 규칙적인 운동과 건강한 식습관 유지가 필요합니다.
-              </AnalysisText>
-              <TipBox>
-                <TipLabel>TIP</TipLabel>
-                <TipText>혈압약 복용 중이므로 격렬한 운동은 피하세요.</TipText>
-              </TipBox>
-            </SharedContentAnalysis>
-          </SharedContentCard>
-        </SharedContentPanel>
-      ) : (
-        <>
           {/* 현재 페이지의 비디오 트랙 렌더링 (15개씩) */}
-          {displayVideoTracks.map((videoItem, displayIndex) => {
+          {displayParticipantTiles.map((videoItem, displayIndex) => {
             // 전체 인덱스 계산 (현재 페이지 고려)
             const index = hasMoreThan15 ? currentPage * 15 + displayIndex : displayIndex;
             // 원격 비디오의 경우 key 생성
-            const key = videoItem.isLocal 
-              ? `local-video-${participantName}`
-              : `remote-video-${videoItem.identity}-${index}`;
+            const key = videoItem.identity;
 
             // 행과 열 계산
             // 15명 이상일 때는 현재 페이지의 비디오 수를 기준으로 계산
-            const currentPageParticipantCount = hasMoreThan15 ? displayVideoTracks.length : participantCount;
+            const currentPageParticipantCount = hasMoreThan15 ? displayParticipantTiles.length : participantCount;
             const currentIndex = hasMoreThan15 ? displayIndex : index;
             
             let rowIndex: number = 0;
@@ -758,27 +1072,24 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
                 $paginationLastPageTotalItems={isPaginationLastPageIncomplete ? lastRowItemCount : undefined}
                 $paginationRowIndex={isPaginationLastPageIncomplete ? rowIndex : undefined}
               >
+                {showInfoButtons && isParticipantInfoAvailable(videoItem.identity) && (
+                  <ParticipantInfoButton
+                    type="button"
+                    onClick={() => onOpenParticipantInfo(videoItem.identity)}
+                    aria-label={`${videoItem.displayName} 정보 보기`}
+                  >
+                    <img src={infoIcon} alt="" />
+                  </ParticipantInfoButton>
+                )}
                 <VideoComponent
-                  track={videoItem.track}
-                  participantIdentity={videoItem.identity}
+                  track={videoItem.track ?? undefined}
+                  participantIdentity={videoItem.displayName}
                   local={videoItem.isLocal}
+                  isVideoEnabled={videoItem.isVideoEnabled}
                 />
               </VideoTileWrapper>
             );
           })}
-          
-          {/* 원격 오디오만 있는 경우 */}
-          {remoteTracks
-            .filter((item) => item.trackPublication.track?.kind === Track.Kind.Audio)
-            .map((item) => {
-              const track = item.trackPublication.track;
-              if (track && track.kind === Track.Kind.Audio) {
-                return <AudioComponent key={item.trackPublication.track?.sid || `audio-${item.participantIdentity}-${item.participant.sid}`} track={track as RemoteAudioTrack} />;
-              }
-              return null;
-            })}
-        </>
-      )}
         </VideoGridContainer>
       </VideoGridScrollContainer>
       
@@ -805,6 +1116,7 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
           </ScrollButton>
         </ScrollButtonContainer>
       )}
+      {audioComponents}
     </VideoGridOuterContainer>
   );
 };

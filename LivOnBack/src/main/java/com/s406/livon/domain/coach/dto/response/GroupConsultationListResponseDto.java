@@ -4,6 +4,7 @@ package com.s406.livon.domain.coach.dto.response;
 import com.s406.livon.domain.coach.entity.GroupConsultation;
 import lombok.Builder;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Builder
 public record GroupConsultationListResponseDto(
@@ -17,7 +18,8 @@ public record GroupConsultationListResponseDto(
         Integer availableSeats,
         boolean isFull,
         String coachName,
-        String coachProfileImage
+        String coachProfileImage,
+        UUID coachId
 ) {
     public static GroupConsultationListResponseDto from(
             GroupConsultation gc, 
@@ -38,6 +40,7 @@ public record GroupConsultationListResponseDto(
                 .isFull(availableSeats == 0)
                 .coachName(gc.getConsultation().getCoach().getNickname())
                 .coachProfileImage(gc.getConsultation().getCoach().getProfileImage())
+                .coachId(gc.getConsultation().getCoach().getId())
                 .build();
     }
 }

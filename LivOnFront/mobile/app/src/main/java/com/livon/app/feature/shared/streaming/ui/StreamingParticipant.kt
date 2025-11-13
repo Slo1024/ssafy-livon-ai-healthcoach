@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.zIndex
 import com.livon.app.ui.component.streaming.SearchBar
 import com.livon.app.ui.component.streaming.StreamingParticipantsHeader
 import com.livon.app.ui.component.streaming.UserProfileItem
@@ -18,7 +19,14 @@ fun StreamingParticipant(
     LivonTheme {
         Scaffold(
             topBar = {
-                StreamingParticipantsHeader(onBackClick = onBackClick)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .windowInsetsPadding(WindowInsets.statusBars)
+                        .zIndex(1f)
+                ) {
+                    StreamingParticipantsHeader(onBackClick = onBackClick)
+                }
             }
         ) { paddingValues ->
             Column(

@@ -15,151 +15,72 @@ interface ButtonProps {
 const StyledButton = styled.button<{ $variant?: string; $size?: string }>`
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   cursor: pointer;
-  transition: all 0.3s ease;
-  border: none;
+  transition: color 0.2s ease;
+  background: transparent;
   outline: none;
+  border: none;
+  padding: 0;
+  font-weight: 600;
+  font-size: 16px;
+  color: #4965f6;
 
-  ${props => {
-    switch (props.$variant) {
-      case 'primary':
-        return `
-          background-color: #2d79f3;
-          color: white;
-          font-weight: 500;
-          &:hover {
-            background-color: #1a5fd9;
-          }
-        `;
-      case 'secondary':
-        return `
-          background-color: #6c757d;
-          color: white;
-          font-weight: 500;
-          &:hover {
-            background-color: #5a6268;
-          }
-        `;
-      case 'outline':
-        return `
-          background-color: transparent;
-          border: 0.125em solid #4965f6;
-          color: #4965f6;
-          font-weight: 600;
-          &:hover {
-            color: #fff;
-            background-color: #4965f6;
-            box-shadow: rgba(73, 101, 246, 0.25) 0 8px 15px;
-            transform: translateY(-2px);
-          }
-          &:active {
-            box-shadow: none;
-            transform: translateY(0);
-          }
-        `;
-      case 'submit':
-        return `
-          width: 686px;
-          background-color: #2d79f3;
-          color: white;
-          font-weight: 800;
-          border-radius: 8px;
-          &:hover {
-            background-color: #1a5fd9;
-          }
-        `;
-      case 'info-edit':
-        return `
-          width: 120px;
-          height: 60px;
-          background-color: transparent;
-          border: 1px solid #4965f6;
-          color: #4965f6;
-          font-weight: 500;
-          font-size: 12px;
-          border-radius: 20px;
-          transition: all 0.3s ease;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          &:hover {
-            background-color: #4965f6;
-            color: #ffffff;
-          }
-        `;
-      case 'delete':
-        return `
-          width: 120px;
-          height: 60px;
-          background-color: transparent;
-          border: 1px solid #ff0000;
-          color: #ff0000;
-          font-weight: 500;
-          font-size: 14px;
-          border-radius: 20px;
-          transition: all 0.3s ease;
-          &:hover {
-            background-color: #ff0000;
-            color: #ffffff;
-          }
-        `;
-      default:
-        return `
-          background-color: #2d79f3;
-          color: white;
-          font-weight: 500;
-          &:hover {
-            background-color: #1a5fd9;
-          }
-        `;
-    }
-  }}
-
-  ${props => {
-    switch (props.$size) {
-      case 'small':
-        return `
-          padding: 0 16px;
-          height: 36px;
-          font-size: 13px;
-          border-radius: 6px;
-        `;
-      case 'medium':
-        if (props.$variant === 'outline') {
-          return `
-            width: 87px;
-            height: 42px;
-            font-size: 14px;
-            border-radius: 5px;
-          `;
-        }
-        return `
-          padding: 0 16px;
-          height: 40px;
-          font-size: 14px;
-          border-radius: 6px;
-        `;
-      case 'large':
-        return `
-          padding: 0 24px;
-          height: 48px;
-          font-size: 16px;
-          border-radius: 8px;
-        `;
-      default:
-        return `
-          padding: 0 16px;
-          height: 40px;
-          font-size: 14px;
-          border-radius: 6px;
-        `;
-    }
-  }}
+  &:hover {
+    color: #2d79f3;
+  }
 
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
     pointer-events: none;
   }
+
+  ${props => props.$variant === 'info-edit' && `
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 85px;
+    height: 35px;
+    padding: 0 16px;
+    border: 1px solid #4965f6;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #4965f6;
+    font-size: 14px;
+    font-weight: 400;
+    text-align: center;
+    white-space: nowrap;
+    line-height: 1;
+
+    &:hover {
+      background: #f7fafc;
+      color: #325ad6;
+    }
+  `}
+
+  ${props => props.$variant === 'delete' && `
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 85px;
+    height: 35px;
+    padding: 0 16px;
+    border: 1px solid #ff0000;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #ff0000;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+    white-space: nowrap;
+    line-height: 1;
+
+    &:hover {
+      background: #fef2f2;
+      color: #d90000;
+    }
+  `}
 `;
 
 export const Button: React.FC<ButtonProps> = ({
@@ -187,9 +108,7 @@ export const Button: React.FC<ButtonProps> = ({
   );
 };
 
-// =====================
-// SegmentedTabs (두 버튼 + 하단 가로줄)
-// =====================
+// SegmentedTabs (두 버튼)
 
 const SegmentedContainer = styled.div`
   display: flex;
@@ -201,48 +120,42 @@ const SegmentedContainer = styled.div`
 
 const TabsRow = styled.div`
   display: flex;
-  gap: 0;
-
-  button {
-    border-radius: 6px;
-  }
-  button + button {
-    margin-left: -1px; /* 경계선 겹치기 */
-  }
+  gap: 24px;
+  padding: 4px 0;
 `;
 
 const TabButtonBase = styled.button<{ $active?: boolean; $width: number }>`
-  height: 48px;
-  width: ${p => p.$width}px;
-  border: 1px solid #4965f6;
-  background-color: ${p => (p.$active ? '#4965f6' : '#ffffff')};
-  color: ${p => (p.$active ? '#ffffff' : '#4965f6')};
-  font-weight: 500;
+  min-width: ${p => p.$width}px;
+  background: transparent;
+  border: none;
+  color: ${p => (p.$active ? '#1f2937' : '#6b7280')};
+  font-weight: ${p => (p.$active ? 700 : 500)};
   font-size: 16px;
   cursor: pointer;
-  border-radius: 6px;
   white-space: nowrap;
-  transition: background-color 0.2s ease;
-  outline: none;
+  transition: color 0.2s ease;
+  padding: 6px 0;
+  position: relative;
+
+  &:after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -6px;
+    width: 100%;
+    height: 3px;
+    background: ${p => (p.$active ? '#4965f6' : 'transparent')};
+    border-radius: 999px;
+    transition: background 0.2s ease;
+  }
 
   &:hover {
-    background-color: ${p => (p.$active ? '#4965f6' : '#f7fafc')};
+    color: #4965f6;
   }
 
   &:focus {
     outline: none;
   }
-`;
-
-const FullWidthDivider = styled.div`
-  width: 100vw;
-  height: 2px;
-  background-color: #4965f6;
-  margin: 0;
-  position: relative;
-  left: 50%;
-  transform: translateX(-50%);
-  margin-top: 0;
 `;
 
 export interface SegmentedTabsProps {
@@ -252,7 +165,7 @@ export interface SegmentedTabsProps {
   onLeftClick?: () => void;
   onRightClick?: () => void;
   tabWidth?: number; // default 120
-  showDivider?: boolean; // default true
+  showDivider?: boolean; // default false
   className?: string;
   style?: React.CSSProperties;
 }
@@ -264,7 +177,7 @@ export const SegmentedTabs: React.FC<SegmentedTabsProps> = ({
   onLeftClick,
   onRightClick,
   tabWidth = 120,
-  showDivider = true,
+  showDivider: _showDivider = false,
   className,
   style,
 }) => {
@@ -280,7 +193,6 @@ export const SegmentedTabs: React.FC<SegmentedTabsProps> = ({
           </TabButtonBase>
         </TabsRow>
       </SegmentedContainer>
-      {showDivider && <FullWidthDivider />}
     </>
   );
 };

@@ -27,7 +27,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.mutableStateOf
 import android.util.Log
 import androidx.compose.foundation.clickable
-
+import android.widget.Toast
+import kotlinx.coroutines.awaitCancellation
+import androidx.lifecycle.Observer
 import com.livon.app.feature.member.reservation.ui.ReservationDetailType
 import com.livon.app.feature.member.reservation.ui.CoachMini
 import com.livon.app.feature.member.reservation.ui.SessionInfo
@@ -277,10 +279,31 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             pastVm.uiState.collect { pastState.value = it.items }
         }
 
-        // ... (기존 다이얼로그 상태 변수들은 유지) ...
+        // Setup UserViewModel to get user nickname
+        val userApi = remember { com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.UserApiService::class.java) }
+        val userRepo = remember { com.livon.app.domain.repository.UserRepository(userApi) }
+        val userVm = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return com.livon.app.feature.member.home.vm.UserViewModel(userRepo) as T
+            }
+        }) as com.livon.app.feature.member.home.vm.UserViewModel
 
-        // Debug log sizes
-        try { Log.d("MemberNavGraph", "ReservationStatusScreen: upcoming=${upcomingState.items.size} past=${pastState.value.size}") } catch (_: Throwable) {}
+        val userState by userVm.uiState.collectAsState()
+        LaunchedEffect(Unit) { userVm.load() }
+
+        // Get context for Intent
+        val context = androidx.compose.ui.platform.LocalContext.current
+
+        // 디버그 로그
+        try {
+            Log.d(
+                "MemberNavGraph",
+                "ReservationStatusScreen: upcoming=${upcomingState.items.size} past=${pastState.value.size}"
+            )
+        } catch (_: Throwable) {
+        }
+
 
         ReservationStatusScreen(
             current = upcomingState.items,
@@ -302,7 +325,6 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 if (idInt == null) {
                     Log.w("MemberNavGraph", "onCancel called but id not int: ${item.id}")
                 } else {
-                    // Use reservationVm created above to perform cancel
                     if ((item.sessionTypeLabel ?: "").contains("개인")) {
                         reservationVm.cancelIndividual(idInt)
                     } else {
@@ -310,11 +332,45 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                     }
                 }
             },
-            onJoin = { /* handled inside ReservationStatusScreen via provided callback */ },
-            onAiAnalyze = { /* handled elsewhere */ }
+            // 🔹 세션 입장: 동료가 구현한 RoomLayoutActivity 연동 로직 통합
+            onJoin = { item ->
+                try {
+                    val participantName = userState.info?.nickname ?: "Member"
+                    val consultationId = item.id.toLongOrNull()
+
+                    if (consultationId == null) {
+                        Log.e(
+                            "MemberNavGraph",
+                            "Failed to parse consultationId from item.id: ${item.id}"
+                        )
+                        Toast.makeText(context, "예약 정보를 불러올 수 없습니다.", Toast.LENGTH_SHORT).show()
+                        return@ReservationStatusScreen
+                    }
+
+                    val intent = android.content.Intent(
+                        context,
+                        io.openvidu.android.RoomLayoutActivity::class.java
+                    ).apply {
+                        putExtra("consultationId", consultationId)
+                        putExtra("participantName", participantName)
+                        // fallback 용 roomName
+                        putExtra("roomName", item.sessionId)
+                    }
+                    context.startActivity(intent)
+                } catch (t: Throwable) {
+                    Log.e("MemberNavGraph", "Failed to start RoomLayoutActivity", t)
+                    Toast.makeText(
+                        context,
+                        "세션 입장에 실패했습니다: ${t.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            },
+            onAiAnalyze = { /* AI 리포트 진입은 별도 라우트에서 처리 */ }
         )
-        // ... (기존 다이얼로그 로직들은 유지) ...
+        // (기존 다이얼로그/추가 로직이 있었다면 여기 이어서 유지)
     }
+
 
     // [수정됨] 예약 상세 화면
     composable("reservation_detail/{id}/{type}") { backStackEntry ->

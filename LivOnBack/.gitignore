@@ -37,3 +37,6 @@ out/
 .vscode/
 
 application*.yml
+
+### Google Cloud key ###
+livon*.json

@@ -71,6 +71,13 @@ public enum ErrorStatus implements BaseErrorCode {
     // AI 관련
     AI_SUMMARY_NOT_FOUND(HttpStatus.NOT_FOUND, "AI4000", "생성된 AI 요약이 존재하지 않습니다."),
     AI_SUMMARY_REQUEST_FAILED(HttpStatus.BAD_GATEWAY, "AI5000", "AI 요약 생성에 실패했습니다."),
+    
+    // GCP 관련
+    GCP_VIDEO_NOT_FOUND(HttpStatus.NOT_FOUND, "GCP4000", "업로드된 영상을 찾을 수 없습니다."),
+    GCP_VIDEO_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "GCP5000", "영상 업로드에 실패했습니다."),
+    GCP_VIDEO_DELETE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "GCP5001", "영상 삭제에 실패했습니다."),
+    GCP_VERTEX_AI_ERROR(HttpStatus.BAD_GATEWAY, "GCP5002", "Vertex AI 처리 중 오류가 발생했습니다."),
+    GCP_SUMMARY_NOT_GENERATED(HttpStatus.NOT_FOUND, "GCP4001", "요약이 아직 생성되지 않았습니다."),
 
     // File 응답
     FILE_NOT_FOUND(HttpStatus.BAD_REQUEST, "FILE4000", "파일이 존재하지 않습니다."),

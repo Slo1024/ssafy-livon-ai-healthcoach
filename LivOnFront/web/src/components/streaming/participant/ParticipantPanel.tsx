@@ -165,6 +165,25 @@ export const ParticipantPanel: React.FC<ParticipantPanelProps> = ({
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   };
 
+  const getRemoteDisplayName = (item: RemoteTrackInfo) => {
+    const remoteParticipant = item.participant;
+    if (remoteParticipant?.name) {
+      return remoteParticipant.name;
+    }
+    // LiveKit 참가자 metadata에 닉네임 JSON이 담겨 있다면 파싱해서 닉네임 사용
+    if (remoteParticipant?.metadata) {
+      try {
+        const metadata = JSON.parse(remoteParticipant.metadata);
+        if (metadata && typeof metadata.nickname === 'string') {
+          return metadata.nickname;
+        }
+      } catch (error) {
+        console.warn('참가자 metadata 파싱 실패:', error);
+      }
+    }
+    return item.participantIdentity;
+  };
+
   // 중복 제거: 같은 참가자의 여러 트랙 중 하나만 표시
   const uniqueParticipants = new Map<string, RemoteTrackInfo>();
   remoteTracks.forEach((item) => {
@@ -175,24 +194,38 @@ export const ParticipantPanel: React.FC<ParticipantPanelProps> = ({
   });
 
   // 검색어로 필터링
-  const filteredParticipants: Array<{ type: 'local' | 'remote'; identity: string; data?: RemoteTrackInfo }> = [];
+  const filteredParticipants: Array<{
+    type: 'local' | 'remote';
+    identity: string;
+    displayName: string;
+    data?: RemoteTrackInfo;
+  }> = [];
   
   // 로컬 참가자 (코치) 추가
   const localName = participantName;
-  if (!participantSearchQuery || localName.toLowerCase().includes(participantSearchQuery.toLowerCase())) {
+  if (
+    !participantSearchQuery ||
+    localName.toLowerCase().includes(participantSearchQuery.toLowerCase())
+  ) {
     filteredParticipants.push({
       type: 'local',
       identity: localName,
+      displayName: localName,
     });
   }
 
   // 원격 참가자 필터링 및 추가
   const participantList = Array.from(uniqueParticipants.values());
   participantList.forEach((item) => {
-    if (!participantSearchQuery || item.participantIdentity.toLowerCase().includes(participantSearchQuery.toLowerCase())) {
+    const displayName = getRemoteDisplayName(item);
+    if (
+      !participantSearchQuery ||
+      displayName.toLowerCase().includes(participantSearchQuery.toLowerCase())
+    ) {
       filteredParticipants.push({
         type: 'remote',
-        identity: item.participantIdentity,
+        identity: item.participant.identity || item.participantIdentity,
+        displayName,
         data: item,
       });
     }
@@ -227,9 +260,9 @@ export const ParticipantPanel: React.FC<ParticipantPanelProps> = ({
             if (participant.type === 'local') {
               return (
                 <ParticipantItem key="local-participant">
-                  <ParticipantAvatar>{getInitials(participant.identity)}</ParticipantAvatar>
+                  <ParticipantAvatar>{getInitials(participant.displayName)}</ParticipantAvatar>
                   <ParticipantInfo>
-                    <ParticipantListItemName>{participant.identity} (나)</ParticipantListItemName>
+                    <ParticipantListItemName>{participant.displayName} (나)</ParticipantListItemName>
                     <ParticipantStatus>
                       <StatusIndicator $isActive={isVideoEnabled} />
                       <span>비디오 {isVideoEnabled ? '켜짐' : '꺼짐'}</span>
@@ -251,10 +284,10 @@ export const ParticipantPanel: React.FC<ParticipantPanelProps> = ({
               );
 
               return (
-                <ParticipantItem key={item.participantIdentity}>
-                  <ParticipantAvatar>{getInitials(item.participantIdentity)}</ParticipantAvatar>
+                <ParticipantItem key={participant.identity}>
+                  <ParticipantAvatar>{getInitials(participant.displayName)}</ParticipantAvatar>
                   <ParticipantInfo>
-                    <ParticipantListItemName>{item.participantIdentity}</ParticipantListItemName>
+                    <ParticipantListItemName>{participant.displayName}</ParticipantListItemName>
                     <ParticipantStatus>
                       <StatusIndicator $isActive={hasVideo} />
                       <span>비디오 {hasVideo ? '켜짐' : '꺼짐'}</span>

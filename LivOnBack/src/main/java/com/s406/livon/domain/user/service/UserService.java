@@ -171,6 +171,7 @@ public class UserService {
         }
 
         return MyInfoResponseDto.builder()
+                        .userId(user.getId())
                         .nickname(user.getNickname())
                         .profileImage(user.getProfileImage())
                         .organizations(organizationName)

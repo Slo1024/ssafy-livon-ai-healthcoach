@@ -18,6 +18,16 @@ interface CoachInfo {
   introduce: string;
 }
 
+export interface CoachDetailInfo {
+  userId: string; // UUID
+  nickname: string;
+  job: string;
+  introduce: string;
+  profileImage: string;
+  certificates: string[];
+  organizations: string;
+}
+
 interface PaginatedResponse<T> {
   page: number;
   pageSize: number;
@@ -343,22 +353,32 @@ export const cancelGroupConsultationParticipationApi = async (
   return response.data;
 };
 
-// ===== 유틸리티 함수 =====
+// ===== 코치 상세정보 조회 =====
+
+export type CoachDetailResponse = ApiResponse<CoachDetailInfo>;
 
 /**
- * 토큰을 가져오는 헬퍼 함수
+ * 코치 상세정보 조회 API
+ * GET /api/v1/coaches/{coachId}
+ * @param coachId - 코치 UUID
  */
-const getAuthToken = (): string => {
+export const getCoachDetailApi = async (
+  coachId: string
+): Promise<CoachDetailResponse> => {
   const token = localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
+
   if (!token) {
     throw new Error("인증 토큰이 없습니다. 로그인이 필요합니다.");
   }
-  return token;
-};
 
-/**
- * Authorization 헤더를 생성하는 헬퍼 함수
- */
-const getAuthHeaders = () => ({
-  Authorization: `Bearer ${getAuthToken()}`,
-});
+  const response = await axios.get<CoachDetailResponse>(
+    `${API_BASE_URL}/coaches/${coachId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  return response.data;
+};

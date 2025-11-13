@@ -9,10 +9,11 @@ import profilePictureIcon from "../../assets/images/profile_picture.png";
 import { ROUTES } from "../../constants/routes";
 import { CONFIG } from "../../constants/config";
 import { getMyProfileApi } from "../../api/authApi";
+import { getCoachDetailApi } from "../../api/classApi";
 
 const PageContainer = styled.div`
   min-height: 100vh;
-  background-color: #ffffff;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
   padding: clamp(24px, 5vw, 40px) clamp(16px, 4vw, 32px);
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
@@ -24,12 +25,24 @@ const ContentWrapper = styled.div`
   margin: 0 auto;
 `;
 
+const MainCard = styled.div`
+  background-color: #ffffff;
+  border-radius: 16px;
+  padding: clamp(24px, 4vw, 48px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  margin-top: 24px;
+`;
+
 const PageTitle = styled.h1`
   font-weight: 700;
   font-size: 40px;
-  color: #000000;
-  margin: 0 0 24px 0;
+  color: #1a1a1a;
+  margin: 0;
   text-align: left;
+  background: linear-gradient(135deg, #2d79f3 0%, #4965f6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 
   @media (max-width: 1200px) {
     text-align: center;
@@ -49,33 +62,60 @@ const PageTitle = styled.h1`
   }
 `;
 
+const SectionTitle = styled.h2`
+  font-weight: 600;
+  font-size: 20px;
+  color: #1a1a1a;
+  margin: 32px 0 20px 0;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f0f0f0;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+
+  &:first-of-type {
+    margin-top: 0;
+  }
+`;
+
 // 프로필 사진 업로드 섹션 스타일
 const ProfileSection = styled.div`
   display: flex;
-  gap: 20px;
-  margin-top: 16px; /* 탭 가로줄과 약간의 간격 */
+  gap: 32px;
+  margin-top: 24px;
   align-items: flex-start;
+  padding: 24px;
+  background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
+  border-radius: 12px;
+  border: 1px solid #e8ecf1;
 
   @media (max-width: 768px) {
     flex-direction: column;
     align-items: center;
     width: 100%;
     gap: 24px;
+    padding: 20px;
   }
 `;
 
 const ProfileImageContainer = styled.div`
   width: clamp(160px, 30vw, 197px);
   height: clamp(200px, 36vw, 263px);
-  border-radius: 8px;
+  border-radius: 12px;
   background-color: #ffffff;
-  border: 1px solid #dee2e6;
+  border: 2px solid #e8ecf1;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   position: relative;
   overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  }
 `;
 
 const ProfileImagePlaceholder = styled.div`
@@ -105,10 +145,10 @@ const ProfileInfo = styled.div`
 `;
 
 const ProfileLabel = styled.h3`
-  font-size: 12px;
-  font-weight: 800;
-  color: #000000;
-  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 16px 0;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
 `;
@@ -133,46 +173,73 @@ const FileNameLabel = styled.label`
 
 const FileNameInput = styled.input`
   flex: 1;
-  height: 36px;
-  border: 1px solid #ecedec;
-  border-radius: 12px;
-  padding: 0 10px;
-  font-size: 13px;
+  height: 40px;
+  border: 1px solid #e8ecf1;
+  border-radius: 8px;
+  padding: 0 14px;
+  font-size: 14px;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
+  background-color: #f8f9fa;
+  transition: all 0.2s ease;
 
   &:focus {
     outline: none;
     border-color: #2d79f3;
+    background-color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(45, 121, 243, 0.1);
   }
 `;
 
 const FileButton = styled.button<{ variant?: "primary" | "danger" }>`
-  height: 36px;
-  padding: 0 16px;
+  height: 40px;
+  padding: 0 20px;
   border: ${(props) =>
-    props.variant === "danger" ? "1px solid #ff0000" : "none"};
-  border-radius: 6px;
-  font-size: 13px;
+    props.variant === "danger" ? "1px solid #ef4444" : "none"};
+  border-radius: 8px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   background-color: ${(props) =>
     props.variant === "danger" ? "#ffffff" : "#2d79f3"};
-  color: ${(props) => (props.variant === "danger" ? "#ff0000" : "white")};
+  color: ${(props) => (props.variant === "danger" ? "#ef4444" : "white")};
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
+  transition: all 0.2s ease;
+  box-shadow: ${(props) =>
+    props.variant === "danger" ? "none" : "0 2px 4px rgba(45, 121, 243, 0.2)"};
 
   &:hover {
     background-color: ${(props) =>
-      props.variant === "danger" ? "#ff0000" : "#1a5fd9"};
+      props.variant === "danger" ? "#ef4444" : "#1a5fd9"};
     color: ${(props) => (props.variant === "danger" ? "#ffffff" : "white")};
+    transform: translateY(-1px);
+    box-shadow: ${(props) =>
+      props.variant === "danger"
+        ? "0 2px 8px rgba(239, 68, 68, 0.3)"
+        : "0 4px 8px rgba(45, 121, 243, 0.3)"};
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
   }
 `;
 
 const ProfileDescription = styled.div`
-  font-size: 11px;
-  color: #666666;
-  line-height: 1.5;
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.6;
+  margin-top: 8px;
+  padding: 12px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border-left: 3px solid #2d79f3;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
 `;
@@ -181,8 +248,12 @@ const ProfileDescription = styled.div`
 const FormGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: clamp(16px, 3vw, 24px);
-  margin-top: 24px;
+  gap: clamp(20px, 3vw, 32px);
+  margin-top: 8px;
+  padding: 24px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e8ecf1;
 `;
 
 const FormColumn = styled.div`
@@ -206,9 +277,9 @@ const FormField = styled.div`
 `;
 
 const FormLabel = styled.label`
-  font-size: 13px;
-  font-weight: 500;
-  color: #000000;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
   width: 100px;
@@ -218,6 +289,7 @@ const FormLabel = styled.label`
   @media (max-width: 768px) {
     width: 100%;
     white-space: normal;
+    margin-bottom: 4px;
   }
 `;
 
@@ -237,10 +309,10 @@ const InputWithButton = styled.div`
 
 const SmallButton = styled.button`
   height: 40px;
-  padding: 0 16px;
+  padding: 0 20px;
   border: none;
-  border-radius: 6px;
-  font-size: 13px;
+  border-radius: 8px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   background-color: #2d79f3;
@@ -248,18 +320,48 @@ const SmallButton = styled.button`
   white-space: nowrap;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(45, 121, 243, 0.2);
 
   &:hover {
     background-color: #1a5fd9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(45, 121, 243, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
   }
 `;
 
 const RadioGroup = styled.div`
   display: flex;
-  gap: 20px;
+  gap: 24px;
   align-items: center;
   flex: 1;
   flex-wrap: wrap;
+
+  label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #374151;
+    font-weight: 500;
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: #2d79f3;
+    }
+
+    input[type="radio"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      accent-color: #2d79f3;
+    }
+  }
 `;
 
 const EmailInputContainer = styled.div`
@@ -285,46 +387,50 @@ const EmailSeparator = styled.span`
 
 // SignupPage의 자격/소개 섹션 스타일
 const AddButton = styled.button`
-  align-self: flex-end;
-  margin-top: 0;
-  margin-bottom: 12px;
-  border: none;
+  align-self: flex-start;
+  margin-top: 8px;
+  margin-bottom: 0;
+  border: 1px dashed #2d79f3;
   background: transparent;
-  padding: 0;
-  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
   font-weight: 500;
-  color: #000000;
+  color: #2d79f3;
   cursor: pointer;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: #f0f4ff;
+    border-color: #1a5fd9;
+    color: #1a5fd9;
+  }
 `;
 
 const TextArea = styled.textarea`
   width: 100%;
-  height: 48px;
-  min-height: 48px;
-  border: 1px solid #ecedec;
-  border-radius: 12px;
-  padding: 0 12px;
-  font-size: 13px;
+  min-height: 100px;
+  border: 1px solid #e8ecf1;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 14px;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
-  line-height: 48px;
-  resize: none;
-  overflow: hidden;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-  &::-webkit-scrollbar {
-    display: none;
-  }
+  line-height: 1.5;
+  resize: vertical;
+  background-color: #ffffff;
+  transition: all 0.2s ease;
 
   &:focus {
     outline: none;
     border-color: #2d79f3;
+    box-shadow: 0 0 0 3px rgba(45, 121, 243, 0.1);
   }
 
   &::placeholder {
-    color: #999999;
+    color: #9ca3af;
     font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
       Roboto, sans-serif;
   }
@@ -332,10 +438,10 @@ const TextArea = styled.textarea`
 
 const CharacterCounter = styled.div`
   text-align: right;
-  font-size: 12px;
-  color: #999999;
-  margin-top: 2px;
-  margin-bottom: 16px;
+  font-size: 13px;
+  color: #6b7280;
+  margin-top: 8px;
+  margin-bottom: 0;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
 `;
@@ -380,16 +486,28 @@ const Input = styled.input`
 
 const SubmitButton = styled.button`
   width: 100%;
-  height: 40px;
+  height: 52px;
   border: none;
-  border-radius: 8px;
-  font-size: 18px;
-  font-weight: 800;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
-  background-color: #2d79f3;
+  background: linear-gradient(135deg, #2d79f3 0%, #4965f6 100%);
   color: white;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(45, 121, 243, 0.3);
+  margin-top: 32px;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(45, 121, 243, 0.4);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
 `;
 
 const LoadingMessage = styled.div`
@@ -433,6 +551,7 @@ export const MyPageInfoPage: React.FC = () => {
     emailDomain: "",
     affiliation: "",
     introduction: "",
+    job: "",
   });
   const [qualificationFields, setQualificationFields] = useState<string[]>([
     "",
@@ -448,7 +567,7 @@ export const MyPageInfoPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
 
-  // 사용자 정보 조회
+  // 사용자 정보 및 코치 상세정보 조회
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
@@ -460,6 +579,7 @@ export const MyPageInfoPage: React.FC = () => {
           throw new Error("인증 토큰이 없습니다. 로그인이 필요합니다.");
         }
 
+        // 기본 사용자 정보 조회
         const response = await getMyProfileApi(token);
 
         if (response.isSuccess && response.result) {
@@ -503,6 +623,48 @@ export const MyPageInfoPage: React.FC = () => {
           // 프로필 이미지 설정
           if (userData.profileImage) {
             setProfileImageUrl(userData.profileImage);
+          }
+
+          // 코치 상세정보 조회 (userId가 있는 경우)
+          if (userData.userId) {
+            try {
+              const coachDetailResponse = await getCoachDetailApi(
+                userData.userId
+              );
+
+              if (
+                coachDetailResponse.isSuccess &&
+                coachDetailResponse.result
+              ) {
+                const coachData = coachDetailResponse.result;
+
+                // 코치 상세정보로 formData 업데이트
+                setFormData((prev) => ({
+                  ...prev,
+                  job: coachData.job || "",
+                  introduction: coachData.introduce || "",
+                  affiliation: coachData.organizations || prev.affiliation,
+                }));
+
+                // 자격증 필드 설정
+                if (coachData.certificates && coachData.certificates.length > 0) {
+                  setQualificationFields(coachData.certificates);
+                }
+
+                // 소개 글 글자 수 설정
+                if (coachData.introduce) {
+                  setIntroductionCount(coachData.introduce.length);
+                }
+
+                // 프로필 이미지가 코치 상세정보에 있으면 우선 사용
+                if (coachData.profileImage) {
+                  setProfileImageUrl(coachData.profileImage);
+                }
+              }
+            } catch (coachErr) {
+              // 코치 상세정보 조회 실패는 무시 (기본 정보만 표시)
+              console.warn("코치 상세정보 조회 실패:", coachErr);
+            }
           }
         } else {
           throw new Error(
@@ -567,8 +729,10 @@ export const MyPageInfoPage: React.FC = () => {
           {nickname ? `${nickname} 코치님 마이페이지` : "코치님 마이페이지"}
         </PageTitle>
 
-        {/* 프로필 사진 업로드 섹션 */}
-        <ProfileSection>
+        <MainCard>
+          <SectionTitle>프로필 정보</SectionTitle>
+          {/* 프로필 사진 업로드 섹션 */}
+          <ProfileSection>
           <ProfileImageContainer>
             {profileImage ? (
               <ProfileImage
@@ -649,6 +813,7 @@ export const MyPageInfoPage: React.FC = () => {
           </ProfileInfo>
         </ProfileSection>
 
+        <SectionTitle>기본 정보</SectionTitle>
         {/* SignupPage 형태의 폼 (이메일 인증 관련 요소 제외) */}
         <FormGrid>
           <FormColumn>
@@ -724,6 +889,16 @@ export const MyPageInfoPage: React.FC = () => {
                 style={{ flex: 1 }}
               />
             </FormField>
+
+            <FormField>
+              <FormLabel>직업</FormLabel>
+              <CommonInput
+                placeholder="직업을 입력해 주세요."
+                value={formData.job}
+                onChange={(e) => handleInputChange("job", e.target.value)}
+                style={{ flex: 1 }}
+              />
+            </FormField>
           </FormColumn>
 
           <FormColumn>
@@ -777,8 +952,10 @@ export const MyPageInfoPage: React.FC = () => {
           </FormColumn>
         </FormGrid>
 
+        <SectionTitle>자격 및 소개</SectionTitle>
         {/* SignupPage와 동일한 자격/소개 섹션 */}
-        <FormField style={{ alignItems: "flex-start", marginTop: "18px" }}>
+        <div style={{ padding: "24px", background: "#ffffff", borderRadius: "12px", border: "1px solid #e8ecf1", marginTop: "8px" }}>
+        <FormField style={{ alignItems: "flex-start" }}>
           <div style={{ width: "120px", flexShrink: 0 }}>
             <FormLabel>자격</FormLabel>
             <div
@@ -821,7 +998,7 @@ export const MyPageInfoPage: React.FC = () => {
           </div>
         </FormField>
 
-        <FormField style={{ alignItems: "flex-start" }}>
+        <FormField style={{ alignItems: "flex-start", marginTop: "24px" }}>
           <div
             style={{
               width: "120px",
@@ -862,12 +1039,12 @@ export const MyPageInfoPage: React.FC = () => {
             <CharacterCounter>{introductionCount}/50</CharacterCounter>
           </div>
         </FormField>
-
-        <div style={{ marginTop: "24px" }}>
-          <SubmitButton onClick={navigateToVerification}>
-            정보 수정
-          </SubmitButton>
         </div>
+
+        <SubmitButton onClick={navigateToVerification}>
+          정보 수정
+        </SubmitButton>
+        </MainCard>
       </ContentWrapper>
     </PageContainer>
   );

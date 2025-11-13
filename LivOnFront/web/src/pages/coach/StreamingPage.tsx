@@ -15,6 +15,7 @@ import {
   RemoteTrackPublication,
   RemoteParticipant,
   RemoteTrack,
+  RemoteVideoTrack,
   Track,
   TrackEvent,
 } from "livekit-client";
@@ -140,6 +141,7 @@ export const StreamingPage: React.FC = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [participantSearchQuery, setParticipantSearchQuery] = useState("");
+  const [chatRoomId, setChatRoomId] = useState<number | null>(null);
   const [participantName] = useState(() => {
     // URL 쿼리 파라미터에서 participantName 가져오기 (참가자 이름 구분용)
     const searchParams = new URLSearchParams(location.search);
@@ -163,16 +165,17 @@ export const StreamingPage: React.FC = () => {
         const publication = item.trackPublication;
         const source = publication.source ?? publication.track?.source;
         const kind = publication.kind ?? publication.track?.kind;
-        return (
-          kind === Track.Kind.Video && source === Track.Source.ScreenShare
-        );
+        return kind === Track.Kind.Video && source === Track.Source.ScreenShare;
       }),
     [remoteTracks]
   );
   const screenShareTrackInfo = useMemo(() => {
     if (localScreenShareTrack) {
       return {
-        track: localScreenShareTrack as LocalVideoTrack | RemoteVideoTrack | null,
+        track: localScreenShareTrack as
+          | LocalVideoTrack
+          | RemoteVideoTrack
+          | null,
         identity: room?.localParticipant?.identity || "__local__",
         displayName: participantName,
         isLocal: true,
@@ -181,8 +184,10 @@ export const StreamingPage: React.FC = () => {
 
     if (remoteScreenSharePublication) {
       const track =
-        (remoteScreenSharePublication.trackPublication
-          .track as RemoteVideoTrack | null | undefined) || null;
+        (remoteScreenSharePublication.trackPublication.track as
+          | RemoteVideoTrack
+          | null
+          | undefined) || null;
       return {
         track,
         identity:
@@ -196,7 +201,12 @@ export const StreamingPage: React.FC = () => {
     }
 
     return null;
-  }, [localScreenShareTrack, participantName, remoteScreenSharePublication, room]);
+  }, [
+    localScreenShareTrack,
+    participantName,
+    remoteScreenSharePublication,
+    room,
+  ]);
   const hasActiveScreenShare = Boolean(
     localScreenShareTrack || remoteScreenSharePublication
   );
@@ -307,12 +317,13 @@ export const StreamingPage: React.FC = () => {
   const roomRef = useRef<Room | undefined>(undefined);
   const isMountedRef = useRef(true);
   const screenShareTrackRef = useRef<LocalVideoTrack | null>(null);
+  const stompChatClientRef = useRef<StompChatClient | null>(null);
 
   const clearScreenShareState = useCallback(() => {
     screenShareTrackRef.current = null;
     setIsScreenSharing(false);
     setViewMode("gallery");
-  setLocalScreenShareTrack(null);
+    setLocalScreenShareTrack(null);
   }, []);
 
   useEffect(() => {
@@ -864,7 +875,7 @@ export const StreamingPage: React.FC = () => {
         screenShareTrackRef.current = null;
         setIsScreenSharing(false);
         setViewMode("gallery");
-    setLocalScreenShareTrack(null);
+        setLocalScreenShareTrack(null);
       }
     } else {
       try {
@@ -876,7 +887,7 @@ export const StreamingPage: React.FC = () => {
         screenShareTrackRef.current = null;
         setIsScreenSharing(false);
         setViewMode("gallery");
-    setLocalScreenShareTrack(null);
+        setLocalScreenShareTrack(null);
       }
     }
   };

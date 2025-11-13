@@ -75,7 +75,6 @@ export interface GoodsChatMessage {
 /** STOMP 메시지 요청 타입 */
 export interface GoodsChatMessageRequest {
   roomId: number; // Long
-  senderId: string; // UUID
   message: string;
   type: "ENTER" | "TALK" | "LEAVE";
 }
@@ -412,7 +411,6 @@ export class StompChatClient {
 
     const messageRequest: GoodsChatMessageRequest = {
       roomId: this.chatRoomId,
-      senderId: this.userId,
       message,
       type,
     };

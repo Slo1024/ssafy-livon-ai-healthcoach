@@ -1,12 +1,14 @@
 // chattingApi.ts
-// 채팅(웹소켓 병행)용 REST 어댑터 + OpenVidu 토큰 발급 헬퍼
+// 채팅 웹소켓용 REST 어댑터 + OpenVidu 토큰 발급 헬퍼
 // - axios 사용
 // - 공통 ApiResponse 규약 반영
-// - 화상통화 중 채팅 실시간성 확보를 위한 폴링 유틸 포함
-// - STOMP 웹소켓 채팅 지원
+// - STOMP 웹소켓 채팅 지원 (SockJS + STOMP)
+// - 초기 메시지 로드는 REST API, 이후 실시간 메시지는 웹소켓으로 수신
 
 import axios from "axios";
 import { Client, IMessage, StompSubscription } from "@stomp/stompjs";
+// @ts-ignore - sockjs-client 타입 정의가 없어서 임시로 무시
+import SockJS from "sockjs-client";
 import { CONFIG } from "../constants/config";
 
 /** 환경설정 */
@@ -75,7 +77,6 @@ export interface GoodsChatMessage {
 /** STOMP 메시지 요청 타입 */
 export interface GoodsChatMessageRequest {
   roomId: number; // Long
-  senderId: string; // UUID
   message: string;
   type: "ENTER" | "TALK" | "LEAVE";
 }
@@ -170,69 +171,6 @@ export async function createOpenViduToken(payload: Record<string, string>) {
 }
 
 /** =========== 화상통화 중 채팅 연결 유틸 =========== */
-/**
- * startChatDuringCall
- * - 화상 세션(join)과 병행해서 채팅을 폴링로 동기화
- * - WebSocket(예: STOMP) 도입 전이라도 실시간성에 근접하게 동작
- *
- * @param chatRoomId  서버에서 발급/조회한 채팅방 ID
- * @param onMessages  새 메시지 수신 콜백 (증분으로 호출)
- * @param options     폴링 주기/초기 커서 시간 등
- *
- * 반환: stop() 함수로 폴링 중단
- */
-export function startChatDuringCall(
-  chatRoomId: number,
-  onMessages: (msgs: GoodsChatMessage[]) => void,
-  options?: { intervalMs?: number; initialCursorISO?: string }
-) {
-  const interval = options?.intervalMs ?? 1500;
-
-  // NOTE: lastSentAt 커서를 "지금 이전"으로 두면 직전 로그부터 이어받기 가능
-  let cursorISO =
-    options?.initialCursorISO ??
-    new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(); // 기본: 하루 전
-
-  let timer: ReturnType<typeof setInterval> | null = null;
-  let inFlight = false;
-
-  const tick = async () => {
-    if (inFlight) return;
-    inFlight = true;
-    try {
-      const msgs = await getChatMessagesSince(chatRoomId, cursorISO);
-      if (msgs.length > 0) {
-        // 수신 정렬 보장(서버 정렬을 신뢰하지만 클라이언트에서도 한번 정렬)
-        msgs.sort((a: GoodsChatMessage, b: GoodsChatMessage) =>
-          a.sentAt.localeCompare(b.sentAt)
-        );
-        onMessages(msgs);
-        // 마지막 메시지 시각으로 커서 갱신
-        cursorISO = msgs[msgs.length - 1].sentAt;
-      }
-    } catch (e) {
-      // 폴링 중 오류는 조용히 스킵(네트워크 순간 끊김 등)
-      // 필요 시 여기서 리트라이/백오프 전략 추가 가능
-    } finally {
-      inFlight = false;
-    }
-  };
-
-  // 즉시 1회 + 주기 폴링
-  tick();
-  timer = setInterval(tick, interval);
-
-  return {
-    stop() {
-      if (timer) clearInterval(timer);
-      timer = null;
-    },
-    /** 외부에서 커서를 앞으로 당겨 재동기화하고 싶을 때 */
-    setCursor(iso: string) {
-      cursorISO = iso;
-    },
-  };
-}
 
 /** =========== OpenVidu 세션 ↔ 채팅방 브리지 =========== */
 /**
@@ -291,9 +229,24 @@ export class StompChatClient {
 
       let wsUrl = SOCKET_URL;
 
-      // STOMP 클라이언트 생성
+      // SockJS는 ws:// 대신 http:// 또는 https://를 사용해야 함
+      // ws:// 또는 wss://를 http:// 또는 https://로 변환
+      if (wsUrl.startsWith("ws://")) {
+        wsUrl = wsUrl.replace("ws://", "http://");
+      } else if (wsUrl.startsWith("wss://")) {
+        wsUrl = wsUrl.replace("wss://", "https://");
+      }
+
+      console.log("🔵 [STOMP] SockJS URL 변환:", {
+        original: SOCKET_URL,
+        converted: wsUrl,
+      });
+
+      // SockJS를 사용하여 STOMP 클라이언트 생성
       this.client = new Client({
-        brokerURL: wsUrl,
+        webSocketFactory: () => {
+          return new SockJS(wsUrl) as any;
+        },
         connectHeaders: {
           Authorization: `Bearer ${accessToken}`,
         },
@@ -412,7 +365,6 @@ export class StompChatClient {
 
     const messageRequest: GoodsChatMessageRequest = {
       roomId: this.chatRoomId,
-      senderId: this.userId,
       message,
       type,
     };

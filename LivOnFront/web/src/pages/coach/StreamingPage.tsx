@@ -96,7 +96,6 @@ interface ChatMessage {
   sender: string;
   message: string;
   timestamp: Date;
-  senderId?: string;
   senderImage?: string;
 }
 
@@ -602,7 +601,6 @@ export const StreamingPage: React.FC = () => {
                     sender: msg.role === "COACH" ? "코치" : "회원", // TODO: 실제 닉네임 사용
                     message: msg.content,
                     timestamp: new Date(msg.sentAt),
-                    senderId: msg.userId,
                   })
                 );
                 // 시간순 정렬을 리버스하여 최신 메시지가 아래에 오도록 설정
@@ -628,7 +626,6 @@ export const StreamingPage: React.FC = () => {
                       (message: GoodsChatMessageResponse) => {
                         console.log("🔵 [채팅] 새 메시지 수신:", {
                           messageId: message.id,
-                          senderId: message.senderId,
                           type: message.type,
                           message: message.message,
                           currentUserId: user?.id,
@@ -669,47 +666,6 @@ export const StreamingPage: React.FC = () => {
                             return prev;
                           }
 
-                          // 자기 자신이 보낸 메시지인 경우, 임시 메시지를 찾아서 교체
-                          if (message.senderId === user?.id) {
-                            const tempMessageIndex = prev.findIndex(
-                              (msg) =>
-                                msg.id.startsWith("temp-") &&
-                                msg.senderId === message.senderId &&
-                                msg.message === message.message &&
-                                Math.abs(
-                                  new Date(msg.timestamp).getTime() -
-                                    new Date(message.sentAt).getTime()
-                                ) < 5000 // 5초 이내의 메시지
-                            );
-
-                            if (tempMessageIndex !== -1) {
-                              console.log(
-                                "🔵 [채팅] 임시 메시지를 실제 메시지로 교체:",
-                                {
-                                  tempId: prev[tempMessageIndex].id,
-                                  actualId: message.id,
-                                }
-                              );
-
-                              const newMessage: ChatMessage = {
-                                id: message.id,
-                                sender:
-                                  message.sender?.nickname ||
-                                  (message.senderId === user.id
-                                    ? "나"
-                                    : "회원"),
-                                message: message.message,
-                                timestamp: new Date(message.sentAt),
-                                senderId: message.senderId,
-                                senderImage: message.sender?.userImage,
-                              };
-
-                              const updated = [...prev];
-                              updated[tempMessageIndex] = newMessage;
-                              return updated;
-                            }
-                          }
-
                           // 새 메시지 추가 (다른 참여자의 메시지)
                           const newMessage: ChatMessage = {
                             id: message.id,
@@ -718,7 +674,6 @@ export const StreamingPage: React.FC = () => {
                               (message.senderId === user.id ? "나" : "회원"),
                             message: message.message,
                             timestamp: new Date(message.sentAt),
-                            senderId: message.senderId,
                             senderImage: message.sender?.userImage,
                           };
 
@@ -1057,7 +1012,6 @@ export const StreamingPage: React.FC = () => {
         sender: user?.nickname || participantName,
         message: chatInput,
         timestamp: new Date(),
-        senderId: user?.id,
         senderImage: user?.profileImage,
       };
       setChatMessages((prev) => [...prev, newMessage]);

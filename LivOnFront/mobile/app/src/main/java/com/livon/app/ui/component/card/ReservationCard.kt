@@ -138,7 +138,12 @@ fun ReservationCard(
                 .fillMaxWidth()
                 .padding(12.dp)
         ) {
-            /* CONTENT: date (headerLeft) is shown above className; status (headerRight) shown top-end above image */
+            // 날짜를 구분선 위로 이동
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Text(text = headerLeft, fontSize = 11.sp, color = Gray2)
+            }
+            Spacer(Modifier.height(6.dp))
+
             HorizontalDivider(
                 color = MaterialTheme.colorScheme.outline,
                 thickness = if (dividerBold) 1.dp else 1.dp
@@ -153,8 +158,7 @@ fun ReservationCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        // date above className (left-aligned)
-                        Text(text = headerLeft, fontSize = 11.sp, color = Gray2)
+                        // date removed from here (now above divider)
                         Spacer(Modifier.height(4.dp))
                         Text(text = className, fontSize = 18.sp, fontWeight = FontWeight.Medium)
                         Spacer(Modifier.height(6.dp))

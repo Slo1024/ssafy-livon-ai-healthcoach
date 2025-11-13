@@ -707,27 +707,25 @@ export const StreamingPage: React.FC = () => {
                           }
 
                           // 내가 보낸 메시지인지 확인
-                          // STOMP 연결 시 전달한 userId (이메일)와 서버에서 받은 sender.userId (UUID)를 비교
                           // user.id는 이메일 형식이고, sender.userId는 UUID 형식이므로 직접 비교 불가
-                          // 따라서 STOMP 클라이언트에 저장된 userId와 비교
+                          // 원본 메시지의 이메일 정보를 사용하여 비교
                           const senderUserId = message.sender?.userId;
                           const currentUserId = user?.id;
-                          const storedUserId = message.currentUserId; // STOMP 연결 시 전달한 userId
+                          const storedUserId = message.currentUserId; // STOMP 연결 시 전달한 userId (이메일)
+                          const senderEmail = message.senderEmail; // 원본 메시지의 이메일 정보
 
-                          // STOMP 연결 시 전달한 userId와 서버 응답의 senderId를 비교
-                          // 하지만 형식이 다르므로, 원본 메시지에 이메일 정보가 있는지 확인 필요
-                          // 일단 senderId가 있고, STOMP 연결 시 전달한 userId와 일치하는지 확인
-                          // 실제로는 서버가 senderId를 UUID로 반환하므로, 다른 방법 필요
-                          const isFromSelf =
-                            storedUserId === currentUserId || // STOMP 연결 시 전달한 userId와 현재 user.id 비교
-                            (senderUserId &&
-                              storedUserId &&
-                              senderUserId === storedUserId); // senderId와 storedUserId 비교 (형식이 같을 경우)
+                          // 이메일 정보가 있으면 이메일로 비교
+                          // 없으면 senderUserId와 storedUserId가 형식이 다르므로 항상 false
+                          // (senderUserId는 UUID, storedUserId는 이메일이므로 같을 수 없음)
+                          const isFromSelf = senderEmail
+                            ? senderEmail === currentUserId // 원본 메시지의 이메일과 현재 사용자 이메일 비교
+                            : false; // 이메일 정보가 없으면 다른 참여자의 메시지로 간주
 
                           console.log("🔵 [채팅] isFromSelf 체크:", {
                             senderUserId,
                             currentUserId,
                             storedUserId,
+                            senderEmail,
                             isFromSelf,
                             senderNickname: message.sender?.nickname,
                             userNickname: user?.nickname,

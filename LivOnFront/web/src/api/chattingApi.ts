@@ -99,6 +99,8 @@ export interface GoodsChatMessageResponse {
   };
   // STOMP 클라이언트에 저장된 userId (비교용)
   currentUserId?: string;
+  // 원본 메시지의 이메일 정보 (비교용)
+  senderEmail?: string;
 }
 
 /** === 채팅 REST API === */
@@ -303,6 +305,13 @@ export class StompChatClient {
                       };
                     }
 
+                    // 원본 메시지에서 이메일 정보 추출 (비교용)
+                    const senderEmail = 
+                      rawMessage.senderEmail || 
+                      rawMessage.email || 
+                      rawMessage.sender?.email ||
+                      undefined;
+                    
                     const parsedMessage: GoodsChatMessageResponse = {
                       id: rawMessage.chatMessageId || rawMessage.id,
                       roomId: rawMessage.roomId || rawMessage.chatRoomId,
@@ -311,6 +320,7 @@ export class StompChatClient {
                       sentAt: rawMessage.sentAt || rawMessage.createdAt,
                       sender: senderInfo,
                       currentUserId: this.userId || undefined, // STOMP 연결 시 전달한 userId (null을 undefined로 변환)
+                      senderEmail: senderEmail, // 원본 메시지의 이메일 정보 (비교용)
                     };
 
                     console.log("🔵 [STOMP] 파싱된 메시지:", {

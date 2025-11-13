@@ -219,47 +219,63 @@ fun ReservationCard(
 
             Spacer(Modifier.height(10.dp))
 
-            /* BUTTONS (가로 배치) */
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                // 예약 상세 (항상 노출)
-                PillOutlineButton(
-                    text = "예약 상세",
-                    width = 80.dp,
-                    height = 25.dp,
-                    radius = 20.dp,
-                    borderColor = Main,
-                    textColor = Main,
-                    onClick = onDetail
-                )
-
-                // session join on same row as reservation 상세
-                if (showJoin && onJoin != null) {
-                    SessionJoinButton(onClick = onJoin)
-                }
-                // 예약 취소 (현재 예약 + 임박/진행중이 아닌 경우)
-                if (showCancel && onCancel != null) {
+            // Buttons area placed into a fixed-height Box matching the image height so
+            // the buttons' vertical center aligns with the image center without offsets.
+            val imageSize = 80.dp
+            Box(modifier = Modifier
+                .fillMaxWidth()
+                .height(imageSize)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.CenterStart),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Left-side action buttons (예약 상세, 예약 취소, AI 분석)
                     PillOutlineButton(
-                        text = "예약 취소",
-                        width = 80.dp,
-                        height = 25.dp,
-                        radius = 20.dp,
-                        borderColor = MaterialTheme.colorScheme.outline, // border
-                        textColor = Gray2,
-                        onClick = onCancel
-                    )
-                }
-
-                // AI 분석 (지난 예약 + 개인상담 + 리포트 有)
-                if (showAiButton && onAiAnalyze != null) {
-                    PillOutlineButton(
-                        text = "AI 분석",
+                        text = "예약 상세",
                         width = 80.dp,
                         height = 25.dp,
                         radius = 20.dp,
                         borderColor = Main,
                         textColor = Main,
-                        onClick = onAiAnalyze
+                        onClick = onDetail
                     )
+
+                    if (showCancel && onCancel != null) {
+                        PillOutlineButton(
+                            text = "예약 취소",
+                            width = 80.dp,
+                            height = 25.dp,
+                            radius = 20.dp,
+                            borderColor = MaterialTheme.colorScheme.outline,
+                            textColor = Gray2,
+                            onClick = onCancel
+                        )
+                    }
+
+                    if (showAiButton && onAiAnalyze != null) {
+                        PillOutlineButton(
+                            text = "AI 분석",
+                            width = 80.dp,
+                            height = 25.dp,
+                            radius = 20.dp,
+                            borderColor = Main,
+                            textColor = Main,
+                            onClick = onAiAnalyze
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    // Session join button stays in the same row but is right-aligned,
+                    // and because the Row is centered vertically inside a Box of image height,
+                    // it will line up vertically with the image.
+                    if (showJoin && onJoin != null) {
+                        SessionJoinButton(onClick = onJoin)
+                    }
                 }
             }
         }

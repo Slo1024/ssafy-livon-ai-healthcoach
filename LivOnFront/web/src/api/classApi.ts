@@ -178,6 +178,35 @@ export const getGroupConsultationsApi = async (
   return response.data;
 };
 
+/**
+ * 코치 본인이 생성한 그룹 상담(클래스) 목록 조회 API
+ * GET /api/v1/group-consultations/my-classes
+ * @param page - 페이지 번호 (0부터 시작)
+ * @param size - 페이지 크기
+ */
+export const getMyGroupConsultationsApi = async (
+  page: number = 0,
+  size: number = 10
+): Promise<GroupConsultationListResponse> => {
+  const token = localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
+
+  if (!token) {
+    throw new Error("인증 토큰이 없습니다. 로그인이 필요합니다.");
+  }
+
+  const response = await axios.get<GroupConsultationListResponse>(
+    `${API_BASE_URL}/group-consultations/my-classes`,
+    {
+      params: { page, size },
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  return response.data;
+};
+
 // ===== 그룹 상담(클래스) 상세 조회 =====
 
 export interface GroupConsultationDetail {

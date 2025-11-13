@@ -11,7 +11,7 @@ import {
 import { useAuth } from "../../hooks/useAuth";
 import { ROUTES } from "../../constants/routes";
 import {
-  getGroupConsultationsApi,
+  getMyGroupConsultationsApi,
   deleteGroupConsultationApi,
   GroupConsultationListItem,
 } from "../../api/classApi";
@@ -287,7 +287,7 @@ export const ClassListPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await getGroupConsultationsApi(false, page, pageSize);
+      const response = await getMyGroupConsultationsApi(page, pageSize);
 
       if (response.isSuccess && response.result) {
         setClasses(response.result.items);

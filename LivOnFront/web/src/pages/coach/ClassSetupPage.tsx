@@ -7,8 +7,6 @@ import {
   SaveConfirmModal,
   ClassCreatedModal,
 } from "../../components/common/Modal";
-import { Dropdown } from "../../components/common/Dropdown";
-import { Input } from "../../components/common/Input";
 import { useAuth } from "../../hooks/useAuth";
 import { ROUTES } from "../../constants/routes";
 import { createGroupConsultationApi } from "../../api/classApi";
@@ -67,16 +65,6 @@ const TabsWrapper = styled.div`
 const FilterPlaceholder = styled.div`
   width: 180px;
   flex-shrink: 0;
-`;
-
-const Divider = styled.div`
-  width: 100vw;
-  height: 2px;
-  background-color: #4965f6;
-  margin: 0;
-  position: relative;
-  left: 50%;
-  transform: translateX(-50%);
 `;
 
 const IntroMessage = styled.p`
@@ -224,6 +212,29 @@ const ErrorMessage = styled.div`
   border: 1px solid #fecaca;
 `;
 
+// 에러 메시지 상수
+const ERROR_MESSAGES = {
+  CLASS_NAME_REQUIRED: "클래스 명을 입력해주세요.",
+  CLASS_INFO_REQUIRED: "클래스 정보를 입력해주세요.",
+  DATE_TIME_REQUIRED: "날짜와 시간을 선택해주세요.",
+  CREATE_FAILED: "클래스 생성에 실패했습니다.",
+} as const;
+
+// 날짜 포맷팅 헬퍼 함수
+const formatDateString = (date: Date): string => {
+  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
+};
+
+// 시간 포맷팅 헬퍼 함수
+const formatTimeString = (time: string): string => {
+  if (time.startsWith("AM ")) {
+    return `오전 ${time.replace("AM ", "")}`;
+  } else if (time.startsWith("PM ")) {
+    return `오후 ${time.replace("PM ", "")}`;
+  }
+  return time;
+};
+
 export const ClassSetupPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, isLoading } = useAuth();
@@ -249,7 +260,6 @@ export const ClassSetupPage: React.FC = () => {
     className: "",
     classInfo: "",
     dateTime: "",
-    file: "",
   });
 
   const nickname = user?.nickname || "";
@@ -262,7 +272,7 @@ export const ClassSetupPage: React.FC = () => {
   };
 
   const handleSetupClick = () => {
-    // 이미 클래스 개설 페이지에 있음
+    // 이미 클래스 개설 페이지에 있으므로 아무 동작 없음
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -279,47 +289,19 @@ export const ClassSetupPage: React.FC = () => {
 
     // 날짜와 시간을 문자열로 포맷팅
     if (dates.length > 0 && times.length > 0) {
-      const dateStr = dates
-        .map(
-          (date) =>
-            `${date.getFullYear()}년 ${
-              date.getMonth() + 1
-            }월 ${date.getDate()}일`
-        )
-        .join(", ");
-      const timeStr = times
-        .map((t) => {
-          if (t.startsWith("AM ")) {
-            return `오전 ${t.replace("AM ", "")}`;
-          } else if (t.startsWith("PM ")) {
-            return `오후 ${t.replace("PM ", "")}`;
-          }
-          return t;
-        })
-        .join(", ");
+      const dateStr = dates.map(formatDateString).join(", ");
+      const timeStr = times.map(formatTimeString).join(", ");
       handleInputChange("dateTime", `${dateStr} ${timeStr}`);
     } else if (dates.length > 0) {
-      const dateStr = dates
-        .map(
-          (date) =>
-            `${date.getFullYear()}년 ${
-              date.getMonth() + 1
-            }월 ${date.getDate()}일`
-        )
-        .join(", ");
+      const dateStr = dates.map(formatDateString).join(", ");
       handleInputChange("dateTime", dateStr);
     }
-  };
-
-  const handleFileClick = () => {
-    fileInputRef.current?.click();
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
-      handleInputChange("file", file.name);
     }
   };
 
@@ -352,22 +334,38 @@ export const ClassSetupPage: React.FC = () => {
     return `${year}-${month}-${day}T${hour}:${minute}:00`;
   };
 
+  // 폼 초기화 함수
+  const resetForm = () => {
+    setFormData({
+      classType: "",
+      className: "",
+      classInfo: "",
+      dateTime: "",
+    });
+    setSelectedDates([]);
+    setSelectedTimes([]);
+    setSelectedFile(null);
+  };
+
+  // 유효성 검사 함수
+  const validateForm = (): string | null => {
+    if (!formData.className.trim()) {
+      return ERROR_MESSAGES.CLASS_NAME_REQUIRED;
+    }
+    if (!formData.classInfo.trim()) {
+      return ERROR_MESSAGES.CLASS_INFO_REQUIRED;
+    }
+    if (selectedDates.length === 0 || selectedTimes.length === 0) {
+      return ERROR_MESSAGES.DATE_TIME_REQUIRED;
+    }
+    return null;
+  };
+
   const handleSaveConfirm = async () => {
     // 유효성 검사
-    if (!formData.className.trim()) {
-      setError("클래스 명을 입력해주세요.");
-      setShowSaveConfirmModal(false);
-      return;
-    }
-
-    if (!formData.classInfo.trim()) {
-      setError("클래스 정보를 입력해주세요.");
-      setShowSaveConfirmModal(false);
-      return;
-    }
-
-    if (selectedDates.length === 0 || selectedTimes.length === 0) {
-      setError("날짜와 시간을 선택해주세요.");
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
       setShowSaveConfirmModal(false);
       return;
     }
@@ -382,7 +380,6 @@ export const ClassSetupPage: React.FC = () => {
       const startAt = createISO8601DateTime(firstDate, firstTime);
 
       // 종료 시간은 시작 시간 + 1시간으로 설정
-      // toISOString()은 UTC로 변환하므로 로컬 시간을 직접 포맷팅
       const [startHour, startMinute] = convertTimeTo24Hour(firstTime).split(":");
       const endHour = (parseInt(startHour) + 1) % 24;
       const endAt = createISO8601DateTime(
@@ -405,26 +402,14 @@ export const ClassSetupPage: React.FC = () => {
       if (response.isSuccess) {
         setShowSaveConfirmModal(false);
         setShowClassCreatedModal(true);
-        // 폼 초기화
-        setFormData({
-          classType: "",
-          className: "",
-          classInfo: "",
-          dateTime: "",
-          file: "",
-        });
-        setSelectedDates([]);
-        setSelectedTimes([]);
-        setSelectedFile(null);
+        resetForm();
       } else {
-        setError(response.message || "클래스 생성에 실패했습니다.");
+        setError(response.message || ERROR_MESSAGES.CREATE_FAILED);
         setShowSaveConfirmModal(false);
       }
     } catch (err) {
       const errorMessage =
-        err instanceof Error
-          ? err.message
-          : "클래스 생성에 실패했습니다.";
+        err instanceof Error ? err.message : ERROR_MESSAGES.CREATE_FAILED;
       setError(errorMessage);
       setShowSaveConfirmModal(false);
       console.error("클래스 생성 오류:", err);
@@ -530,7 +515,7 @@ export const ClassSetupPage: React.FC = () => {
               accept="*/*"
             />
             <FormDropdown
-              value={formData.file || ""}
+              value={selectedFile?.name || ""}
               onChange={() => {}}
               onMouseDown={(e) => {
                 e.preventDefault();

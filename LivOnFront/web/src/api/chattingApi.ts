@@ -13,6 +13,9 @@ import { CONFIG } from "../constants/config";
 const API_BASE_URL =
   process.env.REACT_APP_API_BASE_URL ?? "http://localhost:8081";
 
+const SOCKET_URL =
+  process.env.REACT_APP_SOCKET_URL ?? "ws://localhost:8081/api/v1/ws/chat";
+
 /** 액세스 토큰을 헤더에 붙이는 axios 인스턴스 */
 export const chattingApiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -286,10 +289,7 @@ export class StompChatClient {
       this.onMessageCallback = onMessage;
       this.onErrorCallback = onError || null;
 
-      // 웹소켓 URL 구성
-      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const apiBaseUrl = API_BASE_URL.replace(/^https?:\/\//, "");
-      const wsUrl = `${wsProtocol}//${apiBaseUrl}/ws/chat`;
+      let wsUrl = SOCKET_URL;
 
       // STOMP 클라이언트 생성
       this.client = new Client({

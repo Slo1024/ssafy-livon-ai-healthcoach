@@ -3,7 +3,6 @@ package com.livon.app.feature.shared.streaming.vm
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.livon.app.BuildConfig
 import com.livon.app.data.remote.socket.ChatStompManager
 import com.livon.app.data.repository.ChatRepositoryImpl
 import com.livon.app.domain.model.ChatMessage
@@ -28,27 +27,55 @@ data class StreamingChatUiState(
 
 class StreamingChatViewModel(
     private val repository: ChatRepository = ChatRepositoryImpl(),
-    private val chatRoomId: Int = 43
+    private val consultationId: Long,
+    private val jwtToken: String
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(StreamingChatUiState())
     val uiState: StateFlow<StreamingChatUiState> = _uiState
+    
+    private var isChatRoomInfoRequested = false // POST 요청이 이미 실행되었는지 확인하는 플래그
 
     init {
-        // 1) STOMP 연결 (viewModelScope을 넘겨서 SharedFlow emit이 안전하게 동작하도록 함)
+        // 1) STOMP 연결 (웹소켓 접속)
         viewModelScope.launch {
             try {
                 ChatStompManager.connect(
-                    token = BuildConfig.WEBSOCKET_TOKEN,
-                    roomId = chatRoomId.toLong(),
+                    token = jwtToken,
+                    roomId = consultationId,
                     scope = viewModelScope
                 )
+                
+                // 2) 연결 완료 대기 (한 번만 처리)
+                ChatStompManager.subscriptionReady.collect { isReady ->
+                    if (isReady && !isChatRoomInfoRequested) {
+                        isChatRoomInfoRequested = true // 플래그 설정하여 중복 실행 방지
+                        Log.d("StreamingChatViewModel", "웹소켓 연결 완료, POST 요청 시작")
+                        
+                        // 3) POST /api/v1/goods/chat?consultationId=방번호 요청 (구독 전에 먼저 실행)
+                        Log.d("StreamingChatViewModel", "채팅방 정보 조회 시작: consultationId=$consultationId")
+                        repository.getChatRoomInfo(consultationId, jwtToken)
+                            .onSuccess { chatRoomInfo ->
+                                Log.d("StreamingChatViewModel", "채팅방 정보 조회 성공: chatRoomId=${chatRoomInfo.chatRoomId}, consultationId=${chatRoomInfo.consultationId}, status=${chatRoomInfo.chatRoomStatus}")
+                                
+                                // 4) POST 요청 성공 후 구독 시작
+                                Log.d("StreamingChatViewModel", "구독 시작")
+                                ChatStompManager.subscribe(consultationId, viewModelScope)
+                            }
+                            .onFailure { e ->
+                                Log.e("StreamingChatViewModel", "채팅방 정보 조회 실패: ${e.message}", e)
+                                // 실패해도 구독은 시도
+                                Log.d("StreamingChatViewModel", "구독 시작 (POST 실패했지만 시도)")
+                                ChatStompManager.subscribe(consultationId, viewModelScope)
+                            }
+                    }
+                }
             } catch (e: Exception) {
                 Log.e("StreamingChatViewModel", "STOMP connect 실패: ${e.message}", e)
             }
         }
 
-        // 2) 수신된 메시지를 collect 하여 UI 상태 갱신
+        // 5) 수신된 메시지를 collect 하여 UI 상태 갱신
         viewModelScope.launch {
             ChatStompManager.incomingMessages.collect { payload ->
                 Log.d("StreamingChatViewModel", "수신 payload: $payload")
@@ -59,7 +86,7 @@ class StreamingChatViewModel(
                     val roleString = json.optString("role", "").takeIf { it.isNotBlank() } ?: "MEMBER"
                     ChatMessage(
                         id = json.optString("id", UUID.randomUUID().toString()),
-                        chatRoomId = json.optInt("roomId", chatRoomId),
+                        chatRoomId = json.optInt("roomId", consultationId.toInt()),
                         userId = json.optString("senderId", json.optString("userId", "unknown")),
                         content = json.optString("message", ""),
                         sentAt = json.optString("sentAt", Instant.now().toString()),
@@ -73,8 +100,38 @@ class StreamingChatViewModel(
 
                 if (message != null) {
                     _uiState.update { state ->
+                        // 1) ID로 중복 체크 (가장 확실한 방법)
+                        val existsById = state.messages.any { it.id == message.id }
+                        if (existsById) {
+                            Log.d("StreamingChatViewModel", "중복 메시지 감지 (ID): ${message.id}")
+                            return@update state // 변경 없음
+                        }
+                        
+                        // 2) 내용 + 시간 + userId로 중복 체크 (같은 사용자가 같은 내용을 같은 시간에 보낸 경우)
+                        val isDuplicate = state.messages.any { msg ->
+                            try {
+                                val msgTime = Instant.parse(msg.sentAt)
+                                val newTime = Instant.parse(message.sentAt)
+                                val timeDiff = kotlin.math.abs(msgTime.epochSecond - newTime.epochSecond)
+                                
+                                // 같은 내용, 같은 사용자, 5초 이내
+                                msg.content == message.content && 
+                                msg.userId == message.userId &&
+                                msg.chatRoomId == message.chatRoomId &&
+                                timeDiff <= 5
+                            } catch (e: Exception) {
+                                false
+                            }
+                        }
+                        
+                        if (isDuplicate) {
+                            Log.d("StreamingChatViewModel", "중복 메시지 감지 (내용+시간+사용자): ${message.content}")
+                            return@update state // 변경 없음
+                        }
+                        
+                        // 중복이 아니면 추가
                         val updated = (state.messages + message)
-                            .distinctBy { it.id }
+                            .distinctBy { it.id } // ID 중복 제거 (안전장치)
                             .sortedBy { it.sentAt }
                         state.copy(messages = updated)
                     }
@@ -84,8 +141,8 @@ class StreamingChatViewModel(
     }
 
     fun loadChatMessages(
-        chatRoomId: Int = 43,
-        accessToken: String? = BuildConfig.WEBSOCKET_TOKEN,
+        chatRoomId: Int = consultationId.toInt(),
+        accessToken: String? = jwtToken,
         isInitialLoad: Boolean = true
     ) {
         viewModelScope.launch {
@@ -111,13 +168,38 @@ class StreamingChatViewModel(
                 .onSuccess { newMessages ->
                     _uiState.update { currentState ->
                         val existingMessages = currentState.messages
-                    val combinedMessages =
-                        if (isInitialLoad) newMessages
-                        else newMessages + existingMessages
-                        val dedupedMessages = combinedMessages
-                            .distinctBy { it.id }
-                    val sortedMessages = dedupedMessages
-                        .sortedBy { it.sentAt }
+                        val combinedMessages =
+                            if (isInitialLoad) newMessages
+                            else newMessages + existingMessages
+                        
+                        // 중복 제거: ID로 먼저 제거
+                        val dedupedById = combinedMessages.distinctBy { it.id }
+                        
+                        // 추가 중복 제거: 같은 내용 + 같은 사용자 + 같은 시간(5초 이내)
+                        val finalMessages = mutableListOf<ChatMessage>()
+                        
+                        for (msg in dedupedById) {
+                            val isDuplicate = finalMessages.any { existing ->
+                                try {
+                                    val existingTime = Instant.parse(existing.sentAt)
+                                    val msgTime = Instant.parse(msg.sentAt)
+                                    val timeDiff = kotlin.math.abs(existingTime.epochSecond - msgTime.epochSecond)
+                                    
+                                    existing.content == msg.content &&
+                                    existing.userId == msg.userId &&
+                                    existing.chatRoomId == msg.chatRoomId &&
+                                    timeDiff <= 5
+                                } catch (e: Exception) {
+                                    false
+                                }
+                            }
+                            
+                            if (!isDuplicate) {
+                                finalMessages.add(msg)
+                            }
+                        }
+                        
+                        val sortedMessages = finalMessages.sortedBy { it.sentAt }
 
                         currentState.copy(
                             isLoading = false,
@@ -145,8 +227,8 @@ class StreamingChatViewModel(
 
     fun sendMessage(
         message: String,
-        accessToken: String,
-        chatRoomId: Int = 43,
+        accessToken: String = jwtToken,
+        chatRoomId: Int = consultationId.toInt(),
         senderUUID: UUID = UUID.fromString("00000000-0000-0000-0000-000000000001")
     ) {
         if (message.isBlank()) return
@@ -159,7 +241,6 @@ class StreamingChatViewModel(
                     token = accessToken,
                     content = message,
                     roomId = chatRoomId.toLong(),
-                    senderUUID = senderUUID
                 )
                 Log.d("StreamingChatViewModel", "STOMP 메시지 발행 성공")
                 // 서버에서 받은 메시지만 표시되도록 로컬 메시지 추가 제거

@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.mutableStateOf
 import android.util.Log
+import android.widget.Toast
 import kotlinx.coroutines.awaitCancellation
 import androidx.lifecycle.Observer
 import com.livon.app.feature.member.reservation.ui.ReservationDetailType
@@ -672,6 +673,22 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         val resState by reservationVm.uiState.collectAsState()
         LaunchedEffect(Unit) { reservationVm.loadUpcoming() }
 
+        // Setup UserViewModel to get user nickname
+        val userApi = remember { com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.UserApiService::class.java) }
+        val userRepo = remember { com.livon.app.domain.repository.UserRepository(userApi) }
+        val userVm = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return com.livon.app.feature.member.home.vm.UserViewModel(userRepo) as T
+            }
+        }) as com.livon.app.feature.member.home.vm.UserViewModel
+
+        val userState by userVm.uiState.collectAsState()
+        LaunchedEffect(Unit) { userVm.load() }
+
+        // Get context for Intent
+        val context = androidx.compose.ui.platform.LocalContext.current
+
         // If API returned items, use them. Otherwise in dev return our in-memory store
         val currentList = if (resState.items.isNotEmpty()) resState.items else emptyList()
 
@@ -719,9 +736,28 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                     showJoinMissingDialog.value = true
                 } else {
                     try {
-                        nav.navigate("live_member/${'$'}{item.sessionId}")
+                        // Get user nickname from UserViewModel, fallback to "Member" if not available
+                        val participantName = userState.info?.nickname ?: "Member"
+                        // Convert item.id (String) to consultationId (Long)
+                        val consultationId = item.id.toLongOrNull()
+                        
+                        if (consultationId == null) {
+                            android.util.Log.e("MemberNavGraph", "Failed to parse consultationId from item.id: ${item.id}")
+                            Toast.makeText(context, "예약 정보를 불러올 수 없습니다.", Toast.LENGTH_SHORT).show()
+                            return@ReservationStatusScreen
+                        }
+
+                        // Navigate to RoomLayoutActivity with consultationId and user nickname
+                        val intent = android.content.Intent(context, io.openvidu.android.RoomLayoutActivity::class.java).apply {
+                            putExtra("consultationId", consultationId)
+                            putExtra("participantName", participantName)
+                            // Keep roomName for backward compatibility (fallback)
+                            putExtra("roomName", item.sessionId)
+                        }
+                        context.startActivity(intent)
                     } catch (t: Throwable) {
-                        // ignore
+                        android.util.Log.e("MemberNavGraph", "Failed to start RoomLayoutActivity", t)
+                        Toast.makeText(context, "세션 입장에 실패했습니다: ${t.message}", Toast.LENGTH_SHORT).show()
                     }
                 }
             },

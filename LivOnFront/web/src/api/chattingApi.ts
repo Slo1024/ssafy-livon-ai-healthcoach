@@ -285,9 +285,51 @@ export class StompChatClient {
                       bodyLength: message.body?.length,
                       body: message.body,
                     });
-                    const parsedMessage: GoodsChatMessageResponse = JSON.parse(
-                      message.body
-                    );
+                    const rawMessage = JSON.parse(message.body);
+                    
+                    // 서버 응답 형식을 클라이언트가 기대하는 형식으로 변환
+                    // 서버: { chatMessageId, messageType: "대화", message, senderId, ... }
+                    // 클라이언트: { id, type: "TALK", message, sender, ... }
+                    
+                    // messageType 또는 type 필드 확인
+                    const messageType = rawMessage.messageType || rawMessage.type;
+                    let convertedType: "ENTER" | "TALK" | "LEAVE" = "TALK";
+                    if (messageType === "대화" || messageType === "TALK") {
+                      convertedType = "TALK";
+                    } else if (messageType === "입장" || messageType === "ENTER") {
+                      convertedType = "ENTER";
+                    } else if (messageType === "퇴장" || messageType === "LEAVE") {
+                      convertedType = "LEAVE";
+                    }
+                    
+                    // sender 정보 구성 (sender 객체가 있으면 사용, 없으면 senderId만 사용)
+                    let senderInfo = undefined;
+                    if (rawMessage.sender) {
+                      senderInfo = {
+                        userId: rawMessage.sender.userId || rawMessage.sender.userUUID || rawMessage.senderId,
+                        nickname: rawMessage.sender.nickname || rawMessage.sender.name,
+                        userImage: rawMessage.sender.userImage || rawMessage.sender.profileImage,
+                      };
+                    } else if (rawMessage.senderId) {
+                      // sender 객체가 없고 senderId만 있는 경우
+                      senderInfo = {
+                        userId: rawMessage.senderId,
+                        nickname: rawMessage.senderNickname || rawMessage.senderName || undefined,
+                        userImage: rawMessage.senderImage || rawMessage.senderProfileImage || undefined,
+                      };
+                    }
+                    
+                    const parsedMessage: GoodsChatMessageResponse = {
+                      id: rawMessage.chatMessageId || rawMessage.id,
+                      roomId: rawMessage.roomId || rawMessage.chatRoomId,
+                      message: rawMessage.message || rawMessage.content,
+                      type: convertedType,
+                      sentAt: rawMessage.sentAt || rawMessage.createdAt,
+                      sender: senderInfo,
+                    };
+                    
+                    console.log("🔵 [STOMP] 파싱된 메시지:", parsedMessage);
+                    
                     if (this.onMessageCallback) {
                       this.onMessageCallback(parsedMessage);
                     }

@@ -97,6 +97,7 @@ interface ChatMessage {
   message: string;
   timestamp: Date;
   senderImage?: string;
+  senderUserId?: string;
 }
 
 export const StreamingPage: React.FC = () => {
@@ -601,10 +602,14 @@ export const StreamingPage: React.FC = () => {
                     sender: msg.role === "COACH" ? "코치" : "회원", // TODO: 실제 닉네임 사용
                     message: msg.content,
                     timestamp: new Date(msg.sentAt),
+                    senderUserId: msg.userId,
                   })
                 );
-                // 시간순 정렬을 리버스하여 최신 메시지가 아래에 오도록 설정
-                setChatMessages([...convertedMessages].reverse());
+                // 시간순 정렬 (오래된 것부터 최신 순서로 - 최신 메시지가 아래로)
+                const sortedMessages = convertedMessages.sort(
+                  (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
+                );
+                setChatMessages(sortedMessages);
 
                 // STOMP 웹소켓 연결 (accessToken은 이미 위에서 가져옴)
                 console.log("🔵 [채팅] STOMP 연결 준비:", {
@@ -653,34 +658,65 @@ export const StreamingPage: React.FC = () => {
                           return;
                         }
 
-                        // 중복 체크 및 임시 메시지 교체
+                        // 중복 체크 및 메시지 추가
                         setChatMessages((prev) => {
-                          // 이미 존재하는 메시지인지 확인 (실제 ID로)
-                          const exists = prev.some(
+                          // [2-1] ID 기반 중복 체크
+                          const existsById = prev.some(
                             (msg) => msg.id === message.id
                           );
-                          if (exists) {
+                          if (existsById) {
                             console.log(
-                              "🔵 [채팅] 중복 메시지 무시:",
+                              "🔵 [채팅] ID 중복 메시지 무시:",
                               message.id
                             );
                             return prev;
                           }
 
+                          // [2-2] 내용+시간+사용자 기반 중복 체크 (5초 이내)
+                          const messageSentAt = new Date(
+                            message.sentAt
+                          ).getTime();
+                          const senderId = message.sender?.userId || "";
+                          const isDuplicate = prev.some((msg) => {
+                            const msgTime = msg.timestamp.getTime();
+                            const timeDiff = Math.abs(messageSentAt - msgTime);
+                            const isSameContent =
+                              msg.message === message.message;
+                            const isSameSender =
+                              (msg.senderUserId || "") === senderId ||
+                              (senderId &&
+                                msg.sender ===
+                                  (message.sender?.nickname || ""));
+
+                            return (
+                              isSameContent && isSameSender && timeDiff < 5000 // 5초 이내
+                            );
+                          });
+
+                          if (isDuplicate) {
+                            console.log(
+                              "🔵 [채팅] 내용+시간+사용자 중복 메시지 무시:",
+                              {
+                                messageId: message.id,
+                                message: message.message,
+                                sender: message.sender?.nickname,
+                              }
+                            );
+                            return prev;
+                          }
+
                           // 내가 보낸 메시지인지 확인 (sender.userId 사용)
-                          // sender가 없는 경우는 다른 참여자의 메시지로 처리
                           const isFromSelf =
                             message.sender?.userId === user?.id;
 
+                          // 내가 보낸 메시지인 경우: 임시 메시지를 찾아서 교체
                           if (isFromSelf && message.sender) {
-                            // 내가 보낸 메시지인 경우: 임시 메시지를 찾아서 교체
                             const tempMessageIndex = prev.findIndex(
                               (msg) =>
                                 msg.id.startsWith("temp-") &&
                                 msg.message === message.message &&
                                 Math.abs(
-                                  new Date(msg.timestamp).getTime() -
-                                    new Date(message.sentAt).getTime()
+                                  msg.timestamp.getTime() - messageSentAt
                                 ) < 5000 // 5초 이내의 메시지
                             );
 
@@ -697,6 +733,7 @@ export const StreamingPage: React.FC = () => {
                                 senderImage:
                                   message.sender.userImage ||
                                   user?.profileImage,
+                                senderUserId: message.sender.userId,
                               };
 
                               console.log(
@@ -710,12 +747,23 @@ export const StreamingPage: React.FC = () => {
 
                               const updated = [...prev];
                               updated[tempMessageIndex] = newMessage;
-                              return updated;
+
+                              // [2-3] ID 중복 제거 및 시간순 정렬 (오래된 것부터 최신 순서)
+                              const deduplicated = updated.filter(
+                                (msg, index, self) =>
+                                  index ===
+                                  self.findIndex((m) => m.id === msg.id)
+                              );
+                              const sorted = deduplicated.sort(
+                                (a, b) =>
+                                  a.timestamp.getTime() - b.timestamp.getTime()
+                              );
+
+                              return sorted;
                             }
                           }
 
-                          // 다른 참여자의 메시지 또는 임시 메시지를 찾지 못한 경우
-                          // sender 정보가 있으면 우선 사용, 없으면 기본값 사용
+                          // 새 메시지 생성
                           const senderName = message.sender?.nickname
                             ? message.sender.nickname
                             : isFromSelf
@@ -728,30 +776,35 @@ export const StreamingPage: React.FC = () => {
                             message: message.message,
                             timestamp: new Date(message.sentAt),
                             senderImage: message.sender?.userImage || undefined,
+                            senderUserId: message.sender?.userId,
                           };
 
-                          console.log(
-                            "🔵 [채팅] 새 메시지 추가 (다른 참여자):",
-                            {
-                              id: newMessage.id,
-                              sender: newMessage.sender,
-                              senderUserId: message.sender?.userId,
-                              currentUserId: user?.id,
-                              messageLength: newMessage.message.length,
-                              isFromSelf,
-                              prevMessagesCount: prev.length,
-                              newMessagesCount: prev.length + 1,
-                            }
-                          );
-
-                          const updated = [...prev, newMessage];
-                          console.log("🔵 [채팅] 업데이트된 메시지 목록:", {
-                            totalCount: updated.length,
-                            lastMessage: updated[updated.length - 1],
+                          console.log("🔵 [채팅] 새 메시지 추가:", {
+                            id: newMessage.id,
+                            sender: newMessage.sender,
+                            senderUserId: message.sender?.userId,
+                            currentUserId: user?.id,
+                            messageLength: newMessage.message.length,
+                            isFromSelf,
                           });
 
-                          // 강제로 상태 업데이트를 보장하기 위해 새 배열 반환
-                          return updated;
+                          // [2-3] 메시지 추가 후 ID 중복 제거 및 시간순 정렬 (오래된 것부터 최신 순서)
+                          const updated = [...prev, newMessage];
+                          const deduplicated = updated.filter(
+                            (msg, index, self) =>
+                              index === self.findIndex((m) => m.id === msg.id)
+                          );
+                          const sorted = deduplicated.sort(
+                            (a, b) =>
+                              a.timestamp.getTime() - b.timestamp.getTime()
+                          );
+
+                          console.log("🔵 [채팅] 업데이트된 메시지 목록:", {
+                            totalCount: sorted.length,
+                            lastMessage: sorted[sorted.length - 1],
+                          });
+
+                          return sorted;
                         });
                       },
                       (error) => {
@@ -1073,15 +1126,9 @@ export const StreamingPage: React.FC = () => {
       stompClient.sendMessage(chatInput, "TALK");
       console.log("🔵 [채팅] 메시지 전송 완료");
 
-      // 낙관적 업데이트: 즉시 로컬 메시지 추가
-      const newMessage: ChatMessage = {
-        id: `temp-${Date.now()}`,
-        sender: user?.nickname || participantName,
-        message: chatInput,
-        timestamp: new Date(),
-        senderImage: user?.profileImage,
-      };
-      setChatMessages((prev) => [...prev, newMessage]);
+      // 로컬 상태는 업데이트하지 않음
+      // 서버에서 브로드캐스트된 메시지를 incomingMessages.collect에서 수신하여 표시
+      // 서버 에코를 통해 메시지가 돌아와야 화면에 표시됨
       setChatInput("");
     } catch (error) {
       console.error("❌ [채팅] 메시지 전송 오류:", error);

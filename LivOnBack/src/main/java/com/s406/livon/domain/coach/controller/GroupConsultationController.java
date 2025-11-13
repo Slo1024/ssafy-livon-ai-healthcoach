@@ -88,6 +88,35 @@ public class GroupConsultationController {
     }
     
     /**
+     * 코치 본인이 만든 클래스 목록 조회
+     *
+     * @param token Authorization 헤더
+     * @param page 페이지 번호 (0부터 시작, 기본값: 0)
+     * @param size 페이지 크기 (기본값: 10)
+     * @return 코치가 만든 클래스 목록
+     */
+    @GetMapping("/my-classes")
+    @Operation(summary = "코치 본인 클래스 목록 조회 API", description = "코치가 본인이 만든 그룹 상담(클래스) 목록을 조회합니다.")
+    public ResponseEntity<ApiResponse<PaginatedResponse<GroupConsultationListResponseDto>>> getMyGroupConsultations(
+            @RequestHeader("Authorization") String token,
+            @Parameter(description = "페이지 번호 (0부터 시작)")
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "페이지 크기")
+            @RequestParam(defaultValue = "10") int size) {
+        
+        UUID coachId = jwtTokenProvider.getUserId(token.substring(7));
+        
+        // 시작 시간 오름차순 정렬
+        Pageable pageable = PageRequest.of(page, size);
+        
+        PaginatedResponse<GroupConsultationListResponseDto> response =
+                groupConsultationService.getMyGroupConsultations(coachId, pageable);
+        
+        return ResponseEntity.ok()
+                .body(ApiResponse.of(SuccessStatus.SELECT_SUCCESS, response));
+    }
+    
+    /**
      * 클래스 상세 조회
      *
      * @param id 클래스 ID

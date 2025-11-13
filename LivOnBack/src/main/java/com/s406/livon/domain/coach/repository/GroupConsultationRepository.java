@@ -84,6 +84,34 @@ public interface GroupConsultationRepository extends JpaRepository<GroupConsulta
     Page<Object[]> findAllWithParticipantCount(Pageable pageable);
 
     /**
+     * 특정 코치가 만든 클래스 목록 조회 (참가 인원 수 포함)
+     */
+    @Query(
+            value = """
+            SELECT gc,
+                   COUNT(p.id) AS currentParticipants
+            FROM GroupConsultation gc
+            JOIN gc.consultation c
+            JOIN c.coach coach
+            LEFT JOIN Participant p ON p.consultation.id = c.id
+            WHERE coach.id = :coachId
+            GROUP BY gc.id, c.id, coach.id
+            ORDER BY c.startAt ASC
+            """,
+            countQuery = """
+            SELECT COUNT(DISTINCT gc.id)
+            FROM GroupConsultation gc
+            JOIN gc.consultation c
+            JOIN c.coach coach
+            WHERE coach.id = :coachId
+            """
+    )
+    Page<Object[]> findByCoachIdWithParticipantCount(
+            Pageable pageable,
+            @Param("coachId") UUID coachId
+    );
+
+    /**
      * 특정 클래스 상세 조회 (현재 참가 인원 수 포함)
      */
     @Query("""

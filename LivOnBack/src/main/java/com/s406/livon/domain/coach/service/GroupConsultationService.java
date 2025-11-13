@@ -145,6 +145,34 @@ public class GroupConsultationService {
     }
     
     /**
+     * 코치 본인이 만든 클래스 목록 조회
+     * 
+     * @param coachId 코치 ID
+     * @param pageable 페이징 정보
+     * @return 코치가 만든 클래스 목록
+     */
+    public PaginatedResponse<GroupConsultationListResponseDto> getMyGroupConsultations(
+            UUID coachId,
+            Pageable pageable) {
+        
+        // 코치 권한 확인
+        validateCoach(coachId);
+        
+        // 코치가 만든 클래스 목록 조회
+        Page<Object[]> result = groupConsultationRepository.findByCoachIdWithParticipantCount(pageable, coachId);
+        
+        // Object[] -> DTO 변환
+        Page<GroupConsultationListResponseDto> dtoPage = result.map(objects -> {
+            GroupConsultation gc = (GroupConsultation) objects[0];
+            Long currentParticipants = (Long) objects[1];
+            
+            return GroupConsultationListResponseDto.from(gc, currentParticipants);
+        });
+        
+        return PaginatedResponse.of(dtoPage);
+    }
+    
+    /**
      * 클래스 상세 조회
      * 
      * @param id 클래스 ID

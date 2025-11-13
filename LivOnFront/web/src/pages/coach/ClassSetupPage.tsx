@@ -7,10 +7,9 @@ import {
   SaveConfirmModal,
   ClassCreatedModal,
 } from "../../components/common/Modal";
-import { Dropdown } from "../../components/common/Dropdown";
-import { Input } from "../../components/common/Input";
 import { useAuth } from "../../hooks/useAuth";
 import { ROUTES } from "../../constants/routes";
+import { createGroupConsultationApi } from "../../api/classApi";
 
 const PageContainer = styled.div`
   min-height: 100vh;
@@ -66,16 +65,6 @@ const TabsWrapper = styled.div`
 const FilterPlaceholder = styled.div`
   width: 180px;
   flex-shrink: 0;
-`;
-
-const Divider = styled.div`
-  width: 100vw;
-  height: 2px;
-  background-color: #4965f6;
-  margin: 0;
-  position: relative;
-  left: 50%;
-  transform: translateX(-50%);
 `;
 
 const IntroMessage = styled.p`
@@ -188,6 +177,11 @@ const SaveButton = styled.button`
   &:hover {
     background-color: #3b5dd8;
   }
+
+  &:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+  }
 `;
 
 const CancelButton = styled.button`
@@ -207,6 +201,40 @@ const CancelButton = styled.button`
   }
 `;
 
+const ErrorMessage = styled.div`
+  text-align: center;
+  padding: 16px;
+  color: #ef4444;
+  font-size: 14px;
+  margin-top: 16px;
+  background-color: #fef2f2;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+`;
+
+// 에러 메시지 상수
+const ERROR_MESSAGES = {
+  CLASS_NAME_REQUIRED: "클래스 명을 입력해주세요.",
+  CLASS_INFO_REQUIRED: "클래스 정보를 입력해주세요.",
+  DATE_TIME_REQUIRED: "날짜와 시간을 선택해주세요.",
+  CREATE_FAILED: "클래스 생성에 실패했습니다.",
+} as const;
+
+// 날짜 포맷팅 헬퍼 함수
+const formatDateString = (date: Date): string => {
+  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
+};
+
+// 시간 포맷팅 헬퍼 함수
+const formatTimeString = (time: string): string => {
+  if (time.startsWith("AM ")) {
+    return `오전 ${time.replace("AM ", "")}`;
+  } else if (time.startsWith("PM ")) {
+    return `오후 ${time.replace("PM ", "")}`;
+  }
+  return time;
+};
+
 export const ClassSetupPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, isLoading } = useAuth();
@@ -223,6 +251,8 @@ export const ClassSetupPage: React.FC = () => {
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [selectedTimes, setSelectedTimes] = useState<string[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
@@ -230,7 +260,6 @@ export const ClassSetupPage: React.FC = () => {
     className: "",
     classInfo: "",
     dateTime: "",
-    file: "",
   });
 
   const nickname = user?.nickname || "";
@@ -243,7 +272,7 @@ export const ClassSetupPage: React.FC = () => {
   };
 
   const handleSetupClick = () => {
-    // 이미 클래스 개설 페이지에 있음
+    // 이미 클래스 개설 페이지에 있으므로 아무 동작 없음
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -260,47 +289,19 @@ export const ClassSetupPage: React.FC = () => {
 
     // 날짜와 시간을 문자열로 포맷팅
     if (dates.length > 0 && times.length > 0) {
-      const dateStr = dates
-        .map(
-          (date) =>
-            `${date.getFullYear()}년 ${
-              date.getMonth() + 1
-            }월 ${date.getDate()}일`
-        )
-        .join(", ");
-      const timeStr = times
-        .map((t) => {
-          if (t.startsWith("AM ")) {
-            return `오전 ${t.replace("AM ", "")}`;
-          } else if (t.startsWith("PM ")) {
-            return `오후 ${t.replace("PM ", "")}`;
-          }
-          return t;
-        })
-        .join(", ");
+      const dateStr = dates.map(formatDateString).join(", ");
+      const timeStr = times.map(formatTimeString).join(", ");
       handleInputChange("dateTime", `${dateStr} ${timeStr}`);
     } else if (dates.length > 0) {
-      const dateStr = dates
-        .map(
-          (date) =>
-            `${date.getFullYear()}년 ${
-              date.getMonth() + 1
-            }월 ${date.getDate()}일`
-        )
-        .join(", ");
+      const dateStr = dates.map(formatDateString).join(", ");
       handleInputChange("dateTime", dateStr);
     }
-  };
-
-  const handleFileClick = () => {
-    fileInputRef.current?.click();
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
-      handleInputChange("file", file.name);
     }
   };
 
@@ -308,11 +309,113 @@ export const ClassSetupPage: React.FC = () => {
     setShowSaveConfirmModal(true);
   };
 
-  const handleSaveConfirm = () => {
-    // 저장 로직 (추후 API 연동)
-    console.log("Form Data:", formData);
-    setShowSaveConfirmModal(false);
-    setShowClassCreatedModal(true);
+  // 시간 문자열을 24시간 형식으로 변환 (예: "AM 9:00" -> "09:00", "PM 2:00" -> "14:00")
+  const convertTimeTo24Hour = (timeStr: string): string => {
+    if (timeStr.startsWith("AM ")) {
+      const time = timeStr.replace("AM ", "");
+      const [hour, minute] = time.split(":");
+      return `${String(hour).padStart(2, "0")}:${minute || "00"}`;
+    } else if (timeStr.startsWith("PM ")) {
+      const time = timeStr.replace("PM ", "");
+      const [hour, minute] = time.split(":");
+      const hour24 = hour === "12" ? 12 : parseInt(hour) + 12;
+      return `${String(hour24).padStart(2, "0")}:${minute || "00"}`;
+    }
+    // 이미 24시간 형식인 경우
+    return timeStr;
+  };
+
+  // Date와 시간 문자열을 ISO 8601 형식으로 변환
+  const createISO8601DateTime = (date: Date, timeStr: string): string => {
+    const [hour, minute] = convertTimeTo24Hour(timeStr).split(":");
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}T${hour}:${minute}:00`;
+  };
+
+  // 폼 초기화 함수
+  const resetForm = () => {
+    setFormData({
+      classType: "",
+      className: "",
+      classInfo: "",
+      dateTime: "",
+    });
+    setSelectedDates([]);
+    setSelectedTimes([]);
+    setSelectedFile(null);
+  };
+
+  // 유효성 검사 함수
+  const validateForm = (): string | null => {
+    if (!formData.className.trim()) {
+      return ERROR_MESSAGES.CLASS_NAME_REQUIRED;
+    }
+    if (!formData.classInfo.trim()) {
+      return ERROR_MESSAGES.CLASS_INFO_REQUIRED;
+    }
+    if (selectedDates.length === 0 || selectedTimes.length === 0) {
+      return ERROR_MESSAGES.DATE_TIME_REQUIRED;
+    }
+    return null;
+  };
+
+  const handleSaveConfirm = async () => {
+    // 유효성 검사
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      setShowSaveConfirmModal(false);
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setError(null);
+
+      // 첫 번째 날짜와 첫 번째 시간을 사용 (여러 개 선택 시 첫 번째만 사용)
+      const firstDate = selectedDates[0];
+      const firstTime = selectedTimes[0];
+      const startAt = createISO8601DateTime(firstDate, firstTime);
+
+      // 종료 시간은 시작 시간 + 1시간으로 설정
+      const [startHour, startMinute] = convertTimeTo24Hour(firstTime).split(":");
+      const endHour = (parseInt(startHour) + 1) % 24;
+      const endAt = createISO8601DateTime(
+        firstDate,
+        `${String(endHour).padStart(2, "0")}:${startMinute || "00"}`
+      );
+
+      // API 호출
+      const response = await createGroupConsultationApi(
+        {
+          title: formData.className,
+          description: formData.classInfo,
+          startAt,
+          endAt,
+          capacity: 10, // 기본값 10명
+        },
+        selectedFile || undefined
+      );
+
+      if (response.isSuccess) {
+        setShowSaveConfirmModal(false);
+        setShowClassCreatedModal(true);
+        resetForm();
+      } else {
+        setError(response.message || ERROR_MESSAGES.CREATE_FAILED);
+        setShowSaveConfirmModal(false);
+      }
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : ERROR_MESSAGES.CREATE_FAILED;
+      setError(errorMessage);
+      setShowSaveConfirmModal(false);
+      console.error("클래스 생성 오류:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleGoToList = () => {
@@ -326,7 +429,6 @@ export const ClassSetupPage: React.FC = () => {
   const classTypeOptions = [
     { value: "기업 클래스", label: "기업 클래스" },
     { value: "일반 클래스", label: "일반 클래스" },
-    { value: "개인 상담 / 코칭", label: "개인 상담 / 코칭" },
   ];
 
   return (
@@ -404,7 +506,7 @@ export const ClassSetupPage: React.FC = () => {
           </FormField>
 
           <FormField>
-            <FormLabel>파일 첨부</FormLabel>
+            <FormLabel>대표 이미지 설정</FormLabel>
             <input
               ref={fileInputRef}
               type="file"
@@ -413,7 +515,7 @@ export const ClassSetupPage: React.FC = () => {
               accept="*/*"
             />
             <FormDropdown
-              value={formData.file || ""}
+              value={selectedFile?.name || ""}
               onChange={() => {}}
               onMouseDown={(e) => {
                 e.preventDefault();
@@ -432,9 +534,32 @@ export const ClassSetupPage: React.FC = () => {
         </FormContainer>
 
         <ButtonContainer>
-          <SaveButton onClick={handleSave}>저장</SaveButton>
-          <CancelButton onClick={handleCancel}>취소</CancelButton>
+          <SaveButton onClick={handleSave} disabled={isSubmitting}>
+            {isSubmitting ? "저장 중..." : "저장"}
+          </SaveButton>
+          <CancelButton onClick={handleCancel} disabled={isSubmitting}>
+            취소
+          </CancelButton>
         </ButtonContainer>
+
+        {error && (
+          <ErrorMessage>
+            {error}
+            <button
+              onClick={() => setError(null)}
+              style={{
+                marginLeft: "8px",
+                background: "none",
+                border: "none",
+                color: "#ef4444",
+                cursor: "pointer",
+                textDecoration: "underline",
+              }}
+            >
+              닫기
+            </button>
+          </ErrorMessage>
+        )}
 
         {/* 날짜/시간 선택 모달 */}
         <DateTimePickerModal

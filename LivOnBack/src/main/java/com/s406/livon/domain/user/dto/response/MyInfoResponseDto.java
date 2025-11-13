@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.time.LocalDate;
 import java.util.Date;
+import java.util.UUID;
 
 @Getter
 @ToString
@@ -12,6 +13,7 @@ import java.util.Date;
 @NoArgsConstructor
 @Builder
 public class MyInfoResponseDto {
+    private UUID userId;
     private String nickname;
     private String profileImage;
     private String organizations;

@@ -84,6 +84,7 @@ public interface ConsultationRepository extends JpaRepository<Consultation, Long
             "WHERE c.coach.id = :coachId " +
             "AND c.startAt > :now " +
             "AND c.type != 'BREAK' " +
+            "AND c.status != 'CANCELLED' " +
             "ORDER BY c.startAt ASC")
     Page<Consultation> findCoachUpcomingConsultationsWithDetails(
             @Param("coachId") UUID coachId,
@@ -99,6 +100,7 @@ public interface ConsultationRepository extends JpaRepository<Consultation, Long
             "WHERE c.coach.id = :coachId " +
             "AND c.startAt < :now " +
             "AND c.type != 'BREAK' " +
+            "AND c.status != 'CANCELLED' " +
             "ORDER BY c.startAt DESC")
     Page<Consultation> findCoachPastConsultationsWithDetails(
             @Param("coachId") UUID coachId,
@@ -115,6 +117,7 @@ public interface ConsultationRepository extends JpaRepository<Consultation, Long
             "AND c.startAt > :now " +
             "AND c.type = :type " +
             "AND c.type != 'BREAK' " +
+            "AND c.status != 'CANCELLED' " +
             "ORDER BY c.startAt ASC")
     Page<Consultation> findCoachUpcomingConsultationsWithDetails(
             @Param("coachId") UUID coachId,
@@ -132,6 +135,7 @@ public interface ConsultationRepository extends JpaRepository<Consultation, Long
             "AND c.startAt < :now " +
             "AND c.type = :type " +
             "AND c.type != 'BREAK' " +
+            "AND c.status != 'CANCELLED' " +
             "ORDER BY c.startAt DESC")
     Page<Consultation> findCoachPastConsultationsWithDetails(
             @Param("coachId") UUID coachId,

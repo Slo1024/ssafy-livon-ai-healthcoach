@@ -29,6 +29,8 @@ const PageContainer = styled.div`
 const ContentWrapper = styled.div`
   max-width: 1200px;
   margin: 0 auto;
+  box-sizing: border-box;
+  width: 100%;
 `;
 
 const TitleAndMessageContainer = styled.div`
@@ -127,8 +129,11 @@ const FilterDropdown = styled.div`
 
 const ReservationTable = styled.table`
   width: 100%;
+  max-width: 100%;
   border-collapse: collapse;
   margin-top: 24px;
+  table-layout: auto;
+  box-sizing: border-box;
 `;
 
 const TableHeader = styled.thead`
@@ -173,17 +178,44 @@ const TableCell = styled.td`
     width: 200px;
     white-space: nowrap;
   }
+
+  &:last-child {
+    min-width: 360px;
+  }
+
+  @media (max-width: 960px) {
+    padding: 16px 8px;
+
+    &:last-child {
+      min-width: 0;
+      width: auto;
+      padding: 16px 2px 16px 6px;
+    }
+  }
+
   @media (max-width: 900px) {
-    padding: 14px 12px;
+    padding: 14px 8px;
+
+    &:last-child {
+      min-width: 0;
+      width: auto;
+      padding: 14px 2px 14px 6px;
+    }
   }
 
   @media (max-width: 768px) {
-    padding: 12px 10px;
+    padding: 12px 6px;
     font-size: 13px;
 
     &:nth-child(1) {
       width: 170px;
       white-space: nowrap;
+    }
+
+    &:last-child {
+      min-width: 0;
+      width: auto;
+      padding: 12px 2px 12px 4px;
     }
   }
 `;
@@ -207,6 +239,16 @@ const ActionButtonContainer = styled.div`
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
+
+  @media (max-width: 960px) {
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  @media (max-width: 768px) {
+    gap: 4px;
+  }
 `;
 
 const StartConsultationButton = styled.button`
@@ -221,6 +263,7 @@ const StartConsultationButton = styled.button`
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
   white-space: nowrap;
+  flex-shrink: 0;
 
   &:hover {
     background-color: #f7fafc;
@@ -246,6 +289,7 @@ const ViewMemberButton = styled.button<{ $compact?: boolean }>`
   text-align: center;
   white-space: nowrap;
   line-height: 1;
+  flex-shrink: 0;
 
   &:hover {
     background-color: #f7fafc;
@@ -264,6 +308,7 @@ const CancelButton = styled.button`
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
   white-space: nowrap;
+  flex-shrink: 0;
 
   &:hover {
     background-color: #fef2f2;

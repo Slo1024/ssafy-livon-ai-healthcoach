@@ -2,7 +2,7 @@ package com.s406.livon.domain.user.entity;
 
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.s406.livon.domain.ai.entity.AiAnalysis;
+import com.s406.livon.domain.ai.gms.entity.AiAnalysis;
 import com.s406.livon.domain.user.enums.Gender;
 import com.s406.livon.domain.user.enums.Role;
 

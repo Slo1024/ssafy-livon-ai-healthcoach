@@ -47,6 +47,9 @@ public class Consultation {
     
     @Column(name = "session_id", nullable = false, length = 255)
     private String sessionId;
+
+    @Column(name = "video_url", nullable = true, length = 255)
+    private String videoUrl;
     
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

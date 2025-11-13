@@ -1,4 +1,4 @@
-package com.s406.livon.domain.ai.entity;
+package com.s406.livon.domain.ai.gms.entity;
 
 import com.s406.livon.domain.user.entity.User;
 import jakarta.persistence.Column;

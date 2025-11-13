@@ -33,20 +33,38 @@ public class SecurityConfig {
     private final ObjectMapper objectMapper;
 
 
+//    @Bean
+//    public CorsConfigurationSource corsConfigurationSource() {
+//        CorsConfiguration config = new CorsConfiguration();
+//        // 여러 오리진을 한번에 등록
+//        config.setAllowedOrigins(List.of(
+//                "http://localhost:3000",
+//                "http://localhost:3001",
+//                "https://k13s406.p.ssafy.io",
+//                "https://k13s406.p.ssafy.io:8443",
+//                "https://jiangxy.github.io/websocket-debug-tool/"
+//        ));
+//        config.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
+//        config.setAllowedHeaders(List.of("Content-Type","Authorization","X-Requested-With"));
+//        config.setExposedHeaders(List.of("Location"));
+//        config.setAllowCredentials(true); // 쿠키/자격증명 쓸 거면 유지
+//        config.setMaxAge(3600L);
+//
+//        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+//        source.registerCorsConfiguration("/**", config);
+//        return source;
+//    }
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // 여러 오리진을 한번에 등록
-        config.setAllowedOrigins(List.of(
-                "http://localhost:3000",
-                "http://localhost:3001",
-                "https://k13s406.p.ssafy.io",
-                "https://k13s406.p.ssafy.io:8443"
-        ));
+
+        // 모든 오리진 허용
+        config.setAllowedOriginPatterns(List.of("*"));
         config.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
-        config.setAllowedHeaders(List.of("Content-Type","Authorization","X-Requested-With"));
-        config.setExposedHeaders(List.of("Location"));
-        config.setAllowCredentials(true); // 쿠키/자격증명 쓸 거면 유지
+        config.setAllowedHeaders(List.of("*"));
+        config.setExposedHeaders(List.of("*"));
+        config.setAllowCredentials(true);
         config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

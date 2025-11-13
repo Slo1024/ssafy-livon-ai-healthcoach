@@ -73,26 +73,6 @@ const ScreenShareInfo = styled.div`
   gap: 8px;
 `;
 
-const ZoomControls = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-`;
-
-const ZoomButton = styled.button`
-  padding: 4px 8px;
-  background-color: transparent;
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-
-  &:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-  }
-`;
-
 const MainContentArea = styled.div`
   flex: 1;
   display: flex;
@@ -1050,11 +1030,6 @@ export const StreamingPage: React.FC = () => {
           <ScreenShareInfo>
             {`${screenShareOwnerName} 화면 공유 중`}
           </ScreenShareInfo>
-          <ZoomControls>
-            <ZoomButton>-</ZoomButton>
-            <span>100%</span>
-            <ZoomButton>+</ZoomButton>
-          </ZoomControls>
         </ScreenShareBar>
       )}
 

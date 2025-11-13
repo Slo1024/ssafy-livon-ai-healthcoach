@@ -23,9 +23,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.livon.app.ui.component.overlay.TopBar
 import com.livon.app.feature.shared.auth.ui.CommonSignUpScreenA
 import com.livon.app.feature.shared.auth.ui.CommonScreenC
-import com.livon.app.ui.preview.PreviewSurface
-import com.livon.app.ui.theme.LivonTheme
-import androidx.compose.ui.tooling.preview.Preview
 import com.livon.app.ui.component.calendar.CalendarMonth
 import com.livon.app.ui.component.button.PrimaryButtonBottom
 import com.livon.app.ui.theme.Basic
@@ -276,10 +273,10 @@ fun CoachDetailScreen(
                     navController = navController,
                     onNavigate = { route ->
                         when (route) {
-                            "home" -> navController?.navigate("member_home")
-                            "booking" -> navController?.navigate("reservation_model_select")
-                            "reservations" -> navController?.navigate("reservations")
-                            "mypage" -> navController?.navigate("mypage")
+                            "home" -> navController?.navigate(com.livon.app.navigation.Routes.MemberHome)
+                            "booking" -> navController?.navigate(com.livon.app.navigation.Routes.ReservationModeSelect)
+                            "reservations" -> navController?.navigate(com.livon.app.navigation.Routes.Reservations)
+                            "mypage" -> navController?.navigate(com.livon.app.navigation.Routes.MyPage)
                             else -> {}
                         }
                     }
@@ -317,8 +314,3 @@ private fun TimeGrid(timeItems: List<Pair<String, String>>, selected: String?, o
         }
     }
 }
-
-
-
-
-

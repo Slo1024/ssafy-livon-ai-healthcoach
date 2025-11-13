@@ -28,14 +28,14 @@ class ReservationRepositoryImpl : ReservationRepository {
         coachId: String,
         startAt: LocalDateTime,
         endAt: LocalDateTime,
-        preQnA: String?
+        preQna: String?
     ): Result<Int> {
         return try {
             val req = ReserveCoachRequest(
                 coachId = coachId,
                 startAt = startAt.format(fmt),
                 endAt = endAt.format(fmt),
-                preQnA = preQnA
+                preQnA = preQna
             )
             val res = api.reserveCoach(req)
             if (res.isSuccess && res.result != null) {
@@ -56,8 +56,13 @@ class ReservationRepositoryImpl : ReservationRepository {
         }
     }
 
-    override suspend fun reserveClass(classId: String): Result<Int> {
+    // Adjusted to match interface: include preQna param (backend ignores it for class reservation)
+    override suspend fun reserveClass(classId: String, preQna: String?): Result<Int> {
         return try {
+            // backend does not expect a body for class reservation; log preQna for debugging
+            if (preQna != null) {
+                Log.d("ReservationRepo", "reserveClass: preQna provided but ignored by API: $preQna")
+            }
             val res = api.reserveClass(classId)
             if (res.isSuccess && res.result != null) {
                 localReservations.add(

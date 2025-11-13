@@ -8,7 +8,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import com.livon.app.data.repository.ReservationType
 import android.util.Log
 import java.time.Duration
 import java.time.LocalDateTime
@@ -37,20 +36,32 @@ class ReservationViewModel(
     val actionState: StateFlow<ReservationActionState> = _actionState
 
     /**
-     * 홈 화면의 "다가오는 예약"은 백엔드의 upcoming 엔드포인트가 아닌
-     * 앱 내 로컬 데이터(또는 다른 뷰모델)를 통해 제공되어야 합니다.
-     * 여기서는 기본적으로 빈 리스트를 반환하도록 하고, 필요 시
-     * 리포지토리에 실제 fetch 함수를 추가해 호출하도록 바꿔주세요.
+     * 다가오는 예약 목록을 서버에서 불러옵니다.
      */
     fun loadUpcoming() {
+        // status만 "upcoming"으로 하여 공통 로직 호출
+        loadReservationsByStatus("upcoming")
+    }
+
+    /**
+     * 지난 예약 목록을 서버에서 불러옵니다.
+     */
+    fun loadPast() {
+        // status만 "past"로 하여 공통 로직 호출
+        loadReservationsByStatus("past")
+    }
+
+    /**
+     * status (upcoming/past)에 따라 예약 목록을 불러오는 공통 로직
+     */
+    private fun loadReservationsByStatus(status: String) {
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             try {
-                // First try server-side fetch
                 val serverRes = try {
-                    repo.getMyReservations(status = "upcoming", type = null)
+                    repo.getMyReservations(status = status, type = null)
                 } catch (t: Throwable) {
-                    android.util.Log.w("ReservationVM", "getMyReservations call failed", t)
+                    Log.w("ReservationVM", "getMyReservations(status=$status) call failed", t)
                     Result.failure(t)
                 }
 
@@ -61,12 +72,13 @@ class ReservationViewModel(
                             try {
                                 if ((dto.status ?: "OPEN") == "CANCELLED") return@mapNotNull null
 
-                                val start = java.time.LocalDateTime.parse(dto.startAt ?: java.time.LocalDateTime.now().toString())
-                                val end = java.time.LocalDateTime.parse(dto.endAt ?: start.plusHours(1).toString())
+                                val start = LocalDateTime.parse(dto.startAt ?: LocalDateTime.now().toString())
+                                val end = LocalDateTime.parse(dto.endAt ?: start.plusHours(1).toString())
 
                                 val now = LocalDateTime.now()
                                 val minutesUntilStart = Duration.between(now, start).toMinutes()
-                                val isLive = minutesUntilStart <= 10 && minutesUntilStart >= -60
+                                // isLive는 upcoming 예약에만 의미가 있음
+                                val isLive = status == "upcoming" && minutesUntilStart <= 10 && minutesUntilStart >= -60
 
                                 ReservationUi(
                                     id = dto.consultationId.toString(),
@@ -83,74 +95,73 @@ class ReservationViewModel(
                                     sessionId = dto.sessionId,
                                     sessionTypeLabel = if ((dto.type ?: "ONE") == "ONE") "개인 상담" else "그룹 상담",
                                     hasAiReport = dto.aiSummary != null,
-                                    // new fields
+                                    aiSummary = dto.aiSummary,
+                                    coachId = dto.coach?.userId,
                                     coachProfileImageUrl = dto.coach?.profileImage,
-                                    qnas = dto.preQnA?.split("\n")?.filter { it.isNotBlank() } ?: emptyList()
+                                    qnas = dto.preQna?.split("\n")?.filter { it.isNotBlank() } ?: emptyList()
                                 )
                             } catch (t: Throwable) {
-                                android.util.Log.w("ReservationVM", "Failed to map reservation item", t)
+                                Log.w("ReservationVM", "Failed to map reservation item", t)
                                 null
                             }
                         } ?: emptyList()
                     } catch (t: Throwable) {
-                        android.util.Log.e("ReservationVM", "Failed to parse reservations from server", t)
+                        Log.e("ReservationVM", "Failed to parse reservations from server", t)
                         emptyList()
                     }
                 } else emptyList()
 
-                // Merge server results with local cache (local created reservations not yet present on server)
-                val local = try { com.livon.app.data.repository.ReservationRepositoryImpl.localReservations.toList() } catch (t: Throwable) { emptyList() }
-                val mappedLocal = local.map { lr ->
-                    val start = try { java.time.LocalDateTime.parse(lr.startAt) } catch (t: Throwable) { java.time.LocalDateTime.now() }
-                    val end = try { java.time.LocalDateTime.parse(lr.endAt) } catch (t: Throwable) { start.plusHours(1) }
-
-                    val minutesUntilStart = Duration.between(LocalDateTime.now(), start).toMinutes()
-                    val isLive = minutesUntilStart <= 10 && minutesUntilStart >= -60
-
-                    ReservationUi(
-                        id = lr.id.toString(),
-                        date = start.toLocalDate(),
-                        className = when (lr.type) {
-                            ReservationType.PERSONAL -> "개인 상담"
-                            ReservationType.GROUP -> "그룹 클래스"
-                        },
-                        coachName = lr.coachId,
-                        coachRole = "",
-                        coachIntro = "",
-                        timeText = formatTimeText(start, end),
-                        classIntro = "",
-                        imageResId = null,
-                        // set sessionTypeLabel so cancellation logic can decide personal vs group
-                        sessionTypeLabel = when (lr.type) {
-                            ReservationType.PERSONAL -> "개인 상담"
-                            ReservationType.GROUP -> "그룹 상담"
-                        },
-                        isLive = isLive,
-                        startAtIso = lr.startAt,
-                        sessionId = null,
-                        // local reservations have no remote coach image or qna stored
-                        coachProfileImageUrl = null,
-                        qnas = emptyList()
-                    )
+                // If server returned nothing but repository has localReservations (optimistic cache), show those
+                var finalList = mappedFromServer
+                if (finalList.isEmpty()) {
+                    try {
+                        // Attempt to access in-memory cache if repo is the concrete implementation
+                        if (repo is com.livon.app.data.repository.ReservationRepositoryImpl) {
+                            val local = com.livon.app.data.repository.ReservationRepositoryImpl.localReservations
+                            finalList = local.mapNotNull { lr ->
+                                try {
+                                    val start = LocalDateTime.parse(lr.startAt)
+                                    val end = LocalDateTime.parse(lr.endAt)
+                                    ReservationUi(
+                                        id = lr.id.toString(),
+                                        date = start.toLocalDate(),
+                                        className = if (lr.type == com.livon.app.data.repository.ReservationType.PERSONAL) "개인 상담" else "그룹 클래스",
+                                        coachName = "",
+                                        coachRole = "",
+                                        coachIntro = "",
+                                        timeText = formatTimeText(start, end),
+                                        classIntro = "",
+                                        imageResId = null,
+                                        isLive = false,
+                                        startAtIso = lr.startAt,
+                                        sessionId = null,
+                                        sessionTypeLabel = if (lr.type == com.livon.app.data.repository.ReservationType.PERSONAL) "개인 상담" else "그룹 상담",
+                                        hasAiReport = false,
+                                        aiSummary = null,
+                                        coachId = lr.coachId,
+                                        coachProfileImageUrl = null,
+                                        qnas = emptyList()
+                                    )
+                                } catch (_: Throwable) { null }
+                            }
+                        }
+                    } catch (_: Throwable) { /* ignore */ }
                 }
 
-                // Prefer server items and append any local-only items that don't collide by id
-                val idsFromServer = mappedFromServer.map { it.id }.toSet()
-                val combined = mappedFromServer + mappedLocal.filter { it.id !in idsFromServer }
-
-                // If server parse failed entirely and combined is empty, fallback to local cache
-                val finalList = if (combined.isEmpty()) mappedLocal else combined
-
+                try {
+                    val ids = finalList.map { it.id }
+                    Log.d("ReservationVM", "Mapped reservations count=${finalList.size}, ids=${ids.joinToString()}")
+                } catch (_: Throwable) {}
                 _uiState.value = ReservationsUiState(items = finalList, isLoading = false)
-            } catch (t: Throwable) {
-                _uiState.value = ReservationsUiState(items = emptyList(), isLoading = false, errorMessage = t.message)
-            }
+             } catch (t: Throwable) {
+                 _uiState.value = ReservationsUiState(items = emptyList(), isLoading = false, errorMessage = t.message)
+             }
         }
     }
 
-    private fun formatTimeText(start: java.time.LocalDateTime, end: java.time.LocalDateTime): String {
-        // 예: "오전 9:00 ~ 10:00" 또는 "오후 3:00 ~ 4:00"
-        fun labelAndHour(t: java.time.LocalDateTime): Pair<String, Int> {
+
+    private fun formatTimeText(start: LocalDateTime, end: LocalDateTime): String {
+        fun labelAndHour(t: LocalDateTime): Pair<String, Int> {
             val hour = t.hour
             val label = if (hour < 12) "오전" else "오후"
             var h12 = hour % 12
@@ -163,27 +174,22 @@ class ReservationViewModel(
         return "$labelStart ${hStart}:00 ~ ${hEnd}:00"
     }
 
-    /**
-     * 예약 생성: 서버에 요청 후 성공하면 로컬 UI 리스트에도 즉시 반영합니다.
-     * startAt / endAt은 View (혹은 ViewModel을 호출하는 코드)에서 검증하여
-     * 서버 규칙(정시, 1시간 차이, 09~17 범위)을 만족하도록 전달해야 합니다.
-     */
-    fun reserveCoach(coachId: String, startAt: java.time.LocalDateTime, endAt: java.time.LocalDateTime, preQnA: String?) {
+    /* 수정: 예약 생성 - qnas 파라미터를 받아 서버로 전송합니다. */
+    fun reserveCoach(coachId: String, startAt: LocalDateTime, endAt: LocalDateTime, qnas: List<String>) {
         viewModelScope.launch(Dispatchers.IO) {
             _actionState.value = ReservationActionState(isLoading = true, success = null, errorMessage = null)
             try {
-                val res = repo.reserveCoach(coachId, startAt, endAt, preQnA)
+                // 질문 목록을 하나의 문자열로 변환, 비어있으면 null
+                val preQnaString = qnas.joinToString("\n") { it.trim() }.takeIf { it.isNotBlank() }
+
+                // Repository에 preQnaString 전달
+                val res = repo.reserveCoach(coachId, startAt, endAt, preQnaString)
+
                 if (res.isSuccess) {
-                    // 성공하면 action 상태 업데이트
                     _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null)
-
-                    // 서버의 최신 예약 목록으로 갱신 (서버가 권장 소스이므로 재조회)
-                    // 이로써 ReservationStatusScreen에 반영되도록 보장합니다.
                     loadUpcoming()
-
                 } else {
                     val ex = res.exceptionOrNull()
-                    // HTTP 409 검사
                     val msg = when (ex) {
                         is retrofit2.HttpException -> if (ex.code() == 409) "이미 예약된 시간입니다" else ex.message()
                         else -> ex?.message ?: "알 수 없는 오류"
@@ -200,138 +206,71 @@ class ReservationViewModel(
         }
     }
 
-    /**
-     * 클래스 예약(그룹) API 호출: repo.reserveClass를 호출하고 actionState/uiState 갱신
-     */
+    /* 수정: 클래스 예약 - qnas 파라미터를 받아 서버로 전송합니다. */
     @Suppress("unused")
-    fun reserveClass(classId: String) {
+    fun reserveClass(classId: String, qnas: List<String>) {
         viewModelScope.launch(Dispatchers.IO) {
             _actionState.value = ReservationActionState(isLoading = true, success = null, errorMessage = null)
             try {
-                val res = repo.reserveClass(classId)
+                // 질문 목록을 하나의 문자열로 변환, 비어있으면 null
+                val preQnaString = qnas.joinToString("\n") { it.trim() }.takeIf { it.isNotBlank() }
+
+                // Repository에 preQnaString 전달
+                val res = repo.reserveClass(classId, preQnaString)
+
                 if (res.isSuccess) {
                     _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null)
-                    // 서버의 최신 예약 목록을 재조회하여 UI에 반영
                     loadUpcoming()
                 } else {
                     val ex = res.exceptionOrNull()
-
-                    // helper: detect already-reserved cases even when server returns 500 with duplicate-key message
                     fun isAlreadyReserved(error: Throwable?): Boolean {
                         if (error == null) return false
-                        if (error is retrofit2.HttpException) {
-                            if (error.code() == 409) return true
-                            try {
-                                val body = error.response()?.errorBody()?.string() ?: ""
-                                if (body.contains("이미 예약") || body.contains("Duplicate entry") || body.contains("uk_participant_user_consultation")) return true
-                            } catch (_: Throwable) { }
-                        } else {
-                            val m = error.message ?: ""
-                            if (m.contains("이미 예약") || m.contains("Duplicate entry") || m.contains("uk_participant_user_consultation")) return true
-                        }
-                        return false
+                        if (error is retrofit2.HttpException && error.code() == 409) return true
+                        val errorBody = (error as? retrofit2.HttpException)?.response()?.errorBody()?.string() ?: ""
+                        val errorMessage = error.message ?: ""
+                        val combinedText = errorBody + errorMessage
+                        return combinedText.contains("이미 예약") || combinedText.contains("Duplicate entry") || combinedText.contains("uk_participant_user_consultation")
                     }
 
-                    // try to read error body
-                    val msg = when (ex) {
-                        is retrofit2.HttpException -> {
-                            try {
-                                val body = ex.response()?.errorBody()?.string()
-                                "서버 오류: ${ex.code()} ${body ?: ex.message()}"
-                            } catch (_: Throwable) {
-                                ex.message()
-                            }
-                        }
-                        else -> ex?.message ?: "알 수 없는 오류"
-                    }
-
-                    // if server says already reserved (including duplicate-key 500), consider it success and refresh
                     if (isAlreadyReserved(ex)) {
                         loadUpcoming()
                         _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null)
                     } else {
-                        // Log full exception for debugging 500 errors
-                        try { android.util.Log.e("ReservationVM", "reserveClass failed: $msg", ex) } catch (_: Throwable) {}
+                        val msg = ex?.message ?: "알 수 없는 오류"
+                        try { Log.e("ReservationVM", "reserveClass failed: $msg", ex) } catch (_: Throwable) {}
                         _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = msg)
                     }
                 }
             } catch (t: Throwable) {
-                val msg = when (t) {
-                    is retrofit2.HttpException -> {
-                        try { val body = t.response()?.errorBody()?.string(); "서버 오류: ${t.code()} ${body ?: t.message()}" } catch (_: Throwable) { t.message }
-                    }
-                    else -> t.message
-                }
-                android.util.Log.e("ReservationVM", "reserveClass exception: $msg", t)
-
-                // If server crashed (5xx), create a local placeholder reservation so UI reflects user's intent
-                try {
-                    if (t is retrofit2.HttpException && t.code() >= 500) {
-                        val tmpId = (-(System.currentTimeMillis() and 0x7fffffff)).toInt()
-                        val nowIso = java.time.LocalDateTime.now().toString()
-                        com.livon.app.data.repository.ReservationRepositoryImpl.localReservations.add(
-                            com.livon.app.data.repository.ReservationRepositoryImpl.LocalReservation(
-                                id = tmpId,
-                                type = com.livon.app.data.repository.ReservationType.GROUP,
-                                coachId = "",
-                                startAt = nowIso,
-                                endAt = java.time.LocalDateTime.now().plusHours(1).toString()
-                            )
-                        )
-                        // Refresh UI from local cache
-                        loadUpcoming()
-                        _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = "서버 오류로 임시 저장되었습니다. 나중에 동기화됩니다.")
-                        return@launch
-                    }
-                } catch (t2: Throwable) {
-                    android.util.Log.e("ReservationVM", "Failed to create local fallback reservation", t2)
-                }
-
-                // Treat duplicate-key errors in catch too
-                fun isAlreadyReservedFromThrowable(error: Throwable?): Boolean {
-                    if (error == null) return false
-                    if (error is retrofit2.HttpException) {
-                        if (error.code() == 409) return true
-                        try {
-                            val body = error.response()?.errorBody()?.string() ?: ""
-                            if (body.contains("Duplicate entry") || body.contains("uk_participant_user_consultation") || body.contains("이미 예약")) return true
-                        } catch (_: Throwable) { }
-                    } else {
-                        val m = error.message ?: ""
-                        if (m.contains("Duplicate entry") || m.contains("uk_participant_user_consultation") || m.contains("이미 예약")) return true
-                    }
-                    return false
-                }
-
-                if (isAlreadyReservedFromThrowable(t)) {
-                    loadUpcoming()
-                    _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null)
-                    return@launch
-                }
-
-                _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = msg)
+                _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = t.message)
             }
         }
     }
 
-    // cancel APIs
+    // cancel APIs (기존 코드 유지)
     fun cancelIndividual(consultationId: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             Log.d("ReservationVM", "cancelIndividual: start id=$consultationId")
             _actionState.value = ReservationActionState(isLoading = true, success = null, errorMessage = null)
+            // optimistic UI: remove item locally immediately and keep backup to restore on failure
+            val prev = _uiState.value.items
+            _uiState.value = _uiState.value.copy(items = prev.filterNot { it.id == consultationId.toString() })
             try {
                 val res = repo.cancelIndividual(consultationId)
                 if (res.isSuccess) {
                     Log.d("ReservationVM", "cancelIndividual: success id=$consultationId")
                     _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null)
-                    // refresh server list
                     loadUpcoming()
                 } else {
                     Log.d("ReservationVM", "cancelIndividual: failure id=$consultationId, ex=${res.exceptionOrNull()?.message}")
+                    // restore previous list on failure
+                    _uiState.value = _uiState.value.copy(items = prev)
                     _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = res.exceptionOrNull()?.message)
                 }
             } catch (t: Throwable) {
                 Log.e("ReservationVM", "cancelIndividual: exception", t)
+                // restore previous list on exception
+                _uiState.value = _uiState.value.copy(items = prev)
                 _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = t.message)
             }
         }
@@ -341,6 +280,9 @@ class ReservationViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             Log.d("ReservationVM", "cancelGroupParticipation: start id=$consultationId")
             _actionState.value = ReservationActionState(isLoading = true, success = null, errorMessage = null)
+            // optimistic UI: remove item locally immediately and keep backup to restore on failure
+            val prev = _uiState.value.items
+            _uiState.value = _uiState.value.copy(items = prev.filterNot { it.id == consultationId.toString() })
             try {
                 val res = repo.cancelGroupParticipation(consultationId)
                 if (res.isSuccess) {
@@ -349,10 +291,14 @@ class ReservationViewModel(
                     loadUpcoming()
                 } else {
                     Log.d("ReservationVM", "cancelGroupParticipation: failure id=$consultationId, ex=${res.exceptionOrNull()?.message}")
+                    // restore previous list on failure
+                    _uiState.value = _uiState.value.copy(items = prev)
                     _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = res.exceptionOrNull()?.message)
                 }
             } catch (t: Throwable) {
                 Log.e("ReservationVM", "cancelGroupParticipation: exception", t)
+                // restore previous list on exception
+                _uiState.value = _uiState.value.copy(items = prev)
                 _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = t.message)
             }
         }

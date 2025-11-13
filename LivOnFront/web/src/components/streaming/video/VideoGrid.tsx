@@ -622,9 +622,21 @@ const ParticipantInfoButton = styled.button`
   cursor: pointer;
   padding: 0;
   transition: background-color 0.2s ease;
+  z-index: 10;
+  outline: none;
 
   &:hover {
     background-color: rgba(17, 24, 39, 0.85);
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: none;
+  }
+
+  &:active {
+    outline: none;
+    box-shadow: none;
   }
 
   img {
@@ -870,21 +882,19 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
                 <ShareSidebarTile
                   key={tile.identity}
                 >
-                  {showInfoButtons &&
-                    !tile.isLocal &&
-                    isParticipantInfoAvailable(tile.identity) && (
-                      <ParticipantInfoButton
-                        type="button"
-                        onClick={() => onOpenParticipantInfo(tile.identity)}
-                        aria-label={`${tile.displayName} 정보 보기`}
-                      >
-                        <img src={infoIcon} alt="" />
-                      </ParticipantInfoButton>
-                    )}
+                  {showInfoButtons && !tile.isLocal && isParticipantInfoAvailable(tile.identity) && (
+                    <ParticipantInfoButton
+                      type="button"
+                      onClick={() => onOpenParticipantInfo(tile.identity)}
+                      aria-label={`${tile.displayName} 정보 보기`}
+                    >
+                      <img src={infoIcon} alt="" />
+                    </ParticipantInfoButton>
+                  )}
                   <VideoComponent
                     track={tile.track ?? undefined}
                     participantIdentity={tile.displayName}
-                    local={tile.isLocal}
+                    local={tile.isLocal || tile.identity === localParticipantIdentity}
                     isVideoEnabled={tile.isVideoEnabled}
                   />
                 </ShareSidebarTile>
@@ -1072,7 +1082,7 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
                 $paginationLastPageTotalItems={isPaginationLastPageIncomplete ? lastRowItemCount : undefined}
                 $paginationRowIndex={isPaginationLastPageIncomplete ? rowIndex : undefined}
               >
-                {showInfoButtons && isParticipantInfoAvailable(videoItem.identity) && (
+                {showInfoButtons && !videoItem.isLocal && isParticipantInfoAvailable(videoItem.identity) && (
                   <ParticipantInfoButton
                     type="button"
                     onClick={() => onOpenParticipantInfo(videoItem.identity)}
@@ -1084,7 +1094,7 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
                 <VideoComponent
                   track={videoItem.track ?? undefined}
                   participantIdentity={videoItem.displayName}
-                  local={videoItem.isLocal}
+                  local={videoItem.isLocal || videoItem.identity === localParticipantIdentity}
                   isVideoEnabled={videoItem.isVideoEnabled}
                 />
               </VideoTileWrapper>

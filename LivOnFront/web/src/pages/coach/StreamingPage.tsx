@@ -224,11 +224,14 @@ export const StreamingPage: React.FC = () => {
 
   const handleOpenParticipantInfo = useCallback(
     (identity: string) => {
-      if (participantInfoMap[identity]) {
+      // 코치인 경우 항상 모달 열기
+      if (user?.role === "coach") {
+        setSelectedParticipantId(identity);
+      } else if (participantInfoMap[identity]) {
         setSelectedParticipantId(identity);
       }
     },
-    [participantInfoMap]
+    [participantInfoMap, user?.role]
   );
 
   const handleCloseParticipantInfo = useCallback(() => {
@@ -247,9 +250,13 @@ export const StreamingPage: React.FC = () => {
       throw new Error("상담 ID가 없습니다. 예약 페이지에서 다시 접속해주세요.");
     }
 
+    // 고유한 identity 생성 (participantName + consultationId + timestamp + random)
+    const uniqueIdentity = `${participantName}-${consultationId}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
     const requestBody = {
       consultationId: consultationId, // Long 타입
       participantName: participantName, // 선택사항
+      identity: uniqueIdentity, // 고유한 identity 추가
     };
 
     // JWT 토큰 가져오기
@@ -756,6 +763,37 @@ export const StreamingPage: React.FC = () => {
     };
   }, [roomName, participantName, user, isAuthLoading, clearScreenShareState]);
 
+  // 디버깅용: remoteTracks와 room 참가자 정보 로그
+  useEffect(() => {
+    console.log('=== Remote Tracks Debug ===');
+    console.log('Remote tracks count:', remoteTracks.length);
+    remoteTracks.forEach((item, index) => {
+      console.log(`Track ${index}:`, {
+        participantIdentity: item.participantIdentity,
+        participantName: item.participant?.name,
+        participantIdentityFromParticipant: item.participant?.identity,
+        trackSid: item.trackPublication.track?.sid,
+        trackKind: item.trackPublication.kind,
+      });
+    });
+    
+    console.log('=== Room Participants Debug ===');
+    if (room) {
+      console.log('Room participants count:', room.remoteParticipants.size);
+      room.remoteParticipants.forEach((participant) => {
+        console.log('Participant:', {
+          identity: participant.identity,
+          name: participant.name,
+          sid: participant.sid,
+          videoTracks: participant.videoTrackPublications.size,
+          audioTracks: participant.audioTrackPublications.size,
+        });
+      });
+    } else {
+      console.log('Room is not connected yet');
+    }
+  }, [remoteTracks, room]);
+
   const handleToggleVideo = async () => {
     if (!room) return;
 
@@ -1036,11 +1074,15 @@ export const StreamingPage: React.FC = () => {
             viewMode={viewMode}
             participantName={participantName}
             localParticipantIdentity={localParticipantIdentity}
-            showInfoButtons={!hasActiveScreenShare}
+            showInfoButtons={user?.role === "coach"}
             onOpenParticipantInfo={handleOpenParticipantInfo}
-            isParticipantInfoAvailable={(identity) =>
-              Boolean(participantInfoMap[identity])
-            }
+            isParticipantInfoAvailable={(identity) => {
+              // 코치인 경우 모든 참가자에 대해 정보 버튼 표시
+              if (user?.role === "coach") {
+                return true;
+              }
+              return Boolean(participantInfoMap[identity]);
+            }}
           />
         </VideoGridWrapper>
 
@@ -1088,12 +1130,33 @@ export const StreamingPage: React.FC = () => {
       />
 
       <ParticipantInfo
-        open={Boolean(
-          selectedParticipantId && participantInfoMap[selectedParticipantId]
-        )}
+        open={Boolean(selectedParticipantId)}
         participant={
           selectedParticipantId
-            ? participantInfoMap[selectedParticipantId]
+            ? participantInfoMap[selectedParticipantId] || (() => {
+                // participantInfoMap에 없으면 remoteTracks에서 참가자 이름 찾기
+                const remoteTrack = remoteTracks.find(
+                  (item) => item.participantIdentity === selectedParticipantId
+                );
+                const participantName =
+                  remoteTrack?.participant?.name ||
+                  remoteTrack?.participantIdentity ||
+                  selectedParticipantId;
+                
+                // 기본 participant 정보 반환
+                return {
+                  name: participantName,
+                  badges: [],
+                  notes: "",
+                  questions: [],
+                  analysis: {
+                    generatedAt: "",
+                    type: "",
+                    summary: "",
+                    tip: "",
+                  },
+                };
+              })()
             : undefined
         }
         onClose={handleCloseParticipantInfo}

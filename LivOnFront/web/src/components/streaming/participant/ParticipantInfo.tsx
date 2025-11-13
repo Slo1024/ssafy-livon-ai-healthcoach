@@ -33,19 +33,20 @@ const Overlay = styled.div`
 
 const Card = styled.div`
   width: min(640px, 100%);
-  max-height: 90vh;
+  max-height: 100vh;
   background: linear-gradient(180deg, #ffffff 0%, #f8f9fd 100%);
   border-radius: 32px;
   box-shadow: 0 32px 80px rgba(15, 23, 42, 0.25);
-  padding: 40px 48px;
+  padding: 32px 40px;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 20px;
   position: relative;
   overflow-y: auto;
 
   @media (max-width: 640px) {
-    padding: 32px 24px;
+    padding: 24px 20px;
+    gap: 16px;
   }
 `;
 
@@ -93,17 +94,17 @@ const CloseButton = styled.button`
 const Body = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
 `;
 
 const PhysicalSection = styled.div`
   display: flex;
   align-items: center;
   gap: 24px;
-  padding: 24px;
+  padding: 16px;
   border-radius: 24px;
-  background: linear-gradient(135deg, #f8fbff 0%, #eef2ff 100%);
-  border: 1px solid #dbeafe;
+  background: transparent;
+  border: none;
 
   @media (max-width: 520px) {
     flex-direction: column;
@@ -172,9 +173,9 @@ const MemoText = styled.p`
 `;
 
 const QuestionItem = styled.div`
-  padding: 14px 16px;
+  padding: 10px 12px;
   border-radius: 14px;
-  background: #f4f6fb;
+  background: transparent;
   color: #1f2937;
   font-size: 15px;
   font-weight: 500;
@@ -196,8 +197,8 @@ const AnalysisBox = styled.div`
   gap: 14px;
   padding: 20px;
   border-radius: 18px;
-  background: linear-gradient(135deg, #fbf8ff 0%, #eef2ff 100%);
-  border: 1px solid rgba(129, 140, 248, 0.25);
+  background: transparent;
+  border: none;
 `;
 
 const AnalysisMeta = styled.div`
@@ -212,7 +213,7 @@ const AnalysisSummary = styled.p`
   margin: 0;
   padding: 14px;
   border-radius: 14px;
-  background: rgba(99, 102, 241, 0.08);
+  background: transparent;
   color: #1f2937;
   line-height: 1.6;
 `;
@@ -220,7 +221,7 @@ const AnalysisSummary = styled.p`
 const AnalysisTip = styled.div`
   padding: 14px;
   border-radius: 14px;
-  background: rgba(251, 191, 36, 0.15);
+  background: transparent;
   color: #92400e;
   font-weight: 600;
   line-height: 1.5;
@@ -241,28 +242,37 @@ const ConfirmButton = styled.button`
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
 
   &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 12px 20px rgba(79, 70, 229, 0.35);
+    /* 호버 시 변화 없음 */
   }
 `;
 
 export const ParticipantInfo: React.FC<ParticipantInfoProps> = ({ open, participant, onClose }) => {
-  if (!open || !participant) {
+  if (!open) {
     return null;
   }
+
+  // participant가 없으면 기본값 사용
+  const participantData = participant || {
+    name: "참가자",
+    badges: [],
+    notes: "",
+    questions: [],
+    analysis: {
+      generatedAt: "",
+      type: "",
+      summary: "",
+      tip: "",
+    },
+  };
 
   return (
     <Overlay onClick={onClose}>
       <Card onClick={(e) => e.stopPropagation()}>
         <Header>
-          <Name>{participant.name} 회원님 정보</Name>
+          <Name>{participantData.name} 회원님 정보</Name>
           <Subtext>회원님의 신체 데이터를 AI로 분석한 결과를 확인할 수 있습니다.</Subtext>
-          <CloseButton type="button" onClick={onClose} aria-label="참가자 정보 닫기">
-            ×
-          </CloseButton>
         </Header>
 
         <Body>
@@ -276,40 +286,31 @@ export const ParticipantInfo: React.FC<ParticipantInfoProps> = ({ open, particip
             <div>
               <SectionTitle>신체 정보</SectionTitle>
               <PhysicalList>
-                <li>신장 170cm</li>
-                <li>체중 50kg</li>
-                <li>수면 시간 7시간</li>
+                <li>신장 </li>
+                <li>체중 </li>
+                <li>수면 시간 </li>
               </PhysicalList>
             </div>
           </PhysicalSection>
 
           <AnalysisBox>
             <SectionTitle>AI 분석 결과</SectionTitle>
-            <AnalysisMeta>
-              <span>생성일: {participant.analysis.generatedAt}</span>
-              <span>분석 유형: {participant.analysis.type}</span>
-            </AnalysisMeta>
-            <AnalysisSummary>{participant.analysis.summary}</AnalysisSummary>
-            <AnalysisTip>{participant.analysis.tip}</AnalysisTip>
+            <AnalysisSummary>{participantData.analysis.summary || ''}</AnalysisSummary>
+            <AnalysisTip>{participantData.analysis.tip || ''}</AnalysisTip>
           </AnalysisBox>
 
-          <Divider />
-
-          <SectionTitle>회원 메모</SectionTitle>
-          <MemoText>{participant.notes}</MemoText>
-
-          <Divider />
-
-          {participant.questions.length > 0 && (
-            <div>
-              <SectionTitle>Q&A</SectionTitle>
-              <Questions>
-                {participant.questions.map((question, index) => (
-                  <QuestionItem key={`${participant.name}-question-${index}`}>{question}</QuestionItem>
-                ))}
-              </Questions>
-            </div>
-          )}
+          <div>
+            <SectionTitle>Q&A</SectionTitle>
+            <Questions>
+              {participantData.questions.length > 0 ? (
+                participantData.questions.map((question, index) => (
+                  <QuestionItem key={`${participantData.name}-question-${index}`}>{question}</QuestionItem>
+                ))
+              ) : (
+                <QuestionItem>질문이 없습니다.</QuestionItem>
+              )}
+            </Questions>
+          </div>
         </Body>
 
         <Footer>

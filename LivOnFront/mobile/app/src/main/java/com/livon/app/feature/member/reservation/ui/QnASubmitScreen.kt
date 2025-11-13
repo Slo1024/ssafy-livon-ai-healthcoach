@@ -307,8 +307,9 @@ fun ReservationCompleteDialog(
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
                 .align(Alignment.Center)
-                .heightIn(min = 220.dp, max = 420.dp), // 최소/최대 높이 지정
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+//                .heightIn(min = 200.dp, max = 220.dp), // 최소/최대 높이 지정
+                .wrapContentHeight(),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 // Added a small close control at the top-right so user can dismiss the dialog
@@ -348,9 +349,10 @@ fun ReservationCompleteDialog(
                         ),
                         modifier = Modifier
                             .clickable(onClick = onChangeHealthInfo)
-                            .padding(horizontal = 8.dp),
+                            .padding(horizontal = 12.dp),
                         textAlign = TextAlign.Center
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
                 }
 
                 HorizontalDivider(
@@ -364,7 +366,7 @@ fun ReservationCompleteDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable(onClick = onConfirm)
-                        .padding(vertical = 12.dp),
+                        .padding(vertical = 26.dp),
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.bodyLarge
                 )

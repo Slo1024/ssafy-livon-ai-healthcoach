@@ -357,15 +357,42 @@ const ScreenShareLayout = styled.div`
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
   gap: 16px;
+  width: 100%;
   height: 100%;
+  min-height: 0;
   padding: 8px;
+  box-sizing: border-box;
+
+  @media (max-width: 1200px) {
+    grid-template-columns: minmax(0, 1fr) 240px;
+    gap: 12px;
+    padding: 6px;
+  }
+
+  @media (max-width: 900px) {
+    grid-template-columns: minmax(0, 1fr) 200px;
+    gap: 8px;
+    padding: 4px;
+  }
+
+  @media (max-width: 768px) {
+    grid-template-columns: minmax(0, 1fr) 180px;
+    gap: 6px;
+    padding: 4px;
+  }
 `;
 
 const ScreenShareMain = styled.div`
   position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
   border-radius: 12px;
   background-color: #000000;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 `;
 
 const ScreenShareLabel = styled.div`
@@ -382,6 +409,10 @@ const ScreenShareLabel = styled.div`
 
 const ScreenShareSidebar = styled.div`
   position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -436,15 +467,25 @@ const ShareScrollButton = styled.button`
 `;
 
 const ScreenShareVideoElement = styled.video`
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
+  min-width: 0;
+  min-height: 0;
   object-fit: contain;
   background-color: #000000;
 `;
 
 const ScreenSharePlaceholder = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
+  min-width: 0;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -452,6 +493,16 @@ const ScreenSharePlaceholder = styled.div`
   color: #e5e7eb;
   font-size: 16px;
   font-weight: 500;
+`;
+
+const ScreenShareVideoWrapper = styled.div`
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  display: flex;
 `;
 
 const ScreenShareVideo: React.FC<{
@@ -498,21 +549,22 @@ const ScreenShareVideo: React.FC<{
 
   return (
     <>
-      {track && (
-        <ScreenShareVideoElement
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted={isLocal}
-          style={{ display: isActive ? 'block' : 'none' }}
-        />
-      )}
-      {!isActive && (
-        <ScreenSharePlaceholder>
-          화면 공유가 일시 중지되었습니다.
-        </ScreenSharePlaceholder>
-      )}
-      <ScreenShareLabel>{ownerName}</ScreenShareLabel>
+      <ScreenShareVideoWrapper>
+        {track && (
+          <ScreenShareVideoElement
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted={isLocal}
+            style={{ display: isActive ? 'block' : 'none' }}
+          />
+        )}
+        {!isActive && (
+          <ScreenSharePlaceholder>
+            화면 공유가 일시 중지되었습니다.
+          </ScreenSharePlaceholder>
+        )}
+      </ScreenShareVideoWrapper>
     </>
   );
 };

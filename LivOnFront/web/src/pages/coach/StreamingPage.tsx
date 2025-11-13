@@ -625,7 +625,8 @@ export const StreamingPage: React.FC = () => {
                     senderId: msg.userId,
                   })
                 );
-                setChatMessages(convertedMessages);
+                // 시간순 정렬을 리버스하여 최신 메시지가 아래에 오도록 설정
+                setChatMessages([...convertedMessages].reverse());
 
                 // STOMP 웹소켓 연결 (accessToken은 이미 위에서 가져옴)
                 console.log("🔵 [채팅] STOMP 연결 준비:", {
@@ -676,17 +677,6 @@ export const StreamingPage: React.FC = () => {
                       isConnected: stompClient.isConnected(),
                       refCurrent: !!stompChatClientRef.current,
                     });
-
-                    // 연결 상태 확인 후 입장 메시지 전송
-                    if (stompClient.isConnected()) {
-                      console.log("🔵 [채팅] 입장 메시지 전송 시도...");
-                      stompClient.sendMessage("", "ENTER");
-                      console.log("🔵 [채팅] 입장 메시지 전송 완료");
-                    } else {
-                      console.warn(
-                        "⚠️ [채팅] STOMP 연결이 완료되었지만 isConnected()가 false입니다."
-                      );
-                    }
                   } catch (connectError) {
                     console.error(
                       "❌ [채팅] STOMP connect() 예외 발생:",

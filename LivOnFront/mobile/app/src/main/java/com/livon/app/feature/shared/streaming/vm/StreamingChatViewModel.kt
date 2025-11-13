@@ -33,6 +33,8 @@ class StreamingChatViewModel(
 
     private val _uiState = MutableStateFlow(StreamingChatUiState())
     val uiState: StateFlow<StreamingChatUiState> = _uiState
+    
+    private var isChatRoomInfoRequested = false // POST 요청이 이미 실행되었는지 확인하는 플래그
 
     init {
         // 1) STOMP 연결 (웹소켓 접속)
@@ -44,9 +46,10 @@ class StreamingChatViewModel(
                     scope = viewModelScope
                 )
                 
-                // 2) 연결 완료 대기
+                // 2) 연결 완료 대기 (한 번만 처리)
                 ChatStompManager.subscriptionReady.collect { isReady ->
-                    if (isReady) {
+                    if (isReady && !isChatRoomInfoRequested) {
+                        isChatRoomInfoRequested = true // 플래그 설정하여 중복 실행 방지
                         Log.d("StreamingChatViewModel", "웹소켓 연결 완료, POST 요청 시작")
                         
                         // 3) POST /api/v1/goods/chat?consultationId=방번호 요청 (구독 전에 먼저 실행)
@@ -65,7 +68,6 @@ class StreamingChatViewModel(
                                 Log.d("StreamingChatViewModel", "구독 시작 (POST 실패했지만 시도)")
                                 ChatStompManager.subscribe(consultationId, viewModelScope)
                             }
-                        return@collect // 첫 번째 ready 신호만 처리
                     }
                 }
             } catch (e: Exception) {
@@ -98,32 +100,40 @@ class StreamingChatViewModel(
 
                 if (message != null) {
                     _uiState.update { state ->
-                        // 중복 체크: 같은 내용의 메시지가 최근 3초 이내에 있으면 제외
-                        val now = Instant.now()
-                        val recentMessages = state.messages.filter { msg ->
+                        // 1) ID로 중복 체크 (가장 확실한 방법)
+                        val existsById = state.messages.any { it.id == message.id }
+                        if (existsById) {
+                            Log.d("StreamingChatViewModel", "중복 메시지 감지 (ID): ${message.id}")
+                            return@update state // 변경 없음
+                        }
+                        
+                        // 2) 내용 + 시간 + userId로 중복 체크 (같은 사용자가 같은 내용을 같은 시간에 보낸 경우)
+                        val isDuplicate = state.messages.any { msg ->
                             try {
                                 val msgTime = Instant.parse(msg.sentAt)
-                                now.epochSecond - msgTime.epochSecond <= 3 // 3초 이내
+                                val newTime = Instant.parse(message.sentAt)
+                                val timeDiff = kotlin.math.abs(msgTime.epochSecond - newTime.epochSecond)
+                                
+                                // 같은 내용, 같은 사용자, 5초 이내
+                                msg.content == message.content && 
+                                msg.userId == message.userId &&
+                                msg.chatRoomId == message.chatRoomId &&
+                                timeDiff <= 5
                             } catch (e: Exception) {
                                 false
                             }
                         }
                         
-                        // 같은 내용의 메시지가 최근에 있으면 추가하지 않음
-                        val isDuplicate = recentMessages.any { msg ->
-                            msg.content == message.content && 
-                            msg.chatRoomId == message.chatRoomId
+                        if (isDuplicate) {
+                            Log.d("StreamingChatViewModel", "중복 메시지 감지 (내용+시간+사용자): ${message.content}")
+                            return@update state // 변경 없음
                         }
                         
-                        if (isDuplicate) {
-                            Log.d("StreamingChatViewModel", "중복 메시지 감지, 추가하지 않음: ${message.content}")
-                            state // 변경 없음
-                        } else {
-                            val updated = (state.messages + message)
-                                .distinctBy { it.id }
-                                .sortedBy { it.sentAt }
-                            state.copy(messages = updated)
-                        }
+                        // 중복이 아니면 추가
+                        val updated = (state.messages + message)
+                            .distinctBy { it.id } // ID 중복 제거 (안전장치)
+                            .sortedBy { it.sentAt }
+                        state.copy(messages = updated)
                     }
                 }
             }
@@ -158,13 +168,38 @@ class StreamingChatViewModel(
                 .onSuccess { newMessages ->
                     _uiState.update { currentState ->
                         val existingMessages = currentState.messages
-                    val combinedMessages =
-                        if (isInitialLoad) newMessages
-                        else newMessages + existingMessages
-                        val dedupedMessages = combinedMessages
-                            .distinctBy { it.id }
-                    val sortedMessages = dedupedMessages
-                        .sortedBy { it.sentAt }
+                        val combinedMessages =
+                            if (isInitialLoad) newMessages
+                            else newMessages + existingMessages
+                        
+                        // 중복 제거: ID로 먼저 제거
+                        val dedupedById = combinedMessages.distinctBy { it.id }
+                        
+                        // 추가 중복 제거: 같은 내용 + 같은 사용자 + 같은 시간(5초 이내)
+                        val finalMessages = mutableListOf<ChatMessage>()
+                        
+                        for (msg in dedupedById) {
+                            val isDuplicate = finalMessages.any { existing ->
+                                try {
+                                    val existingTime = Instant.parse(existing.sentAt)
+                                    val msgTime = Instant.parse(msg.sentAt)
+                                    val timeDiff = kotlin.math.abs(existingTime.epochSecond - msgTime.epochSecond)
+                                    
+                                    existing.content == msg.content &&
+                                    existing.userId == msg.userId &&
+                                    existing.chatRoomId == msg.chatRoomId &&
+                                    timeDiff <= 5
+                                } catch (e: Exception) {
+                                    false
+                                }
+                            }
+                            
+                            if (!isDuplicate) {
+                                finalMessages.add(msg)
+                            }
+                        }
+                        
+                        val sortedMessages = finalMessages.sortedBy { it.sentAt }
 
                         currentState.copy(
                             isLoading = false,
@@ -206,7 +241,6 @@ class StreamingChatViewModel(
                     token = accessToken,
                     content = message,
                     roomId = chatRoomId.toLong(),
-                    senderUUID = senderUUID
                 )
                 Log.d("StreamingChatViewModel", "STOMP 메시지 발행 성공")
                 // 서버에서 받은 메시지만 표시되도록 로컬 메시지 추가 제거

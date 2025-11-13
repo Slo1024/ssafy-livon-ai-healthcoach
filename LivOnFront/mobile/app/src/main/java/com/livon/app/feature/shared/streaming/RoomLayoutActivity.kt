@@ -28,6 +28,7 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import io.livekit.android.ConnectOptions
@@ -48,6 +49,8 @@ import android.media.MediaRecorder
 import android.media.MediaScannerConnection
 import android.media.projection.MediaProjection
 import android.os.Environment
+import com.livon.app.data.session.SessionManager
+import io.ktor.client.request.header
 import java.io.File
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -58,6 +61,7 @@ class RoomLayoutActivity : AppCompatActivity() {
     private val _participantTracks = MutableStateFlow<List<TrackInfo>>(emptyList())
     private val _eglBaseContext = MutableStateFlow<EglBase.Context?>(null)
     private val _room = MutableStateFlow<Room?>(null)
+    private val _isSpeakerMuted = MutableStateFlow(false)
 
     private lateinit var room: Room
     private var eglBase: EglBase? = null
@@ -601,3 +605,4 @@ class RoomLayoutActivity : AppCompatActivity() {
     }
 
 }
+

@@ -28,6 +28,7 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import io.livekit.android.ConnectOptions
@@ -48,6 +49,8 @@ import android.media.MediaRecorder
 import android.media.MediaScannerConnection
 import android.media.projection.MediaProjection
 import android.os.Environment
+import com.livon.app.data.session.SessionManager
+import io.ktor.client.request.header
 import java.io.File
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -141,8 +144,10 @@ class RoomLayoutActivity : AppCompatActivity() {
             val participantTracks = _participantTracks.collectAsState().value
             val eglBaseContext = _eglBaseContext.collectAsState().value
             val roomState = _room.collectAsState().value
+            val consultationId = intent.getLongExtra("consultationId", -1L)
+            val jwtToken = SessionManager.getTokenSync() ?: ""
 
-            if (eglBaseContext != null && roomState != null) {
+            if (eglBaseContext != null && roomState != null && consultationId != -1L && jwtToken.isNotEmpty()) {
                 val isSpeakerMuted = _isSpeakerMuted.collectAsState().value
                 LiveStreamingCoachScreen(
                     uiState = uiState,
@@ -154,6 +159,8 @@ class RoomLayoutActivity : AppCompatActivity() {
                     onToggleCamera = ::toggleCamera,
                     onToggleMic = ::toggleMicrophone,
                     onShareScreen = ::toggleScreenShare,
+                    consultationId = consultationId,
+                    jwtToken = jwtToken,
                     onToggleSpeaker = ::toggleSpeaker,
                     isSpeakerMuted = isSpeakerMuted
                 )
@@ -184,10 +191,16 @@ class RoomLayoutActivity : AppCompatActivity() {
     private fun connectToRoom() {
         val participantName = intent.getStringExtra("participantName") ?: "Participant1"
         val roomName = intent.getStringExtra("roomName") ?: "Test Room"
+        val consultationId = intent.getLongExtra("consultationId", -1L)
 
         lifecycleScope.launch {
             try {
-                val token = getToken(roomName, participantName)
+                val token = if (consultationId != -1L) {
+                    getToken(consultationId, participantName)
+                } else {
+                    // Fallback for old flow (JoinRoomScreen)
+                    getToken(roomName, participantName)
+                }
 
                 room.connect(
                     Urls.livekitUrl,
@@ -476,14 +489,40 @@ class RoomLayoutActivity : AppCompatActivity() {
         finish()
     }
 
-    private suspend fun getToken(roomName: String, participantName: String): String {
-        val response = client.post(Urls.applicationServerUrl + "token") {
-            contentType(ContentType.Application.Json)
-            setBody(TokenRequest(roomName, participantName))
+    private suspend fun getToken(consultationId: Long, participantName: String): String {
+        val jwtToken = SessionManager.getTokenSync()
+        if (jwtToken == null) {
+            throw IllegalStateException("JWT token is not available")
         }
 
-        Log.d("token", response.body<TokenResponse>().token)
-        return response.body<TokenResponse>().token
+        val response = client.post(Urls.applicationServerUrl + "token") {
+            contentType(ContentType.Application.Json)
+            header(HttpHeaders.Authorization, "Bearer $jwtToken")
+            setBody(TokenRequest(consultationId, participantName))
+        }
+
+        val apiResponse = response.body<TokenApiResponse>()
+        if (!apiResponse.isSuccess || apiResponse.result == null) {
+            throw IllegalStateException("Failed to get token: ${apiResponse.message ?: "Unknown error"}")
+        }
+
+        val token = apiResponse.result["token"]
+        if (token == null) {
+            throw IllegalStateException("Token not found in response result")
+        }
+
+        Log.d("token", token)
+        return token
+    }
+
+    // Fallback for old flow (JoinRoomScreen) - deprecated
+    private suspend fun getToken(roomName: String, participantName: String): String {
+        // For backward compatibility, try to parse roomName as consultationId
+        val consultationId = roomName.toLongOrNull() ?: -1L
+        if (consultationId == -1L) {
+            throw IllegalArgumentException("roomName must be a valid consultationId (Long)")
+        }
+        return getToken(consultationId, participantName)
     }
 
     private fun toggleCamera() {
@@ -552,10 +591,10 @@ class RoomLayoutActivity : AppCompatActivity() {
             try {
                 val isMuted = _isSpeakerMuted.value
                 val newMutedState = !isMuted
-                
+
                 // Room의 setSpeakerMute를 사용하여 스피커 음소거 토글
                 room.setSpeakerMute(newMutedState)
-                
+
                 _isSpeakerMuted.value = newMutedState
                 Log.d("LiveKitDebug", "Speaker ${if (newMutedState) "muted" else "unmuted"}")
             } catch (e: Exception) {
@@ -566,3 +605,4 @@ class RoomLayoutActivity : AppCompatActivity() {
     }
 
 }
+

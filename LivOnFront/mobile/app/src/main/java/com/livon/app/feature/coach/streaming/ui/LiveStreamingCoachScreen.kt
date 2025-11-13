@@ -41,12 +41,27 @@ fun LiveStreamingCoachScreen(
     onToggleCamera: () -> Unit = {},
     onToggleMic: () -> Unit = {},
     onShareScreen: () -> Unit = {},
+    consultationId: Long,
+    jwtToken: String,
     onToggleSpeaker: () -> Unit = {},
     isSpeakerMuted: Boolean = false,
 ) {
     LaunchedEffect(key1 = true) {
         onConnect()
     }
+
+    // 세션 참가 시 웹소켓 연결, 구독, POST 요청 수행
+    val chatViewModel: com.livon.app.feature.shared.streaming.vm.StreamingChatViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return com.livon.app.feature.shared.streaming.vm.StreamingChatViewModel(
+                    consultationId = consultationId,
+                    jwtToken = jwtToken
+                ) as T
+            }
+        }
+    )
 
     var currentScreen by remember { mutableStateOf("streaming") } // "streaming", "participant", "chatting"
     var showHeader by remember { mutableStateOf(false) } // default: header hidden
@@ -63,7 +78,9 @@ fun LiveStreamingCoachScreen(
             "chatting" -> {
                 StreamingCheating(
                     onBackClick = { currentScreen = "streaming" },
-                    onSearch = { /* 검색 기능은 추후 구현 */ }
+                    onSearch = { /* 검색 기능은 추후 구현 */ },
+                    viewModel = chatViewModel,
+                    chatRoomId = consultationId.toInt()
                 )
             }
 

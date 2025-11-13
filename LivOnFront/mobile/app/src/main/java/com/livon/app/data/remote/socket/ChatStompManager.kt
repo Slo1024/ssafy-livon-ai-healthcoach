@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import ua.naiksoftware.stomp.dto.StompCommand
 import ua.naiksoftware.stomp.dto.StompHeader
 import ua.naiksoftware.stomp.dto.StompMessage
-import java.util.UUID
 import kotlinx.coroutines.launch
 
 
@@ -18,6 +17,8 @@ object ChatStompManager {
 
     private val _incomingMessages = kotlinx.coroutines.flow.MutableSharedFlow<String>()
     val incomingMessages = _incomingMessages.asSharedFlow()
+    private val _subscriptionReady = kotlinx.coroutines.flow.MutableSharedFlow<Boolean>()
+    val subscriptionReady = _subscriptionReady.asSharedFlow()
     private lateinit var stompClient: StompClient
 
     fun connect(token: String, roomId: Long, scope: CoroutineScope) {
@@ -38,7 +39,10 @@ object ChatStompManager {
                 when (event.type) {
                     ua.naiksoftware.stomp.dto.LifecycleEvent.Type.OPENED -> {
                         Log.d("STOMP", "연결 성공")
-                        subscribe(roomId, scope)
+                        // 구독은 POST 요청 후에 수행하도록 변경
+                        scope.launch {
+                            _subscriptionReady.emit(true) // 연결 완료 신호
+                        }
                     }
                     ua.naiksoftware.stomp.dto.LifecycleEvent.Type.ERROR ->
                         Log.e("STOMP", "연결 오류", event.exception)
@@ -49,8 +53,8 @@ object ChatStompManager {
                 }
             }
     }
-
-    private fun subscribe(roomId: Long, scope: CoroutineScope) {
+    
+    fun subscribe(roomId: Long, scope: CoroutineScope) {
         val topic = "/sub/chat/goods/$roomId"
         Log.d("STOMP", "구독 요청: $topic")
 
@@ -63,15 +67,21 @@ object ChatStompManager {
                 }
             }, { error ->
                 Log.e("STOMP", "구독 중 오류", error)
+                scope.launch {
+                    _subscriptionReady.emit(false)
+                }
             })
+        
+        // 구독 요청 완료 (ready 신호는 connect 시 이미 emit했으므로 여기서는 emit하지 않음)
+        Log.d("STOMP", "구독 요청 완료")
     }
 
-    val FIXED_SENDER_UUID: UUID = UUID.fromString("00000000-0000-0000-0000-000000000001") // 삭제 예정
-    fun sendMessage(token: String, content: String, roomId: Long, senderUUID: UUID) {
+
+
+    fun sendMessage(token: String, content: String, roomId: Long) {
         val json = """
             {
               "roomId": $roomId,
-              "senderId": "$senderUUID",
               "message": "$content",
               "type": "TALK"
             }

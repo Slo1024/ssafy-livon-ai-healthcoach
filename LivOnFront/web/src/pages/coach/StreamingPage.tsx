@@ -39,8 +39,6 @@ import {
   ParticipantDetail,
 } from "../../components/streaming/participant/ParticipantInfo";
 
-const APPLICATION_SERVER_URL = CONFIG.LIVEKIT.APPLICATION_SERVER_URL;
-
 const API_BASE_URL =
   CONFIG.API_BASE_URL ||
   process.env.REACT_APP_API_BASE_URL ||
@@ -634,7 +632,10 @@ export const StreamingPage: React.FC = () => {
                           type: message.type,
                           message: message.message,
                           sender: message.sender,
+                          senderUserId: message.sender?.userId,
                           currentUserId: user?.id,
+                          currentUserEmail: user?.email,
+                          userObject: user,
                         });
 
                         // ENTER, LEAVE 같은 시스템 메시지는 표시하지 않음
@@ -705,63 +706,33 @@ export const StreamingPage: React.FC = () => {
                             return prev;
                           }
 
-                          // 내가 보낸 메시지인지 확인 (sender.userId 사용)
+                          // 내가 보낸 메시지인지 확인
+                          // STOMP 연결 시 전달한 userId (이메일)와 서버에서 받은 sender.userId (UUID)를 비교
+                          // user.id는 이메일 형식이고, sender.userId는 UUID 형식이므로 직접 비교 불가
+                          // 따라서 STOMP 클라이언트에 저장된 userId와 비교
+                          const senderUserId = message.sender?.userId;
+                          const currentUserId = user?.id;
+                          const storedUserId = message.currentUserId; // STOMP 연결 시 전달한 userId
+
+                          // STOMP 연결 시 전달한 userId와 서버 응답의 senderId를 비교
+                          // 하지만 형식이 다르므로, 원본 메시지에 이메일 정보가 있는지 확인 필요
+                          // 일단 senderId가 있고, STOMP 연결 시 전달한 userId와 일치하는지 확인
+                          // 실제로는 서버가 senderId를 UUID로 반환하므로, 다른 방법 필요
                           const isFromSelf =
-                            message.sender?.userId === user?.id;
+                            storedUserId === currentUserId || // STOMP 연결 시 전달한 userId와 현재 user.id 비교
+                            (senderUserId &&
+                              storedUserId &&
+                              senderUserId === storedUserId); // senderId와 storedUserId 비교 (형식이 같을 경우)
 
-                          // 내가 보낸 메시지인 경우: 임시 메시지를 찾아서 교체
-                          if (isFromSelf && message.sender) {
-                            const tempMessageIndex = prev.findIndex(
-                              (msg) =>
-                                msg.id.startsWith("temp-") &&
-                                msg.message === message.message &&
-                                Math.abs(
-                                  msg.timestamp.getTime() - messageSentAt
-                                ) < 5000 // 5초 이내의 메시지
-                            );
-
-                            if (tempMessageIndex !== -1) {
-                              // 임시 메시지를 실제 메시지로 교체
-                              const newMessage: ChatMessage = {
-                                id: message.id,
-                                sender:
-                                  message.sender.nickname ||
-                                  user?.nickname ||
-                                  participantName,
-                                message: message.message,
-                                timestamp: new Date(message.sentAt),
-                                senderImage:
-                                  message.sender.userImage ||
-                                  user?.profileImage,
-                                senderUserId: message.sender.userId,
-                              };
-
-                              console.log(
-                                "🔵 [채팅] 임시 메시지를 실제 메시지로 교체:",
-                                {
-                                  tempId: prev[tempMessageIndex].id,
-                                  realId: newMessage.id,
-                                  message: newMessage.message,
-                                }
-                              );
-
-                              const updated = [...prev];
-                              updated[tempMessageIndex] = newMessage;
-
-                              // [2-3] ID 중복 제거 및 시간순 정렬 (오래된 것부터 최신 순서)
-                              const deduplicated = updated.filter(
-                                (msg, index, self) =>
-                                  index ===
-                                  self.findIndex((m) => m.id === msg.id)
-                              );
-                              const sorted = deduplicated.sort(
-                                (a, b) =>
-                                  a.timestamp.getTime() - b.timestamp.getTime()
-                              );
-
-                              return sorted;
-                            }
-                          }
+                          console.log("🔵 [채팅] isFromSelf 체크:", {
+                            senderUserId,
+                            currentUserId,
+                            storedUserId,
+                            isFromSelf,
+                            senderNickname: message.sender?.nickname,
+                            userNickname: user?.nickname,
+                            senderObject: message.sender,
+                          });
 
                           // 새 메시지 생성
                           const senderName = message.sender?.nickname

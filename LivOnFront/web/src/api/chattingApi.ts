@@ -97,6 +97,8 @@ export interface GoodsChatMessageResponse {
     nickname: string;
     userImage?: string;
   };
+  // STOMP 클라이언트에 저장된 userId (비교용)
+  currentUserId?: string;
 }
 
 /** === 채팅 REST API === */
@@ -106,22 +108,6 @@ export async function createChatRoom(consultationId: number) {
     ApiResponse<GoodsChatRoomResponse>
   >(`/goods/chat`, null, { params: { consultationId } });
   return data.result; // GoodsChatRoomResponse
-}
-
-/** 채팅방 참여자 목록: /goods/chat/{chatRoomId}/users */
-export async function getChatUsers(chatRoomId: number) {
-  const { data } = await chattingApiClient.get<ApiResponse<any>>(
-    `/goods/chat/${chatRoomId}/users`
-  );
-  return data.result;
-}
-
-/** 참여자 접속현황: /goods/chat/{chatRoomId}/users/connection */
-export async function getChatUsersConnection(chatRoomId: number) {
-  const { data } = await chattingApiClient.get<ApiResponse<any>>(
-    `/goods/chat/${chatRoomId}/users/connection`
-  );
-  return data.result;
 }
 
 /** 메시지 페이지/증분 조회(시간 기준): /goods/chat/{chatRoomId}/message?lastSentAt=ISO */
@@ -160,39 +146,6 @@ export async function getChatMessagesSince(
     { params }
   );
   return data.result; // GoodsChatMessage[]
-}
-
-/** === OpenVidu 토큰 발급 (세션 참가 전) ===
- *  POST /token  (임의의 key-value payload 허용)
- */
-export async function createOpenViduToken(payload: Record<string, string>) {
-  const { data } = await chattingApiClient.post<Record<string, string>>(
-    `/token`,
-    payload
-  );
-  return data; // { token: "...", ... } 형태(백엔드 구현에 따름)
-}
-
-/** =========== 화상통화 중 채팅 연결 유틸 =========== */
-
-/** =========== OpenVidu 세션 ↔ 채팅방 브리지 =========== */
-/**
- * ensureChatRoomAndWireForCall
- * - 상담(consultationId)로 채팅방을 보장 생성
- * - OpenVidu 토큰을 함께 받아 프런트의 화상+채팅 준비를 단일 함수로 연결
- */
-export async function ensureChatRoomAndWireForCall(params: {
-  consultationId: number;
-  openViduPayload?: Record<string, string>;
-}) {
-  const room = await createChatRoom(params.consultationId); // { chatRoomId, ... }
-  const ovTokenPayload = params.openViduPayload ?? {};
-  const ovToken = await createOpenViduToken(ovTokenPayload); // { token, ... }
-  return {
-    chatRoomId: room.chatRoomId,
-    consultationId: room.consultationId,
-    ovToken,
-  };
 }
 
 /** =========== STOMP 웹소켓 채팅 =========== */
@@ -285,40 +238,71 @@ export class StompChatClient {
                       bodyLength: message.body?.length,
                       body: message.body,
                     });
-                    const rawMessage = JSON.parse(message.body);
-                    
+                    const rawMessage: any = JSON.parse(message.body);
+
+                    // 디버깅: 원본 메시지 로그
+                    console.log("🔵 [STOMP] 원본 메시지 상세:", {
+                      rawMessage,
+                      senderId: rawMessage.senderId,
+                      sender: rawMessage.sender,
+                      senderEmail: rawMessage.senderEmail,
+                      email: rawMessage.email,
+                      hasSenderId: !!rawMessage.senderId,
+                      hasSender: !!rawMessage.sender,
+                      allKeys: Object.keys(rawMessage),
+                    });
+
                     // 서버 응답 형식을 클라이언트가 기대하는 형식으로 변환
                     // 서버: { chatMessageId, messageType: "대화", message, senderId, ... }
                     // 클라이언트: { id, type: "TALK", message, sender, ... }
-                    
+
                     // messageType 또는 type 필드 확인
-                    const messageType = rawMessage.messageType || rawMessage.type;
+                    const messageType =
+                      rawMessage.messageType || rawMessage.type;
                     let convertedType: "ENTER" | "TALK" | "LEAVE" = "TALK";
                     if (messageType === "대화" || messageType === "TALK") {
                       convertedType = "TALK";
-                    } else if (messageType === "입장" || messageType === "ENTER") {
+                    } else if (
+                      messageType === "입장" ||
+                      messageType === "ENTER"
+                    ) {
                       convertedType = "ENTER";
-                    } else if (messageType === "퇴장" || messageType === "LEAVE") {
+                    } else if (
+                      messageType === "퇴장" ||
+                      messageType === "LEAVE"
+                    ) {
                       convertedType = "LEAVE";
                     }
-                    
+
                     // sender 정보 구성 (sender 객체가 있으면 사용, 없으면 senderId만 사용)
                     let senderInfo = undefined;
                     if (rawMessage.sender) {
                       senderInfo = {
-                        userId: rawMessage.sender.userId || rawMessage.sender.userUUID || rawMessage.senderId,
-                        nickname: rawMessage.sender.nickname || rawMessage.sender.name,
-                        userImage: rawMessage.sender.userImage || rawMessage.sender.profileImage,
+                        userId:
+                          rawMessage.sender.userId ||
+                          rawMessage.sender.userUUID ||
+                          rawMessage.senderId,
+                        nickname:
+                          rawMessage.sender.nickname || rawMessage.sender.name,
+                        userImage:
+                          rawMessage.sender.userImage ||
+                          rawMessage.sender.profileImage,
                       };
                     } else if (rawMessage.senderId) {
                       // sender 객체가 없고 senderId만 있는 경우
                       senderInfo = {
                         userId: rawMessage.senderId,
-                        nickname: rawMessage.senderNickname || rawMessage.senderName || undefined,
-                        userImage: rawMessage.senderImage || rawMessage.senderProfileImage || undefined,
+                        nickname:
+                          rawMessage.senderNickname ||
+                          rawMessage.senderName ||
+                          undefined,
+                        userImage:
+                          rawMessage.senderImage ||
+                          rawMessage.senderProfileImage ||
+                          undefined,
                       };
                     }
-                    
+
                     const parsedMessage: GoodsChatMessageResponse = {
                       id: rawMessage.chatMessageId || rawMessage.id,
                       roomId: rawMessage.roomId || rawMessage.chatRoomId,
@@ -326,10 +310,16 @@ export class StompChatClient {
                       type: convertedType,
                       sentAt: rawMessage.sentAt || rawMessage.createdAt,
                       sender: senderInfo,
+                      currentUserId: this.userId || undefined, // STOMP 연결 시 전달한 userId (null을 undefined로 변환)
                     };
-                    
-                    console.log("🔵 [STOMP] 파싱된 메시지:", parsedMessage);
-                    
+
+                    console.log("🔵 [STOMP] 파싱된 메시지:", {
+                      ...parsedMessage,
+                      storedUserId: this.userId,
+                      senderUserId: parsedMessage.sender?.userId,
+                      userIdMatch: parsedMessage.sender?.userId === this.userId,
+                    });
+
                     if (this.onMessageCallback) {
                       this.onMessageCallback(parsedMessage);
                     }

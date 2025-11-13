@@ -129,7 +129,6 @@ interface ChatMessage {
   sender: string;
   message: string;
   timestamp: Date;
-  sentAt?: string;
   senderUserId?: string;
 }
 

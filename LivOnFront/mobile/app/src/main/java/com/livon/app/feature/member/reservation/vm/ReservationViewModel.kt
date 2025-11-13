@@ -111,42 +111,47 @@ class ReservationViewModel(
                     }
                 } else emptyList()
 
-                // If server returned nothing but repository has localReservations (optimistic cache), show those
-                var finalList = mappedFromServer
-                if (finalList.isEmpty()) {
-                    try {
-                        // Attempt to access in-memory cache if repo is the concrete implementation
-                        if (repo is com.livon.app.data.repository.ReservationRepositoryImpl) {
-                            val local = com.livon.app.data.repository.ReservationRepositoryImpl.localReservations
-                            finalList = local.mapNotNull { lr ->
-                                try {
-                                    val start = LocalDateTime.parse(lr.startAt)
-                                    val end = LocalDateTime.parse(lr.endAt)
-                                    ReservationUi(
-                                        id = lr.id.toString(),
-                                        date = start.toLocalDate(),
-                                        className = if (lr.type == com.livon.app.data.repository.ReservationType.PERSONAL) "개인 상담" else "그룹 클래스",
-                                        coachName = "",
-                                        coachRole = "",
-                                        coachIntro = "",
-                                        timeText = formatTimeText(start, end),
-                                        classIntro = "",
-                                        imageResId = null,
-                                        isLive = false,
-                                        startAtIso = lr.startAt,
-                                        sessionId = null,
-                                        sessionTypeLabel = if (lr.type == com.livon.app.data.repository.ReservationType.PERSONAL) "개인 상담" else "그룹 상담",
-                                        hasAiReport = false,
-                                        aiSummary = null,
-                                        coachId = lr.coachId,
-                                        coachProfileImageUrl = null,
-                                        qnas = emptyList()
-                                    )
-                                } catch (_: Throwable) { null }
+                // Merge server results with in-memory cache so locally-added reservations are shown as well
+                var finalList = mappedFromServer.toMutableList()
+                try {
+                    if (repo is com.livon.app.data.repository.ReservationRepositoryImpl) {
+                        val local = com.livon.app.data.repository.ReservationRepositoryImpl.localReservations
+                        val existingIds = finalList.map { it.id }.toMutableSet()
+                        val localItems = local.mapNotNull { lr ->
+                            try {
+                                val start = LocalDateTime.parse(lr.startAt)
+                                val end = LocalDateTime.parse(lr.endAt)
+                                ReservationUi(
+                                    id = lr.id.toString(),
+                                    date = start.toLocalDate(),
+                                    className = lr.classTitle ?: if (lr.type == com.livon.app.data.repository.ReservationType.PERSONAL) "개인 상담" else "그룹 클래스",
+                                    coachName = lr.coachName ?: "",
+                                    coachRole = "",
+                                    coachIntro = "",
+                                    timeText = formatTimeText(start, end),
+                                    classIntro = "",
+                                    imageResId = null,
+                                    isLive = false,
+                                    startAtIso = lr.startAt,
+                                    sessionId = null,
+                                    sessionTypeLabel = if (lr.type == com.livon.app.data.repository.ReservationType.PERSONAL) "개인 상담" else "그룹 상담",
+                                    hasAiReport = false,
+                                    aiSummary = null,
+                                    coachId = lr.coachId,
+                                    coachProfileImageUrl = null,
+                                    qnas = emptyList()
+                                )
+                            } catch (_: Throwable) { null }
+                        }
+                        // Append only those local items whose id is not already present
+                        localItems.forEach { li ->
+                            if (!existingIds.contains(li.id)) {
+                                finalList.add(li)
+                                existingIds.add(li.id)
                             }
                         }
-                    } catch (_: Throwable) { /* ignore */ }
-                }
+                    }
+                } catch (_: Throwable) { /* ignore merging errors */ }
 
                 try {
                     val ids = finalList.map { it.id }
@@ -225,10 +230,14 @@ class ReservationViewModel(
                     val ex = res.exceptionOrNull()
                     fun isAlreadyReserved(error: Throwable?): Boolean {
                         if (error == null) return false
+                        // Repository may return a sentinel message beginning with ALREADY_RESERVED:
+                        val msg = error.message ?: ""
+                        if (msg.startsWith("ALREADY_RESERVED:")) return true
+                        // If it's an HttpException with 409 conflict, treat as already reserved
                         if (error is retrofit2.HttpException && error.code() == 409) return true
-                        val errorBody = (error as? retrofit2.HttpException)?.response()?.errorBody()?.string() ?: ""
-                        val errorMessage = error.message ?: ""
-                        val combinedText = errorBody + errorMessage
+                        // Try to inspect error body for known DB unique-constraint strings
+                        val errorBody = try { (error as? retrofit2.HttpException)?.response()?.errorBody()?.string() ?: "" } catch (_: Throwable) { "" }
+                        val combinedText = errorBody + msg
                         return combinedText.contains("이미 예약") || combinedText.contains("Duplicate entry") || combinedText.contains("uk_participant_user_consultation")
                     }
 

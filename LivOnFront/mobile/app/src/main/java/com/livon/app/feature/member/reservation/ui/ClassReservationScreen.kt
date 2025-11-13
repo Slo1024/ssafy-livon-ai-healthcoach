@@ -51,6 +51,20 @@ fun ClassReservationScreen(
         if (selectedDate == null) classes else classes.filter { it.date == selectedDate }
     }
 
+    // Determine which classes the current user already reserved (by consultationId)
+    val reservedClassIds = remember { mutableStateOf<Set<String>>(emptySet()) }
+    LaunchedEffect(Unit) {
+        try {
+            val repo = com.livon.app.data.repository.ReservationRepositoryImpl()
+            val res = try { repo.getMyReservations(status = "upcoming", type = null) } catch (t: Throwable) { Result.failure(t) }
+            if (res.isSuccess) {
+                val body = res.getOrNull()
+                val ids = body?.items?.mapNotNull { it.consultationId?.toString() }?.toSet() ?: emptySet()
+                reservedClassIds.value = ids
+            }
+        } catch (_: Throwable) { /* ignore */ }
+    }
+
     CommonScreenC(
         topBar = { TopBar(title = "예약하기", onBack = { navController?.popBackStack() ?: Unit }) },
         modifier = modifier
@@ -90,17 +104,24 @@ fun ClassReservationScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(filtered, key = { it.id }) { item ->
+                        val isClosed = item.currentParticipants >= item.maxParticipants
+                        val isUserReserved = reservedClassIds.value.contains(item.id)
                         ClassCard(
                             classInfo = item,
                             onCardClick = {
-                                if (navController != null) {
-                                    try {
-                                        navController.navigate("class_detail/${item.id}")
-                                    } catch (_: Exception) {
+                                if (isClosed || isUserReserved) {
+                                    try { android.util.Log.d("ClassReservationScreen", "class ${item.id} is full or already reserved by user; navigation blocked") } catch (_: Throwable) {}
+                                    // no-op if full or already reserved
+                                } else {
+                                    if (navController != null) {
+                                        try {
+                                            navController.navigate("class_detail/${item.id}")
+                                        } catch (_: Exception) {
+                                            onCardClick(item)
+                                        }
+                                    } else {
                                         onCardClick(item)
                                     }
-                                } else {
-                                    onCardClick(item)
                                 }
                             },
                             onCoachClick = {
@@ -113,6 +134,7 @@ fun ClassReservationScreen(
                                 }
                                 onCoachClick(item.coachId)
                             }
+                            , enabled = !isClosed && !isUserReserved
                         )
                     }
                 }

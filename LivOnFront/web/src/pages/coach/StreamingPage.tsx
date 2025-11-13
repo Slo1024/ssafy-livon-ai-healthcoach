@@ -649,19 +649,108 @@ export const StreamingPage: React.FC = () => {
                         console.log("🔵 [채팅] 새 메시지 수신:", {
                           messageId: message.id,
                           senderId: message.senderId,
-                        });
-                        // 새 메시지 수신
-                        const newMessage: ChatMessage = {
-                          id: message.id,
-                          sender:
-                            message.sender?.nickname ||
-                            (message.senderId === user.id ? "나" : "회원"),
+                          type: message.type,
                           message: message.message,
-                          timestamp: new Date(message.sentAt),
-                          senderId: message.senderId,
-                          senderImage: message.sender?.userImage,
-                        };
-                        setChatMessages((prev) => [...prev, newMessage]);
+                          currentUserId: user?.id,
+                        });
+
+                        // ENTER, LEAVE 같은 시스템 메시지는 표시하지 않음
+                        if (
+                          message.type === "ENTER" ||
+                          message.type === "LEAVE"
+                        ) {
+                          console.log(
+                            "🔵 [채팅] 시스템 메시지 무시:",
+                            message.type
+                          );
+                          return;
+                        }
+
+                        // TALK 타입 메시지만 처리
+                        if (message.type !== "TALK") {
+                          console.log(
+                            "🔵 [채팅] 알 수 없는 메시지 타입:",
+                            message.type
+                          );
+                          return;
+                        }
+
+                        // 중복 체크 및 임시 메시지 교체
+                        setChatMessages((prev) => {
+                          // 이미 존재하는 메시지인지 확인 (실제 ID로)
+                          const exists = prev.some(
+                            (msg) => msg.id === message.id
+                          );
+                          if (exists) {
+                            console.log(
+                              "🔵 [채팅] 중복 메시지 무시:",
+                              message.id
+                            );
+                            return prev;
+                          }
+
+                          // 자기 자신이 보낸 메시지인 경우, 임시 메시지를 찾아서 교체
+                          if (message.senderId === user?.id) {
+                            const tempMessageIndex = prev.findIndex(
+                              (msg) =>
+                                msg.id.startsWith("temp-") &&
+                                msg.senderId === message.senderId &&
+                                msg.message === message.message &&
+                                Math.abs(
+                                  new Date(msg.timestamp).getTime() -
+                                    new Date(message.sentAt).getTime()
+                                ) < 5000 // 5초 이내의 메시지
+                            );
+
+                            if (tempMessageIndex !== -1) {
+                              console.log(
+                                "🔵 [채팅] 임시 메시지를 실제 메시지로 교체:",
+                                {
+                                  tempId: prev[tempMessageIndex].id,
+                                  actualId: message.id,
+                                }
+                              );
+
+                              const newMessage: ChatMessage = {
+                                id: message.id,
+                                sender:
+                                  message.sender?.nickname ||
+                                  (message.senderId === user.id
+                                    ? "나"
+                                    : "회원"),
+                                message: message.message,
+                                timestamp: new Date(message.sentAt),
+                                senderId: message.senderId,
+                                senderImage: message.sender?.userImage,
+                              };
+
+                              const updated = [...prev];
+                              updated[tempMessageIndex] = newMessage;
+                              return updated;
+                            }
+                          }
+
+                          // 새 메시지 추가 (다른 참여자의 메시지)
+                          const newMessage: ChatMessage = {
+                            id: message.id,
+                            sender:
+                              message.sender?.nickname ||
+                              (message.senderId === user.id ? "나" : "회원"),
+                            message: message.message,
+                            timestamp: new Date(message.sentAt),
+                            senderId: message.senderId,
+                            senderImage: message.sender?.userImage,
+                          };
+
+                          console.log("🔵 [채팅] 새 메시지 추가:", {
+                            id: newMessage.id,
+                            sender: newMessage.sender,
+                            messageLength: newMessage.message.length,
+                            isFromSelf: message.senderId === user?.id,
+                          });
+
+                          return [...prev, newMessage];
+                        });
                       },
                       (error) => {
                         console.error("❌ [채팅] STOMP 채팅 연결 오류:", error);

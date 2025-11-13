@@ -594,10 +594,11 @@ export const StreamingPage: React.FC = () => {
                 });
 
                 // 과거 메시지를 ChatMessage 형식으로 변환
+                // 서버에서 받는 userId (UUID)를 그대로 표시
                 const convertedMessages: ChatMessage[] = pastMessages.map(
                   (msg) => ({
                     id: msg.id,
-                    sender: msg.role === "COACH" ? "코치" : "회원", // TODO: 실제 닉네임 사용
+                    sender: msg.userId, // UUID를 그대로 표시
                     message: msg.content,
                     timestamp: new Date(msg.sentAt),
                     senderUserId: msg.userId,
@@ -733,11 +734,9 @@ export const StreamingPage: React.FC = () => {
                           });
 
                           // 새 메시지 생성
-                          const senderName = message.sender?.nickname
-                            ? message.sender.nickname
-                            : isFromSelf
-                            ? user?.nickname || participantName
-                            : "회원";
+                          // 서버에서 받는 senderId (UUID)를 그대로 표시
+                          const senderName =
+                            message.sender?.userId || "Unknown";
 
                           const newMessage: ChatMessage = {
                             id: message.id,

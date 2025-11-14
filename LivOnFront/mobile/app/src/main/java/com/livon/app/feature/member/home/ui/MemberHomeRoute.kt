@@ -182,16 +182,33 @@ fun MemberHomeRoute(
                     modifier = Modifier.padding(bottom = 10.dp)
                 )
 
+                // Show metrics as horizontally scrollable cards (one card per metric)
+                val metricsToShow = if (metrics.isNotEmpty()) metrics else listOf(
+                    DataMetric("키", "-", ""),
+                    DataMetric("몸무게", "-", ""),
+                    DataMetric("질환", "-", ""),
+                    DataMetric("수면 상태", "-", ""),
+                    DataMetric("복약 여부", "-", ""),
+                    DataMetric("통증 부위", "-", ""),
+                    DataMetric("스트레스", "-", ""),
+                    DataMetric("흡연 여부", "-", ""),
+                    DataMetric("음주", "-", ""),
+                    DataMetric("수면 시간", "-", ""),
+                    DataMetric("활동 수준", "-", ""),
+                    DataMetric("카페인", "-", "")
+                )
+
                 Row(
-                    Modifier
+                    modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    metrics.forEach { metric ->
+                    metricsToShow.forEach { metric ->
                         Card(
                             modifier = Modifier
-                                .size(width = 140.dp, height = 104.dp),
+                                .width(140.dp)
+                                .height(110.dp),
                             shape = RoundedCornerShape(6.dp),
                             colors = CardDefaults.cardColors(containerColor = Color.White),
                             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
@@ -224,15 +241,18 @@ fun MemberHomeRoute(
                                     overflow = TextOverflow.Ellipsis
                                 )
 
-                                Text(
-                                    text = metric.average,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color.Gray,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.padding(top = 4.dp)
-                                )
+                                // show average only when provided
+                                if (metric.average.isNotBlank()) {
+                                    Text(
+                                        text = metric.average,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.Gray,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -424,39 +444,36 @@ private fun extractTimeShort(timeText: String): String {
 }
 
 /* ---------- Preview ---------- */
-@Preview(showBackground = true, showSystemUi = true, name = "MemberHomeRoute")
+@Preview(showBackground = true, showSystemUi = true, name = "MemberHomeRoute (full)")
 @Composable
 private fun MemberHomeRoutePreview() {
+    // Provide one DataMetric per requested health item so preview matches runtime UI
     val dummyMetrics = listOf(
-        DataMetric("신장/몸무게", "170cm / 50Kg", "평균: 169cm / 평균: 60Kg"),
-        DataMetric("수면시간", "7시간", "평균: 7시간"),
-        DataMetric("체지방률", "18%", "평균: 20%"),
-        DataMetric("혈압", "120/80", "평균: 122/82")
+        DataMetric("키", "170cm", ""),
+        DataMetric("몸무게", "70kg", ""),
+        DataMetric("질환", "없음", ""),
+        DataMetric("수면 상태", "양호", ""),
+        DataMetric("복약 여부", "없음", ""),
+        DataMetric("통증 부위", "없음", ""),
+        DataMetric("스트레스", "보통", ""),
+        DataMetric("흡연 여부", "비흡연", ""),
+        DataMetric("음주", "가끔", ""),
+        DataMetric("수면 시간", "7시간", ""),
+        DataMetric("활동 수준", "보통", ""),
+        DataMetric("카페인", "하루 1잔", "")
     )
 
-    val today = java.time.LocalDate.of(2025, 10, 15)
+    val today = java.time.LocalDate.now()
     val sampleReservations = listOf(
         com.livon.app.feature.member.reservation.ui.ReservationUi(
-            id = "p1",
+            id = "r1",
             date = today,
-            className = "필라테스 클래스",
+            className = "힐링 필라테스",
             coachName = "김코치",
-            coachRole = "코치",
-            coachIntro = "스트레칭 중심",
+            coachRole = "요가/필라테스",
+            coachIntro = "유연성 중심 레슨",
             timeText = "16:40",
-            classIntro = "저녁 힐링",
-            imageResId = null,
-            isLive = false
-        ),
-        com.livon.app.feature.member.reservation.ui.ReservationUi(
-            id = "p2",
-            date = today.plusDays(2),
-            className = "식단 코칭",
-            coachName = "박코치",
-            coachRole = "영양",
-            coachIntro = "식단 설계",
-            timeText = "19:30",
-            classIntro = "맞춤 식단",
+            classIntro = "저녁 힐링 타임",
             imageResId = null,
             isLive = false
         )
@@ -469,7 +486,8 @@ private fun MemberHomeRoutePreview() {
             onTapMyPage = {},
             metrics = dummyMetrics,
             upcomingReservations = sampleReservations,
-            companyName = "회사이름"
+            companyName = "회사이름",
+            nickname = "테스트회원"
         )
     }
 }

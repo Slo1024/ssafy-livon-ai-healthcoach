@@ -17,6 +17,7 @@ import java.net.URLDecoder
 import java.time.LocalDate
 import com.livon.app.feature.member.reservation.vm.ClassReservationViewModel
 import com.livon.app.feature.member.home.ui.MemberHomeRoute
+import com.livon.app.feature.member.home.ui.DataMetric
 
 // UI imports
 import androidx.compose.foundation.layout.*
@@ -28,8 +29,6 @@ import androidx.compose.runtime.mutableStateOf
 import android.util.Log
 import androidx.compose.foundation.clickable
 import android.widget.Toast
-import kotlinx.coroutines.awaitCancellation
-import androidx.lifecycle.Observer
 import com.livon.app.feature.member.reservation.ui.ReservationDetailType
 import com.livon.app.feature.member.reservation.ui.CoachMini
 import com.livon.app.feature.member.reservation.ui.SessionInfo
@@ -76,11 +75,34 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         val resState by reservationVm.uiState.collectAsState()
         LaunchedEffect(Unit) { reservationVm.loadUpcoming() }
 
+        // Build metrics list from MyInfoUiState so MemberHomeRoute can render '내 데이터' tiles
+        val metricsList = remember(userState.info) {
+            val list = mutableListOf<DataMetric>()
+            val info = userState.info
+            if (info != null) {
+                val h = info.heightCm?.takeIf { it.isNotBlank() }
+                val w = info.weightKg?.takeIf { it.isNotBlank() }
+                if (h != null || w != null) {
+                    val hv = (h ?: "-") + " / " + (w ?: "-")
+                    list.add(DataMetric("신장/몸무게", hv, "평균: 169cm / 평균: 60Kg"))
+                }
+                info.sleepHours?.takeIf { it.isNotBlank() }?.let { list.add(DataMetric("수면시간", it, "평균: 7시간")) }
+                info.activityLevel?.takeIf { it.isNotBlank() }?.let { list.add(DataMetric("활동 수준", it, "평균: 보통")) }
+                info.caffeine?.takeIf { it.isNotBlank() }?.let { list.add(DataMetric("카페인", it, "평균: 하루 2잔")) }
+            }
+            // fallback: show two placeholder tiles so UI isn't empty
+            if (list.isEmpty()) {
+                list.add(DataMetric("신장/몸무게", "-", ""))
+                list.add(DataMetric("수면시간", "-", ""))
+            }
+            list
+        }
+
         MemberHomeRoute(
             onTapBooking = { nav.navigate(Routes.ReservationModeSelect) },
             onTapReservations = { nav.navigate(Routes.Reservations) },
             onTapMyPage = { nav.navigate(Routes.MyPage) },
-            metrics = emptyList(),
+            metrics = metricsList,
             upcoming = emptyList(),
             upcomingReservations = if (resState.items.isNotEmpty()) resState.items else emptyList(),
             // pass companyName from MyInfoUiState.organizations (added to MyInfoUiState)
@@ -210,11 +232,11 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
 
         val actionState by reservationVmForQna.actionState.collectAsState()
 
+
+
         LaunchedEffect(actionState.success) {
             if (actionState.success == true) {
-                nav.navigate(Routes.Reservations) {
-                    popUpTo(Routes.MemberHome) { inclusive = false }
-                }
+                nav.navigate(Routes.Reservations) { popUpTo(Routes.MemberHome) { inclusive = false } }
             }
         }
 
@@ -231,7 +253,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 // ... (기존의 복잡한 ID, 날짜 복원 로직은 유지)
 
                 // 최종적으로 ViewModel 함수 호출 시 questions를 전달합니다.
-                reservationVmForQna.reserveCoach(coachIdArg, startAt, endAt, questions)
+                reservationVmForQna.reserveCoach(coachIdArg, startAt, endAt, questions, coachName = decodedName)
             },
             // ... (나머지 파라미터는 기존과 동일)
             onNavigateHome = { nav.navigate(Routes.MemberHome) },
@@ -404,7 +426,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 name = found.coachName.ifEmpty { "코치" },
                 title = found.coachRole.ifEmpty { "" },
                 specialties = found.coachIntro.ifEmpty { "" },
-                workplace = "",
+                workplace = found.coachWorkplace ?: "",
                 profileResId = null,
                 profileImageUrl = found.coachProfileImageUrl
             )
@@ -444,13 +466,8 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                         nav.navigate("ai_result/$encMember/$encDate/$encName/$encSummary")
                     } catch (_: Throwable) {}
                 },
-                onActivateStreaming = { /* TODO */ },
-                onEnterSession = {
-                    // navigate to live member if sessionId present
-                    found.sessionId?.takeIf { it.isNotBlank() }?.let { sid -> try { nav.navigate("live_member/$sid") } catch (_: Throwable) {} }
-                },
-                enterEnabled = found.sessionId?.isNotBlank() == true
-            )
+                navController = nav
+             )
         } else {
             // ... (기존 로딩/에러 UI 로직은 동일) ...
         }
@@ -707,42 +724,21 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             }
         }
 
-        // Use Material AlertDialog to avoid z-order/visibility problems with custom overlays
-        AlertDialog(
-             onDismissRequest = { nav.popBackStack() },
-             title = { Text(text = "예약 완료") },
-             text = {
-                 Column {
-                     Text(text = "예약이 완료 되었습니다.")
-                     Spacer(modifier = Modifier.height(8.dp))
-                     Text(
-                         text = "내 건강 정보를 바꾸고 싶으신가요?",
-                         color = androidx.compose.ui.graphics.Color(0xFFD32F2F),
-                         modifier = Modifier.clickable {
-                             val entry = nav.currentBackStackEntry
-                             entry?.savedStateHandle?.set("qna_origin", mapOf("type" to "class", "classId" to classIdArg))
-                             nav.navigate(Routes.HealthHeight)
-                         }
-                     )
-                 }
-             },
-             confirmButton = {
-                 // disable confirm while check in progress (null) or if already reserved (true)
-                 val disabled = (alreadyReserved.value == null) || (alreadyReserved.value == true)
-                 TextButton(
-                     onClick = {
-                         Log.d("MemberNavGraph", "class_confirm: confirm clicked for classId=$classIdArg (requested)")
-                         confirmRequested.value = true
-                     },
-                      enabled = !disabled
-                  ) {
-                      Text(if (alreadyReserved.value == null) "확인" else if (alreadyReserved.value == true) "이미 예약됨" else "확인")
-                  }
-              },
-              dismissButton = {
-                 TextButton(onClick = { nav.popBackStack() }) { Text("취소") }
-              }
-         )
+        // Use the shared ReservationCompleteDialog (same design as QnASubmitScreen)
+        ReservationCompleteDialog(
+            onDismiss = { nav.popBackStack() },
+            onConfirm = {
+                Log.d("MemberNavGraph", "class_confirm: confirm clicked for classId=$classIdArg (requested)")
+                confirmRequested.value = true
+            },
+            onChangeHealthInfo = {
+                val entry = nav.currentBackStackEntry
+                entry?.savedStateHandle?.set("qna_origin", mapOf("type" to "class", "classId" to classIdArg))
+                nav.navigate(Routes.HealthHeight)
+            },
+            // disable confirm while checking (null) or if alreadyReserved
+            confirmEnabled = (alreadyReserved.value == false)
+        )
 
          // LaunchedEffect for confirmRequested: runs final suspend recheck and calls reserveClass if safe
          LaunchedEffect(confirmRequested.value) {

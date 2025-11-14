@@ -26,7 +26,8 @@ class ReservationViewModel(
     data class ReservationActionState(
         val isLoading: Boolean = false,
         val success: Boolean? = null,
-        val errorMessage: String? = null
+        val errorMessage: String? = null,
+        val createdReservationId: Int? = null
     )
 
     private val _uiState = MutableStateFlow(ReservationsUiState())
@@ -87,9 +88,11 @@ class ReservationViewModel(
                                     coachName = dto.coach?.nickname ?: dto.coach?.userId ?: "",
                                     coachRole = dto.coach?.job ?: "",
                                     coachIntro = dto.coach?.introduce ?: "",
+                                    coachWorkplace = dto.coach?.organizations ?: "",
                                     timeText = formatTimeText(start, end),
                                     classIntro = dto.description ?: "",
                                     imageResId = null,
+                                    classImageUrl = dto.imageUrl,
                                     isLive = isLive,
                                     startAtIso = dto.startAt,
                                     sessionId = dto.sessionId,
@@ -98,7 +101,8 @@ class ReservationViewModel(
                                     aiSummary = dto.aiSummary,
                                     coachId = dto.coach?.userId,
                                     coachProfileImageUrl = dto.coach?.profileImage,
-                                    qnas = dto.preQna?.split("\n")?.filter { it.isNotBlank() } ?: emptyList()
+                                    qnas = dto.preQna?.split("\n")?.filter { it.isNotBlank() } ?: emptyList(),
+                                    isPersonal = ((dto.type ?: "ONE") == "ONE")
                                 )
                             } catch (t: Throwable) {
                                 Log.w("ReservationVM", "Failed to map reservation item", t)
@@ -112,7 +116,7 @@ class ReservationViewModel(
                 } else emptyList()
 
                 // Merge server results with in-memory cache so locally-added reservations are shown as well
-                var finalList = mappedFromServer.toMutableList()
+                val finalList = mappedFromServer.toMutableList()
                 try {
                     if (repo is com.livon.app.data.repository.ReservationRepositoryImpl) {
                         val local = com.livon.app.data.repository.ReservationRepositoryImpl.localReservations
@@ -131,15 +135,17 @@ class ReservationViewModel(
                                     timeText = formatTimeText(start, end),
                                     classIntro = "",
                                     imageResId = null,
+                                    classImageUrl = null,
                                     isLive = false,
                                     startAtIso = lr.startAt,
                                     sessionId = null,
                                     sessionTypeLabel = if (lr.type == com.livon.app.data.repository.ReservationType.PERSONAL) "개인 상담" else "그룹 상담",
                                     hasAiReport = false,
                                     aiSummary = null,
+                                    qnas = lr.preQna?.split("\n")?.filter { it.isNotBlank() } ?: emptyList(),
                                     coachId = lr.coachId,
                                     coachProfileImageUrl = null,
-                                    qnas = emptyList()
+                                    isPersonal = (lr.type == com.livon.app.data.repository.ReservationType.PERSONAL)
                                 )
                             } catch (_: Throwable) { null }
                         }
@@ -157,12 +163,34 @@ class ReservationViewModel(
                     val ids = finalList.map { it.id }
                     Log.d("ReservationVM", "Mapped reservations count=${finalList.size}, ids=${ids.joinToString()}")
                 } catch (_: Throwable) {}
-                _uiState.value = ReservationsUiState(items = finalList, isLoading = false)
+
+                // Filter finalList according to requested status:
+                // - upcoming: include items whose startAtIso is in the future or items marked isLive
+                // - past: include items whose startAtIso is in the past
+                val now = LocalDateTime.now()
+                val filteredList = finalList.filter { item ->
+                    try {
+                        val startIso = item.startAtIso
+                        val start = if (!startIso.isNullOrBlank()) LocalDateTime.parse(startIso) else null
+                        if (status == "upcoming") {
+                            // include if start is null (fallback), or start >= now, or item isLive
+                            (start == null) || item.isLive || !start.isBefore(now)
+                        } else {
+                            // past: include only if start exists and is before now
+                            (start != null && start.isBefore(now))
+                        }
+                    } catch (_: Throwable) {
+                        // on parse error, conservatively include in upcoming to avoid hiding
+                        status == "upcoming"
+                    }
+                }
+
+                _uiState.value = ReservationsUiState(items = filteredList, isLoading = false)
              } catch (t: Throwable) {
                  _uiState.value = ReservationsUiState(items = emptyList(), isLoading = false, errorMessage = t.message)
              }
-        }
-    }
+         }
+     }
 
 
     private fun formatTimeText(start: LocalDateTime, end: LocalDateTime): String {
@@ -180,7 +208,7 @@ class ReservationViewModel(
     }
 
     /* 수정: 예약 생성 - qnas 파라미터를 받아 서버로 전송합니다. */
-    fun reserveCoach(coachId: String, startAt: LocalDateTime, endAt: LocalDateTime, qnas: List<String>) {
+    fun reserveCoach(coachId: String, startAt: LocalDateTime, endAt: LocalDateTime, qnas: List<String>, coachName: String? = null) {
         viewModelScope.launch(Dispatchers.IO) {
             _actionState.value = ReservationActionState(isLoading = true, success = null, errorMessage = null)
             try {
@@ -188,10 +216,20 @@ class ReservationViewModel(
                 val preQnaString = qnas.joinToString("\n") { it.trim() }.takeIf { it.isNotBlank() }
 
                 // Repository에 preQnaString 전달
-                val res = repo.reserveCoach(coachId, startAt, endAt, preQnaString)
+                val res = try {
+                    // If repository supports coachName, pass it along when available
+                    if (repo is com.livon.app.data.repository.ReservationRepositoryImpl) {
+                        repo.reserveCoach(coachId, startAt, endAt, preQnaString, coachName = coachName)
+                    } else {
+                        repo.reserveCoach(coachId, startAt, endAt, preQnaString)
+                    }
+                } catch (t: Throwable) {
+                    Result.failure<Int>(t)
+                }
 
                 if (res.isSuccess) {
-                    _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null)
+                    val createdId = res.getOrNull()
+                    _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null, createdReservationId = createdId)
                     loadUpcoming()
                 } else {
                     val ex = res.exceptionOrNull()
@@ -224,7 +262,8 @@ class ReservationViewModel(
                 val res = repo.reserveClass(classId, preQnaString)
 
                 if (res.isSuccess) {
-                    _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null)
+                    val createdId = res.getOrNull()
+                    _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null, createdReservationId = createdId)
                     loadUpcoming()
                 } else {
                     val ex = res.exceptionOrNull()

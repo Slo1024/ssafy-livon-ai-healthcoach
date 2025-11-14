@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -24,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.livon.app.R
 import com.livon.app.ui.theme.LivonTheme
 import java.time.LocalDate
@@ -56,8 +55,6 @@ fun ClassCard(
     val remainingCount = classInfo.maxParticipants - classInfo.currentParticipants
     val participantsColor = if (isClosed) Color.Gray else MaterialTheme.colorScheme.primary
 
-    // 1. Card를 Column으로 변경하고, clickable을 적용합니다.
-    // 2. 배경색, 그림자, 고정 높이를 모두 제거합니다.
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -88,14 +85,29 @@ fun ClassCard(
                 .height(IntrinsicSize.Min)
                 .padding(horizontal = 12.dp) // 좌우 패딩 추가
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_classphoto), // TODO: Coil로 imageUrl 로드
-                contentDescription = "클래스 이미지",
-                modifier = Modifier
-                    .size(60.dp)
-                    .clip(RoundedCornerShape(4.dp)),
-                contentScale = ContentScale.Crop
-            )
+            // 이미지: imageUrl이 있으면 AsyncImage로 로드 (centerCrop), 없으면 기본 리소스 사용
+            if (!classInfo.imageUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = classInfo.imageUrl,
+                    contentDescription = "클래스 이미지",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(RoundedCornerShape(4.dp)),
+                    placeholder = painterResource(id = R.drawable.ic_classphoto),
+                    error = painterResource(id = R.drawable.ic_classphoto)
+                )
+            } else {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_classphoto),
+                    contentDescription = "클래스 이미지",
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(RoundedCornerShape(4.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            }
+
             Spacer(Modifier.width(12.dp))
             Column {
                 Text(
@@ -118,7 +130,6 @@ fun ClassCard(
                 )
             }
         }
-        // Spacer(Modifier.weight(1f)) <- 고정 높이가 없으므로 weight는 필요 없습니다. 제거합니다.
         Spacer(Modifier.height(12.dp)) // 대신 고정된 간격을 줍니다.
 
         // 하단 정보: 인원, 코치 보기 버튼

@@ -217,34 +217,34 @@ fun CoachDetailScreen(
                         modifier = Modifier
                             .size(150.dp)
                             .clip(CircleShape)
-//                            .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
                             .align(Alignment.CenterHorizontally),
                         contentScale = ContentScale.Crop
                     )
 
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(30.dp))
 
                     Text(text = coach.name, style = MaterialTheme.typography.titleLarge, modifier = Modifier.align(Alignment.CenterHorizontally))
                     Spacer(Modifier.height(12.dp))
 
                     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                         Text(text = "코치 소개", style = MaterialTheme.typography.titleLarge)
-                        Spacer(Modifier.height(20.dp))
-                        Text(text = "직무", style = MaterialTheme.typography.titleLarge)
-                        Text(text = coach.job ?: "", style = MaterialTheme.typography.bodyMedium)
-                        Spacer(Modifier.height(16.dp))
 
-                        Text(text = "자격증", style = MaterialTheme.typography.titleLarge)
+                        Spacer(Modifier.height(20.dp))
+                        Text(text = "직무", style = MaterialTheme.typography.titleMedium)
+                        Text(text = coach.job ?: "", style = MaterialTheme.typography.bodyMedium)
+
+                        Spacer(Modifier.height(16.dp))
+                        Text(text = "자격증", style = MaterialTheme.typography.titleMedium)
                         coach.certificates.forEach { cert ->
                             Text(text = cert, style = MaterialTheme.typography.bodyMedium)
                         }
 
                         Spacer(Modifier.height(16.dp))
-                        Text(text = "소개", style = MaterialTheme.typography.titleLarge)
+                        Text(text = "소개", style = MaterialTheme.typography.titleMedium)
                         Text(text = coach.intro, style = MaterialTheme.typography.bodyMedium)
                     }
 
-                    Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.height(30.dp))
 
                     Box(
                         modifier = Modifier

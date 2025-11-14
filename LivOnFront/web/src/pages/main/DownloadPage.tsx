@@ -157,7 +157,7 @@ const formatFileSize = (bytes?: number | null): string | undefined => {
 
 export const DownloadPage: React.FC = () => {
   const [meta, setMeta] = useState<ApkMeta>({ available: false });
-  const downloadUrl = useMemo(() => "/download/latest.apk", []);
+  const downloadUrl = useMemo(() => "/download/livon-latest.apk", []);
   const listUrl = useMemo(() => "/download/", []);
 
   useEffect(() => {

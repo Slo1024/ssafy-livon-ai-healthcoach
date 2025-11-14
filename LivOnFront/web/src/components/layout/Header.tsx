@@ -37,11 +37,10 @@ const AuthButton = styled.button`
   &:hover {
     color: #ffffff;
     background-color: #4965f6;
-    transform: translateY(-2px);
   }
 
   &:active {
-    transform: translateY(0);
+    transform: none;
   }
 `;
 
@@ -287,7 +286,7 @@ export const Header: React.FC<HeaderProps> = ({
     {
       path: "/coach/mypage/info",
       label: "마이페이지",
-      activePaths: ["/coach/mypage/info", "/mypage/coach-verification"],
+      activePaths: ["/coach/mypage/info"],
     },
   ];
 

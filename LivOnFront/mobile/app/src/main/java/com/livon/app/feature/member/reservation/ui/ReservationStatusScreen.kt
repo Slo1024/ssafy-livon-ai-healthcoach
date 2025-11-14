@@ -29,9 +29,11 @@ data class ReservationUi(
     val coachName: String,
     val coachRole: String,
     val coachIntro: String,
+    val coachWorkplace: String? = null,
     val timeText: String,         // "오전 9:00 ~ 10:00"
     val classIntro: String,
     val imageResId: Int? = null,
+    val classImageUrl: String? = null,
 
     // coach id (nullable) - used for navigation to coach detail
     val coachId: String? = null,
@@ -52,7 +54,10 @@ data class ReservationUi(
 
     // 지난 예약 전용
     val sessionTypeLabel: String? = null, // "그룹 상담" | "개인 상담"
-    val hasAiReport: Boolean = false      // 개인상담 + 리포트 있을 때만 AI 버튼
+    val hasAiReport: Boolean = false,     // 개인상담 + 리포트 있을 때만 AI 버튼
+
+    // convenience flag to indicate personal consultation
+    val isPersonal: Boolean = false
 )
 
 @Composable
@@ -72,6 +77,9 @@ fun ReservationStatusScreen(
     }
 
     var tab by remember { mutableStateOf(ReservationTab.CURRENT) }
+    // Cancellation modal state: which reservation is targeted for cancellation
+    var showCancelDialog by remember { mutableStateOf(false) }
+    var cancelTarget by remember { mutableStateOf<ReservationUi?>(null) }
 
     // Debug toggle: when true, force showJoin for all cards so developer can test "입장하기" 버튼
     val debugForceJoin = remember { mutableStateOf(false) }
@@ -86,7 +94,7 @@ fun ReservationStatusScreen(
                     .fillMaxSize()
                     .padding(top = 8.dp)
             ) {
-                TabRow(selectedTabIndex = tab.ordinal) {
+                PrimaryTabRow(selectedTabIndex = tab.ordinal) {
                     Tab(
                         selected = tab == ReservationTab.CURRENT,
                         onClick = { tab = ReservationTab.CURRENT },
@@ -126,9 +134,15 @@ fun ReservationStatusScreen(
                                 timeText = item.timeText,
                                 classIntro = item.classIntro,
                                 imageResId = item.imageResId,
-                                // [핵심 수정] onDetail 호출 시 isPast=false 전달
+                                imageUrl = item.classImageUrl,
+                                coachProfileResId = null,
+                                coachProfileImageUrl = item.coachProfileImageUrl,
+                                showCoachProfile =
+                                    (item.sessionTypeLabel == "개인 상담" || item.isPersonal),
+
+                                            // [핵심 수정] onDetail 호출 시 isPast=false 전달
                                 onDetail = { onDetail(item, false) },
-                                onCancel = if (!item.isLive) ({ onCancel(item) }) else null,
+                                onCancel = if (!item.isLive) ({ cancelTarget = item; showCancelDialog = true }) else null,
                                 // If debugForceJoin is enabled, provide onJoin even when not live
                                 onJoin   = if (item.isLive || debugForceJoin.value)  ({ onJoin(item) })   else null,
                                 onAiAnalyze = null,
@@ -153,6 +167,10 @@ fun ReservationStatusScreen(
                                 timeText = item.timeText,
                                 classIntro = item.classIntro,
                                 imageResId = item.imageResId,
+                                imageUrl = item.classImageUrl,
+                                coachProfileResId = null,
+                                coachProfileImageUrl = item.coachProfileImageUrl,
+                                showCoachProfile = isPersonal,
                                 // [핵심 수정] onDetail 호출 시 isPast=true 전달
                                 onDetail = { onDetail(item, true) },
                                 onCancel = null,
@@ -181,6 +199,25 @@ fun ReservationStatusScreen(
                 }
             }
         }
+    }
+
+    // Render cancellation modal outside of CommonScreenC so it overlays the entire screen (including TopBar)
+    if (showCancelDialog && cancelTarget != null) {
+        ReservationCompleteDialog(
+            onDismiss = { showCancelDialog = false; cancelTarget = null },
+            onConfirm = {
+                try {
+                    cancelTarget?.let { onCancel(it) }
+                } catch (_: Throwable) {}
+                showCancelDialog = false
+                cancelTarget = null
+            },
+            titleText = "예약을 취소하시겠습니까?",
+            subtitleText = null,
+            showCancelButton = true,
+            confirmLabel = "확인",
+            cancelLabel = "취소"
+        )
     }
 }
 

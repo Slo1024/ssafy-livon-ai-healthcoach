@@ -54,6 +54,11 @@ code {
   outline-offset: 2px;
 }
 
+/* 버튼 포커스 스타일 제거 */
+button:focus {
+  outline: none;
+}
+
 /* 선택 텍스트 스타일 */
 ::selection {
   background-color: #3b82f6;

@@ -37,7 +37,14 @@ import { StreamingControls } from "../../components/streaming/button/StreamingCo
 import {
   ParticipantInfo,
   ParticipantDetail,
+  ParticipantModalData,
 } from "../../components/streaming/participant/ParticipantInfo";
+import {
+  getParticipantInfoApi,
+  getCoachConsultationsApi,
+  CoachConsultation,
+  ParticipantInfoResponse,
+} from "../../api/reservationApi";
 
 const API_BASE_URL =
   CONFIG.API_BASE_URL ||
@@ -94,8 +101,10 @@ interface ChatMessage {
   sender: string;
   message: string;
   timestamp: Date;
+  timestampString?: string; // UTC 시간 문자열 (서버에서 받은 원본)
   senderImage?: string;
   senderUserId?: string;
+  messageType?: "ENTER" | "TALK" | "LEAVE";
 }
 
 export const StreamingPage: React.FC = () => {
@@ -201,35 +210,332 @@ export const StreamingPage: React.FC = () => {
     return `consultation-${consultationId}`;
   });
 
-  const participantInfoMap = useMemo<Record<string, ParticipantDetail>>(
-    () => ({
-      김싸피: {
-        name: "김싸피",
-        badges: ["고혈압", "수면 질 저하", "활동 부족"],
-        notes: "혈압약 복용 중이므로 격렬한 운동은 피해주세요.",
-        questions: ["전완근을 키우고 싶어요.", "겟폴다운을 잘하고 싶어요."],
+  const [participantInfoMap, setParticipantInfoMap] = useState<
+    Record<string, ParticipantDetail>
+  >({});
+  const [isLoadingParticipantInfo, setIsLoadingParticipantInfo] =
+    useState(false);
+  
+  // 상담 정보 (preQna, aiSummary 포함)
+  const [consultationInfo, setConsultationInfo] = useState<CoachConsultation | null>(null);
+  const [isLoadingConsultationInfo, setIsLoadingConsultationInfo] = useState(false);
+  
+  // 참여자 정보 API 응답 저장 (ParticipantModalData 생성용)
+  const [participantInfoResponse, setParticipantInfoResponse] = useState<ParticipantInfoResponse | null>(null);
+
+  // 참여자 정보를 API에서 가져오는 함수
+  const fetchParticipantInfo = useCallback(async () => {
+    // 코치가 아니거나 consultationId가 없으면 API 호출하지 않음
+    if (user?.role !== "coach" || isAuthLoading) {
+      return;
+    }
+
+    const consultationId =
+      location.state?.consultationId || location.state?.reservationId;
+    if (!consultationId) {
+      return;
+    }
+
+    // 토큰 가져오기
+    const accessToken = localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
+    if (!accessToken) {
+      console.warn("⚠️ [참여자 정보] 인증 토큰이 없습니다.");
+      return;
+    }
+
+    setIsLoadingParticipantInfo(true);
+    try {
+      console.log("🔵 [참여자 정보] API 호출 시작:", { consultationId });
+      const participantInfo = await getParticipantInfoApi(
+        accessToken,
+        consultationId
+      );
+
+      console.log("🔵 [참여자 정보] API 응답:", participantInfo);
+
+      // ParticipantModalData 생성을 위해 응답 저장
+      setParticipantInfoResponse(participantInfo);
+
+      // API 응답을 ParticipantDetail 형식으로 변환
+      const memberInfo = participantInfo.memberInfo;
+      const healthData = memberInfo.healthData;
+
+      // badges 생성: 건강 상태 데이터 기반
+      const badges: string[] = [];
+      if (healthData.activityLevel) {
+        badges.push(`활동 수준: ${healthData.activityLevel}`);
+      }
+      if (healthData.sleepQuality) {
+        badges.push(`수면 질: ${healthData.sleepQuality}`);
+      }
+      if (healthData.stressLevel) {
+        badges.push(`스트레스 수준: ${healthData.stressLevel}`);
+      }
+
+      // notes 생성: 건강 데이터 요약
+      const notesParts: string[] = [];
+      if (healthData.height) {
+        notesParts.push(`신장: ${healthData.height}cm`);
+      }
+      if (healthData.weight) {
+        notesParts.push(`체중: ${healthData.weight}kg`);
+      }
+      if (typeof healthData.steps === "number") {
+        notesParts.push(`일일 걸음 수: ${healthData.steps}걸음`);
+      }
+      if (typeof healthData.sleepTime === "number") {
+        notesParts.push(`수면 시간: ${healthData.sleepTime}시간`);
+      }
+      const notes = notesParts.join(", ");
+
+      // questions: preQna가 있으면 사용 (실제로는 별도 필드가 필요할 수 있음)
+      const questions: string[] = [];
+
+      // analysis 생성: 건강 데이터 기반 분석 결과
+      const analysisSummary: string[] = [];
+      if (healthData.height && healthData.weight) {
+        const bmi = healthData.weight / Math.pow(healthData.height / 100, 2);
+        analysisSummary.push(`BMI: ${bmi.toFixed(1)}`);
+      }
+      if (typeof healthData.sleepTime === "number") {
+        const sleepHours = healthData.sleepTime;
+        if (sleepHours < 7) {
+          analysisSummary.push("수면 시간이 부족합니다.");
+        } else if (sleepHours > 9) {
+          analysisSummary.push("수면 시간이 충분합니다.");
+        }
+      }
+      if (healthData.steps) {
+        if (healthData.steps < 5000) {
+          analysisSummary.push("일일 활동량을 늘리는 것이 좋습니다.");
+        } else if (healthData.steps >= 10000) {
+          analysisSummary.push("활동량이 충분합니다.");
+        }
+      }
+
+      const analysisTip: string[] = [];
+      if (healthData.sleepQuality === "poor") {
+        analysisTip.push("규칙적인 수면 패턴을 유지하세요.");
+      }
+      if (healthData.stressLevel === "high") {
+        analysisTip.push("스트레스 관리를 위한 운동을 추천합니다.");
+      }
+      if (healthData.activityLevel === "low") {
+        analysisTip.push("점진적으로 활동량을 늘려가세요.");
+      }
+
+      const participantDetail: ParticipantDetail = {
+        name: memberInfo.nickname,
+        badges,
+        notes,
+        questions,
         analysis: {
-          generatedAt: "2025. 11. 11.",
+          generatedAt: new Date().toLocaleDateString("ko-KR", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          }),
           type: "건강 상태 분석",
           summary:
-            "현재 혈압 수치와 건강 상태를 종합적으로 분석한 결과, 규칙적인 운동과 건강한 식습관 유지가 필요합니다.",
-          tip: "혈압약 복용 중이므로 격렬한 운동은 피하세요.",
+            analysisSummary.length > 0
+              ? analysisSummary.join(" ")
+              : "건강 데이터를 분석한 결과입니다.",
+          tip:
+            analysisTip.length > 0
+              ? analysisTip.join(" ")
+              : "규칙적인 운동과 건강한 식습관을 유지하세요.",
         },
-      },
-    }),
-    []
-  );
+      };
+
+      // 참가자 identity 찾기 (remoteTracks에서 참가자와 매칭)
+      // 1:1 상담이므로 remoteTracks의 첫 번째 원격 참가자를 참가자로 간주
+      // 닉네임이나 identity로 매칭 시도
+      let participantIdentity = memberInfo.nickname;
+
+      // remoteTracks에서 닉네임이 일치하는 참가자 찾기
+      const matchingParticipant = remoteTracks.find(
+        (track) =>
+          track.participant?.name === memberInfo.nickname ||
+          track.participantIdentity === memberInfo.nickname
+      );
+
+      if (matchingParticipant) {
+        // remoteTracks의 identity를 우선 사용
+        participantIdentity =
+          matchingParticipant.participantIdentity ||
+          matchingParticipant.participant?.identity ||
+          memberInfo.nickname;
+      }
+
+      setParticipantInfoMap((prev) => ({
+        ...prev,
+        [participantIdentity]: participantDetail,
+      }));
+
+      // 닉네임으로도 매핑 추가 (참가자 이름만으로도 접근 가능하도록)
+      if (participantIdentity !== memberInfo.nickname) {
+        setParticipantInfoMap((prev) => ({
+          ...prev,
+          [memberInfo.nickname]: participantDetail,
+        }));
+      }
+
+      console.log("🔵 [참여자 정보] 변환 완료:", {
+        identity: participantIdentity,
+        detail: participantDetail,
+      });
+    } catch (error) {
+      console.error("❌ [참여자 정보] API 호출 오류:", error);
+      // 에러 발생 시에도 화상 통화는 계속되도록 조용히 처리
+    } finally {
+      setIsLoadingParticipantInfo(false);
+    }
+  }, [user?.role, isAuthLoading, location.state, remoteTracks]);
+
+  // 상담 정보 미리 로드 (preQna, aiSummary 가져오기)
+  const fetchConsultationInfo = useCallback(async () => {
+    if (user?.role !== "coach" || isAuthLoading) {
+      return;
+    }
+
+    const consultationId =
+      location.state?.consultationId || location.state?.reservationId;
+    if (!consultationId) {
+      return;
+    }
+
+    const accessToken = localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
+    if (!accessToken) {
+      return;
+    }
+
+    setIsLoadingConsultationInfo(true);
+    try {
+      console.log("🔵 [상담 정보] API 호출 시작:", { consultationId });
+      // upcoming과 past 모두 확인 (현재 진행 중인 상담은 upcoming에 있을 수 있음)
+      const [upcomingResponse, pastResponse] = await Promise.all([
+        getCoachConsultationsApi(accessToken, "upcoming", undefined, 0, 100),
+        getCoachConsultationsApi(accessToken, "past", undefined, 0, 100),
+      ]);
+
+      // consultationId로 상담 찾기
+      const allConsultations = [...upcomingResponse.items, ...pastResponse.items];
+      const consultation = allConsultations.find(
+        (c) => c.consultationId === Number(consultationId)
+      );
+
+      if (consultation) {
+        console.log("🔵 [상담 정보] 조회 성공:", consultation);
+        setConsultationInfo(consultation);
+      } else {
+        console.warn("⚠️ [상담 정보] 해당 consultationId를 찾을 수 없습니다:", consultationId);
+      }
+    } catch (error) {
+      console.error("❌ [상담 정보] API 호출 오류:", error);
+    } finally {
+      setIsLoadingConsultationInfo(false);
+    }
+  }, [user?.role, isAuthLoading, location.state]);
+
+  // 상담 정보 미리 로드
+  useEffect(() => {
+    fetchConsultationInfo();
+  }, [fetchConsultationInfo]);
+
+  // 참여자 정보 가져오기 (코치이고 consultationId가 있을 때)
+  useEffect(() => {
+    fetchParticipantInfo();
+  }, [fetchParticipantInfo]);
+
+  useEffect(() => {
+    fetchConsultationInfo();
+  }, [fetchConsultationInfo]);
+
+  // remoteTracks 업데이트 시 참가자 정보와 매칭하여 identity 업데이트
+  useEffect(() => {
+    if (
+      user?.role !== "coach" ||
+      Object.keys(participantInfoMap).length === 0
+    ) {
+      return;
+    }
+
+    // participantInfoMap의 항목들을 순회하며 remoteTracks와 매칭
+    const updatedMap: Record<string, ParticipantDetail> = {
+      ...participantInfoMap,
+    };
+
+    Object.entries(participantInfoMap).forEach(([key, detail]) => {
+      // key가 닉네임인 경우, remoteTracks에서 해당 참가자 찾기
+      const matchingParticipant = remoteTracks.find(
+        (track) =>
+          track.participant?.name === detail.name ||
+          track.participantIdentity === detail.name ||
+          track.participant?.name === key ||
+          track.participantIdentity === key
+      );
+
+      if (matchingParticipant) {
+        const participantIdentity =
+          matchingParticipant.participantIdentity ||
+          matchingParticipant.participant?.identity ||
+          key;
+
+        // identity로 매핑 추가 (기존 key와 다를 경우)
+        if (participantIdentity !== key) {
+          updatedMap[participantIdentity] = detail;
+        }
+      }
+    });
+
+    // 변경사항이 있으면 업데이트
+    if (JSON.stringify(updatedMap) !== JSON.stringify(participantInfoMap)) {
+      setParticipantInfoMap(updatedMap);
+    }
+  }, [remoteTracks, participantInfoMap, user?.role]);
 
   const handleOpenParticipantInfo = useCallback(
-    (identity: string) => {
+    async (identity: string) => {
       // 코치인 경우 항상 모달 열기
       if (user?.role === "coach") {
         setSelectedParticipantId(identity);
+        
+        const consultationId =
+          location.state?.consultationId || location.state?.reservationId;
+        
+        // 참여자 정보가 없으면 로드 시도
+        if (!participantInfoResponse && consultationId && !isLoadingParticipantInfo) {
+          try {
+            await fetchParticipantInfo();
+          } catch (error) {
+            console.error("참여자 정보 로드 실패:", error);
+          }
+        }
+        
+        // 상담 정보가 없으면 로드 시도
+        if (!consultationInfo && consultationId && !isLoadingConsultationInfo) {
+          try {
+            await fetchConsultationInfo();
+          } catch (error) {
+            console.error("상담 정보 로드 실패:", error);
+          }
+        }
+
       } else if (participantInfoMap[identity]) {
         setSelectedParticipantId(identity);
       }
     },
-    [participantInfoMap, user?.role]
+    [
+      participantInfoMap,
+      participantInfoResponse,
+      consultationInfo,
+      user?.role,
+      location.state,
+      isLoadingParticipantInfo,
+      isLoadingConsultationInfo,
+      fetchParticipantInfo,
+          fetchConsultationInfo,
+    ]
   );
 
   const handleCloseParticipantInfo = useCallback(() => {
@@ -249,7 +555,9 @@ export const StreamingPage: React.FC = () => {
     }
 
     // 고유한 identity 생성 (participantName + consultationId + timestamp + random)
-    const uniqueIdentity = `${participantName}-${consultationId}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    const uniqueIdentity = `${participantName}-${consultationId}-${Date.now()}-${Math.random()
+      .toString(36)
+      .substring(2, 9)}`;
 
     const requestBody = {
       consultationId: consultationId, // Long 타입
@@ -601,16 +909,29 @@ export const StreamingPage: React.FC = () => {
                 });
 
                 // 과거 메시지를 ChatMessage 형식으로 변환
-                // 서버에서 받는 userId (UUID)를 그대로 표시
-                const convertedMessages: ChatMessage[] = pastMessages.map(
-                  (msg) => ({
-                    id: msg.id,
-                    sender: msg.userId, // UUID를 그대로 표시
-                    message: msg.content,
-                    timestamp: new Date(msg.sentAt),
-                    senderUserId: msg.userId,
-                  })
-                );
+                // 시스템 메시지(ENTER, LEAVE)인 경우 발신자를 "알림"으로 설정
+                // 빈 메시지는 필터링
+                // 시간대 변환은 ChatPanel에서 처리
+                const convertedMessages: ChatMessage[] = pastMessages
+                  .filter((msg) => msg.content && msg.content.trim() !== "") // 빈 메시지 필터링
+                  .map((msg) => {
+                    const isSystemMessage = 
+                      msg.messageType === "ENTER" || msg.messageType === "LEAVE";
+                    // 서버 응답에 nickname이 포함되어 있을 수 있음 (타입에는 없지만 실제 응답에 포함될 수 있음)
+                    const msgWithNickname = msg as any;
+                    const senderName = isSystemMessage 
+                      ? "알림" 
+                      : msgWithNickname.nickname || msgWithNickname.userNickname || msg.userId;
+                    return {
+                      id: msg.id,
+                      sender: senderName, // 닉네임 우선, 없으면 userId
+                      message: msg.content,
+                      timestamp: new Date(msg.sentAt), // ChatPanel에서 UTC 파싱 및 한국 시간대 변환 처리
+                      timestampString: msg.sentAt, // UTC 시간 문자열 (ChatPanel에서 명시적으로 파싱)
+                      senderUserId: msg.userId,
+                      messageType: msg.messageType,
+                    };
+                  });
                 // 시간순 정렬 (오래된 것부터 최신 순서로 - 최신 메시지가 아래로)
                 const sortedMessages = convertedMessages.sort(
                   (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
@@ -646,24 +967,15 @@ export const StreamingPage: React.FC = () => {
                           userObject: user,
                         });
 
-                        // ENTER, LEAVE 같은 시스템 메시지는 표시하지 않음
-                        if (
-                          message.type === "ENTER" ||
-                          message.type === "LEAVE"
-                        ) {
-                          console.log(
-                            "🔵 [채팅] 시스템 메시지 무시:",
-                            message.type
-                          );
-                          return;
-                        }
-
-                        // TALK 타입 메시지만 처리
-                        if (message.type !== "TALK") {
-                          console.log(
-                            "🔵 [채팅] 알 수 없는 메시지 타입:",
-                            message.type
-                          );
+                        // 모든 타입의 메시지 처리 (ENTER, LEAVE, TALK 모두 표시)
+                        // 시스템 메시지(ENTER, LEAVE)는 발신자를 "알림"으로 표시
+                        
+                        // 빈 메시지 필터링 (LEAVE 타입이면서 빈 메시지인 경우 제외)
+                        if (!message.message || message.message.trim() === "") {
+                          console.log("🔵 [채팅] 빈 메시지 무시:", {
+                            messageId: message.id,
+                            type: message.type,
+                          });
                           return;
                         }
 
@@ -741,17 +1053,22 @@ export const StreamingPage: React.FC = () => {
                           });
 
                           // 새 메시지 생성
-                          // 서버에서 받는 senderId (UUID)를 그대로 표시
-                          const senderName =
-                            message.sender?.userId || "Unknown";
+                          // 시스템 메시지(ENTER, LEAVE)인 경우 발신자를 "알림"으로 설정
+                          const isSystemMessage = 
+                            message.type === "ENTER" || message.type === "LEAVE";
+                          const senderName = isSystemMessage
+                            ? "알림"
+                            : message.sender?.nickname || message.sender?.userId || "Unknown";
 
                           const newMessage: ChatMessage = {
                             id: message.id,
                             sender: senderName,
                             message: message.message,
-                            timestamp: new Date(message.sentAt),
+                            timestamp: new Date(message.sentAt), // ChatPanel에서 UTC 파싱 및 한국 시간대 변환 처리
+                            timestampString: message.sentAt, // UTC 시간 문자열 (ChatPanel에서 명시적으로 파싱)
                             senderImage: message.sender?.userImage || undefined,
                             senderUserId: message.sender?.userId,
+                            messageType: message.type,
                           };
 
                           console.log("🔵 [채팅] 새 메시지 추가:", {
@@ -897,8 +1214,8 @@ export const StreamingPage: React.FC = () => {
 
   // 디버깅용: remoteTracks와 room 참가자 정보 로그
   useEffect(() => {
-    console.log('=== Remote Tracks Debug ===');
-    console.log('Remote tracks count:', remoteTracks.length);
+    console.log("=== Remote Tracks Debug ===");
+    console.log("Remote tracks count:", remoteTracks.length);
     remoteTracks.forEach((item, index) => {
       console.log(`Track ${index}:`, {
         participantIdentity: item.participantIdentity,
@@ -908,12 +1225,12 @@ export const StreamingPage: React.FC = () => {
         trackKind: item.trackPublication.kind,
       });
     });
-    
-    console.log('=== Room Participants Debug ===');
+
+    console.log("=== Room Participants Debug ===");
     if (room) {
-      console.log('Room participants count:', room.remoteParticipants.size);
+      console.log("Room participants count:", room.remoteParticipants.size);
       room.remoteParticipants.forEach((participant) => {
-        console.log('Participant:', {
+        console.log("Participant:", {
           identity: participant.identity,
           name: participant.name,
           sid: participant.sid,
@@ -922,7 +1239,7 @@ export const StreamingPage: React.FC = () => {
         });
       });
     } else {
-      console.log('Room is not connected yet');
+      console.log("Room is not connected yet");
     }
   }, [remoteTracks, room]);
 
@@ -1256,34 +1573,20 @@ export const StreamingPage: React.FC = () => {
 
       <ParticipantInfo
         open={Boolean(selectedParticipantId)}
-        participant={
-          selectedParticipantId
-            ? participantInfoMap[selectedParticipantId] || (() => {
-                // participantInfoMap에 없으면 remoteTracks에서 참가자 이름 찾기
-                const remoteTrack = remoteTracks.find(
-                  (item) => item.participantIdentity === selectedParticipantId
-                );
-                const participantName =
-                  remoteTrack?.participant?.name ||
-                  remoteTrack?.participantIdentity ||
-                  selectedParticipantId;
-                
-                // 기본 participant 정보 반환
-                return {
-                  name: participantName,
-                  badges: [],
-                  notes: "",
-                  questions: [],
-                  analysis: {
-                    generatedAt: "",
-                    type: "",
-                    summary: "",
-                    tip: "",
-                  },
-                };
-              })()
+        data={
+          selectedParticipantId && participantInfoResponse
+            ? {
+                participantInfo: participantInfoResponse,
+                preQna: consultationInfo?.preQna,
+                aiSummary: consultationInfo?.aiSummary,
+              }
             : undefined
         }
+        isLoading={
+          Boolean(selectedParticipantId) &&
+          (isLoadingParticipantInfo || isLoadingConsultationInfo)
+        }
+        error={null}
         onClose={handleCloseParticipantInfo}
       />
     </StreamingContainer>

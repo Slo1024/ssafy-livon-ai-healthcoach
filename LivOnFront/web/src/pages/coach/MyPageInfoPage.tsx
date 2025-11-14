@@ -4,7 +4,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { Input as CommonInput } from "../../components/common/Input";
 import { Dropdown as CommonDropdown } from "../../components/common/Dropdown";
-import { DateTimePickerModal } from "../../components/common/Modal";
+import { DateTimePickerModal, InfoUpdateSuccessModal } from "../../components/common/Modal";
 import profilePictureIcon from "../../assets/images/profile_picture.png";
 import { ROUTES } from "../../constants/routes";
 import { CONFIG } from "../../constants/config";
@@ -206,18 +206,14 @@ const FileButton = styled.button<{ variant?: "primary" | "danger" }>`
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
   transition: all 0.2s ease;
-  box-shadow: ${(props) =>
-    props.variant === "danger" ? "none" : "0 2px 4px rgba(45, 121, 243, 0.2)"};
+  box-shadow: none;
 
   &:hover {
     background-color: ${(props) =>
       props.variant === "danger" ? "#ef4444" : "#1a5fd9"};
     color: ${(props) => (props.variant === "danger" ? "#ffffff" : "white")};
     transform: translateY(-1px);
-    box-shadow: ${(props) =>
-      props.variant === "danger"
-        ? "0 2px 8px rgba(239, 68, 68, 0.3)"
-        : "0 4px 8px rgba(45, 121, 243, 0.3)"};
+    box-shadow: none;
   }
 
   &:active {
@@ -321,12 +317,12 @@ const SmallButton = styled.button`
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(45, 121, 243, 0.2);
+  box-shadow: none;
 
   &:hover {
     background-color: #1a5fd9;
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(45, 121, 243, 0.3);
+    box-shadow: none;
   }
 
   &:active {
@@ -497,12 +493,12 @@ const SubmitButton = styled.button`
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(45, 121, 243, 0.3);
+  box-shadow: none;
   margin-top: 32px;
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(45, 121, 243, 0.4);
+    box-shadow: none;
   }
 
   &:active {
@@ -535,6 +531,7 @@ export const MyPageInfoPage: React.FC = () => {
   const navigate = useNavigate();
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [profileFileName, setProfileFileName] = useState("");
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [emailDomains] = useState([
     "gmail.com",
     "naver.com",
@@ -693,8 +690,15 @@ export const MyPageInfoPage: React.FC = () => {
   const handleAddQualification = () =>
     setQualificationFields((prev) => [...prev, ""]);
   const nickname = user?.nickname;
-  const navigateToVerification = () =>
-    navigate(ROUTES.COACH_MYPAGE_VERIFICATION);
+  const navigateToVerification = () => {
+    // 정보 수정 완료 모달 표시
+    setShowSuccessModal(true);
+  };
+
+  const handleGoHome = () => {
+    setShowSuccessModal(false);
+    navigate(ROUTES.HOME);
+  };
 
   // 코치 전용 가드
   useEffect(() => {
@@ -1046,6 +1050,15 @@ export const MyPageInfoPage: React.FC = () => {
         </SubmitButton>
         </MainCard>
       </ContentWrapper>
+
+      {/* 정보 수정 완료 모달 */}
+      <InfoUpdateSuccessModal
+        open={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        message="코치님의 정보가 수정되었습니다."
+        homeButtonText="홈 바로가기"
+        onGoHome={handleGoHome}
+      />
     </PageContainer>
   );
 };

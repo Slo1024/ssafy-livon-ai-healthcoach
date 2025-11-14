@@ -8,6 +8,8 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
+import android.content.Context
+import com.squareup.moshi.Types
 
 class ReservationRepositoryImpl : ReservationRepository {
     private val api = RetrofitProvider.createService(ReservationApiService::class.java)
@@ -44,20 +46,10 @@ class ReservationRepositoryImpl : ReservationRepository {
             )
             val res = api.reserveCoach(req)
             if (res.isSuccess && res.result != null) {
-                // store into local cache so UI can read it even if different VM instance
-                localReservations.add(
-                    LocalReservation(
-                        id = res.result,
-                        type = ReservationType.PERSONAL,
-                        coachId = coachId,
-                        startAt = startAt.format(fmt),
-                        endAt = endAt.format(fmt),
-                        coachName = coachName,
-                        preQna = preQna
-                    )
-                )
-                // Emit updated reservations list
-                localReservationsFlow.emit(localReservations.toList())
+                // Invalidate cached my-reservations so subsequent reads refresh from server
+                synchronized(cacheLock) { cachedMyReservations = null; cachedAt = 0 }
+                // Attempt to refresh authoritative reservations from server and sync local cache
+                try { refreshLocalReservationsFromServer() } catch (_: Throwable) { /* ignore refresh failures */ }
                 Result.success(res.result)
             } else Result.failure(Exception(res.message ?: "Unknown"))
         } catch (t: Throwable) {
@@ -80,19 +72,9 @@ class ReservationRepositoryImpl : ReservationRepository {
             }
             val res = api.reserveClass(classId)
             if (res.isSuccess && res.result != null) {
-                localReservations.add(
-                    LocalReservation(
-                        id = res.result,
-                        type = ReservationType.GROUP,
-                        coachId = "",
-                        startAt = LocalDateTime.now().format(fmt),
-                        endAt = LocalDateTime.now().plusHours(1).format(fmt)
-                    )
-                )
-                // Emit updated reservations list
-                localReservationsFlow.emit(localReservations.toList())
-                // invalidate cached my-reservations so subsequent reads hit server or refresh
+                // Invalidate cache and refresh authoritative reservations from server
                 synchronized(cacheLock) { cachedMyReservations = null; cachedAt = 0 }
+                try { refreshLocalReservationsFromServer() } catch (_: Throwable) { /* ignore */ }
                 Result.success(res.result)
             } else Result.failure(Exception(res.message ?: "Unknown"))
         } catch (t: Throwable) {
@@ -101,65 +83,23 @@ class ReservationRepositoryImpl : ReservationRepository {
                     val errorBody = try { t.response()?.errorBody()?.string() } catch (_: Throwable) { null }
                     Log.e("ReservationRepo", "reserveClass failed: http ${t.code()} ${t.message()} body=$errorBody", t)
                     if (errorBody != null && (errorBody.contains("uk_participant_user_consultation") || errorBody.contains("Duplicate entry"))) {
-                        Log.w("ReservationRepo", "reserveClass: duplicate participant detected -> returning ALREADY_RESERVED body=$errorBody")
-                        // Attempt to enrich local cache entry with class detail (startAt/title/coach)
+                        Log.w("ReservationRepo", "reserveClass: duplicate participant detected -> attempting server verification body=$errorBody")
+                        // Try to confirm server-side participant via getMyReservations; only add local cache if server confirms
                         try {
                             val numericId = classId.toIntOrNull() ?: -(classId.hashCode())
-                            val exists = localReservations.any { it.id == numericId }
-                            if (!exists) {
-                                try {
-                                    val groupApi = RetrofitProvider.createService(com.livon.app.data.remote.api.GroupConsultationApiService::class.java)
-                                    val detailRes = groupApi.findClassDetail(classId)
-                                    if (detailRes.isSuccess && detailRes.result != null) {
-                                        val dto = detailRes.result
-                                        val startIso = dto.startAt ?: LocalDateTime.now().format(fmt)
-                                        val endIso = dto.endAt ?: LocalDateTime.now().plusHours(1).format(fmt)
-                                        val title = dto.title
-                                        val coachName = dto.coach?.nickname ?: dto.coach?.id ?: ""
-                                        localReservations.add(
-                                            LocalReservation(
-                                                id = numericId,
-                                                type = ReservationType.GROUP,
-                                                coachId = dto.coach?.id ?: "",
-                                                startAt = startIso,
-                                                endAt = endIso,
-                                                classTitle = title,
-                                                coachName = coachName
-                                            )
-                                        )
-                                        localReservationsFlow.emit(localReservations.toList())
-                                    } else {
-                                        localReservations.add(
-                                            LocalReservation(
-                                                id = numericId,
-                                                type = ReservationType.GROUP,
-                                                coachId = "",
-                                                startAt = LocalDateTime.now().format(fmt),
-                                                endAt = LocalDateTime.now().plusHours(1).format(fmt),
-                                                classTitle = null,
-                                                coachName = null
-                                            )
-                                        )
-                                        localReservationsFlow.emit(localReservations.toList())
-                                    }
-                                } catch (_: Throwable) {
-                                    localReservations.add(
-                                        LocalReservation(
-                                            id = numericId,
-                                            type = ReservationType.GROUP,
-                                            coachId = "",
-                                            startAt = LocalDateTime.now().format(fmt),
-                                            endAt = LocalDateTime.now().plusHours(1).format(fmt),
-                                            classTitle = null,
-                                            coachName = null
-                                        )
-                                    )
-                                    localReservationsFlow.emit(localReservations.toList())
+                            // Invalidate cached my-reservations so we fetch fresh
+                            synchronized(cacheLock) { cachedMyReservations = null; cachedAt = 0 }
+                            val myRes = try { api.getMyReservations(status = "upcoming", type = null) } catch (t: Throwable) { null }
+                            if (myRes != null && myRes.isSuccess && myRes.result != null) {
+                                val found = myRes.result.items.firstOrNull { it.consultationId == numericId }
+                                if (found != null) {
+                                    // Sync entire server list into local cache rather than adding single placeholder
+                                    try { refreshLocalReservationsFromServer() } catch (_: Throwable) { /* ignore */ }
+                                    return Result.success(found.consultationId)
                                 }
                             }
-                        } catch (_: Throwable) { }
-                        // invalidate cache to allow recovery fetch attempts later
-                        synchronized(cacheLock) { cachedMyReservations = null; cachedAt = 0 }
+                        } catch (_: Throwable) { /* ignore verification errors */ }
+                        // Could not confirm on server -> do not add unconfirmed placeholder, return ALREADY_RESERVED failure
                         return Result.failure(Exception("ALREADY_RESERVED:${errorBody}"))
                     }
                     return Result.failure(Exception(errorBody ?: t.message))
@@ -193,30 +133,22 @@ class ReservationRepositoryImpl : ReservationRepository {
             Log.e("ReservationRepo", "cancelIndividual failed, attempting recovery check", t)
             // Recovery: server might have processed the deletion but response parsing failed
             return try {
-                val check = api.getMyReservations(status = "upcoming")
-                if (check.isSuccess && check.result != null) {
-                    val exists = check.result.items.any { it.consultationId == consultationId }
-                    if (!exists) {
-                        // Item no longer present -> treat as success
+                // Recovery: check local cache (no network). If the item is not present in localReservations
+                // then treat the cancellation as successful. This avoids calling `getMyReservations` network API.
+                try {
+                    val existsOnLocal = localReservations.any { it.id == consultationId }
+                    if (!existsOnLocal) {
+                        // Item no longer present locally -> treat as success
+                        Log.d("ReservationRepo", "cancelIndividual: recovery -> item not found locally; treating as success id=$consultationId")
                         localReservations.removeAll { it.id == consultationId }
-                        Log.d("ReservationRepo", "cancelIndividual: recovery -> item not found on server; treating as success id=$consultationId")
-                        // Emit updated reservations list
                         localReservationsFlow.emit(localReservations.toList())
                         Result.success(Unit)
                     } else {
-                        // If present but marked CANCELLED, treat as success
-                        val remote = check.result.items.first { it.consultationId == consultationId }
-                        if (remote.status == "CANCELLED") {
-                            localReservations.removeAll { it.id == consultationId }
-                            Log.d("ReservationRepo", "cancelIndividual: recovery -> item status=CANCELLED; treating as success id=$consultationId")
-                            // Emit updated reservations list
-                            localReservationsFlow.emit(localReservations.toList())
-                            Result.success(Unit)
-                        } else {
-                            Result.failure(Exception(t))
-                        }
+                        // If present locally, we cannot be sure the server succeeded; keep failure
+                        Result.failure(Exception(t))
                     }
-                } else {
+                } catch (t2: Throwable) {
+                    Log.e("ReservationRepo", "cancelIndividual: local recovery check failed", t2)
                     Result.failure(Exception(t))
                 }
             } catch (t2: Throwable) {
@@ -244,28 +176,23 @@ class ReservationRepositoryImpl : ReservationRepository {
             Log.e("ReservationRepo", "cancelGroupParticipation failed, attempting recovery check", t)
             // Recovery: attempt to verify via my-reservations
             return try {
-                val check = api.getMyReservations(status = "upcoming")
-                if (check.isSuccess && check.result != null) {
-                    val exists = check.result.items.any { it.consultationId == consultationId }
-                    if (!exists) {
+                // Recovery: check local cache (no network). If the item is not present in localReservations
+                // then treat the cancellation as successful. This avoids calling `getMyReservations` network API.
+                try {
+                    val existsOnLocal = localReservations.any { it.id == consultationId }
+                    if (!existsOnLocal) {
                         localReservations.removeAll { it.id == consultationId }
-                        Log.d("ReservationRepo", "cancelGroupParticipation: recovery -> item not found on server; treating as success id=$consultationId")
+                        Log.d("ReservationRepo", "cancelGroupParticipation: recovery -> item not found locally; treating as success id=$consultationId")
                         // Emit updated reservations list
                         localReservationsFlow.emit(localReservations.toList())
                         Result.success(Unit)
                     } else {
-                        val remote = check.result.items.first { it.consultationId == consultationId }
-                        if (remote.status == "CANCELLED") {
-                            localReservations.removeAll { it.id == consultationId }
-                            Log.d("ReservationRepo", "cancelGroupParticipation: recovery -> item status=CANCELLED; treating as success id=$consultationId")
-                            // Emit updated reservations list
-                            localReservationsFlow.emit(localReservations.toList())
-                            Result.success(Unit)
-                        } else {
-                            Result.failure(Exception(t))
-                        }
+                        Result.failure(Exception(t))
                     }
-                } else Result.failure(Exception(t))
+                } catch (t2: Throwable) {
+                    Log.e("ReservationRepo", "cancelGroupParticipation: local recovery check failed", t2)
+                    Result.failure(Exception(t))
+                }
             } catch (t2: Throwable) {
                 Log.e("ReservationRepo", "cancelGroupParticipation: recovery check failed", t2)
                 Result.failure(Exception(t))
@@ -275,31 +202,63 @@ class ReservationRepositoryImpl : ReservationRepository {
 
     // New: fetch reservations from server
     override suspend fun getMyReservations(status: String, type: String?): Result<com.livon.app.data.remote.api.ReservationListResponse> {
-        // Simple caching to avoid repeated network calls in a short period.
+        // Use network-backed GET with a short TTL cache to avoid frequent duplicate calls.
         try {
-            val now = System.currentTimeMillis()
-            val ttl = 30_000L // 30 seconds
+            val nowMillis = System.currentTimeMillis()
+            val ttl = 30_000L
             synchronized(cacheLock) {
                 val cached = cachedMyReservations
                 val ts = cachedAt
-                if (cached != null && ts + ttl >= now && status == cachedStatus && type == cachedType) {
+                if (cached != null && ts + ttl >= nowMillis && status == cachedStatus && type == cachedType) {
                     return Result.success(cached)
                 }
             }
 
-            val res = api.getMyReservations(status = status, type = type)
-            if (res.isSuccess && res.result != null) {
+            val apiRes = try { api.getMyReservations(status = status, type = type) } catch (t: Throwable) { return Result.failure(t) }
+            if (apiRes.isSuccess && apiRes.result != null) {
                 synchronized(cacheLock) {
-                    cachedMyReservations = res.result
+                    cachedMyReservations = apiRes.result
                     cachedAt = System.currentTimeMillis()
                     cachedStatus = status
                     cachedType = type
                 }
-                return Result.success(res.result)
-            } else return Result.failure(Exception(res.message ?: "Unknown"))
+                return Result.success(apiRes.result)
+            } else {
+                return Result.failure(Exception(apiRes.message ?: "Unknown"))
+            }
         } catch (t: Throwable) {
             return Result.failure(t)
         }
+    }
+
+    // Synchronize localReservations from server authoritative data and emit to localReservationsFlow
+    private suspend fun refreshLocalReservationsFromServer() {
+        try {
+            val apiRes = api.getMyReservations(status = "upcoming", type = null)
+            if (apiRes.isSuccess && apiRes.result != null) {
+                val items = apiRes.result.items
+                // rebuild localReservations from server items
+                val snapshot = mutableListOf<LocalReservation>()
+                synchronized(cacheLock) {
+                    localReservations.clear()
+                    for (it in items) {
+                        try {
+                            val id = it.consultationId
+                            val type = if ((it.type ?: "GROUP") == "ONE") ReservationType.PERSONAL else ReservationType.GROUP
+                            val startIso = it.startAt ?: LocalDateTime.now().format(fmt)
+                            val endIso = it.endAt ?: LocalDateTime.now().plusHours(1).format(fmt)
+                            val coachId = it.coach?.userId ?: ""
+                            val coachName = it.coach?.nickname
+                            val lr = LocalReservation(id = id, type = type, coachId = coachId, startAt = startIso, endAt = endIso, classTitle = it.title, coachName = coachName)
+                            localReservations.add(lr)
+                            snapshot.add(lr)
+                        } catch (_: Throwable) { /* ignore individual item parse failures */ }
+                    }
+                }
+                // Emit snapshot outside synchronized block
+                try { localReservationsFlow.emit(snapshot.toList()) } catch (_: Throwable) { }
+            }
+        } catch (_: Throwable) { /* ignore refresh errors */ }
     }
 
     companion object {
@@ -324,5 +283,50 @@ class ReservationRepositoryImpl : ReservationRepository {
         var cachedType: String? = null
         // lock object for synchronizing cache access
         private val cacheLock = Any()
+    }
+
+    // Persist localReservations into SharedPreferences as JSON
+    fun persistLocalReservations(context: Context) {
+        try {
+            val prefs = context.getSharedPreferences("reservation_prefs", Context.MODE_PRIVATE)
+            val listType = Types.newParameterizedType(List::class.java, LocalReservation::class.java)
+            val adapter = RetrofitProvider.moshi.adapter<List<LocalReservation>>(listType)
+            val json = adapter.toJson(localReservations.toList())
+            prefs.edit().putString("local_reservations_json_v1", json).apply()
+        } catch (t: Throwable) {
+            android.util.Log.w("ReservationRepo", "persistLocalReservations failed", t)
+        }
+    }
+
+    // Load persisted reservations (if any) into localReservations and emit
+    suspend fun loadPersistedReservations(context: Context) {
+        try {
+            val prefs = context.getSharedPreferences("reservation_prefs", Context.MODE_PRIVATE)
+            val json = prefs.getString("local_reservations_json_v1", null)
+            if (!json.isNullOrBlank()) {
+                val listType = Types.newParameterizedType(List::class.java, LocalReservation::class.java)
+                val adapter = RetrofitProvider.moshi.adapter<List<LocalReservation>>(listType)
+                val parsed = try { adapter.fromJson(json) } catch (t: Throwable) { null }
+                if (parsed != null) {
+                    synchronized(cacheLock) {
+                        localReservations.clear()
+                        localReservations.addAll(parsed)
+                    }
+                    try { localReservationsFlow.emit(localReservations.toList()) } catch (_: Throwable) { }
+                }
+            }
+        } catch (t: Throwable) {
+            android.util.Log.w("ReservationRepo", "loadPersistedReservations failed", t)
+        }
+    }
+
+    // Convenience: refresh from server and persist
+    suspend fun syncFromServerAndPersist(context: Context) {
+        try {
+            refreshLocalReservationsFromServer()
+            persistLocalReservations(context)
+        } catch (t: Throwable) {
+            android.util.Log.w("ReservationRepo", "syncFromServerAndPersist failed", t)
+        }
     }
 }

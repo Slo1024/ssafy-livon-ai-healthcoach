@@ -30,6 +30,7 @@ import java.time.LocalDate
 import java.time.YearMonth
 import androidx.navigation.NavHostController
 import com.livon.app.ui.component.navbar.HomeNavBar
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun CoachDetailScreen(
@@ -60,10 +61,12 @@ fun CoachDetailScreen(
     // keep a union set for fallback or previews
     val reservedTimeTokensAll = remember { mutableStateOf<Set<String>>(emptySet()) }
 
+    val ctx = LocalContext.current
     // Combine server-side upcoming reservations and local cache updates to compute reserved tokens.
     LaunchedEffect(coachId) {
         val repo = com.livon.app.data.repository.ReservationRepositoryImpl()
-        // Fetch server-side upcoming reservations once and build a map of date->tokens
+        try { repo.loadPersistedReservations(ctx) } catch (_: Throwable) {}
+         // Fetch server-side upcoming reservations once and build a map of date->tokens
         val serverMap = mutableMapOf<LocalDate, MutableSet<String>>()
         try {
             val res = try { repo.getMyReservations(status = "upcoming", type = null) } catch (t: Throwable) { Result.failure<com.livon.app.data.remote.api.ReservationListResponse>(t) }

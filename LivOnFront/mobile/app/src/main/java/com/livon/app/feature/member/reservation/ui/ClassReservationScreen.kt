@@ -24,6 +24,7 @@ import java.time.LocalDate
 import java.time.YearMonth
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.ui.platform.LocalContext
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,9 +46,11 @@ fun ClassReservationScreen(
 
     // Determine which classes the current user already reserved (by consultationId)
     val reservedClassIds = remember { mutableStateOf<Set<String>>(emptySet()) }
+    val ctx = LocalContext.current
     LaunchedEffect(Unit) {
         try {
             val repo = com.livon.app.data.repository.ReservationRepositoryImpl()
+            try { repo.loadPersistedReservations(ctx) } catch (_: Throwable) {}
             val res = try { repo.getMyReservations(status = "upcoming", type = null) } catch (t: Throwable) { Result.failure<com.livon.app.data.remote.api.ReservationListResponse>(t) }
             if (res.isSuccess) {
                 val body = res.getOrNull()
@@ -121,7 +124,8 @@ fun ClassReservationScreen(
                                 try {
                                     android.util.Log.d("ClassReservationScreen", "CoachView clicked: coachId=${item.coachId}")
                                 } catch (t: Throwable) { android.util.Log.w("ClassReservationScreen","log failed", t) }
-                                val coachIdArg = if (item.coachId.isNullOrBlank()) "" else item.coachId
+                                // item.coachId is non-nullable in model; treat empty/blank as missing
+                                val coachIdArg = if (item.coachId.isBlank()) "" else item.coachId
                                 if (coachIdArg.isBlank()) android.util.Log.w("ClassReservationScreen", "coachId is blank; cannot navigate to coach detail")
                                 onCoachClick(coachIdArg)
                             }

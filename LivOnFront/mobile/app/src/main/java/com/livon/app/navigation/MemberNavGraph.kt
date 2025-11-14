@@ -55,6 +55,9 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
 
         // Setup Reservation ViewModel
         val reservationRepo = remember { com.livon.app.data.repository.ReservationRepositoryImpl() }
+        val ctxForReservation = LocalContext.current
+        // Load persisted reservations immediately so UI shows them before network refresh
+        LaunchedEffect(Unit) { reservationRepo.loadPersistedReservations(ctxForReservation) }
         val reservationVm = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
@@ -63,7 +66,17 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         }) as com.livon.app.feature.member.reservation.vm.ReservationViewModel
 
         val resState by reservationVm.uiState.collectAsState()
-        LaunchedEffect(Unit) { reservationVm.loadUpcoming() }
+        val actionStateGlobal by reservationVm.actionState.collectAsState()
+        // After loading persisted reservations, refresh upcoming from server
+        LaunchedEffect(Unit) {
+            reservationVm.loadUpcoming()
+        }
+        // Persist localReservations whenever an action (reserve/cancel) succeeds
+        LaunchedEffect(actionStateGlobal.success) {
+            if (actionStateGlobal.success == true) {
+                try { reservationRepo.persistLocalReservations(ctxForReservation) } catch (_: Throwable) {}
+            }
+        }
 
         // Build metrics list from MyInfoUiState so MemberHomeRoute can render '내 데이터' tiles
         val metricsList = remember(userState.info) {
@@ -213,6 +226,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         }
 
         val reservationRepoForQna = remember { com.livon.app.data.repository.ReservationRepositoryImpl() }
+        val ctxQna = LocalContext.current
         val reservationVmForQna = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
@@ -226,6 +240,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
 
         LaunchedEffect(actionState.success) {
             if (actionState.success == true) {
+                try { reservationRepoForQna.persistLocalReservations(ctxQna) } catch (_: Throwable) {}
                 nav.navigate(Routes.Reservations) { popUpTo(Routes.MemberHome) { inclusive = false } }
             }
         }
@@ -534,6 +549,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             try {
                 if (actionStateByClass.success == true) {
                     try {
+                        try { reservationRepoForClass.persistLocalReservations(ctx) } catch (_: Throwable) {}
                         nav.navigate(Routes.Reservations) { popUpTo(Routes.MemberHome) { inclusive = false } }
                     } catch (_: Throwable) { /* ignore navigation errors */ }
                 } else if (actionStateByClass.success == false && (err.contains("이미 예약") || err.contains("ALREADY_RESERVED") || err.contains("이미 예약된"))) {

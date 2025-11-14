@@ -56,8 +56,13 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         // Setup Reservation ViewModel
         val reservationRepo = remember { com.livon.app.data.repository.ReservationRepositoryImpl() }
         val ctxForReservation = LocalContext.current
-        // Load persisted reservations immediately so UI shows them before network refresh
-        LaunchedEffect(Unit) { reservationRepo.loadPersistedReservations(ctxForReservation) }
+        // Wait for session token to be ready, then load persisted reservations for this user
+        val sessionToken by com.livon.app.data.session.SessionManager.token.collectAsState()
+        LaunchedEffect(sessionToken) {
+            if (!sessionToken.isNullOrBlank()) {
+                try { reservationRepo.loadPersistedReservations(ctxForReservation) } catch (_: Throwable) {}
+            }
+        }
         val reservationVm = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
@@ -67,9 +72,11 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
 
         val resState by reservationVm.uiState.collectAsState()
         val actionStateGlobal by reservationVm.actionState.collectAsState()
-        // After loading persisted reservations, refresh upcoming from server
-        LaunchedEffect(Unit) {
-            reservationVm.loadUpcoming()
+        // After loading persisted reservations (and after login), refresh upcoming from server
+        LaunchedEffect(sessionToken) {
+            if (!sessionToken.isNullOrBlank()) {
+                reservationVm.loadUpcoming()
+            }
         }
         // Persist localReservations whenever an action (reserve/cancel) succeeds
         LaunchedEffect(actionStateGlobal.success) {

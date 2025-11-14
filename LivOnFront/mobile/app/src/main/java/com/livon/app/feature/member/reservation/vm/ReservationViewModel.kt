@@ -137,7 +137,8 @@ class ReservationViewModel(
                 val finalList = mappedFromServer.toMutableList()
                 try {
                     if (repo is com.livon.app.data.repository.ReservationRepositoryImpl) {
-                        val local = com.livon.app.data.repository.ReservationRepositoryImpl.localReservations
+                        val ownerToken = com.livon.app.data.session.SessionManager.getTokenSync()
+                        val local = com.livon.app.data.repository.ReservationRepositoryImpl.localReservations.filter { (it.ownerToken ?: "") == (ownerToken ?: "") }
                         val existingIds = finalList.map { it.id }.toMutableSet()
                         val localItems = local.mapNotNull { lr ->
                             try {

@@ -24,7 +24,8 @@ class ReservationRepositoryImpl : ReservationRepository {
         val endAt: String,
         val classTitle: String? = null,
         val coachName: String? = null,
-        val preQna: String? = null
+        val preQna: String? = null,
+        val ownerToken: String? = null // token identifying owning user session
     )
 
     // ReservationType moved to a top-level declaration (ReservationModels.kt)
@@ -50,8 +51,9 @@ class ReservationRepositoryImpl : ReservationRepository {
                 // Add a local placeholder entry so UI can show the newly created reservation immediately
                 try {
                     synchronized(cacheLock) {
-                        // remove existing placeholder with same id if present
-                        localReservations.removeAll { it.id == createdId }
+                        // remove existing placeholder with same id for this owner if present
+                        val owner = com.livon.app.data.session.SessionManager.getTokenSync()
+                        localReservations.removeAll { it.id == createdId && (it.ownerToken ?: "") == (owner ?: "") }
                         localReservations.add(LocalReservation(
                             id = createdId,
                             type = ReservationType.PERSONAL,
@@ -60,7 +62,8 @@ class ReservationRepositoryImpl : ReservationRepository {
                             endAt = endAt.format(fmt),
                             classTitle = null,
                             coachName = coachName,
-                            preQna = preQna
+                            preQna = preQna,
+                            ownerToken = owner
                         ))
                     }
                     try { localReservationsFlow.emit(localReservations.toList()); Log.d("ReservationRepo", "emit localReservations after reserveCoach: count=${localReservations.size}") } catch (_: Throwable) {}
@@ -95,7 +98,9 @@ class ReservationRepositoryImpl : ReservationRepository {
                 val createdId = res.result
                 try {
                     synchronized(cacheLock) {
-                        localReservations.removeAll { it.id == createdId }
+                        // remove existing placeholder with same id for this owner if present
+                        val owner = com.livon.app.data.session.SessionManager.getTokenSync()
+                        localReservations.removeAll { it.id == createdId && (it.ownerToken ?: "") == (owner ?: "") }
                         localReservations.add(LocalReservation(
                             id = createdId,
                             type = ReservationType.GROUP,
@@ -104,7 +109,8 @@ class ReservationRepositoryImpl : ReservationRepository {
                             endAt = LocalDateTime.now().plusHours(1).format(fmt),
                             classTitle = null,
                             coachName = null,
-                            preQna = preQna
+                            preQna = preQna,
+                            ownerToken = owner
                         ))
                     }
                     try { localReservationsFlow.emit(localReservations.toList()); Log.d("ReservationRepo", "emit localReservations after reserveClass: count=${localReservations.size}") } catch (_: Throwable) {}
@@ -157,8 +163,9 @@ class ReservationRepositoryImpl : ReservationRepository {
             val res = api.cancelIndividual(consultationId)
             Log.d("ReservationRepo", "cancelIndividual: api returned isSuccess=${res.isSuccess}, message=${res.message}")
             if (res.isSuccess) {
-                // remove from local cache if present
-                localReservations.removeAll { it.id == consultationId }
+                // remove from local cache if present for this owner only
+                val ownerRem = com.livon.app.data.session.SessionManager.getTokenSync()
+                localReservations.removeAll { it.id == consultationId && (it.ownerToken ?: "") == (ownerRem ?: "") }
                 // Emit updated reservations list
                 localReservationsFlow.emit(localReservations.toList())
                 // invalidate cached my-reservations
@@ -202,8 +209,9 @@ class ReservationRepositoryImpl : ReservationRepository {
             val res = api.cancelGroupParticipation(consultationId)
             Log.d("ReservationRepo", "cancelGroupParticipation: api returned isSuccess=${res.isSuccess}, message=${res.message}")
             if (res.isSuccess) {
-                // remove from local cache if present
-                localReservations.removeAll { it.id == consultationId }
+                // remove from local cache if present for this owner only
+                val ownerRem = com.livon.app.data.session.SessionManager.getTokenSync()
+                localReservations.removeAll { it.id == consultationId && (it.ownerToken ?: "") == (ownerRem ?: "") }
                 // Emit updated reservations list
                 localReservationsFlow.emit(localReservations.toList())
                 // invalidate cached my-reservations
@@ -291,7 +299,8 @@ class ReservationRepositoryImpl : ReservationRepository {
                             val endIso = it.endAt ?: LocalDateTime.now().plusHours(1).format(fmt)
                             val coachId = it.coach?.userId ?: ""
                             val coachName = it.coach?.nickname
-                            val lr = LocalReservation(id = id, type = type, coachId = coachId, startAt = startIso, endAt = endIso, classTitle = it.title, coachName = coachName)
+                            val owner = com.livon.app.data.session.SessionManager.getTokenSync()
+                            val lr = LocalReservation(id = id, type = type, coachId = coachId, startAt = startIso, endAt = endIso, classTitle = it.title, coachName = coachName, ownerToken = owner)
                             localReservations.add(lr)
                             snapshot.add(lr)
                         } catch (_: Throwable) { /* ignore individual item parse failures */ }
@@ -337,28 +346,35 @@ class ReservationRepositoryImpl : ReservationRepository {
     // Persist localReservations into SharedPreferences as JSON
     fun persistLocalReservations(context: Context) {
         try {
+            val owner = com.livon.app.data.session.SessionManager.getTokenSync()
+            val keySuffix = owner?.hashCode()?.toString() ?: "anon"
             val prefs = context.getSharedPreferences("reservation_prefs", Context.MODE_PRIVATE)
             val listType = Types.newParameterizedType(List::class.java, LocalReservation::class.java)
             val adapter = RetrofitProvider.moshi.adapter<List<LocalReservation>>(listType)
-            val json = adapter.toJson(localReservations.toList())
-            prefs.edit().putString("local_reservations_json_v1", json).apply()
+            // Persist only this owner's reservations
+            val toPersist = localReservations.filter { (it.ownerToken ?: "") == (owner ?: "") }
+            val json = adapter.toJson(toPersist)
+            prefs.edit().putString("local_reservations_json_v1_$keySuffix", json).apply()
         } catch (t: Throwable) {
             android.util.Log.w("ReservationRepo", "persistLocalReservations failed", t)
         }
     }
 
-    // Load persisted reservations (if any) into localReservations and emit
+    // Load persisted reservations (if any) for current owner into localReservations and emit
     suspend fun loadPersistedReservations(context: Context) {
         try {
+            val owner = com.livon.app.data.session.SessionManager.getTokenSync()
+            val keySuffix = owner?.hashCode()?.toString() ?: "anon"
             val prefs = context.getSharedPreferences("reservation_prefs", Context.MODE_PRIVATE)
-            val json = prefs.getString("local_reservations_json_v1", null)
+            val json = prefs.getString("local_reservations_json_v1_$keySuffix", null)
             if (!json.isNullOrBlank()) {
                 val listType = Types.newParameterizedType(List::class.java, LocalReservation::class.java)
                 val adapter = RetrofitProvider.moshi.adapter<List<LocalReservation>>(listType)
                 val parsed = try { adapter.fromJson(json) } catch (t: Throwable) { null }
                 if (parsed != null) {
                     synchronized(cacheLock) {
-                        localReservations.clear()
+                        // remove any existing entries for this owner and replace with parsed
+                        localReservations.removeAll { (it.ownerToken ?: "") == (owner ?: "") }
                         localReservations.addAll(parsed)
                     }
                     try { localReservationsFlow.emit(localReservations.toList()) } catch (_: Throwable) { }

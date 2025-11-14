@@ -162,12 +162,17 @@ class ReservationRepositoryImpl : ReservationRepository {
     override suspend fun cancelIndividual(consultationId: Int): Result<Unit> {
         return try {
             Log.d("ReservationRepo", "cancelIndividual: calling API for id=$consultationId")
-            val res = api.cancelIndividual(consultationId)
+            val res = try { api.cancelIndividual(consultationId) } catch (t: Throwable) {
+                // If it's an HttpException, include response body in exception
+                throw t
+            }
             Log.d("ReservationRepo", "cancelIndividual: api returned isSuccess=${res.isSuccess}, message=${res.message}")
             if (res.isSuccess) {
                 // remove from local cache if present for this owner only
                 val ownerRem = com.livon.app.data.session.SessionManager.getTokenSync()
                 localReservations.removeAll { it.id == consultationId && (it.ownerToken ?: "") == (ownerRem ?: "") }
+                // Try to refresh authoritative reservations from server to keep in-sync
+                try { refreshLocalReservationsFromServer() } catch (_: Throwable) { }
                 // Emit updated reservations list
                 localReservationsFlow.emit(localReservations.toList())
                 // invalidate cached my-reservations
@@ -177,6 +182,12 @@ class ReservationRepositoryImpl : ReservationRepository {
                 Result.failure(Exception(res.message ?: "Unknown"))
             }
         } catch (t: Throwable) {
+            // If this was an HTTP error, try to extract body for diagnostics
+            if (t is retrofit2.HttpException) {
+                val body = try { t.response()?.errorBody()?.string() } catch (_: Throwable) { null }
+                Log.e("ReservationRepo", "cancelIndividual http error ${t.code()} body=$body", t)
+                return Result.failure(Exception(body ?: t.message()))
+            }
             Log.e("ReservationRepo", "cancelIndividual failed, attempting recovery check", t)
             // Recovery: server might have processed the deletion but response parsing failed
             return try {
@@ -208,12 +219,14 @@ class ReservationRepositoryImpl : ReservationRepository {
     override suspend fun cancelGroupParticipation(consultationId: Int): Result<Unit> {
         return try {
             Log.d("ReservationRepo", "cancelGroupParticipation: calling API for id=$consultationId")
-            val res = api.cancelGroupParticipation(consultationId)
+            val res = try { api.cancelGroupParticipation(consultationId) } catch (t: Throwable) { throw t }
             Log.d("ReservationRepo", "cancelGroupParticipation: api returned isSuccess=${res.isSuccess}, message=${res.message}")
             if (res.isSuccess) {
                 // remove from local cache if present for this owner only
                 val ownerRem = com.livon.app.data.session.SessionManager.getTokenSync()
                 localReservations.removeAll { it.id == consultationId && (it.ownerToken ?: "") == (ownerRem ?: "") }
+                // Try to refresh authoritative reservations from server
+                try { refreshLocalReservationsFromServer() } catch (_: Throwable) { }
                 // Emit updated reservations list
                 localReservationsFlow.emit(localReservations.toList())
                 // invalidate cached my-reservations
@@ -221,30 +234,35 @@ class ReservationRepositoryImpl : ReservationRepository {
                 Result.success(Unit)
             } else Result.failure(Exception(res.message ?: "Unknown"))
         } catch (t: Throwable) {
-            Log.e("ReservationRepo", "cancelGroupParticipation failed, attempting recovery check", t)
-            // Recovery: attempt to verify via my-reservations
-            return try {
-                // Recovery: check local cache (no network). If the item is not present in localReservations
-                // then treat the cancellation as successful. This avoids calling `getMyReservations` network API.
-                try {
-                    val existsOnLocal = localReservations.any { it.id == consultationId }
-                    if (!existsOnLocal) {
-                        localReservations.removeAll { it.id == consultationId }
-                        Log.d("ReservationRepo", "cancelGroupParticipation: recovery -> item not found locally; treating as success id=$consultationId")
-                        // Emit updated reservations list
-                        localReservationsFlow.emit(localReservations.toList())
-                        Result.success(Unit)
-                    } else {
-                        Result.failure(Exception(t))
-                    }
-                } catch (t2: Throwable) {
-                    Log.e("ReservationRepo", "cancelGroupParticipation: local recovery check failed", t2)
-                    Result.failure(Exception(t))
-                }
-            } catch (t2: Throwable) {
-                Log.e("ReservationRepo", "cancelGroupParticipation: recovery check failed", t2)
-                Result.failure(Exception(t))
+            if (t is retrofit2.HttpException) {
+                val body = try { t.response()?.errorBody()?.string() } catch (_: Throwable) { null }
+                Log.e("ReservationRepo", "cancelGroupParticipation http error ${t.code()} body=$body", t)
+                return Result.failure(Exception(body ?: t.message()))
             }
+            Log.e("ReservationRepo", "cancelGroupParticipation failed, attempting recovery check", t)
+             // Recovery: attempt to verify via my-reservations
+             return try {
+                 // Recovery: check local cache (no network). If the item is not present in localReservations
+                 // then treat the cancellation as successful. This avoids calling `getMyReservations` network API.
+                 try {
+                     val existsOnLocal = localReservations.any { it.id == consultationId }
+                     if (!existsOnLocal) {
+                         localReservations.removeAll { it.id == consultationId }
+                         Log.d("ReservationRepo", "cancelGroupParticipation: recovery -> item not found locally; treating as success id=$consultationId")
+                         // Emit updated reservations list
+                         localReservationsFlow.emit(localReservations.toList())
+                         Result.success(Unit)
+                     } else {
+                         Result.failure(Exception(t))
+                     }
+                 } catch (t2: Throwable) {
+                     Log.e("ReservationRepo", "cancelGroupParticipation: local recovery check failed", t2)
+                     Result.failure(Exception(t))
+                 }
+             } catch (t2: Throwable) {
+                 Log.e("ReservationRepo", "cancelGroupParticipation: recovery check failed", t2)
+                 Result.failure(Exception(t))
+             }
         }
     }
 

@@ -346,7 +346,7 @@ class ReservationViewModel(
                  _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = t.message)
              }
          }
-     }
+    }
 
     // cancel APIs (기존 코드 유지)
     fun cancelIndividual(consultationId: Int) {
@@ -357,25 +357,27 @@ class ReservationViewModel(
             val prev = _uiState.value.items
             _uiState.value = _uiState.value.copy(items = prev.filterNot { it.id == consultationId.toString() })
             try {
-                val res = repo.cancelIndividual(consultationId)
-                if (res.isSuccess) {
-                    Log.d("ReservationVM", "cancelIndividual: success id=$consultationId")
-                    _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null)
-                    loadUpcoming()
-                } else {
-                    Log.d("ReservationVM", "cancelIndividual: failure id=$consultationId, ex=${res.exceptionOrNull()?.message}")
-                    // restore previous list on failure
-                    _uiState.value = _uiState.value.copy(items = prev)
-                    _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = res.exceptionOrNull()?.message)
-                }
-            } catch (t: Throwable) {
-                Log.e("ReservationVM", "cancelIndividual: exception", t)
-                // restore previous list on exception
-                _uiState.value = _uiState.value.copy(items = prev)
-                _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = t.message)
-            }
-        }
-    }
+                val token = com.livon.app.data.session.SessionManager.getTokenSync()
+                Log.d("ReservationVM", "cancelIndividual: calling repo with id=$consultationId tokenPresent=${!token.isNullOrBlank()}")
+                 val res = repo.cancelIndividual(consultationId)
+                 if (res.isSuccess) {
+                     Log.d("ReservationVM", "cancelIndividual: success id=$consultationId")
+                     _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null)
+                     loadUpcoming()
+                 } else {
+                     Log.d("ReservationVM", "cancelIndividual: failure id=$consultationId, ex=${res.exceptionOrNull()?.message}")
+                     // restore previous list on failure
+                     _uiState.value = _uiState.value.copy(items = prev)
+                     _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = res.exceptionOrNull()?.message)
+                 }
+             } catch (t: Throwable) {
+                 Log.e("ReservationVM", "cancelIndividual: exception", t)
+                 // restore previous list on exception
+                 _uiState.value = _uiState.value.copy(items = prev)
+                 _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = t.message)
+             }
+         }
+     }
 
     fun cancelGroupParticipation(consultationId: Int) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -385,23 +387,25 @@ class ReservationViewModel(
             val prev = _uiState.value.items
             _uiState.value = _uiState.value.copy(items = prev.filterNot { it.id == consultationId.toString() })
             try {
-                val res = repo.cancelGroupParticipation(consultationId)
-                if (res.isSuccess) {
-                    Log.d("ReservationVM", "cancelGroupParticipation: success id=$consultationId")
-                    _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null)
-                    loadUpcoming()
-                } else {
-                    Log.d("ReservationVM", "cancelGroupParticipation: failure id=$consultationId, ex=${res.exceptionOrNull()?.message}")
-                    // restore previous list on failure
-                    _uiState.value = _uiState.value.copy(items = prev)
-                    _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = res.exceptionOrNull()?.message)
-                }
-            } catch (t: Throwable) {
-                Log.e("ReservationVM", "cancelGroupParticipation: exception", t)
-                // restore previous list on exception
-                _uiState.value = _uiState.value.copy(items = prev)
-                _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = t.message)
-            }
-        }
-    }
+                val token = com.livon.app.data.session.SessionManager.getTokenSync()
+                Log.d("ReservationVM", "cancelGroupParticipation: calling repo with id=$consultationId tokenPresent=${!token.isNullOrBlank()}")
+                 val res = repo.cancelGroupParticipation(consultationId)
+                 if (res.isSuccess) {
+                     Log.d("ReservationVM", "cancelGroupParticipation: success id=$consultationId")
+                     _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null)
+                     loadUpcoming()
+                 } else {
+                     Log.d("ReservationVM", "cancelGroupParticipation: failure id=$consultationId, ex=${res.exceptionOrNull()?.message}")
+                     // restore previous list on failure
+                     _uiState.value = _uiState.value.copy(items = prev)
+                     _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = res.exceptionOrNull()?.message)
+                 }
+             } catch (t: Throwable) {
+                 Log.e("ReservationVM", "cancelGroupParticipation: exception", t)
+                 // restore previous list on exception
+                 _uiState.value = _uiState.value.copy(items = prev)
+                 _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = t.message)
+             }
+         }
+     }
 }

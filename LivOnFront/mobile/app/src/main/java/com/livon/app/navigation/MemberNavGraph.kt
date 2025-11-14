@@ -671,4 +671,49 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             }
         )
     }
+
+    // My Info route: shows the user's health info screen
+    composable(Routes.MyInfo) {
+        // create user api/repo/vm similar to other screens
+        val userApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.UserApiService::class.java)
+        val userRepo = remember { com.livon.app.domain.repository.UserRepository(userApi) }
+        val userVm = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return com.livon.app.feature.member.home.vm.UserViewModel(userRepo) as T
+            }
+        }) as com.livon.app.feature.member.home.vm.UserViewModel
+
+        val userState by userVm.uiState.collectAsState()
+        LaunchedEffect(Unit) { userVm.load() }
+
+        val info = userState.info
+        // Provide a fallback state while loading
+        val stateForUi = info ?: com.livon.app.feature.member.my.MyInfoUiState(
+            nickname = userState.info?.nickname ?: "회원님",
+            gender = null,
+            birthday = null,
+            profileImageUri = null,
+            organizations = null,
+            heightCm = null,
+            weightKg = null,
+            condition = null,
+            sleepQuality = null,
+            medication = null,
+            painArea = null,
+            stress = null,
+            smoking = null,
+            alcohol = null,
+            sleepHours = null,
+            activityLevel = null,
+            caffeine = null
+        )
+
+        com.livon.app.feature.member.my.MyInfoScreen(
+            state = stateForUi,
+            onBack = { nav.popBackStack() },
+            onEditClick = { /* optional: could navigate to HealthHeight for editing */ },
+            onEditConfirm = { /* optional: post-edit action */ }
+        )
+    }
 }

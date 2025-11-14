@@ -841,16 +841,11 @@ export const MemberInfoModal: React.FC<MemberInfoModalProps> = ({
           const participantInfo = response.memberInfo;
           const healthData = participantInfo?.healthData;
 
-          // sleepTime은 분 단위이므로 시간 단위로 변환
-          const sleepTimeInHours = healthData?.sleepTime
-            ? Math.round(healthData.sleepTime / 60)
-            : undefined;
-
           setMemberInfo({
             nickname: participantInfo.nickname || memberName || "회원",
             height: healthData?.height,
             weight: healthData?.weight,
-            sleepTime: sleepTimeInHours,
+            sleepTime: healthData?.sleepTime,
             preQna: question || undefined,
           });
         } catch (err) {

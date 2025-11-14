@@ -240,6 +240,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
 
         LaunchedEffect(actionState.success) {
             if (actionState.success == true) {
+                try { reservationRepoForQna.syncFromServerAndPersist(ctxQna) } catch (_: Throwable) {}
                 try { reservationRepoForQna.persistLocalReservations(ctxQna) } catch (_: Throwable) {}
                 nav.navigate(Routes.Reservations) { popUpTo(Routes.MemberHome) { inclusive = false } }
             }
@@ -549,6 +550,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             try {
                 if (actionStateByClass.success == true) {
                     try {
+                        try { reservationRepoForClass.syncFromServerAndPersist(ctx) } catch (_: Throwable) {}
                         try { reservationRepoForClass.persistLocalReservations(ctx) } catch (_: Throwable) {}
                         nav.navigate(Routes.Reservations) { popUpTo(Routes.MemberHome) { inclusive = false } }
                     } catch (_: Throwable) { /* ignore navigation errors */ }
@@ -597,5 +599,29 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
              // (screens which accept it will use it; others ignore)
              // Note: reservationVmForClass remains for the actual reserveClass call to avoid interfering with shared vm
          )
+    }
+
+    // --- ADD: My Page route so HomeNavBar -> MyPage navigation works ---
+    composable(Routes.MyPage) {
+        // create user api/repo/vm similar to other screens
+        val userApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.UserApiService::class.java)
+        val userRepo = remember { com.livon.app.domain.repository.UserRepository(userApi) }
+        val userVm = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return com.livon.app.feature.member.home.vm.UserViewModel(userRepo) as T
+            }
+        }) as com.livon.app.feature.member.home.vm.UserViewModel
+
+        val userState by userVm.uiState.collectAsState()
+        LaunchedEffect(Unit) { userVm.load() }
+
+        com.livon.app.feature.member.my.MyPageScreen(
+            userName = userState.info?.nickname,
+            profileImageUri = userState.info?.profileImageUri,
+            onBack = { nav.popBackStack() },
+            onClickHealthInfo = { try { nav.navigate(Routes.MyInfo) } catch (_: Throwable) {} },
+            onClickFaq = { /* TODO: navigate to FAQ if exists */ }
+        )
     }
 }

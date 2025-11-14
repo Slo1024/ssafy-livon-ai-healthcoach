@@ -46,11 +46,31 @@ class ReservationRepositoryImpl : ReservationRepository {
             )
             val res = api.reserveCoach(req)
             if (res.isSuccess && res.result != null) {
+                val createdId = res.result
+                // Add a local placeholder entry so UI can show the newly created reservation immediately
+                try {
+                    synchronized(cacheLock) {
+                        // remove existing placeholder with same id if present
+                        localReservations.removeAll { it.id == createdId }
+                        localReservations.add(LocalReservation(
+                            id = createdId,
+                            type = ReservationType.PERSONAL,
+                            coachId = coachId,
+                            startAt = startAt.format(fmt),
+                            endAt = endAt.format(fmt),
+                            classTitle = null,
+                            coachName = coachName,
+                            preQna = preQna
+                        ))
+                    }
+                    try { localReservationsFlow.emit(localReservations.toList()); Log.d("ReservationRepo", "emit localReservations after reserveCoach: count=${localReservations.size}") } catch (_: Throwable) {}
+                } catch (_: Throwable) { }
+
                 // Invalidate cached my-reservations so subsequent reads refresh from server
                 synchronized(cacheLock) { cachedMyReservations = null; cachedAt = 0 }
-                // Attempt to refresh authoritative reservations from server and sync local cache
+                // Attempt to refresh authoritative reservations from server and sync local cache (best-effort)
                 try { refreshLocalReservationsFromServer() } catch (_: Throwable) { /* ignore refresh failures */ }
-                Result.success(res.result)
+                Result.success(createdId)
             } else Result.failure(Exception(res.message ?: "Unknown"))
         } catch (t: Throwable) {
             Result.failure(t)
@@ -72,10 +92,28 @@ class ReservationRepositoryImpl : ReservationRepository {
             }
             val res = api.reserveClass(classId)
             if (res.isSuccess && res.result != null) {
+                val createdId = res.result
+                try {
+                    synchronized(cacheLock) {
+                        localReservations.removeAll { it.id == createdId }
+                        localReservations.add(LocalReservation(
+                            id = createdId,
+                            type = ReservationType.GROUP,
+                            coachId = "",
+                            startAt = LocalDateTime.now().format(fmt),
+                            endAt = LocalDateTime.now().plusHours(1).format(fmt),
+                            classTitle = null,
+                            coachName = null,
+                            preQna = preQna
+                        ))
+                    }
+                    try { localReservationsFlow.emit(localReservations.toList()); Log.d("ReservationRepo", "emit localReservations after reserveClass: count=${localReservations.size}") } catch (_: Throwable) {}
+                } catch (_: Throwable) { }
+
                 // Invalidate cache and refresh authoritative reservations from server
                 synchronized(cacheLock) { cachedMyReservations = null; cachedAt = 0 }
                 try { refreshLocalReservationsFromServer() } catch (_: Throwable) { /* ignore */ }
-                Result.success(res.result)
+                Result.success(createdId)
             } else Result.failure(Exception(res.message ?: "Unknown"))
         } catch (t: Throwable) {
             try {
@@ -240,10 +278,14 @@ class ReservationRepositoryImpl : ReservationRepository {
                 // rebuild localReservations from server items
                 val snapshot = mutableListOf<LocalReservation>()
                 synchronized(cacheLock) {
+                    // preserve any existing local placeholders not present on server
+                    val existingLocal = localReservations.toList()
                     localReservations.clear()
+                    val serverIds = mutableSetOf<Int>()
                     for (it in items) {
                         try {
                             val id = it.consultationId
+                            serverIds.add(id)
                             val type = if ((it.type ?: "GROUP") == "ONE") ReservationType.PERSONAL else ReservationType.GROUP
                             val startIso = it.startAt ?: LocalDateTime.now().format(fmt)
                             val endIso = it.endAt ?: LocalDateTime.now().plusHours(1).format(fmt)
@@ -253,6 +295,13 @@ class ReservationRepositoryImpl : ReservationRepository {
                             localReservations.add(lr)
                             snapshot.add(lr)
                         } catch (_: Throwable) { /* ignore individual item parse failures */ }
+                    }
+                    // re-add any existing local placeholders that server did not return (likely recent creates)
+                    for (ex in existingLocal) {
+                        if (!serverIds.contains(ex.id)) {
+                            localReservations.add(ex)
+                            snapshot.add(ex)
+                        }
                     }
                 }
                 // Emit snapshot outside synchronized block

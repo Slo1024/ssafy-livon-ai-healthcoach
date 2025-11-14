@@ -17,6 +17,24 @@ class ReservationViewModel(
     private val repo: ReservationRepository
 ) : ViewModel() {
 
+    init {
+        // If repository implementation provides a localReservationsFlow, observe it so that
+        // any instance that created or updated local reservations triggers a UI refresh
+        // in this ViewModel (useful when reserve actions happen in a different VM instance).
+        try {
+            if (repo is com.livon.app.data.repository.ReservationRepositoryImpl) {
+                viewModelScope.launch {
+                    com.livon.app.data.repository.ReservationRepositoryImpl.localReservationsFlow.collect {
+                        try {
+                            // refresh upcoming list when local cache changes
+                            loadReservationsByStatus("upcoming")
+                        } catch (_: Throwable) { }
+                    }
+                }
+            }
+        } catch (_: Throwable) { }
+    }
+
     data class ReservationsUiState(
         val items: List<ReservationUi> = emptyList(),
         val isLoading: Boolean = false,
@@ -169,23 +187,55 @@ class ReservationViewModel(
                 // - past: include items whose startAtIso is in the past
                 val now = LocalDateTime.now()
                 val filteredList = finalList.filter { item ->
-                    try {
-                        val startIso = item.startAtIso
-                        val start = if (!startIso.isNullOrBlank()) LocalDateTime.parse(startIso) else null
-                        if (status == "upcoming") {
-                            // include if start is null (fallback), or start >= now, or item isLive
-                            (start == null) || item.isLive || !start.isBefore(now)
-                        } else {
-                            // past: include only if start exists and is before now
-                            (start != null && start.isBefore(now))
+                     try {
+                         val startIso = item.startAtIso
+                         val start = if (!startIso.isNullOrBlank()) LocalDateTime.parse(startIso) else null
+                         if (status == "upcoming") {
+                             // include if start is null (fallback), or start >= now, or item isLive
+                             (start == null) || item.isLive || !start.isBefore(now)
+                         } else {
+                             // past: include only if start exists and is before now
+                             (start != null && start.isBefore(now))
+                         }
+                     } catch (_: Throwable) {
+                         // on parse error, conservatively include in upcoming to avoid hiding
+                         status == "upcoming"
+                     }
+                 }
+
+                // Sort the filtered list by proximity to now:
+                // - upcoming: nearest future (or live) first (ascending start time)
+                // - past: most recent past first (descending start time)
+                val sorted = try {
+                    val comparator = Comparator<ReservationUi> { a, b ->
+                        fun parseStart(i: ReservationUi): LocalDateTime? {
+                            return try { i.startAtIso?.let { LocalDateTime.parse(it) } } catch (_: Throwable) { null }
                         }
-                    } catch (_: Throwable) {
-                        // on parse error, conservatively include in upcoming to avoid hiding
-                        status == "upcoming"
+                        val sa = parseStart(a)
+                        val sb = parseStart(b)
+                        when (status) {
+                            "upcoming" -> {
+                                // null starts go to the end
+                                if (sa == null && sb == null) 0
+                                else if (sa == null) 1
+                                else if (sb == null) -1
+                                else sa.compareTo(sb)
+                            }
+                            else -> {
+                                // past: nulls go to the start (but they were filtered out), compare descending
+                                if (sa == null && sb == null) 0
+                                else if (sa == null) 1
+                                else if (sb == null) -1
+                                else sb.compareTo(sa)
+                            }
+                        }
                     }
+                    filteredList.sortedWith(comparator)
+                } catch (t: Throwable) {
+                    filteredList
                 }
 
-                _uiState.value = ReservationsUiState(items = filteredList, isLoading = false)
+                _uiState.value = ReservationsUiState(items = sorted, isLoading = false)
              } catch (t: Throwable) {
                  _uiState.value = ReservationsUiState(items = emptyList(), isLoading = false, errorMessage = t.message)
              }

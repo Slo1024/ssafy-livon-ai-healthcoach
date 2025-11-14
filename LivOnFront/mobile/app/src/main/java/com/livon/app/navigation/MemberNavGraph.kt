@@ -27,7 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.mutableStateOf
 import android.util.Log
-import androidx.compose.foundation.clickable
 import android.widget.Toast
 import com.livon.app.feature.member.reservation.ui.ReservationDetailType
 import com.livon.app.feature.member.reservation.ui.CoachMini
@@ -556,9 +555,13 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                     coachName = item.coachName,
                     classInfo = item.description,
                     onBack = { nav.popBackStack() },
+                    // Directly call reserveClass on the ViewModel. No fallback navigation to class_confirm —
+                    // we want only the local confirmation modal in ClassDetailScreen to appear.
                     onReserveClick = {
                         try { Log.d("MemberNavGraph", "ClassDetailScreen onReserveClick invoked for classId=${item.id}") } catch (_: Throwable) {}
-                        nav.navigate("class_confirm/${item.id}")
+                        try {
+                            reservationVmForClass.reserveClass(item.id, emptyList())
+                        } catch (_: Throwable) { /* ignore: unable to reserve */ }
                     },
                     onNavigateHome = { nav.navigate(Routes.MemberHome) },
                     onNavigateToMyPage = { nav.navigate(Routes.MyPage) },
@@ -650,125 +653,5 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         val counselName = backEntry.arguments?.getString("counselName")?.let { URLDecoder.decode(it, "UTF-8") } ?: ""
         val summary = backEntry.arguments?.getString("aiSummary")?.let { URLDecoder.decode(it, "UTF-8") } ?: ""
         com.livon.app.feature.member.schedule.ui.AiResultScreen(memberName = member, counselingDateText = dateText, counselingName = counselName, aiSummary = summary, onBack = { nav.popBackStack() })
-    }
-
-    // Full-screen confirmation route for class reservation (replaces local Dialog)
-    composable("class_confirm/{classId}") { backEntry ->
-        val classIdArg = backEntry.arguments?.getString("classId") ?: ""
-
-        // create reservation VM scoped to this composable
-        val reservationRepoForClassConfirm = remember { com.livon.app.data.repository.ReservationRepositoryImpl() }
-        val reservationVmConfirm = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                return com.livon.app.feature.member.reservation.vm.ReservationViewModel(reservationRepoForClassConfirm) as T
-            }
-        }) as com.livon.app.feature.member.reservation.vm.ReservationViewModel
-
-        val actionStateConfirm by reservationVmConfirm.actionState.collectAsState()
-
-        // when reservation completes, navigate to reservations screen
-        LaunchedEffect(actionStateConfirm.success) {
-            if (actionStateConfirm.success == true) {
-                nav.navigate(Routes.Reservations) { popUpTo(Routes.MemberHome) { inclusive = false } }
-            }
-        }
-
-        // Before attempting POST, check if the user already has this class in upcoming reservations
-        val alreadyReserved = remember { mutableStateOf<Boolean?>(null) } // null = checking, true/false = result
-
-        // numeric id we will compare against server/local ids
-        val numericId = remember(classIdArg) { classIdArg.toIntOrNull() }
-
-        // confirmRequested controls final re-check triggered by the confirm button
-        val confirmRequested = remember { mutableStateOf(false) }
-
-        LaunchedEffect(classIdArg) {
-            // mark as checking
-            alreadyReserved.value = null
-            try {
-                // 1) check server-side my-reservations
-                val serverCheck = try { reservationRepoForClassConfirm.getMyReservations(status = "upcoming", type = null) } catch (t: Throwable) { Result.failure(t) }
-                var found = false
-                if (serverCheck.isSuccess) {
-                    val body = serverCheck.getOrNull()
-                    if (body != null) {
-                        val ids = body.items.map { it.consultationId.toString() }
-                        if (ids.contains(classIdArg)) found = true
-                        // also check numeric equality if id parsed
-                        if (!found && numericId != null) found = body.items.any { it.consultationId == numericId }
-                    }
-                }
-
-                // 2) check local cache fallback
-                if (!found) {
-                    try {
-                        val localExists = com.livon.app.data.repository.ReservationRepositoryImpl.localReservations.any { lr ->
-                            numericId?.let { lr.id == it } ?: (lr.id.toString() == classIdArg)
-                        }
-                        if (localExists) found = true
-                    } catch (_: Throwable) { }
-                }
-
-                alreadyReserved.value = found
-            } catch (_: Throwable) {
-                alreadyReserved.value = false
-            }
-        }
-
-        // If alreadyReserved becomes true, navigate to Reservations immediately (idempotent flow)
-        LaunchedEffect(alreadyReserved.value) {
-            if (alreadyReserved.value == true) {
-                Log.d("MemberNavGraph", "class_confirm: already reserved for classId=$classIdArg, navigating to Reservations")
-                nav.navigate(Routes.Reservations) { popUpTo(Routes.MemberHome) { inclusive = false } }
-            }
-        }
-
-        // Use the shared ReservationCompleteDialog (same design as QnASubmitScreen)
-        ReservationCompleteDialog(
-            onDismiss = { nav.popBackStack() },
-            onConfirm = {
-                Log.d("MemberNavGraph", "class_confirm: confirm clicked for classId=$classIdArg (requested)")
-                confirmRequested.value = true
-            },
-            onChangeHealthInfo = {
-                val entry = nav.currentBackStackEntry
-                entry?.savedStateHandle?.set("qna_origin", mapOf("type" to "class", "classId" to classIdArg))
-                nav.navigate(Routes.HealthHeight)
-            },
-            // disable confirm while checking (null) or if alreadyReserved
-            confirmEnabled = (alreadyReserved.value == false)
-        )
-
-         // LaunchedEffect for confirmRequested: runs final suspend recheck and calls reserveClass if safe
-         LaunchedEffect(confirmRequested.value) {
-            if (confirmRequested.value) {
-                try {
-                    Log.d("MemberNavGraph", "class_confirm: performing final recheck for classId=$classIdArg")
-                    val serverCheck = try { reservationRepoForClassConfirm.getMyReservations(status = "upcoming", type = null) } catch (t: Throwable) { Result.failure(t) }
-                    var found = false
-                    if (serverCheck.isSuccess) {
-                        val body = serverCheck.getOrNull()
-                        if (body != null) {
-                            val ids = body.items.map { it.consultationId.toString() }
-                            if (ids.contains(classIdArg)) found = true
-                            if (!found && numericId != null) found = body.items.any { it.consultationId == numericId }
-                        }
-                    }
-                    if (found) {
-                        Log.d("MemberNavGraph", "class_confirm: final recheck found already reserved for classId=$classIdArg, navigating to Reservations")
-                        nav.navigate(Routes.Reservations) { popUpTo(Routes.MemberHome) { inclusive = false } }
-                    } else {
-                        Log.d("MemberNavGraph", "class_confirm: final recheck clear, calling reserveClass for classId=$classIdArg")
-                        reservationVmConfirm.reserveClass(classIdArg, emptyList())
-                    }
-                } catch (t: Throwable) {
-                    Log.e("MemberNavGraph", "class_confirm: final recheck failed, attempting reserve anyway", t)
-                    reservationVmConfirm.reserveClass(classIdArg, emptyList())
-                } finally {
-                    confirmRequested.value = false
-                }
-            }
-         }
     }
 }

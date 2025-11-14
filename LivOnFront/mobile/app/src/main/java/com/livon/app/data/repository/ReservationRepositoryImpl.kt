@@ -7,6 +7,7 @@ import com.livon.app.domain.repository.ReservationRepository
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import android.util.Log
+import kotlinx.coroutines.flow.MutableStateFlow
 
 class ReservationRepositoryImpl : ReservationRepository {
     private val api = RetrofitProvider.createService(ReservationApiService::class.java)
@@ -55,6 +56,8 @@ class ReservationRepositoryImpl : ReservationRepository {
                         preQna = preQna
                     )
                 )
+                // Emit updated reservations list
+                localReservationsFlow.emit(localReservations.toList())
                 Result.success(res.result)
             } else Result.failure(Exception(res.message ?: "Unknown"))
         } catch (t: Throwable) {
@@ -80,6 +83,8 @@ class ReservationRepositoryImpl : ReservationRepository {
                         endAt = LocalDateTime.now().plusHours(1).format(fmt)
                     )
                 )
+                // Emit updated reservations list
+                localReservationsFlow.emit(localReservations.toList())
                 Result.success(res.result)
             } else Result.failure(Exception(res.message ?: "Unknown"))
         } catch (t: Throwable) {
@@ -117,6 +122,8 @@ class ReservationRepositoryImpl : ReservationRepository {
                                                 coachName = coachName
                                             )
                                         )
+                                        // Emit updated reservations list after adding fallback entry
+                                        localReservationsFlow.emit(localReservations.toList())
                                     } else {
                                         // fallback minimal entry
                                         localReservations.add(
@@ -130,6 +137,8 @@ class ReservationRepositoryImpl : ReservationRepository {
                                                 coachName = null
                                             )
                                         )
+                                        // Emit updated reservations list after adding fallback entry
+                                        localReservationsFlow.emit(localReservations.toList())
                                     }
                                 } catch (_: Throwable) {
                                     // network/detail fetch failed: still add minimal local reservation
@@ -144,6 +153,8 @@ class ReservationRepositoryImpl : ReservationRepository {
                                             coachName = null
                                         )
                                     )
+                                    // Emit updated reservations list after adding fallback entry
+                                    localReservationsFlow.emit(localReservations.toList())
                                 }
                             }
                         } catch (_: Throwable) { }
@@ -169,6 +180,8 @@ class ReservationRepositoryImpl : ReservationRepository {
             if (res.isSuccess) {
                 // remove from local cache if present
                 localReservations.removeAll { it.id == consultationId }
+                // Emit updated reservations list
+                localReservationsFlow.emit(localReservations.toList())
                 Result.success(Unit)
             } else {
                 Result.failure(Exception(res.message ?: "Unknown"))
@@ -184,6 +197,8 @@ class ReservationRepositoryImpl : ReservationRepository {
                         // Item no longer present -> treat as success
                         localReservations.removeAll { it.id == consultationId }
                         Log.d("ReservationRepo", "cancelIndividual: recovery -> item not found on server; treating as success id=$consultationId")
+                        // Emit updated reservations list
+                        localReservationsFlow.emit(localReservations.toList())
                         Result.success(Unit)
                     } else {
                         // If present but marked CANCELLED, treat as success
@@ -191,6 +206,8 @@ class ReservationRepositoryImpl : ReservationRepository {
                         if (remote.status == "CANCELLED") {
                             localReservations.removeAll { it.id == consultationId }
                             Log.d("ReservationRepo", "cancelIndividual: recovery -> item status=CANCELLED; treating as success id=$consultationId")
+                            // Emit updated reservations list
+                            localReservationsFlow.emit(localReservations.toList())
                             Result.success(Unit)
                         } else {
                             Result.failure(Exception(t))
@@ -214,6 +231,8 @@ class ReservationRepositoryImpl : ReservationRepository {
             if (res.isSuccess) {
                 // remove from local cache if present
                 localReservations.removeAll { it.id == consultationId }
+                // Emit updated reservations list
+                localReservationsFlow.emit(localReservations.toList())
                 Result.success(Unit)
             } else Result.failure(Exception(res.message ?: "Unknown"))
         } catch (t: Throwable) {
@@ -226,12 +245,16 @@ class ReservationRepositoryImpl : ReservationRepository {
                     if (!exists) {
                         localReservations.removeAll { it.id == consultationId }
                         Log.d("ReservationRepo", "cancelGroupParticipation: recovery -> item not found on server; treating as success id=$consultationId")
+                        // Emit updated reservations list
+                        localReservationsFlow.emit(localReservations.toList())
                         Result.success(Unit)
                     } else {
                         val remote = check.result.items.first { it.consultationId == consultationId }
                         if (remote.status == "CANCELLED") {
                             localReservations.removeAll { it.id == consultationId }
                             Log.d("ReservationRepo", "cancelGroupParticipation: recovery -> item status=CANCELLED; treating as success id=$consultationId")
+                            // Emit updated reservations list
+                            localReservationsFlow.emit(localReservations.toList())
                             Result.success(Unit)
                         } else {
                             Result.failure(Exception(t))
@@ -262,5 +285,7 @@ class ReservationRepositoryImpl : ReservationRepository {
         // This is intentionally minimal and for UX until the backend provides an "upcoming" endpoint.
         // Each entry stores server-created id (if available), type, coachId and ISO datetimes.
         val localReservations: MutableList<LocalReservation> = mutableListOf()
+        // Flow that emits a snapshot list whenever localReservations changes.
+        val localReservationsFlow: MutableStateFlow<List<LocalReservation>> = MutableStateFlow(localReservations.toList())
     }
 }

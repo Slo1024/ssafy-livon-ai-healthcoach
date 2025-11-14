@@ -58,41 +58,30 @@ fun CoachDetailScreen(
     // reservedTimeTokens: set of time token strings like "AM_9:00" or "PM_3:00" representing times that are already reserved
     val reservedTimeTokens = remember { mutableStateOf<Set<String>>(emptySet()) }
 
-    // Load user's upcoming reservations and mark tokens that conflict with this coach's times
+    // Collect local reservation cache updates to keep reserved tokens in sync (covers cancel/reserve changes)
     LaunchedEffect(coachId) {
         try {
-            // Load user's upcoming reservations via repository (lightweight call)
-            val repo = com.livon.app.data.repository.ReservationRepositoryImpl()
-            val res = try { repo.getMyReservations(status = "upcoming", type = null) } catch (t: Throwable) { Result.failure(t) }
-            val tokens = mutableSetOf<String>()
-            if (res.isSuccess) {
-                val body = res.getOrNull()
-                body?.items?.forEach { dto ->
+            com.livon.app.data.repository.ReservationRepositoryImpl.localReservationsFlow.collect { localList: List<com.livon.app.data.repository.ReservationRepositoryImpl.LocalReservation> ->
+                val tokens = mutableSetOf<String>()
+                localList.forEach { lr ->
                     try {
-                        // Only consider personal reservations and those for this coach
-                        val coachUserId = dto.coach?.userId
-                        if (dto.type == "ONE" && coachUserId == coachId) {
-                            val startIso = dto.startAt
-                            if (!startIso.isNullOrBlank()) {
-                                val start = java.time.LocalDateTime.parse(startIso)
-                                val token = if (start.hour < 12) {
-                                    val h = if (start.hour % 12 == 0) 12 else (start.hour % 12)
-                                    "AM_${h}:00"
-                                } else {
-                                    val hh = start.hour % 12
-                                    val h = if (hh == 0) 12 else hh
-                                    "PM_${h}:00"
-                                }
-                                tokens.add(token)
+                        if (lr.type == com.livon.app.data.repository.ReservationType.PERSONAL && lr.coachId == coachId) {
+                            val start = java.time.LocalDateTime.parse(lr.startAt)
+                            val token = if (start.hour < 12) {
+                                val h = if (start.hour % 12 == 0) 12 else (start.hour % 12)
+                                "AM_${h}:00"
+                            } else {
+                                val hh = start.hour % 12
+                                val h = if (hh == 0) 12 else hh
+                                "PM_${h}:00"
                             }
+                            tokens.add(token)
                         }
-                    } catch (t: Throwable) {
-                        // ignore parsing issues per-item
-                    }
+                    } catch (_: Throwable) { }
                 }
+                reservedTimeTokens.value = tokens
             }
-            reservedTimeTokens.value = tokens
-        } catch (_: Throwable) {}
+        } catch (_: Throwable) { /* ignore collection errors */ }
     }
 
     // ensure mutual exclusivity: when date changes, clear selectedTime and hide time selection

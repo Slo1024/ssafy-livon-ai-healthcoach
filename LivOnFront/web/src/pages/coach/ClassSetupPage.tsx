@@ -1,18 +1,22 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import styled from 'styled-components';
-import { SegmentedTabs } from '../../components/common/Button';
-import { DateTimePickerModal, SaveConfirmModal, ClassCreatedModal } from '../../components/common/Modal';
-import { Dropdown } from '../../components/common/Dropdown';
-import { Input } from '../../components/common/Input';
-import { useAuth } from '../../hooks/useAuth';
-import { ROUTES } from '../../constants/routes';
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import styled from "styled-components";
+import { SegmentedTabs } from "../../components/common/Button";
+import {
+  DateTimePickerModal,
+  SaveConfirmModal,
+  ClassCreatedModal,
+} from "../../components/common/Modal";
+import { useAuth } from "../../hooks/useAuth";
+import { ROUTES } from "../../constants/routes";
+import { createGroupConsultationApi } from "../../api/classApi";
 
 const PageContainer = styled.div`
   min-height: 100vh;
   background-color: #ffffff;
   padding: 40px 20px;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
 `;
 
 const ContentWrapper = styled.div`
@@ -25,29 +29,49 @@ const PageTitle = styled.h1`
   font-size: 40px;
   color: #000000;
   margin: 0 0 24px 0;
+  text-align: left;
+
+  @media (max-width: 1200px) {
+    text-align: center;
+    font-size: 34px;
+  }
+
+  @media (max-width: 900px) {
+    font-size: 30px;
+  }
+
+  @media (max-width: 768px) {
+    font-size: 26px;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 24px;
+  }
 `;
 
 const TabsContainer = styled.div`
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 0;
 `;
 
-const Divider = styled.div`
-  width: 100vw;
-  height: 2px;
-  background-color: #4965f6;
-  margin: 0;
-  position: relative;
-  left: 50%;
-  transform: translateX(-50%);
+const TabsWrapper = styled.div`
+  display: flex;
+  align-items: center;
+`;
+
+const FilterPlaceholder = styled.div`
+  width: 180px;
+  flex-shrink: 0;
 `;
 
 const IntroMessage = styled.p`
   font-size: 20px;
   font-weight: 500;
   color: #374151;
-  margin: 24px 0;
+  margin: 36px 0 28px 0;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 `;
 
@@ -55,7 +79,7 @@ const FormContainer = styled.div`
   display: flex;
   flex-direction: column;
   gap: 24px;
-  margin-top: 24px;
+  margin-top: 32px;
 `;
 
 const FormField = styled.div`
@@ -68,7 +92,8 @@ const FormLabel = styled.label`
   font-size: 14px;
   font-weight: 500;
   color: #374151;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
 `;
 
 const FormInput = styled.input`
@@ -78,8 +103,9 @@ const FormInput = styled.input`
   border-radius: 8px;
   padding: 0 12px;
   font-size: 14px;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+
   &:focus {
     outline: none;
     border-color: #3b5dd8;
@@ -93,9 +119,10 @@ const FormTextArea = styled.textarea`
   border-radius: 8px;
   padding: 12px;
   font-size: 14px;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
   resize: vertical;
-  
+
   &:focus {
     outline: none;
     border-color: #3b5dd8;
@@ -110,7 +137,8 @@ const FormDropdown = styled.select`
   padding: 0 12px;
   padding-right: 36px;
   font-size: 14px;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
   background-color: white;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%234965f6' d='M1 0l4 4 4-4 1 1-5 5-5-5z'/></svg>");
   background-repeat: no-repeat;
@@ -120,7 +148,7 @@ const FormDropdown = styled.select`
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
-  
+
   &:focus {
     outline: none;
     border-color: #3b5dd8;
@@ -143,10 +171,16 @@ const SaveButton = styled.button`
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+
   &:hover {
     background-color: #3b5dd8;
+  }
+
+  &:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
   }
 `;
 
@@ -159,12 +193,47 @@ const CancelButton = styled.button`
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+
   &:hover {
     background-color: #f9fafb;
   }
 `;
+
+const ErrorMessage = styled.div`
+  text-align: center;
+  padding: 16px;
+  color: #ef4444;
+  font-size: 14px;
+  margin-top: 16px;
+  background-color: #fef2f2;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+`;
+
+// 에러 메시지 상수
+const ERROR_MESSAGES = {
+  CLASS_NAME_REQUIRED: "클래스 명을 입력해주세요.",
+  CLASS_INFO_REQUIRED: "클래스 정보를 입력해주세요.",
+  DATE_TIME_REQUIRED: "날짜와 시간을 선택해주세요.",
+  CREATE_FAILED: "클래스 생성에 실패했습니다.",
+} as const;
+
+// 날짜 포맷팅 헬퍼 함수
+const formatDateString = (date: Date): string => {
+  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
+};
+
+// 시간 포맷팅 헬퍼 함수
+const formatTimeString = (time: string): string => {
+  if (time.startsWith("AM ")) {
+    return `오전 ${time.replace("AM ", "")}`;
+  } else if (time.startsWith("PM ")) {
+    return `오후 ${time.replace("PM ", "")}`;
+  }
+  return time;
+};
 
 export const ClassSetupPage: React.FC = () => {
   const navigate = useNavigate();
@@ -182,29 +251,32 @@ export const ClassSetupPage: React.FC = () => {
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [selectedTimes, setSelectedTimes] = useState<string[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
-    classType: '',
-    className: '',
-    classInfo: '',
-    dateTime: '',
-    file: '',
+    classType: "",
+    className: "",
+    classInfo: "",
+    dateTime: "",
   });
 
-  const nickname = user?.nickname || '';
-  const pageTitle = nickname ? `${nickname} 코치님의 클래스` : '코치님의 클래스';
+  const nickname = user?.nickname || "";
+  const pageTitle = nickname
+    ? `${nickname} 코치님의 클래스`
+    : "코치님의 클래스";
 
   const handleListClick = () => {
     navigate(ROUTES.CLASS_LIST);
   };
 
   const handleSetupClick = () => {
-    // 이미 클래스 개설 페이지에 있음
+    // 이미 클래스 개설 페이지에 있으므로 아무 동작 없음
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleDateTimeClick = () => {
@@ -214,38 +286,22 @@ export const ClassSetupPage: React.FC = () => {
   const handleDateTimeSelect = (dates: Date[], times: string[]) => {
     setSelectedDates(dates);
     setSelectedTimes(times);
-    
+
     // 날짜와 시간을 문자열로 포맷팅
     if (dates.length > 0 && times.length > 0) {
-      const dateStr = dates.map(date => 
-        `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`
-      ).join(', ');
-      const timeStr = times.map(t => {
-        if (t.startsWith('AM ')) {
-          return `오전 ${t.replace('AM ', '')}`;
-        } else if (t.startsWith('PM ')) {
-          return `오후 ${t.replace('PM ', '')}`;
-        }
-        return t;
-      }).join(', ');
-      handleInputChange('dateTime', `${dateStr} ${timeStr}`);
+      const dateStr = dates.map(formatDateString).join(", ");
+      const timeStr = times.map(formatTimeString).join(", ");
+      handleInputChange("dateTime", `${dateStr} ${timeStr}`);
     } else if (dates.length > 0) {
-      const dateStr = dates.map(date => 
-        `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`
-      ).join(', ');
-      handleInputChange('dateTime', dateStr);
+      const dateStr = dates.map(formatDateString).join(", ");
+      handleInputChange("dateTime", dateStr);
     }
-  };
-
-  const handleFileClick = () => {
-    fileInputRef.current?.click();
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
-      handleInputChange('file', file.name);
     }
   };
 
@@ -253,11 +309,113 @@ export const ClassSetupPage: React.FC = () => {
     setShowSaveConfirmModal(true);
   };
 
-  const handleSaveConfirm = () => {
-    // 저장 로직 (추후 API 연동)
-    console.log('Form Data:', formData);
-    setShowSaveConfirmModal(false);
-    setShowClassCreatedModal(true);
+  // 시간 문자열을 24시간 형식으로 변환 (예: "AM 9:00" -> "09:00", "PM 2:00" -> "14:00")
+  const convertTimeTo24Hour = (timeStr: string): string => {
+    if (timeStr.startsWith("AM ")) {
+      const time = timeStr.replace("AM ", "");
+      const [hour, minute] = time.split(":");
+      return `${String(hour).padStart(2, "0")}:${minute || "00"}`;
+    } else if (timeStr.startsWith("PM ")) {
+      const time = timeStr.replace("PM ", "");
+      const [hour, minute] = time.split(":");
+      const hour24 = hour === "12" ? 12 : parseInt(hour) + 12;
+      return `${String(hour24).padStart(2, "0")}:${minute || "00"}`;
+    }
+    // 이미 24시간 형식인 경우
+    return timeStr;
+  };
+
+  // Date와 시간 문자열을 ISO 8601 형식으로 변환
+  const createISO8601DateTime = (date: Date, timeStr: string): string => {
+    const [hour, minute] = convertTimeTo24Hour(timeStr).split(":");
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}T${hour}:${minute}:00`;
+  };
+
+  // 폼 초기화 함수
+  const resetForm = () => {
+    setFormData({
+      classType: "",
+      className: "",
+      classInfo: "",
+      dateTime: "",
+    });
+    setSelectedDates([]);
+    setSelectedTimes([]);
+    setSelectedFile(null);
+  };
+
+  // 유효성 검사 함수
+  const validateForm = (): string | null => {
+    if (!formData.className.trim()) {
+      return ERROR_MESSAGES.CLASS_NAME_REQUIRED;
+    }
+    if (!formData.classInfo.trim()) {
+      return ERROR_MESSAGES.CLASS_INFO_REQUIRED;
+    }
+    if (selectedDates.length === 0 || selectedTimes.length === 0) {
+      return ERROR_MESSAGES.DATE_TIME_REQUIRED;
+    }
+    return null;
+  };
+
+  const handleSaveConfirm = async () => {
+    // 유효성 검사
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      setShowSaveConfirmModal(false);
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setError(null);
+
+      // 첫 번째 날짜와 첫 번째 시간을 사용 (여러 개 선택 시 첫 번째만 사용)
+      const firstDate = selectedDates[0];
+      const firstTime = selectedTimes[0];
+      const startAt = createISO8601DateTime(firstDate, firstTime);
+
+      // 종료 시간은 시작 시간 + 1시간으로 설정
+      const [startHour, startMinute] = convertTimeTo24Hour(firstTime).split(":");
+      const endHour = (parseInt(startHour) + 1) % 24;
+      const endAt = createISO8601DateTime(
+        firstDate,
+        `${String(endHour).padStart(2, "0")}:${startMinute || "00"}`
+      );
+
+      // API 호출
+      const response = await createGroupConsultationApi(
+        {
+          title: formData.className,
+          description: formData.classInfo,
+          startAt,
+          endAt,
+          capacity: 10, // 기본값 10명
+        },
+        selectedFile || undefined
+      );
+
+      if (response.isSuccess) {
+        setShowSaveConfirmModal(false);
+        setShowClassCreatedModal(true);
+        resetForm();
+      } else {
+        setError(response.message || ERROR_MESSAGES.CREATE_FAILED);
+        setShowSaveConfirmModal(false);
+      }
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : ERROR_MESSAGES.CREATE_FAILED;
+      setError(errorMessage);
+      setShowSaveConfirmModal(false);
+      console.error("클래스 생성 오류:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleGoToList = () => {
@@ -269,9 +427,8 @@ export const ClassSetupPage: React.FC = () => {
   };
 
   const classTypeOptions = [
-    { value: '기업 클래스', label: '기업 클래스' },
-    { value: '일반 클래스', label: '일반 클래스' },
-    { value: '개인 상담 / 코칭', label: '개인 상담 / 코칭' },
+    { value: "기업 클래스", label: "기업 클래스" },
+    { value: "일반 클래스", label: "일반 클래스" },
   ];
 
   return (
@@ -280,18 +437,19 @@ export const ClassSetupPage: React.FC = () => {
         <PageTitle>{pageTitle}</PageTitle>
 
         <TabsContainer>
-          <SegmentedTabs
-            leftLabel="클래스 목록"
-            rightLabel="클래스 개설"
-            active="right"
-            onLeftClick={handleListClick}
-            onRightClick={handleSetupClick}
-            tabWidth={120}
-            showDivider={false}
-          />
+          <TabsWrapper>
+            <SegmentedTabs
+              leftLabel="클래스 목록"
+              rightLabel="클래스 개설"
+              active="right"
+              onLeftClick={handleListClick}
+              onRightClick={handleSetupClick}
+              tabWidth={120}
+              showDivider={false}
+            />
+          </TabsWrapper>
+          <FilterPlaceholder />
         </TabsContainer>
-
-        <Divider />
 
         <IntroMessage>
           회원들을 위한 새로운 클래스를 개설할 수 있습니다.
@@ -302,9 +460,11 @@ export const ClassSetupPage: React.FC = () => {
             <FormLabel>클래스 형태 선택</FormLabel>
             <FormDropdown
               value={formData.classType}
-              onChange={(e) => handleInputChange('classType', e.target.value)}
+              onChange={(e) => handleInputChange("classType", e.target.value)}
             >
-              <option value="" disabled>클래스 형태를 선택해 주세요.</option>
+              <option value="" disabled>
+                클래스 형태를 선택해 주세요.
+              </option>
               {classTypeOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -318,7 +478,7 @@ export const ClassSetupPage: React.FC = () => {
             <FormInput
               type="text"
               value={formData.className}
-              onChange={(e) => handleInputChange('className', e.target.value)}
+              onChange={(e) => handleInputChange("className", e.target.value)}
               placeholder="클래스 명을 입력해 주세요."
             />
           </FormField>
@@ -327,7 +487,7 @@ export const ClassSetupPage: React.FC = () => {
             <FormLabel>클래스 정보</FormLabel>
             <FormTextArea
               value={formData.classInfo}
-              onChange={(e) => handleInputChange('classInfo', e.target.value)}
+              onChange={(e) => handleInputChange("classInfo", e.target.value)}
               placeholder="클래스에 대한 설명을 입력해 주세요."
             />
           </FormField>
@@ -337,44 +497,69 @@ export const ClassSetupPage: React.FC = () => {
             <FormInput
               type="text"
               value={formData.dateTime}
-              onChange={(e) => handleInputChange('dateTime', e.target.value)}
+              onChange={(e) => handleInputChange("dateTime", e.target.value)}
               placeholder="클릭하여 선택"
               readOnly
               onClick={handleDateTimeClick}
-              style={{ cursor: 'pointer' }}
+              style={{ cursor: "pointer" }}
             />
           </FormField>
 
           <FormField>
-            <FormLabel>파일 첨부</FormLabel>
+            <FormLabel>대표 이미지 설정</FormLabel>
             <input
               ref={fileInputRef}
               type="file"
-              style={{ display: 'none' }}
+              style={{ display: "none" }}
               onChange={handleFileChange}
               accept="*/*"
             />
             <FormDropdown
-              value={formData.file || ''}
+              value={selectedFile?.name || ""}
               onChange={() => {}}
               onMouseDown={(e) => {
                 e.preventDefault();
                 fileInputRef.current?.click();
               }}
               onFocus={(e) => e.target.blur()}
-              style={{ cursor: 'pointer' }}
+              style={{ cursor: "pointer" }}
               tabIndex={0}
             >
               <option value="">파일 찾기</option>
-              {selectedFile && <option value={selectedFile.name}>{selectedFile.name}</option>}
+              {selectedFile && (
+                <option value={selectedFile.name}>{selectedFile.name}</option>
+              )}
             </FormDropdown>
           </FormField>
         </FormContainer>
 
         <ButtonContainer>
-          <SaveButton onClick={handleSave}>저장</SaveButton>
-          <CancelButton onClick={handleCancel}>취소</CancelButton>
+          <SaveButton onClick={handleSave} disabled={isSubmitting}>
+            {isSubmitting ? "저장 중..." : "저장"}
+          </SaveButton>
+          <CancelButton onClick={handleCancel} disabled={isSubmitting}>
+            취소
+          </CancelButton>
         </ButtonContainer>
+
+        {error && (
+          <ErrorMessage>
+            {error}
+            <button
+              onClick={() => setError(null)}
+              style={{
+                marginLeft: "8px",
+                background: "none",
+                border: "none",
+                color: "#ef4444",
+                cursor: "pointer",
+                textDecoration: "underline",
+              }}
+            >
+              닫기
+            </button>
+          </ErrorMessage>
+        )}
 
         {/* 날짜/시간 선택 모달 */}
         <DateTimePickerModal

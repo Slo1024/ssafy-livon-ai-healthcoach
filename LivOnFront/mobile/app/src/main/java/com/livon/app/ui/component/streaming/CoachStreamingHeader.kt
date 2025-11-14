@@ -27,6 +27,8 @@ fun CoachStreamingHeader(
     onLeaveRoom: () -> Unit,
     onPersonClick: () -> Unit = {},
     onChatClick: () -> Unit = {},
+    onSoundClick: () -> Unit = {},
+    isSoundMuted: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -42,9 +44,11 @@ fun CoachStreamingHeader(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                val soundIcon = if (isSoundMuted) R.drawable.off_sound else R.drawable.sound
                 CustomHeaderIcon(
-                    iconResId = R.drawable.sound,
-                    contentDescription = "사운드"
+                    iconResId = soundIcon,
+                    contentDescription = if (isSoundMuted) "사운드 끄기" else "사운드 켜기",
+                    onClick = onSoundClick
                 )
                 Spacer(Modifier.width(8.dp))
             }

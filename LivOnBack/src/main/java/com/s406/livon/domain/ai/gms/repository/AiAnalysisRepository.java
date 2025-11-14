@@ -1,6 +1,6 @@
-package com.s406.livon.domain.ai.repository;
+package com.s406.livon.domain.ai.gms.repository;
 
-import com.s406.livon.domain.ai.entity.AiAnalysis;
+import com.s406.livon.domain.ai.gms.entity.AiAnalysis;
 import com.s406.livon.domain.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 

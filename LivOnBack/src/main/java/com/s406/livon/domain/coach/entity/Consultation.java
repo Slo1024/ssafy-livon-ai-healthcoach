@@ -47,6 +47,9 @@ public class Consultation {
     
     @Column(name = "session_id", nullable = false, length = 255)
     private String sessionId;
+
+    @Column(name = "video_url", nullable = true, length = 255)
+    private String videoUrl;
     
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -68,5 +71,13 @@ public class Consultation {
         this.startAt = startAt;
         this.endAt = endAt;
         this.capacity = capacity;
+    }
+
+    // Consultation 엔티티에 추가
+    public void generateSessionId() {
+        if (this.id == null) {
+            throw new IllegalStateException("ID가 생성되지 않은 상태에서는 세션 ID를 생성할 수 없습니다.");
+        }
+        this.sessionId = "consultation-" + this.id;
     }
 }

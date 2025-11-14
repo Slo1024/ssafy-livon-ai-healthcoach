@@ -42,7 +42,7 @@ fun CheatingBar(
             onValueChange = { messageText = it },
             modifier = Modifier
                 .weight(1f)
-                .height(40.dp),
+                .height(60.dp),
             shape = RoundedCornerShape(8.dp),
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = Sub2,

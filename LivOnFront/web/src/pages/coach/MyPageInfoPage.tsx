@@ -1,108 +1,121 @@
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { useAuth } from "../../hooks/useAuth";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Input as CommonInput } from "../../components/common/Input";
 import { Dropdown as CommonDropdown } from "../../components/common/Dropdown";
 import { DateTimePickerModal } from "../../components/common/Modal";
 import profilePictureIcon from "../../assets/images/profile_picture.png";
 import { ROUTES } from "../../constants/routes";
-import { getMyProfileApi } from "../../api/authApi";
 import { CONFIG } from "../../constants/config";
-import {
-  updateCoachBlockedTimesApi,
-  getCoachBlockedTimesApi,
-} from "../../api/reservationApi";
+import { getMyProfileApi } from "../../api/authApi";
+import { getCoachDetailApi } from "../../api/classApi";
 
 const PageContainer = styled.div`
   min-height: 100vh;
-  background-color: #ffffff;
-  padding: 40px 20px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+  padding: clamp(24px, 5vw, 40px) clamp(16px, 4vw, 32px);
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
 `;
 
 const ContentWrapper = styled.div`
+  width: 100%;
   max-width: 1200px;
   margin: 0 auto;
+`;
+
+const MainCard = styled.div`
+  background-color: #ffffff;
+  border-radius: 16px;
+  padding: clamp(24px, 4vw, 48px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  margin-top: 24px;
 `;
 
 const PageTitle = styled.h1`
   font-weight: 700;
   font-size: 40px;
-  color: #000000;
-  margin: 0 0 24px 0;
-`;
-
-const Tabs = styled.div`
-  display: flex;
-  gap: 0;
-
-  /* 두 버튼이 맞닿도록 인접 모서리 처리 */
-  button {
-    border-radius: 6px;
-  }
-  button:last-child {
-    margin-left: -1px; /* 테두리 겹치기 */
-  }
-`;
-
-const PrimaryTabButton = styled.button`
-  width: 120px;
-  height: 48px;
-  border: 1px solid #4965f6;
-  background-color: #4965f6;
-  color: #ffffff;
-  font-weight: 500; /* Pretendard Medium */
-  font-size: 16px;
-  cursor: pointer;
-  border-radius: 6px;
-  white-space: nowrap;
-`;
-
-const OutlineTabButton = styled.button`
-  width: 120px;
-  height: 48px;
-  border: 1px solid #4965f6;
-  background-color: #ffffff;
-  color: #4965f6;
-  font-weight: 500; /* Pretendard Medium */
-  font-size: 16px;
-  cursor: pointer;
-  border-radius: 6px;
-  white-space: nowrap;
-`;
-
-const Divider = styled.div`
-  width: 100vw; /* 화면 전체 폭 */
-  height: 2px;
-  background-color: #4965f6;
+  color: #1a1a1a;
   margin: 0;
-  position: relative;
-  left: 50%;
-  transform: translateX(-50%); /* 중앙 기준으로 좌우 끝까지 */
+  text-align: left;
+  background: linear-gradient(135deg, #2d79f3 0%, #4965f6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+
+  @media (max-width: 1200px) {
+    text-align: center;
+    font-size: 34px;
+  }
+
+  @media (max-width: 900px) {
+    font-size: 30px;
+  }
+
+  @media (max-width: 768px) {
+    font-size: 26px;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 24px;
+  }
+`;
+
+const SectionTitle = styled.h2`
+  font-weight: 600;
+  font-size: 20px;
+  color: #1a1a1a;
+  margin: 32px 0 20px 0;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f0f0f0;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+
+  &:first-of-type {
+    margin-top: 0;
+  }
 `;
 
 // 프로필 사진 업로드 섹션 스타일
 const ProfileSection = styled.div`
   display: flex;
-  gap: 20px;
-  margin-top: 16px; /* 탭 가로줄과 약간의 간격 */
+  gap: 32px;
+  margin-top: 24px;
   align-items: flex-start;
+  padding: 24px;
+  background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
+  border-radius: 12px;
+  border: 1px solid #e8ecf1;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    gap: 24px;
+    padding: 20px;
+  }
 `;
 
 const ProfileImageContainer = styled.div`
-  width: 197px;
-  height: 263px;
-  border-radius: 8px;
+  width: clamp(160px, 30vw, 197px);
+  height: clamp(200px, 36vw, 263px);
+  border-radius: 12px;
   background-color: #ffffff;
-  border: 1px solid #dee2e6;
+  border: 2px solid #e8ecf1;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   position: relative;
   overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  }
 `;
 
 const ProfileImagePlaceholder = styled.div`
@@ -128,13 +141,14 @@ const ProfileInfo = styled.div`
   display: flex;
   flex-direction: column;
   gap: 10px;
+  width: 100%;
 `;
 
 const ProfileLabel = styled.h3`
-  font-size: 12px;
-  font-weight: 800;
-  color: #000000;
-  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 16px 0;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
 `;
@@ -144,6 +158,7 @@ const FileNameContainer = styled.div`
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
+  width: 100%;
 `;
 
 const FileNameLabel = styled.label`
@@ -158,46 +173,73 @@ const FileNameLabel = styled.label`
 
 const FileNameInput = styled.input`
   flex: 1;
-  height: 36px;
-  border: 1px solid #ecedec;
-  border-radius: 12px;
-  padding: 0 10px;
-  font-size: 13px;
+  height: 40px;
+  border: 1px solid #e8ecf1;
+  border-radius: 8px;
+  padding: 0 14px;
+  font-size: 14px;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
+  background-color: #f8f9fa;
+  transition: all 0.2s ease;
 
   &:focus {
     outline: none;
     border-color: #2d79f3;
+    background-color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(45, 121, 243, 0.1);
   }
 `;
 
 const FileButton = styled.button<{ variant?: "primary" | "danger" }>`
-  height: 36px;
-  padding: 0 16px;
+  height: 40px;
+  padding: 0 20px;
   border: ${(props) =>
-    props.variant === "danger" ? "1px solid #ff0000" : "none"};
-  border-radius: 6px;
-  font-size: 13px;
+    props.variant === "danger" ? "1px solid #ef4444" : "none"};
+  border-radius: 8px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   background-color: ${(props) =>
     props.variant === "danger" ? "#ffffff" : "#2d79f3"};
-  color: ${(props) => (props.variant === "danger" ? "#ff0000" : "white")};
+  color: ${(props) => (props.variant === "danger" ? "#ef4444" : "white")};
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
+  transition: all 0.2s ease;
+  box-shadow: ${(props) =>
+    props.variant === "danger" ? "none" : "0 2px 4px rgba(45, 121, 243, 0.2)"};
 
   &:hover {
     background-color: ${(props) =>
-      props.variant === "danger" ? "#ff0000" : "#1a5fd9"};
+      props.variant === "danger" ? "#ef4444" : "#1a5fd9"};
     color: ${(props) => (props.variant === "danger" ? "#ffffff" : "white")};
+    transform: translateY(-1px);
+    box-shadow: ${(props) =>
+      props.variant === "danger"
+        ? "0 2px 8px rgba(239, 68, 68, 0.3)"
+        : "0 4px 8px rgba(45, 121, 243, 0.3)"};
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
   }
 `;
 
 const ProfileDescription = styled.div`
-  font-size: 11px;
-  color: #666666;
-  line-height: 1.5;
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.6;
+  margin-top: 8px;
+  padding: 12px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border-left: 3px solid #2d79f3;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
 `;
@@ -205,9 +247,13 @@ const ProfileDescription = styled.div`
 // SignupPage 유사 폼 레이아웃
 const FormGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin-top: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: clamp(20px, 3vw, 32px);
+  margin-top: 8px;
+  padding: 24px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e8ecf1;
 `;
 
 const FormColumn = styled.div`
@@ -222,17 +268,29 @@ const FormField = styled.div`
   align-items: center;
   gap: 3px;
   width: 100%;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
 `;
 
 const FormLabel = styled.label`
-  font-size: 13px;
-  font-weight: 500;
-  color: #000000;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
   width: 100px;
   flex-shrink: 0;
   white-space: nowrap;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    white-space: normal;
+    margin-bottom: 4px;
+  }
 `;
 
 const InputWithButton = styled.div`
@@ -241,14 +299,20 @@ const InputWithButton = styled.div`
   align-items: center;
   flex: 1;
   width: 100%;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
 `;
 
 const SmallButton = styled.button`
   height: 40px;
-  padding: 0 16px;
+  padding: 0 20px;
   border: none;
-  border-radius: 6px;
-  font-size: 13px;
+  border-radius: 8px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   background-color: #2d79f3;
@@ -256,17 +320,48 @@ const SmallButton = styled.button`
   white-space: nowrap;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(45, 121, 243, 0.2);
 
   &:hover {
     background-color: #1a5fd9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(45, 121, 243, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
   }
 `;
 
 const RadioGroup = styled.div`
   display: flex;
-  gap: 20px;
+  gap: 24px;
   align-items: center;
   flex: 1;
+  flex-wrap: wrap;
+
+  label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #374151;
+    font-weight: 500;
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: #2d79f3;
+    }
+
+    input[type="radio"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      accent-color: #2d79f3;
+    }
+  }
 `;
 
 const EmailInputContainer = styled.div`
@@ -275,6 +370,12 @@ const EmailInputContainer = styled.div`
   align-items: center;
   flex: 1;
   width: 100%;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
 `;
 
 const EmailSeparator = styled.span`
@@ -286,46 +387,50 @@ const EmailSeparator = styled.span`
 
 // SignupPage의 자격/소개 섹션 스타일
 const AddButton = styled.button`
-  align-self: flex-end;
-  margin-top: 0;
-  margin-bottom: 12px;
-  border: none;
+  align-self: flex-start;
+  margin-top: 8px;
+  margin-bottom: 0;
+  border: 1px dashed #2d79f3;
   background: transparent;
-  padding: 0;
-  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
   font-weight: 500;
-  color: #000000;
+  color: #2d79f3;
   cursor: pointer;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: #f0f4ff;
+    border-color: #1a5fd9;
+    color: #1a5fd9;
+  }
 `;
 
 const TextArea = styled.textarea`
   width: 100%;
-  height: 48px;
-  min-height: 48px;
-  border: 1px solid #ecedec;
-  border-radius: 12px;
-  padding: 0 12px;
-  font-size: 13px;
+  min-height: 100px;
+  border: 1px solid #e8ecf1;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 14px;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
-  line-height: 48px;
-  resize: none;
-  overflow: hidden;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-  &::-webkit-scrollbar {
-    display: none;
-  }
+  line-height: 1.5;
+  resize: vertical;
+  background-color: #ffffff;
+  transition: all 0.2s ease;
 
   &:focus {
     outline: none;
     border-color: #2d79f3;
+    box-shadow: 0 0 0 3px rgba(45, 121, 243, 0.1);
   }
 
   &::placeholder {
-    color: #999999;
+    color: #9ca3af;
     font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
       Roboto, sans-serif;
   }
@@ -333,10 +438,10 @@ const TextArea = styled.textarea`
 
 const CharacterCounter = styled.div`
   text-align: right;
-  font-size: 12px;
-  color: #999999;
-  margin-top: 2px;
-  margin-bottom: 16px;
+  font-size: 13px;
+  color: #6b7280;
+  margin-top: 8px;
+  margin-bottom: 0;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
 `;
@@ -346,6 +451,11 @@ const Field = styled.div`
   align-items: center;
   gap: 8px;
   margin-bottom: 14px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 
 const Label = styled.div`
@@ -355,6 +465,10 @@ const Label = styled.div`
     Roboto, sans-serif;
   font-size: 14px;
   color: #000;
+
+  @media (max-width: 768px) {
+    width: 100%;
+  }
 `;
 
 const Input = styled.input`
@@ -372,35 +486,28 @@ const Input = styled.input`
 
 const SubmitButton = styled.button`
   width: 100%;
-  height: 40px;
+  height: 52px;
   border: none;
-  border-radius: 8px;
-  font-size: 18px;
-  font-weight: 800;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
-  background-color: #2d79f3;
+  background: linear-gradient(135deg, #2d79f3 0%, #4965f6 100%);
   color: white;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
-`;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(45, 121, 243, 0.3);
+  margin-top: 32px;
 
-const ModalOverlay = styled.div`
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-`;
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(45, 121, 243, 0.4);
+  }
 
-const ModalCard = styled.div`
-  width: 560px;
-  max-width: 90vw;
-  background: #fff;
-  border-radius: 12px;
-  padding: 24px 20px;
-  text-align: center;
+  &:active {
+    transform: translateY(0);
+  }
 `;
 
 const LoadingMessage = styled.div`
@@ -424,10 +531,8 @@ const ErrorMessage = styled.div`
 `;
 
 export const MyPageInfoPage: React.FC = () => {
-  const { user, isLoading } = useAuth();
-  const location = useLocation();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [showModal, setShowModal] = useState(false);
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [profileFileName, setProfileFileName] = useState("");
   const [emailDomains] = useState([
@@ -437,19 +542,16 @@ export const MyPageInfoPage: React.FC = () => {
     "kakao.com",
   ]);
   const [formData, setFormData] = useState({
-    userId: "",
-    name: "",
     nickname: "",
     password: "",
     confirmPassword: "",
     gender: "male",
     birthDate: "",
-    contact: "",
     emailId: "",
     emailDomain: "",
     affiliation: "",
-    job: "",
     introduction: "",
+    job: "",
   });
   const [qualificationFields, setQualificationFields] = useState<string[]>([
     "",
@@ -465,7 +567,7 @@ export const MyPageInfoPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
 
-  // 사용자 정보 조회
+  // 사용자 정보 및 코치 상세정보 조회
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
@@ -477,6 +579,7 @@ export const MyPageInfoPage: React.FC = () => {
           throw new Error("인증 토큰이 없습니다. 로그인이 필요합니다.");
         }
 
+        // 기본 사용자 정보 조회
         const response = await getMyProfileApi(token);
 
         if (response.isSuccess && response.result) {
@@ -508,19 +611,60 @@ export const MyPageInfoPage: React.FC = () => {
           // formData 업데이트
           setFormData((prev) => ({
             ...prev,
-            userId: userData.userId || "",
             nickname: userData.nickname || "",
-            contact: userData.phoneNumber || "",
             emailId: emailId,
             emailDomain: emailDomain,
             gender: genderValue,
             birthDate: birthDateValue,
             affiliation: userData.organizations || "",
+            introduction: "",
           }));
 
           // 프로필 이미지 설정
           if (userData.profileImage) {
             setProfileImageUrl(userData.profileImage);
+          }
+
+          // 코치 상세정보 조회 (userId가 있는 경우)
+          if (userData.userId) {
+            try {
+              const coachDetailResponse = await getCoachDetailApi(
+                userData.userId
+              );
+
+              if (
+                coachDetailResponse.isSuccess &&
+                coachDetailResponse.result
+              ) {
+                const coachData = coachDetailResponse.result;
+
+                // 코치 상세정보로 formData 업데이트
+                setFormData((prev) => ({
+                  ...prev,
+                  job: coachData.job || "",
+                  introduction: coachData.introduce || "",
+                  affiliation: coachData.organizations || prev.affiliation,
+                }));
+
+                // 자격증 필드 설정
+                if (coachData.certificates && coachData.certificates.length > 0) {
+                  setQualificationFields(coachData.certificates);
+                }
+
+                // 소개 글 글자 수 설정
+                if (coachData.introduce) {
+                  setIntroductionCount(coachData.introduce.length);
+                }
+
+                // 프로필 이미지가 코치 상세정보에 있으면 우선 사용
+                if (coachData.profileImage) {
+                  setProfileImageUrl(coachData.profileImage);
+                }
+              }
+            } catch (coachErr) {
+              // 코치 상세정보 조회 실패는 무시 (기본 정보만 표시)
+              console.warn("코치 상세정보 조회 실패:", coachErr);
+            }
           }
         } else {
           throw new Error(
@@ -548,24 +692,16 @@ export const MyPageInfoPage: React.FC = () => {
 
   const handleAddQualification = () =>
     setQualificationFields((prev) => [...prev, ""]);
-
-  const isInfoPage = location.pathname.includes("/coach/mypage/info");
-  const nickname = user?.nickname || formData.nickname;
-
-  const handleInfoClick = () => {
-    navigate(ROUTES.COACH_MYPAGE_INFO);
-  };
-
-  const handleVerificationClick = () => {
+  const nickname = user?.nickname;
+  const navigateToVerification = () =>
     navigate(ROUTES.COACH_MYPAGE_VERIFICATION);
-  };
 
   // 코치 전용 가드
   useEffect(() => {
-    if (!isLoading && user && user.role !== "coach") {
+    if (!loading && user && user.role !== "coach") {
       navigate(ROUTES.COACH_ONLY, { replace: true });
     }
-  }, [isLoading, user, navigate]);
+  }, [loading, user, navigate]);
   if (loading) {
     return (
       <PageContainer>
@@ -592,31 +728,11 @@ export const MyPageInfoPage: React.FC = () => {
         <PageTitle>
           {nickname ? `${nickname} 코치님 마이페이지` : "코치님 마이페이지"}
         </PageTitle>
-        <Tabs>
-          {isInfoPage ? (
-            <>
-              <PrimaryTabButton onClick={handleInfoClick}>
-                코치님 정보
-              </PrimaryTabButton>
-              <OutlineTabButton onClick={handleVerificationClick}>
-                코치 인증 여부
-              </OutlineTabButton>
-            </>
-          ) : (
-            <>
-              <OutlineTabButton onClick={handleInfoClick}>
-                코치님 정보
-              </OutlineTabButton>
-              <PrimaryTabButton onClick={handleVerificationClick}>
-                코치 인증 여부
-              </PrimaryTabButton>
-            </>
-          )}
-        </Tabs>
-        <Divider />
 
-        {/* 프로필 사진 업로드 섹션 */}
-        <ProfileSection>
+        <MainCard>
+          <SectionTitle>프로필 정보</SectionTitle>
+          {/* 프로필 사진 업로드 섹션 */}
+          <ProfileSection>
           <ProfileImageContainer>
             {profileImage ? (
               <ProfileImage
@@ -660,9 +776,8 @@ export const MyPageInfoPage: React.FC = () => {
                 onClick={() => {
                   setProfileImage(null);
                   setProfileFileName("");
-                  setProfileImageUrl(null);
                 }}
-                disabled={!profileImage && !profileImageUrl}
+                disabled={!profileImage}
               >
                 파일 삭제
               </FileButton>
@@ -698,32 +813,10 @@ export const MyPageInfoPage: React.FC = () => {
           </ProfileInfo>
         </ProfileSection>
 
+        <SectionTitle>기본 정보</SectionTitle>
         {/* SignupPage 형태의 폼 (이메일 인증 관련 요소 제외) */}
         <FormGrid>
           <FormColumn>
-            <FormField>
-              <FormLabel>아이디</FormLabel>
-              <InputWithButton>
-                <CommonInput
-                  placeholder="아이디를 입력하세요"
-                  value={formData.userId}
-                  onChange={(e) => handleInputChange("userId", e.target.value)}
-                  style={{ flex: 1 }}
-                />
-                <SmallButton type="button">중복확인</SmallButton>
-              </InputWithButton>
-            </FormField>
-
-            <FormField>
-              <FormLabel>이름</FormLabel>
-              <CommonInput
-                placeholder="이름을 입력해주세요."
-                value={formData.name}
-                onChange={(e) => handleInputChange("name", e.target.value)}
-                style={{ flex: 1 }}
-              />
-            </FormField>
-
             <FormField>
               <FormLabel>닉네임</FormLabel>
               <InputWithButton>
@@ -796,19 +889,19 @@ export const MyPageInfoPage: React.FC = () => {
                 style={{ flex: 1 }}
               />
             </FormField>
-          </FormColumn>
 
-          <FormColumn>
             <FormField>
-              <FormLabel>연락처</FormLabel>
+              <FormLabel>직업</FormLabel>
               <CommonInput
-                placeholder="연락처를 입력해주세요."
-                value={formData.contact}
-                onChange={(e) => handleInputChange("contact", e.target.value)}
+                placeholder="직업을 입력해 주세요."
+                value={formData.job}
+                onChange={(e) => handleInputChange("job", e.target.value)}
                 style={{ flex: 1 }}
               />
             </FormField>
+          </FormColumn>
 
+          <FormColumn>
             <FormField style={{ alignItems: "flex-start" }}>
               <FormLabel style={{ marginTop: "17px" }}>이메일</FormLabel>
               <div
@@ -830,19 +923,18 @@ export const MyPageInfoPage: React.FC = () => {
                     style={{ flex: 1 }}
                   />
                   <EmailSeparator>@</EmailSeparator>
+                  <CommonDropdown
+                    options={emailDomains.map((domain) => ({
+                      value: domain,
+                      label: domain,
+                    }))}
+                    value={formData.emailDomain}
+                    onChange={(e) =>
+                      handleInputChange("emailDomain", e.target.value)
+                    }
+                    style={{ flex: 1 }}
+                  />
                 </EmailInputContainer>
-                <CommonDropdown
-                  options={[
-                    { value: "", label: "이메일 주소를 입력하세요." },
-                    ...emailDomains.map((d) => ({ value: d, label: d })),
-                  ]}
-                  value={formData.emailDomain}
-                  onChange={(e) =>
-                    handleInputChange("emailDomain", e.target.value)
-                  }
-                  style={{ width: "100%" }}
-                />
-                {/* 인증번호 보내기 / 인증하기 섹션 제거 */}
               </div>
             </FormField>
 
@@ -857,27 +949,13 @@ export const MyPageInfoPage: React.FC = () => {
                 style={{ flex: 1 }}
               />
             </FormField>
-
-            <FormField>
-              <FormLabel>직무</FormLabel>
-              <CommonDropdown
-                options={[
-                  { value: "", label: "코칭할 분야를 선택해 주세요." },
-                  { value: "exercise-fitness", label: "운동/피트니스" },
-                  { value: "diet-nutrition", label: "식단/영양" },
-                  { value: "physical-health", label: "신체건강/통증 관리" },
-                  { value: "mental-health", label: "정신건강/멘탈케어" },
-                ]}
-                value={formData.job}
-                onChange={(e) => handleInputChange("job", e.target.value)}
-                style={{ flex: 1 }}
-              />
-            </FormField>
           </FormColumn>
         </FormGrid>
 
+        <SectionTitle>자격 및 소개</SectionTitle>
         {/* SignupPage와 동일한 자격/소개 섹션 */}
-        <FormField style={{ alignItems: "flex-start", marginTop: "18px" }}>
+        <div style={{ padding: "24px", background: "#ffffff", borderRadius: "12px", border: "1px solid #e8ecf1", marginTop: "8px" }}>
+        <FormField style={{ alignItems: "flex-start" }}>
           <div style={{ width: "120px", flexShrink: 0 }}>
             <FormLabel>자격</FormLabel>
             <div
@@ -898,6 +976,7 @@ export const MyPageInfoPage: React.FC = () => {
               flexDirection: "column",
               gap: "6px",
               position: "relative",
+              width: "100%",
             }}
           >
             {qualificationFields.map((value, index) => (
@@ -906,20 +985,20 @@ export const MyPageInfoPage: React.FC = () => {
                 placeholder="자격증 명을 입력해 주세요."
                 value={value}
                 onChange={(e) => {
-                  const v = (e.target as HTMLInputElement).value;
-                  setQualificationFields((prev) =>
-                    prev.map((pv, i) => (i === index ? v : pv))
-                  );
+                  const newFields = [...qualificationFields];
+                  newFields[index] = e.target.value;
+                  setQualificationFields(newFields);
                 }}
+                style={{ width: "100%" }}
               />
             ))}
             <AddButton type="button" onClick={handleAddQualification}>
-              추가 +
+              + 자격 추가
             </AddButton>
           </div>
         </FormField>
 
-        <FormField style={{ alignItems: "flex-start" }}>
+        <FormField style={{ alignItems: "flex-start", marginTop: "24px" }}>
           <div
             style={{
               width: "120px",
@@ -942,7 +1021,7 @@ export const MyPageInfoPage: React.FC = () => {
               소개하는 글을 입력해 주세요.
             </div>
           </div>
-          <div style={{ flex: 1, alignSelf: "flex-start" }}>
+          <div style={{ flex: 1, alignSelf: "flex-start", width: "100%" }}>
             <TextArea
               placeholder="소개 글을 입력해 주세요."
               value={formData.introduction}
@@ -960,181 +1039,12 @@ export const MyPageInfoPage: React.FC = () => {
             <CharacterCounter>{introductionCount}/50</CharacterCounter>
           </div>
         </FormField>
-
-        {/* 예약 받지 않는 날 */}
-        <FormField style={{ marginTop: "18px" }}>
-          <FormLabel>예약 받지 않는 날</FormLabel>
-          <CommonInput
-            placeholder="클릭하여 선택"
-            value={
-              selectedDates.length > 0
-                ? selectedDates
-                    .map(
-                      (date) =>
-                        `${date.getFullYear()}.${String(
-                          date.getMonth() + 1
-                        ).padStart(2, "0")}.${String(date.getDate()).padStart(
-                          2,
-                          "0"
-                        )}`
-                    )
-                    .join(", ") +
-                  (selectedTimes.length > 0
-                    ? ` (${selectedTimes
-                        .filter(
-                          (t) => t.startsWith("AM ") || t.startsWith("PM ")
-                        )
-                        .map((t) =>
-                          t.replace("AM ", "오전 ").replace("PM ", "오후 ")
-                        )
-                        .join(", ")})`
-                    : "")
-                : ""
-            }
-            readOnly
-            onClick={() => setShowDateTimeModal(true)}
-            style={{ flex: 1, cursor: "pointer" }}
-          />
-        </FormField>
-
-        <DateTimePickerModal
-          open={showDateTimeModal}
-          onClose={() => {
-            setShowDateTimeModal(false);
-            setBlockedTimesByDate(new Map());
-          }}
-          blockedTimesByDate={blockedTimesByDate}
-          onDateChange={async (dates) => {
-            // 날짜 변경 시 막힌 시간 조회
-            if (dates.length === 0) {
-              setBlockedTimesByDate(new Map());
-              return;
-            }
-
-            try {
-              const token = localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
-              if (!token) {
-                return;
-              }
-
-              // 각 날짜별로 막힌 시간 조회
-              const promises = dates.map(async (date) => {
-                const dateStr = `${date.getFullYear()}-${String(
-                  date.getMonth() + 1
-                ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-                try {
-                  const response = await getCoachBlockedTimesApi(
-                    token,
-                    dateStr
-                  );
-                  return { dateStr, blockedTimes: response.blockedTimes || [] };
-                } catch (err) {
-                  console.error(`날짜 ${dateStr}의 막힌 시간 조회 오류:`, err);
-                  return { dateStr, blockedTimes: [] };
-                }
-              });
-
-              const results = await Promise.all(promises);
-              const newBlockedTimesMap = new Map<string, string[]>();
-              results.forEach(({ dateStr, blockedTimes }) => {
-                if (blockedTimes.length > 0) {
-                  newBlockedTimesMap.set(dateStr, blockedTimes);
-                }
-              });
-              setBlockedTimesByDate(newBlockedTimesMap);
-            } catch (err) {
-              console.error("막힌 시간 조회 오류:", err);
-            }
-          }}
-          onSelect={async (dates, times) => {
-            setSelectedDates(dates);
-            setSelectedTimes(times);
-
-            // API 호출: 각 날짜별로 선택된 시간을 막기
-            try {
-              const token = localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
-              if (!token) {
-                throw new Error("인증 토큰이 없습니다.");
-              }
-
-              // 시간 형식 변환: "AM 8:00" -> "08:00", "PM 1:00" -> "13:00"
-              const convertTimeToHHmm = (timeStr: string): string => {
-                const [period, time] = timeStr.split(" ");
-                const [hour, minute] = time.split(":");
-                let hour24 = parseInt(hour, 10);
-
-                if (period === "PM" && hour24 !== 12) {
-                  hour24 += 12;
-                } else if (period === "AM" && hour24 === 12) {
-                  hour24 = 0;
-                }
-
-                return `${String(hour24).padStart(2, "0")}:${minute}`;
-              };
-
-              // 각 날짜별로 선택된 시간들을 그룹화
-              const dateTimeMap = new Map<string, string[]>();
-
-              // 모든 날짜에 대해 선택된 시간들을 매핑
-              dates.forEach((date) => {
-                const dateStr = `${date.getFullYear()}-${String(
-                  date.getMonth() + 1
-                ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-                const blockedTimes = times.map(convertTimeToHHmm);
-                dateTimeMap.set(dateStr, blockedTimes);
-              });
-
-              // 각 날짜별로 API 호출
-              const promises = Array.from(dateTimeMap.entries()).map(
-                ([dateStr, blockedTimes]) =>
-                  updateCoachBlockedTimesApi(token, dateStr, blockedTimes)
-              );
-
-              await Promise.all(promises);
-            } catch (err) {
-              console.error("예약 불가 시간 설정 오류:", err);
-              alert(
-                err instanceof Error
-                  ? err.message
-                  : "예약 불가 시간 설정에 실패했습니다."
-              );
-            }
-          }}
-          initialDates={selectedDates}
-          initialTimes={selectedTimes}
-        />
-
-        <div style={{ marginTop: "24px" }}>
-          <SubmitButton onClick={() => setShowModal(true)}>
-            정보 수정
-          </SubmitButton>
         </div>
 
-        {showModal && (
-          <ModalOverlay onClick={() => setShowModal(false)}>
-            <ModalCard onClick={(e) => e.stopPropagation()}>
-              <div
-                style={{
-                  fontFamily:
-                    'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                  fontWeight: 800,
-                  fontSize: "22px",
-                  marginBottom: "18px",
-                }}
-              >
-                코치님의 정보가
-                <br />
-                수정되었습니다.
-              </div>
-              <SubmitButton
-                style={{ width: "90%", margin: "0 auto" }}
-                onClick={() => setShowModal(false)}
-              >
-                확인
-              </SubmitButton>
-            </ModalCard>
-          </ModalOverlay>
-        )}
+        <SubmitButton onClick={navigateToVerification}>
+          정보 수정
+        </SubmitButton>
+        </MainCard>
       </ContentWrapper>
     </PageContainer>
   );

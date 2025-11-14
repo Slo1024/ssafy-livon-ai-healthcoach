@@ -12,6 +12,18 @@ object SignupState {
     var heightCm: String? by mutableStateOf(null)
     var weightKg: String? by mutableStateOf(null)
     var birthday: LocalDate? by mutableStateOf(null)
+    // additional compatibility aliases used by navigation wiring
+    @Suppress("unused")
+    var memberType: String by mutableStateOf("general")
+    @Suppress("unused")
+    var company: String? by mutableStateOf(null)
+    // legacy short names used in some navigation code
+    @Suppress("unused")
+    var height: String? by mutableStateOf(null)
+    @Suppress("unused")
+    var weight: String? by mutableStateOf(null)
+    // gender used in flow
+    var gender: String? by mutableStateOf(null)
 
     // health survey answers
     var condition: String? by mutableStateOf(null)
@@ -27,22 +39,8 @@ object SignupState {
     var activityLevel: String? by mutableStateOf(null)
     var caffeine: String? by mutableStateOf(null)
 
-    fun clear() {
-        role = "member"
-        nickname = ""
-        passwordSet = false
-        heightCm = null
-        weightKg = null
-        birthday = null
-        condition = null
-        sleepQuality = null
-        medication = null
-        painArea = null
-        stress = null
-        smoking = null
-        alcohol = null
-        sleepHours = null
-        activityLevel = null
-        caffeine = null
-    }
+    // used during reservation -> health flow roundtrip to identify originating qna route
+    var qnaMarkerRoute: String? by mutableStateOf(null)
+
+    // clear() intentionally removed; state is reset elsewhere when needed
 }

@@ -49,17 +49,15 @@ fun QnASubmitScreen(
     var showDialog by rememberSaveable { mutableStateOf(false) }
 
     // If we returned from health flow, show the dialog again
-    LaunchedEffect(navController?.currentBackStackEntry?.savedStateHandle) {
-        try {
-            val handle = navController?.currentBackStackEntry?.savedStateHandle
-            val flag = handle?.get<Boolean>("health_updated")
-            if (flag == true) {
-                // open dialog and clear flag
-                showDialog = true
-                handle.remove<Boolean>("health_updated")
-            }
-        } catch (t: Throwable) {
-            // ignore
+    // Observe savedStateHandle key reliably using StateFlow -> collectAsState
+    val backStackEntry = navController?.currentBackStackEntry
+    val savedStateHandle = backStackEntry?.savedStateHandle
+    val healthUpdatedFlow = remember(savedStateHandle) { savedStateHandle?.getStateFlow("health_updated", false) }
+    val healthUpdated by (healthUpdatedFlow?.collectAsState(initial = false) ?: remember { mutableStateOf(false) })
+
+    LaunchedEffect(healthUpdated) {
+        if (healthUpdated) {
+            showDialog = true
         }
     }
 
@@ -283,16 +281,16 @@ fun ReservationCompleteDialog(
     onConfirm: () -> Unit,
     onChangeHealthInfo: () -> Unit
 ) {
+    try { android.util.Log.d("ReservationDialog", "Composing ReservationCompleteDialog") } catch (_: Throwable) {}
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.60f))
-            // Removed global clickable on the scrim to avoid intercepting child clicks
-            // .clickable(
-            //     onClick = onDismiss,
-            //     indication = null,
-            //     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-            // )
+            .clickable(
+                onClick = onDismiss,
+                indication = null,
+                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            )
     ) {
         Card(
             shape = RoundedCornerShape(10.dp),
@@ -346,7 +344,7 @@ fun ReservationCompleteDialog(
                     )
                 }
 
-                Divider(
+                HorizontalDivider(
                     color = Gray,
                     thickness = 1.dp,
                     modifier = Modifier.fillMaxWidth()

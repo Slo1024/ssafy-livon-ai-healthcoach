@@ -39,7 +39,7 @@ const TitleAndMessageContainer = styled.div`
     flex-direction: column;
     align-items: center;
     text-align: center;
-    gap: 16px;
+    gap: 8px;
   }
 `;
 
@@ -84,6 +84,13 @@ const ScheduleMessage = styled.div`
   line-height: 1.5;
   white-space: pre-line;
   text-align: center;
+
+  @media (max-width: 1200px) {
+    position: static;
+    transform: none;
+    width: 100%;
+    margin-top: 0;
+  }
 
   @media (max-width: 768px) {
     font-size: 20px;
@@ -139,17 +146,24 @@ const TableHeaderCell = styled.th`
   text-align: left;
   font-weight: 600;
   font-size: 14px;
-  color: #111827;
+  color: #374151;
   border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+  width: auto;
+
+  @media (max-width: 768px) {
+    font-size: 13px;
+  }
 `;
 
 const TableBody = styled.tbody``;
 
 const TableRow = styled.tr`
   border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.2s ease;
 
   &:hover {
-    background-color: #f9fafb;
+    background-color: transparent;
   }
 `;
 
@@ -158,6 +172,32 @@ const TableCell = styled.td`
   font-size: 14px;
   color: #374151;
   vertical-align: middle;
+  word-break: keep-all;
+  white-space: normal;
+
+  &:nth-child(1) {
+    width: 200px;
+    white-space: nowrap;
+  }
+  &:nth-child(4) {
+    color: #4965f6;
+    width: auto;
+    padding-left: 16px;
+  }
+
+  @media (max-width: 900px) {
+    padding: 14px 12px;
+  }
+
+  @media (max-width: 768px) {
+    padding: 12px 10px;
+    font-size: 13px;
+
+    &:nth-child(1) {
+      width: 170px;
+      white-space: nowrap;
+    }
+  }
 `;
 
 const ClassTitle = styled.span`
@@ -177,6 +217,7 @@ const ActionButtonContainer = styled.div`
   display: flex;
   gap: 8px;
   align-items: center;
+  justify-content: flex-end;
   flex-wrap: wrap;
 `;
 
@@ -199,7 +240,7 @@ const MemberInfoButton = styled.button`
 `;
 
 const ConsultationSummaryButton = styled.button`
-  padding: 8px 16px;
+  padding: 8px 10px;
   background-color: #ffffff;
   color: #4965f6;
   border: 1px solid #4965f6;
@@ -588,8 +629,6 @@ export const PastReservationPage: React.FC = () => {
             />
           </FilterDropdown>
         </TabsAndFilterContainer>
-
-        <Divider />
 
         {loading ? (
           <LoadingMessage>예약 목록을 불러오는 중...</LoadingMessage>

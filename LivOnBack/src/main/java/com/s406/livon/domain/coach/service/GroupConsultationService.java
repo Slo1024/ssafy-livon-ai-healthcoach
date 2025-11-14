@@ -77,6 +77,8 @@ public class GroupConsultationService {
                 .build();
         
         Consultation savedConsultation = consultationRepository.save(consultation);
+        consultation.generateSessionId();  // 세션 ID 생성
+        consultationRepository.save(consultation);  // 업데이트
         
         // 4. 클래스 이미지 저장
         String Url = "";
@@ -85,6 +87,11 @@ public class GroupConsultationService {
             Url = s3Service.uploadProfileImage(classImage);
         }
         System.out.println("Url = "+ Url);
+
+        // 7. 코치 참가자 보장 (중복 방지)
+        if (!participantRepository.existsByUserIdAndConsultationId(coachId, consultation.getId())) {
+            participantRepository.save(Participant.of(coach, consultation)); // coach 이미 로드됨
+        }
         
         // 5. GroupConsultation 생성
         GroupConsultation groupConsultation = GroupConsultation.builder()
@@ -125,6 +132,34 @@ public class GroupConsultationService {
             // 전체 클래스 조회
             result = groupConsultationRepository.findAllWithParticipantCount(pageable);
         }
+        
+        // Object[] -> DTO 변환
+        Page<GroupConsultationListResponseDto> dtoPage = result.map(objects -> {
+            GroupConsultation gc = (GroupConsultation) objects[0];
+            Long currentParticipants = (Long) objects[1];
+            
+            return GroupConsultationListResponseDto.from(gc, currentParticipants);
+        });
+        
+        return PaginatedResponse.of(dtoPage);
+    }
+    
+    /**
+     * 코치 본인이 만든 클래스 목록 조회
+     * 
+     * @param coachId 코치 ID
+     * @param pageable 페이징 정보
+     * @return 코치가 만든 클래스 목록
+     */
+    public PaginatedResponse<GroupConsultationListResponseDto> getMyGroupConsultations(
+            UUID coachId,
+            Pageable pageable) {
+        
+        // 코치 권한 확인
+        validateCoach(coachId);
+        
+        // 코치가 만든 클래스 목록 조회
+        Page<Object[]> result = groupConsultationRepository.findByCoachIdWithParticipantCount(pageable, coachId);
         
         // Object[] -> DTO 변환
         Page<GroupConsultationListResponseDto> dtoPage = result.map(objects -> {
@@ -259,6 +294,19 @@ public class GroupConsultationService {
         // 6. 중복 예약 방지 (이미 예약한 사용자인지 확인)
         if (participantRepository.existsByUserIdAndConsultationId(userId, classId)) {
             throw new CoachHandler(ErrorStatus.CONSULTATION_ALREADY_RESERVED);
+        }
+
+
+        // 5. 정원 체크 (회원만 카운트) → 저장 전 체크
+        UUID coachId = consultation.getCoach().getId();
+        long currentMembers = participantRepository.countMembersExcludingCoach(consultation.getId(), coachId);
+        if (currentMembers >= consultation.getCapacity()) {
+            throw new CoachHandler(ErrorStatus.CONSULTATION_CAPACITY_FULL);
+        }
+
+        // 6. 사용자 참가자 저장 (중복 방지)
+        if (!participantRepository.existsByUserIdAndConsultationId(userId, consultation.getId())) {
+            participantRepository.save(Participant.of(user, consultation));
         }
 
         // 7. Participant 생성 및 저장

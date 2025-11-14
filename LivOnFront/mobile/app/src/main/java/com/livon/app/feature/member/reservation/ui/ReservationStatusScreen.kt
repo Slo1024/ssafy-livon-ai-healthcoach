@@ -4,10 +4,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -16,6 +16,8 @@ import com.livon.app.ui.component.overlay.TopBar
 import com.livon.app.ui.theme.LivonTheme
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
+import androidx.compose.ui.Alignment
+import com.livon.app.BuildConfig
 
 enum class ReservationTab { CURRENT, PAST }
 
@@ -31,8 +33,22 @@ data class ReservationUi(
     val classIntro: String,
     val imageResId: Int? = null,
 
+    // coach id (nullable) - used for navigation to coach detail
+    val coachId: String? = null,
+
+    // coach image URL from server (nullable). If provided, UI should show remote image; otherwise use local res fallback.
+    val coachProfileImageUrl: String? = null,
+
+    // QnA lines submitted when reserving (preQnA split by newline). Used on detail page.
+    val qnas: List<String> = emptyList(),
+
+    // AI summary content from server (nullable). Used to show AiResultScreen when present.
+    val aiSummary: String? = null,
+
     // 현재 예약 전용
     val isLive: Boolean = false,  // 진행중/임박
+    val startAtIso: String? = null, // ISO time from server
+    val sessionId: String? = null, // live session id if coach created
 
     // 지난 예약 전용
     val sessionTypeLabel: String? = null, // "그룹 상담" | "개인 상담"
@@ -44,7 +60,8 @@ fun ReservationStatusScreen(
     current: List<ReservationUi>,
     past: List<ReservationUi>,
     onBack: () -> Unit,
-    onDetail: (ReservationUi) -> Unit,
+    // [핵심 수정] onDetail 파라미터에 isPast (Boolean) 추가
+    onDetail: (item: ReservationUi, isPast: Boolean) -> Unit,
     onCancel: (ReservationUi) -> Unit,
     onJoin: (ReservationUi) -> Unit,
     onAiAnalyze: (ReservationUi) -> Unit
@@ -56,88 +73,110 @@ fun ReservationStatusScreen(
 
     var tab by remember { mutableStateOf(ReservationTab.CURRENT) }
 
+    // Debug toggle: when true, force showJoin for all cards so developer can test "입장하기" 버튼
+    val debugForceJoin = remember { mutableStateOf(false) }
+
     CommonScreenC(
         topBar = { TopBar(title = "예약 현황", onBack = onBack) }
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 8.dp)
-        ) {
-            TabRow(selectedTabIndex = tab.ordinal) {
-                Tab(
-                    selected = tab == ReservationTab.CURRENT,
-                    onClick = { tab = ReservationTab.CURRENT },
-                    text = { Text("현재 예약") }
-                )
-                Tab(
-                    selected = tab == ReservationTab.PAST,
-                    onClick = { tab = ReservationTab.PAST },
-                    text = { Text("지난 예약") }
-                )
+        // Wrap in Box to allow overlaying a debug FAB
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = 8.dp)
+            ) {
+                TabRow(selectedTabIndex = tab.ordinal) {
+                    Tab(
+                        selected = tab == ReservationTab.CURRENT,
+                        onClick = { tab = ReservationTab.CURRENT },
+                        text = { Text("현재 예약") }
+                    )
+                    Tab(
+                        selected = tab == ReservationTab.PAST,
+                        onClick = { tab = ReservationTab.PAST },
+                        text = { Text("지난 예약") }
+                    )
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                val list = if (tab == ReservationTab.CURRENT) current else past
+
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(list, key = { it.id }) { item ->
+                        if (tab == ReservationTab.CURRENT) {
+                            // n일 후 상담 텍스트
+                            val daysLeft = ChronoUnit.DAYS.between(LocalDate.now(), item.date).toInt()
+                            val rightLabel =
+                                if (item.isLive) "진행중" else "${daysLeft}일 후 상담"
+
+                            ReservationCard(
+                                headerLeft = formatKoreanDate(item.date),
+                                headerRight = rightLabel,
+                                headerRightIsLive = item.isLive,
+                                className = item.className,
+                                coachName = item.coachName,
+                                coachRole = item.coachRole,
+                                coachIntro = item.coachIntro,
+                                timeText = item.timeText,
+                                classIntro = item.classIntro,
+                                imageResId = item.imageResId,
+                                // [핵심 수정] onDetail 호출 시 isPast=false 전달
+                                onDetail = { onDetail(item, false) },
+                                onCancel = if (!item.isLive) ({ onCancel(item) }) else null,
+                                // If debugForceJoin is enabled, provide onJoin even when not live
+                                onJoin   = if (item.isLive || debugForceJoin.value)  ({ onJoin(item) })   else null,
+                                onAiAnalyze = null,
+                                showJoin = item.isLive || debugForceJoin.value,
+                                showCancel = !item.isLive && !debugForceJoin.value,
+                                showAiButton = false,
+                                dividerBold = true
+                            )
+                        } else {
+                            // 지난 예약: AI 버튼은 '개인 상담' 이면서 hasAiReport=true 일 때만
+                            val isPersonal = item.sessionTypeLabel == "개인 상담"
+                            val showAI = isPersonal && item.hasAiReport
+
+                            ReservationCard(
+                                headerLeft = formatKoreanDate(item.date),
+                                headerRight = item.sessionTypeLabel ?: "",
+                                headerRightIsLive = false,
+                                className = item.className,
+                                coachName = item.coachName,
+                                coachRole = item.coachRole,
+                                coachIntro = item.coachIntro,
+                                timeText = item.timeText,
+                                classIntro = item.classIntro,
+                                imageResId = item.imageResId,
+                                // [핵심 수정] onDetail 호출 시 isPast=true 전달
+                                onDetail = { onDetail(item, true) },
+                                onCancel = null,
+                                onJoin = null,
+                                onAiAnalyze = if (showAI) ({ onAiAnalyze(item) }) else null,
+                                showJoin = false,
+                                showCancel = false,
+                                showAiButton = showAI,
+                                dividerBold = false
+                            )
+                        }
+                    }
+                }
             }
 
-            Spacer(Modifier.height(8.dp))
-
-            val list = if (tab == ReservationTab.CURRENT) current else past
-
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(list, key = { it.id }) { item ->
-                    if (tab == ReservationTab.CURRENT) {
-                        // n일 후 상담 텍스트
-                        val daysLeft = ChronoUnit.DAYS.between(LocalDate.now(), item.date).toInt()
-                        val rightLabel =
-                            if (item.isLive) "진행중" else "${daysLeft}일 후 상담"
-
-                        ReservationCard(
-                            headerLeft = formatKoreanDate(item.date),
-                            headerRight = rightLabel,
-                            headerRightIsLive = item.isLive,
-                            className = item.className,
-                            coachName = item.coachName,
-                            coachRole = item.coachRole,
-                            coachIntro = item.coachIntro,
-                            timeText = item.timeText,
-                            classIntro = item.classIntro,
-                            imageResId = item.imageResId,
-                            onDetail = { onDetail(item) },
-                            onCancel = if (!item.isLive) ({ onCancel(item) }) else null,
-                            onJoin   = if (item.isLive)  ({ onJoin(item) })   else null,
-                            onAiAnalyze = null,
-                            showJoin = item.isLive,          // 진행중일 때 이미지 아래 세션버튼
-                            showCancel = !item.isLive,       // 임박/진행중이면 취소 X
-                            showAiButton = false,
-                            dividerBold = true               // 현재 예약: 굵기 1(요구상 동일)
-                        )
-                    } else {
-                        // 지난 예약: AI 버튼은 '개인 상담' 이면서 hasAiReport=true 일 때만
-                        val isPersonal = item.sessionTypeLabel == "개인 상담"
-                        val showAI = isPersonal && item.hasAiReport
-
-                        ReservationCard(
-                            headerLeft = formatKoreanDate(item.date),
-                            headerRight = item.sessionTypeLabel ?: "",
-                            headerRightIsLive = false,
-                            className = item.className,
-                            coachName = item.coachName,
-                            coachRole = item.coachRole,
-                            coachIntro = item.coachIntro,
-                            timeText = item.timeText,
-                            classIntro = item.classIntro,
-                            imageResId = item.imageResId,
-                            onDetail = { onDetail(item) },
-                            onCancel = null,
-                            onJoin = null,
-                            onAiAnalyze = if (showAI) ({ onAiAnalyze(item) }) else null,
-                            showJoin = false,
-                            showCancel = false,
-                            showAiButton = showAI,
-                            dividerBold = false             // 지난 예약: 보더 1
-                        )
+            // Debug FAB overlay - visible only in debug builds
+            if (BuildConfig.DEBUG) {
+                Box(modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp), contentAlignment = Alignment.BottomEnd) {
+                    FloatingActionButton(
+                        onClick = { debugForceJoin.value = !debugForceJoin.value }
+                    ) {
+                        Text(if (debugForceJoin.value) "디버그: Join ON" else "디버그: Join OFF")
                     }
                 }
             }
@@ -154,6 +193,7 @@ private fun formatKoreanDate(date: LocalDate): String {
 
 /* ---------- Preview (여러 경우) ---------- */
 
+// Preview 코드는 파라미터가 변경되었으므로 onDetail 부분도 수정합니다.
 @Preview(showBackground = true, name = "현재 예약 – 일반")
 @Composable
 private fun Preview_Current_Normal() {
@@ -169,12 +209,14 @@ private fun Preview_Current_Normal() {
                     coachRole = "PT",
                     coachIntro = "자세 교정 전문",
                     timeText = "오전 9:00 ~ 10:00",
-                    classIntro = "자세 교정 기반 클래스"
+                    classIntro = "자세 교정 기반 클래스",
+                    startAtIso = null,
+                    sessionId = null
                 )
             ),
             past = emptyList(),
             onBack = {},
-            onDetail = {},
+            onDetail = { _, _ -> /* Preview에서는 동작 없음 */ },
             onCancel = {},
             onJoin = {},
             onAiAnalyze = {}
@@ -198,12 +240,14 @@ private fun Preview_Current_Live() {
                     coachIntro = "유연성/자세 전문가",
                     timeText = "오후 3:00 ~ 4:00",
                     classIntro = "자세 교정/체형 교정",
-                    isLive = true
+                    isLive = true,
+                    startAtIso = null,
+                    sessionId = null
                 )
             ),
             past = emptyList(),
             onBack = {},
-            onDetail = {},
+            onDetail = { _, _ -> /* Preview에서는 동작 없음 */ },
             onCancel = {},
             onJoin = {},
             onAiAnalyze = {}

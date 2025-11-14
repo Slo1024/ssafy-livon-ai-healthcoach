@@ -65,6 +65,7 @@ fun MemberHomeRoute(
     upcomingReservations: List<ReservationUi> = emptyList(),
     companyName: String? = "ACME Corp.",
     nickname: String? = null,
+    profileImageUri: android.net.Uri? = null,
     modifier: Modifier = Modifier
 ) {
     val mainBlue = Color(0xFF0F74FF)
@@ -119,6 +120,7 @@ fun MemberHomeRoute(
                     .padding(horizontal = 20.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Show server-provided profile image if available, otherwise fallback to ic_noprofile
                 Card(shape = RoundedCornerShape(999.dp), modifier = Modifier.size(54.dp)) {
                     Box(
                         contentAlignment = Alignment.Center,
@@ -126,11 +128,13 @@ fun MemberHomeRoute(
                             .fillMaxSize()
                             .background(Color(0xFFEFEFEF))
                     ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_noprofile),
+                        val painter = profileImageUri?.let { coil.compose.rememberAsyncImagePainter(it) }
+                            ?: painterResource(id = R.drawable.ic_noprofile)
+                        androidx.compose.foundation.Image(
+                            painter = painter,
                             contentDescription = "profile",
-                            tint = Color.Unspecified,
-                            modifier = Modifier.size(28.dp)
+                            modifier = Modifier.size(54.dp),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
                         )
                     }
                 }

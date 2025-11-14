@@ -1,7 +1,7 @@
-package com.s406.livon.domain.ai.client;
+package com.s406.livon.domain.ai.gms.client;
 
-import com.s406.livon.domain.ai.dto.gms.GmsChatCompletionRequest;
-import com.s406.livon.domain.ai.dto.gms.GmsChatCompletionResponse;
+import com.s406.livon.domain.ai.gms.dto.gms.GmsChatCompletionRequest;
+import com.s406.livon.domain.ai.gms.dto.gms.GmsChatCompletionResponse;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -46,4 +46,10 @@ public interface ParticipantRepository extends JpaRepository<Participant, Long> 
      * 특정 상담의 참여자 목록 조회
      */
     List<Participant> findParticipantByConsultationId(Long consultationId);
+
+    @Query("select count(p) from Participant p " +
+            "where p.consultation.id = :cid and p.user.id <> :coachId")
+    long countMembersExcludingCoach(@Param("cid") Long consultationId,
+                                    @Param("coachId") UUID coachId);
+
 }

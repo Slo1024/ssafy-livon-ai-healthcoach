@@ -52,6 +52,7 @@ data class MyInfoUiState(
     val gender: String?,                 // "남성", "여성" 등 (없으면 null)
     val birthday: String?,               // 예) "2000년 01월 23일" (포맷은 외부에서 처리)
     val profileImageUri: Uri?,           // ProfileSelectScreen에서 고른 이미지 (없으면 null)
+    val organizations: String?,          // 소속/회사명 (있을 수도 있고 없을 수도 있음)
 
     // 건강 정보/생활 습관 (없을 수도 있으니 null 허용)
     val heightCm: String?,               // "170cm" 형태로 넘겨도 되고, 숫자만 넘겨도 됨
@@ -328,6 +329,7 @@ private fun PreviewMyInfoScreen_Default() = PreviewSurface {
             gender = "남성",
             birthday = "20XX년 XX월 XX일",
             profileImageUri = null, // 등록 안 했으면 null → ic_noprofile 사용
+            organizations = null,
             heightCm = "170",
             weightKg = "70",
             condition = "고혈압",
@@ -357,6 +359,7 @@ private fun PreviewMyInfoScreen_Modal() = PreviewSurface {
             gender = "남성",
             birthday = "20XX년 XX월 XX일",
             profileImageUri = null,
+            organizations = null,
             heightCm = "170",
             weightKg = "70",
             condition = "고혈압",

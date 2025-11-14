@@ -11,7 +11,7 @@ import {
 import { useAuth } from "../../hooks/useAuth";
 import { ROUTES } from "../../constants/routes";
 import {
-  getGroupConsultationsApi,
+  getMyGroupConsultationsApi,
   deleteGroupConsultationApi,
   GroupConsultationListItem,
 } from "../../api/classApi";
@@ -34,6 +34,24 @@ const PageTitle = styled.h1`
   font-size: 40px;
   color: #000000;
   margin: 0 0 24px 0;
+  text-align: left;
+
+  @media (max-width: 1200px) {
+    text-align: center;
+    font-size: 34px;
+  }
+
+  @media (max-width: 900px) {
+    font-size: 30px;
+  }
+
+  @media (max-width: 768px) {
+    font-size: 26px;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 24px;
+  }
 `;
 
 const TabsAndFilterContainer = styled.div`
@@ -54,16 +72,6 @@ const FilterDropdown = styled.div`
   align-items: center;
   min-width: 180px;
   margin-left: auto;
-`;
-
-const Divider = styled.div`
-  width: 100vw;
-  height: 2px;
-  background-color: #4965f6;
-  margin: 0;
-  position: relative;
-  left: 50%;
-  transform: translateX(-50%);
 `;
 
 const ClassTable = styled.table`
@@ -89,10 +97,12 @@ const TableHeaderCell = styled.th`
   }
   &:nth-child(2) {
     width: auto;
+    white-space: nowrap;
+    word-break: keep-all;
   }
   &:nth-child(3) {
     width: 150px;
-    text-align: right;
+    text-align: center;
   }
   &:nth-child(4) {
     width: 200px;
@@ -104,9 +114,10 @@ const TableBody = styled.tbody``;
 
 const TableRow = styled.tr`
   border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.2s ease;
 
   &:hover {
-    background-color: #f9fafb;
+    background-color: transparent;
   }
 `;
 
@@ -115,13 +126,34 @@ const TableCell = styled.td`
   font-size: 14px;
   color: #111827;
 
+  &:nth-child(2) {
+    white-space: nowrap;
+    word-break: keep-all;
+  }
   &:nth-child(3) {
-    text-align: right;
+    text-align: center;
     color: #6b7280;
   }
   &:nth-child(4) {
     text-align: right;
   }
+`;
+
+const DateTimeContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  line-height: 1.4;
+`;
+
+const DateText = styled.div`
+  font-weight: 500;
+  color: #111827;
+`;
+
+const TimeText = styled.div`
+  font-size: 13px;
+  color: #6b7280;
 `;
 
 const ActionButtonContainer = styled.div`
@@ -181,6 +213,42 @@ const EmptyMessage = styled.div`
   font-size: 16px;
 `;
 
+// 날짜 포맷팅 함수
+const formatDate = (dateString: string): string => {
+  try {
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  } catch (e) {
+    return dateString;
+  }
+};
+
+// 시간 포맷팅 함수
+const formatTime = (startAt: string, endAt: string): string => {
+  try {
+    const startDate = new Date(startAt);
+    const endDate = new Date(endAt);
+    
+    const startHours = String(startDate.getHours()).padStart(2, "0");
+    const startMinutes = String(startDate.getMinutes()).padStart(2, "0");
+    const endHours = String(endDate.getHours()).padStart(2, "0");
+    const endMinutes = String(endDate.getMinutes()).padStart(2, "0");
+    
+    return `${startHours}:${startMinutes} ~ ${endHours}:${endMinutes}`;
+  } catch (e) {
+    return "";
+  }
+};
+
+// 에러 메시지 상수
+const ERROR_MESSAGES = {
+  FETCH_FAILED: "클래스 목록을 불러오는데 실패했습니다.",
+  DELETE_FAILED: "클래스 삭제에 실패했습니다.",
+} as const;
+
 export const ClassListPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, isLoading } = useAuth();
@@ -207,7 +275,6 @@ export const ClassListPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  const [totalItems, setTotalItems] = useState(0);
   const pageSize = 10;
 
   const nickname = user?.nickname || "";
@@ -215,39 +282,23 @@ export const ClassListPage: React.FC = () => {
     ? `${nickname} 코치님의 클래스`
     : "코치님의 클래스";
 
-  // 날짜 포맷팅 함수
-  const formatDate = (dateString: string): string => {
-    try {
-      const date = new Date(dateString);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
-      return `${year}-${month}-${day}`;
-    } catch (e) {
-      return dateString;
-    }
-  };
-
   // 클래스 목록 가져오기
   const fetchClasses = async (page: number = 0) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await getGroupConsultationsApi(false, page, pageSize);
+      const response = await getMyGroupConsultationsApi(page, pageSize);
 
       if (response.isSuccess && response.result) {
         setClasses(response.result.items);
         setCurrentPage(response.result.page);
         setTotalPages(response.result.totalPages);
-        setTotalItems(response.result.totalItems);
       } else {
-        setError(response.message || "클래스 목록을 불러오는데 실패했습니다.");
+        setError(response.message || ERROR_MESSAGES.FETCH_FAILED);
       }
     } catch (err) {
       const errorMessage =
-        err instanceof Error
-          ? err.message
-          : "클래스 목록을 불러오는데 실패했습니다.";
+        err instanceof Error ? err.message : ERROR_MESSAGES.FETCH_FAILED;
       setError(errorMessage);
       console.error("클래스 목록 조회 오류:", err);
     } finally {
@@ -267,9 +318,13 @@ export const ClassListPage: React.FC = () => {
     }
   };
 
-  const handleListClick = () => {
-    setActiveTab("list");
+  // 모달 닫기 핸들러
+  const closeDeleteModal = () => {
+    setShowDeleteConfirmModal(false);
+    setDeletingClassId(null);
   };
+
+  const handleListClick = () => setActiveTab("list");
 
   const handleSetupClick = () => {
     setActiveTab("setup");
@@ -290,7 +345,7 @@ export const ClassListPage: React.FC = () => {
     setShowDeleteConfirmModal(true);
   };
 
-  const handleSave = (data: {
+  const handleSave = (_data: {
     name: string;
     description: string;
     targetMember: string;
@@ -317,13 +372,13 @@ export const ClassListPage: React.FC = () => {
         // 삭제 후 목록 새로고침
         fetchClasses(currentPage);
       } else {
-        setError(response.message || "클래스 삭제에 실패했습니다.");
+        setError(response.message || ERROR_MESSAGES.DELETE_FAILED);
         setShowDeleteConfirmModal(false);
         setDeletingClassId(null);
       }
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : "클래스 삭제에 실패했습니다.";
+        err instanceof Error ? err.message : ERROR_MESSAGES.DELETE_FAILED;
       setError(errorMessage);
       setShowDeleteConfirmModal(false);
       setDeletingClassId(null);
@@ -366,8 +421,6 @@ export const ClassListPage: React.FC = () => {
           </FilterDropdown>
         </TabsAndFilterContainer>
 
-        <Divider />
-
         {loading ? (
           <LoadingMessage>클래스 목록을 불러오는 중...</LoadingMessage>
         ) : error ? (
@@ -381,16 +434,21 @@ export const ClassListPage: React.FC = () => {
                 <tr>
                   <TableHeaderCell>번호</TableHeaderCell>
                   <TableHeaderCell>클래스명</TableHeaderCell>
-                  <TableHeaderCell>개설일</TableHeaderCell>
+                  <TableHeaderCell>진행 일시</TableHeaderCell>
                   <TableHeaderCell></TableHeaderCell>
                 </tr>
               </TableHeader>
               <TableBody>
                 {classes.map((classItem, index) => (
                   <TableRow key={classItem.id}>
-                    <TableCell>{currentPage * pageSize + index + 1}</TableCell>
+                    <TableCell>{index + 1}</TableCell>
                     <TableCell>{classItem.title}</TableCell>
-                    <TableCell>{formatDate(classItem.startAt)} 개설</TableCell>
+                    <TableCell>
+                      <DateTimeContainer>
+                        <DateText>{formatDate(classItem.startAt)}</DateText>
+                        <TimeText>{formatTime(classItem.startAt, classItem.endAt)}</TimeText>
+                      </DateTimeContainer>
+                    </TableCell>
                     <TableCell>
                       <ActionButtonContainer>
                         <Button
@@ -457,22 +515,20 @@ export const ClassListPage: React.FC = () => {
       </ContentWrapper>
 
       {/* 클래스 정보 수정 모달 */}
-      <ClassEditModal
-        open={showEditModal}
-        onClose={() => setShowEditModal(false)}
-        classNameData={
-          editingClass
-            ? {
-                name: editingClass.title,
-                description: "",
-                targetMember: "",
-                dateTime: formatDate(editingClass.startAt),
-                file: editingClass.imageUrl || "",
-              }
-            : undefined
-        }
-        onSave={handleSave}
-      />
+      {editingClass && (
+        <ClassEditModal
+          open={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          classNameData={{
+            name: editingClass.title,
+            description: "",
+            targetMember: "",
+            dateTime: `${formatDate(editingClass.startAt)} ${formatTime(editingClass.startAt, editingClass.endAt)}`,
+            file: editingClass.imageUrl || "",
+          }}
+          onSave={handleSave}
+        />
+      )}
 
       {/* 저장 확인 모달 */}
       <ConfirmModal
@@ -484,10 +540,7 @@ export const ClassListPage: React.FC = () => {
       {/* 삭제 확인 모달 */}
       <DeleteConfirmModal
         open={showDeleteConfirmModal}
-        onClose={() => {
-          setShowDeleteConfirmModal(false);
-          setDeletingClassId(null);
-        }}
+        onClose={closeDeleteModal}
         onConfirm={handleDeleteConfirm}
       />
 

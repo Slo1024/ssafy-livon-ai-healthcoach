@@ -32,7 +32,8 @@ import com.livon.app.ui.preview.PreviewSurface
 @Composable
 fun MyPageScreen(
     modifier: Modifier = Modifier,
-    userName: String = "김싸피",
+    userName: String? = "김싸피",
+    profileImageUri: Uri? = null,
     onBack: () -> Unit = {},
     onClickHealthInfo: () -> Unit = {},
     onClickFaq: () -> Unit = {}
@@ -70,7 +71,9 @@ fun MyPageScreen(
                         .border(0.8.dp, MaterialTheme.colorScheme.outline, CircleShape)
                 )
 
+                // Priority: user-picked image > profileImageUri from server > ic_noprofile
                 val painter = selectedImageUri?.let { rememberAsyncImagePainter(it) }
+                    ?: profileImageUri?.let { rememberAsyncImagePainter(it) }
                     ?: painterResource(id = R.drawable.ic_noprofile)
 
                 Image(
@@ -99,7 +102,7 @@ fun MyPageScreen(
             Spacer(Modifier.height(40.dp))
 
             Text(
-                text = userName,
+                text = userName ?: "회원님",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
             )
         }

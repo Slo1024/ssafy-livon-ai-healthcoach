@@ -50,6 +50,7 @@ fun ClassCard(
     classInfo: SampleClassInfo,
     onCardClick: () -> Unit,
     onCoachClick: () -> Unit,
+    enabled: Boolean = true // 새 파라미터: 만원일 때 false로 전달
 ) {
     val isClosed = classInfo.currentParticipants >= classInfo.maxParticipants
     val remainingCount = classInfo.maxParticipants - classInfo.currentParticipants
@@ -60,7 +61,7 @@ fun ClassCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onCardClick) // 전체 영역을 클릭 가능하게 합니다.
+            .clickable(enabled = enabled, onClick = onCardClick)
             .padding(vertical = 12.dp) // 위아래에 패딩을 줍니다. (기존 Card의 내부 패딩과 유사한 효과)
     ) {
         // 상단 정보: 날짜, 시간, 클래스 유형
@@ -181,7 +182,8 @@ private fun ClassCardPreview() {
             ClassCard(
                 classInfo = sampleClass,
                 onCardClick = {},
-                onCoachClick = {}
+                onCoachClick = {},
+                enabled = true
             )
         }
     }
@@ -208,7 +210,8 @@ private fun ClassCardClosedPreview() {
             ClassCard(
                 classInfo = sampleClass,
                 onCardClick = {},
-                onCoachClick = {}
+                onCoachClick = {},
+                enabled = true
             )
         }
     }

@@ -5,34 +5,25 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import com.livon.app.R
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import com.livon.app.feature.member.reservation.ui.*
-import com.livon.app.feature.member.my.MyPageScreen
-import com.livon.app.feature.member.my.MyInfoScreen
-import com.livon.app.feature.member.my.MyInfoUiState
-import java.net.URLDecoder
-import java.time.LocalDate
-import com.livon.app.feature.member.reservation.vm.ClassReservationViewModel
+import com.livon.app.feature.shared.auth.ui.SignupState
 import com.livon.app.feature.member.home.ui.MemberHomeRoute
 import com.livon.app.feature.member.home.ui.DataMetric
-
-// UI imports
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.mutableStateOf
+import com.livon.app.feature.member.reservation.vm.ClassReservationViewModel
+import com.livon.app.feature.member.reservation.ui.SampleClassInfo
+import androidx.compose.ui.platform.LocalContext
+import java.net.URLDecoder
+import java.time.LocalDate
 import android.util.Log
 import android.widget.Toast
-import com.livon.app.feature.member.reservation.ui.ReservationDetailType
-import com.livon.app.feature.member.reservation.ui.CoachMini
-import com.livon.app.feature.member.reservation.ui.SessionInfo
 
-import com.livon.app.feature.shared.auth.ui.SignupState
+// UI imports
+import androidx.compose.ui.Modifier
 
 @Suppress("unused")
 fun isDebugBuild(): Boolean {
@@ -314,7 +305,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         LaunchedEffect(Unit) { userVm.load() }
 
         // Get context for Intent
-        val context = androidx.compose.ui.platform.LocalContext.current
+        val context = LocalContext.current
 
         // 디버그 로그
         try {
@@ -490,7 +481,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         val vmState by vm.uiState.collectAsState()
         LaunchedEffect(Unit) { vm.loadClasses() }
 
-        val classesToShow = if (vmState.items.isNotEmpty()) vmState.items else emptyList()
+        val classesToShow = if (vmState.items.isNotEmpty()) vmState.items else emptyList<SampleClassInfo>()
 
         ClassReservationScreen(
             classes = classesToShow,
@@ -504,7 +495,6 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
     composable("class_detail/{classId}") { backStackEntry ->
         val classId = backStackEntry.arguments?.getString("classId") ?: ""
 
-        // fetch class detail (network-backed)
         val groupApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.GroupConsultationApiService::class.java)
         val groupRepo = remember { com.livon.app.domain.repository.GroupConsultationRepository(groupApi) }
 
@@ -526,7 +516,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             }
         }
 
-        // Reservation ViewModel to perform reserveClass
+        // Reservation VM for class reservation
         val reservationRepoForClass = remember { com.livon.app.data.repository.ReservationRepositoryImpl() }
         val reservationVmForClass = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
@@ -535,123 +525,61 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             }
         }) as com.livon.app.feature.member.reservation.vm.ReservationViewModel
 
-        val actionState by reservationVmForClass.actionState.collectAsState()
+        val actionStateByClass by reservationVmForClass.actionState.collectAsState()
+        val ctx = LocalContext.current
 
-        // navigate to reservations when action completes (success)
-        LaunchedEffect(actionState.success) {
-            if (actionState.success == true) {
-                nav.navigate(Routes.Reservations) { popUpTo(Routes.MemberHome) { inclusive = false } }
-            }
-        }
-
-        if (loadingDetail.value) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-        } else {
-            val item = detailState.value
-            if (item != null) {
-                // show ClassDetailScreen; reservation confirmation handled in separate route 'class_confirm/{classId}'
-                ClassDetailScreen(
-                    className = item.className,
-                    coachName = item.coachName,
-                    classInfo = item.description,
-                    onBack = { nav.popBackStack() },
-                    // Directly call reserveClass on the ViewModel. No fallback navigation to class_confirm —
-                    // we want only the local confirmation modal in ClassDetailScreen to appear.
-                    onReserveClick = {
-                        try { Log.d("MemberNavGraph", "ClassDetailScreen onReserveClick invoked for classId=${item.id}") } catch (_: Throwable) {}
-                        try {
-                            reservationVmForClass.reserveClass(item.id, emptyList())
-                        } catch (_: Throwable) { /* ignore: unable to reserve */ }
-                    },
-                    onNavigateHome = { nav.navigate(Routes.MemberHome) },
-                    onNavigateToMyPage = { nav.navigate(Routes.MyPage) },
-                    imageResId = R.drawable.ic_classphoto,
-                    imageUrl = item.imageUrl,
-                    navController = nav
-                )
-            } else {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = errorDetail.value ?: "클래스 정보를 불러올 수 없습니다.")
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = { nav.popBackStack() }) { Text(text = "뒤로가기") }
-                    }
+        // Navigate to reservations when class reservation succeeds or when repository indicates ALREADY_RESERVED
+        LaunchedEffect(actionStateByClass.success, actionStateByClass.errorMessage) {
+            val err = actionStateByClass.errorMessage ?: ""
+            try {
+                if (actionStateByClass.success == true) {
+                    try {
+                        nav.navigate(Routes.Reservations) { popUpTo(Routes.MemberHome) { inclusive = false } }
+                    } catch (_: Throwable) { /* ignore navigation errors */ }
+                } else if (actionStateByClass.success == false && (err.contains("이미 예약") || err.contains("ALREADY_RESERVED") || err.contains("이미 예약된"))) {
+                    // refresh will have been called by VM; navigate to Reservations so user sees it
+                    try {
+                        nav.navigate(Routes.Reservations) { popUpTo(Routes.MemberHome) { inclusive = false } }
+                    } catch (_: Throwable) { /* ignore */ }
+                    try {
+                        Toast.makeText(ctx, "이미 예약된 클래스입니다.", Toast.LENGTH_SHORT).show()
+                    } catch (_: Throwable) { /* ignore */ }
                 }
-            }
-        }
-    }
-
-    // --- ADD: mypage route
-    composable(Routes.MyPage) {
-        // create a lightweight user repo/vm or reuse existing UserViewModel in MemberHome
-        val userApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.UserApiService::class.java)
-        val userRepo = remember { com.livon.app.domain.repository.UserRepository(userApi) }
-        val userVm = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                return com.livon.app.feature.member.home.vm.UserViewModel(userRepo) as T
-            }
-        }) as com.livon.app.feature.member.home.vm.UserViewModel
-
-        val state by userVm.uiState.collectAsState()
-        LaunchedEffect(Unit) { userVm.load() }
-
-        MyPageScreen(
-            userName = state.info?.nickname,
-            profileImageUri = state.info?.profileImageUri,
-            onBack = { nav.popBackStack() },
-            onClickHealthInfo = { nav.navigate(Routes.MyInfo) }
-        )
-    }
-
-    // --- ADD: my info route
-    composable(Routes.MyInfo) {
-        val userApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.UserApiService::class.java)
-        val userRepo = remember { com.livon.app.domain.repository.UserRepository(userApi) }
-        val userVm = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                return com.livon.app.feature.member.home.vm.UserViewModel(userRepo) as T
-            }
-        }) as com.livon.app.feature.member.home.vm.UserViewModel
-
-        val state by userVm.uiState.collectAsState()
-        LaunchedEffect(Unit) { userVm.load() }
-
-        // observe savedStateHandle.health_updated so we reload when the health flow posts updates
-        val backEntry = nav.currentBackStackEntry
-        val saved = backEntry?.savedStateHandle
-        val healthUpdatedFlow = remember(saved) { saved?.getStateFlow("health_updated", false) }
-        val healthUpdated by (healthUpdatedFlow?.collectAsState(initial = false) ?: remember { mutableStateOf(false) })
-        LaunchedEffect(healthUpdated) {
-            if (healthUpdated) {
-                userVm.load()
-                // clear flag so it doesn't re-trigger repeatedly
-                saved?.remove<Boolean>("health_updated")
+            } catch (_: Throwable) {
+                // ignore
             }
         }
 
-        MyInfoScreen(
-            state = state.info ?: MyInfoUiState(nickname = "회원", gender = null, birthday = null, profileImageUri = null, organizations = null,
-                heightCm = null, weightKg = null, condition = null, sleepQuality = null, medication = null, painArea = null,
-                stress = null, smoking = null, alcohol = null, sleepHours = null, activityLevel = null, caffeine = null),
-            onBack = { nav.popBackStack() },
-            onEditClick = { /* handled by modal inside screen */ },
-            onEditConfirm = {
-                // mark origin so AppNavGraph can find it and set health_updated on return
-                val entry = nav.currentBackStackEntry
-                entry?.savedStateHandle?.set("myinfo_origin", true)
-                nav.navigate(Routes.HealthHeight)
-            }
-        )
-    }
+        // check if coming back from health flow and modal should be re-opened
+        val reopenDialog = backStackEntry.savedStateHandle.get<Boolean>("health_updated") ?: false
+        // clear the flag so it doesn't reopen every time
+        try { backStackEntry.savedStateHandle.remove<Boolean>("health_updated") } catch (_: Throwable) {}
 
-    // AI result screen route
-    composable("ai_result/{memberName}/{dateText}/{counselName}/{aiSummary}") { backEntry ->
-        val member = backEntry.arguments?.getString("memberName")?.let { URLDecoder.decode(it, "UTF-8") } ?: "회원"
-        val dateText = backEntry.arguments?.getString("dateText")?.let { URLDecoder.decode(it, "UTF-8") } ?: ""
-        val counselName = backEntry.arguments?.getString("counselName")?.let { URLDecoder.decode(it, "UTF-8") } ?: ""
-        val summary = backEntry.arguments?.getString("aiSummary")?.let { URLDecoder.decode(it, "UTF-8") } ?: ""
-        com.livon.app.feature.member.schedule.ui.AiResultScreen(memberName = member, counselingDateText = dateText, counselingName = counselName, aiSummary = summary, onBack = { nav.popBackStack() })
+        ClassDetailScreen(
+               className = detailState.value?.className ?: "",
+               coachName = detailState.value?.coachName ?: "",
+               classInfo = detailState.value?.description ?: "",
+               onBack = { nav.popBackStack() },
+               onReserveClick = {
+                   try { Log.d("MemberNavGraph", "ClassDetailScreen onReserveClick -> reserveClass for classId=$classId") } catch (_: Throwable) {}
+                   // call reserveClass with empty qnas for now (ClassDetail doesn't collect qnas)
+                   reservationVmForClass.reserveClass(classId, emptyList())
+               },
+             isSubmitting = (actionStateByClass.isLoading == true),
+             onChangeHealthInfo = {
+                 // set marker so health flow can return here and reopen dialog
+                 try { SignupState.qnaMarkerRoute = "class_detail/$classId" } catch (_: Throwable) {}
+                 try { nav.navigate(Routes.HealthHeight) } catch (_: Throwable) {}
+             },
+             initialShowReserveDialog = reopenDialog,
+             onNavigateHome = { nav.navigate(Routes.MemberHome) },
+             onNavigateToMyPage = { nav.navigate(Routes.MyPage) },
+             imageResId = R.drawable.ic_classphoto,
+             imageUrl = detailState.value?.imageUrl ?: "",
+             navController = nav,
+             // pass shared vm so screens can reuse cached reservations
+             // (screens which accept it will use it; others ignore)
+             // Note: reservationVmForClass remains for the actual reserveClass call to avoid interfering with shared vm
+         )
     }
 }

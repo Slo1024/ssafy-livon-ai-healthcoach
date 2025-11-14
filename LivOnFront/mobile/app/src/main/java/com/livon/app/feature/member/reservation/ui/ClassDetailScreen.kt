@@ -44,13 +44,16 @@ fun ClassDetailScreen(
     classInfo: String,
     onBack: () -> Unit,
     onReserveClick: () -> Unit,
+    onChangeHealthInfo: () -> Unit = {},
+    initialShowReserveDialog: Boolean = false,
+    isSubmitting: Boolean = false,
     onNavigateHome: () -> Unit,
     onNavigateToMyPage: () -> Unit,
     imageResId: Int = R.drawable.ic_classphoto, // 샘플: 실제에선 이미지 리소스/URL 연동
     imageUrl: String? = null, // 서버에서 전달되는 이미지 URL 있으면 우선 사용
     navController: NavHostController? = null // optional nav controller to let HomeNavBar navigate directly
 ) {
-    var showReserveDialog by remember { mutableStateOf(false) }
+    var showReserveDialog by remember { mutableStateOf(initialShowReserveDialog) }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0),
@@ -69,10 +72,10 @@ fun ClassDetailScreen(
                     .padding(WindowInsets.navigationBars.add(WindowInsets.ime).asPaddingValues())
             ) {
                 PrimaryButtonBottom(
-                    text = "예약 하기",
+                    text = if (isSubmitting) "예약 중..." else "예약 하기",
+                    enabled = !isSubmitting,
                     onClick = {
-                        // show confirmation modal here; onConfirm will call onReserveClick
-                        showReserveDialog = true
+                        if (!isSubmitting) showReserveDialog = true
                     },
                     bottomMargin = 0.dp,
                     applyNavPadding = false,
@@ -212,9 +215,9 @@ fun ClassDetailScreen(
                 onReserveClick()
             },
             onChangeHealthInfo = {
-                // If user wants to change health info, navigate via provided navController or caller
+                // If user wants to change health info, call the provided callback so the caller can navigate
                 showReserveDialog = false
-                try { navController?.let { /* let caller handle navigation by onReserveClick flow or separate handler */ } } catch (_: Throwable) {}
+                try { onChangeHealthInfo() } catch (_: Throwable) {}
             }
         )
     }

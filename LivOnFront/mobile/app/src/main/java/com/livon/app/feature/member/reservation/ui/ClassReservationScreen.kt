@@ -10,28 +10,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.*
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.graphics.Color
+import androidx.navigation.NavHostController
 import com.livon.app.R
 import com.livon.app.feature.shared.auth.ui.CommonScreenC
 import com.livon.app.ui.component.button.PrimaryButtonBottom
 import com.livon.app.ui.component.calendar.CalendarMonth
 import com.livon.app.ui.component.overlay.TopBar
-import com.livon.app.ui.theme.LivonTheme
+import com.livon.app.ui.theme.Basic
 import java.time.LocalDate
 import java.time.YearMonth
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Icon
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.navigation.NavHostController
-import com.livon.app.ui.theme.Basic
-import com.livon.app.ui.theme.BorderBlack
-import com.livon.app.ui.theme.Unclickable
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,13 +48,13 @@ fun ClassReservationScreen(
     LaunchedEffect(Unit) {
         try {
             val repo = com.livon.app.data.repository.ReservationRepositoryImpl()
-            val res = try { repo.getMyReservations(status = "upcoming", type = null) } catch (t: Throwable) { Result.failure(t) }
+            val res = try { repo.getMyReservations(status = "upcoming", type = null) } catch (t: Throwable) { Result.failure<com.livon.app.data.remote.api.ReservationListResponse>(t) }
             if (res.isSuccess) {
                 val body = res.getOrNull()
-                val ids = body?.items?.mapNotNull { it.consultationId?.toString() }?.toSet() ?: emptySet()
+                val ids = body?.items?.map { it.consultationId.toString() }?.toSet() ?: emptySet()
                 reservedClassIds.value = ids
             }
-        } catch (_: Throwable) { /* ignore */ }
+        } catch (t: Throwable) { android.util.Log.w("ClassReservationScreen", "failed to load my reservations", t) }
     }
 
     CommonScreenC(
@@ -110,7 +102,7 @@ fun ClassReservationScreen(
                             classInfo = item,
                             onCardClick = {
                                 if (isClosed || isUserReserved) {
-                                    try { android.util.Log.d("ClassReservationScreen", "class ${item.id} is full or already reserved by user; navigation blocked") } catch (_: Throwable) {}
+                                    try { android.util.Log.d("ClassReservationScreen", "class ${item.id} is full or already reserved by user; navigation blocked") } catch (t: Throwable) { android.util.Log.w("ClassReservationScreen","log failed", t) }
                                     // no-op if full or already reserved
                                 } else {
                                     if (navController != null) {
@@ -128,11 +120,10 @@ fun ClassReservationScreen(
                                 // Debug logging: show submitted coachId and guard empty ids
                                 try {
                                     android.util.Log.d("ClassReservationScreen", "CoachView clicked: coachId=${item.coachId}")
-                                } catch (t: Throwable) { }
-                                if (item.coachId.isNullOrBlank()) {
-                                    android.util.Log.w("ClassReservationScreen", "coachId is blank; cannot navigate to coach detail")
-                                }
-                                onCoachClick(item.coachId)
+                                } catch (t: Throwable) { android.util.Log.w("ClassReservationScreen","log failed", t) }
+                                val coachIdArg = if (item.coachId.isNullOrBlank()) "" else item.coachId
+                                if (coachIdArg.isBlank()) android.util.Log.w("ClassReservationScreen", "coachId is blank; cannot navigate to coach detail")
+                                onCoachClick(coachIdArg)
                             }
                             , enabled = !isClosed && !isUserReserved
                         )
@@ -267,35 +258,3 @@ private fun CalendarSheetContent(
         }
     }
 }
-
-
-
-/* --- 샘플 데이터 (프리뷰용) --- */
-private fun sampleItemsForPreview() = listOf(
-    SampleClassInfo(
-        id = "1",
-        coachId = "c1",
-        date = LocalDate.now(),
-        time = "11:00 ~ 12:00",
-        type = "일반 클래스",
-        imageUrl = null,
-        className = "직장인을 위한 코어 강화",
-        coachName = "김리본 코치",
-        description = "점심시간 30분 집중 코어 운동.",
-        currentParticipants = 7,
-        maxParticipants = 10
-    ),
-    SampleClassInfo(
-        id = "2",
-        coachId = "c2",
-        date = LocalDate.now().plusDays(1),
-        time = "19:00 ~ 20:00",
-        type = "기업 클래스",
-        imageUrl = null,
-        className = "퇴근 후 스트레칭",
-        coachName = "박생존 코치",
-        description = "힐링 스트레칭.",
-        currentParticipants = 10,
-        maxParticipants = 10
-    )
-)

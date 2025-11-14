@@ -281,19 +281,21 @@ class ReservationViewModel(
                     }
 
                     if (isAlreadyReserved(ex)) {
+                        // Refresh upcoming list so UI shows the reservation, but do NOT mark as success
+                        // to prevent composables (which auto-navigate on success) from opening another modal/route.
                         loadUpcoming()
-                        _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null)
+                        _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = "이미 예약된 시간입니다")
                     } else {
                         val msg = ex?.message ?: "알 수 없는 오류"
                         try { Log.e("ReservationVM", "reserveClass failed: $msg", ex) } catch (_: Throwable) {}
                         _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = msg)
                     }
-                }
-            } catch (t: Throwable) {
-                _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = t.message)
-            }
-        }
-    }
+                 }
+             } catch (t: Throwable) {
+                 _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = t.message)
+             }
+         }
+     }
 
     // cancel APIs (기존 코드 유지)
     fun cancelIndividual(consultationId: Int) {

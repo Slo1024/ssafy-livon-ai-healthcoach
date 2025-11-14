@@ -63,8 +63,8 @@ fun CoachDetailScreen(
     // Combine server-side upcoming reservations and local cache updates to compute reserved tokens.
     LaunchedEffect(coachId) {
         val repo = com.livon.app.data.repository.ReservationRepositoryImpl()
-        // 1) fetch server-side upcoming reservations once and extract tokens
-        val serverTokens = mutableSetOf<String>()
+        // Fetch server-side upcoming reservations once and build a map of date->tokens
+        val serverMap = mutableMapOf<LocalDate, MutableSet<String>>()
         try {
             val res = try { repo.getMyReservations(status = "upcoming", type = null) } catch (t: Throwable) { Result.failure<com.livon.app.data.remote.api.ReservationListResponse>(t) }
             if (res.isSuccess) {
@@ -76,6 +76,7 @@ fun CoachDetailScreen(
                             val startIso = dto.startAt
                             if (!startIso.isNullOrBlank()) {
                                 val start = java.time.LocalDateTime.parse(startIso)
+                                val date = start.toLocalDate()
                                 val token = if (start.hour < 12) {
                                     val h = if (start.hour % 12 == 0) 12 else (start.hour % 12)
                                     "AM_${h}:00"
@@ -84,7 +85,7 @@ fun CoachDetailScreen(
                                     val h = if (hh == 0) 12 else hh
                                     "PM_${h}:00"
                                 }
-                                serverTokens.add(token)
+                                serverMap.getOrPut(date) { mutableSetOf() }.add(token)
                             }
                         }
                     } catch (_: Throwable) { }
@@ -92,39 +93,12 @@ fun CoachDetailScreen(
             }
         } catch (_: Throwable) { /* ignore server fetch errors */ }
 
-        // 2) collect local cache updates and merge with server tokens into a date->tokens map
+        // collect local cache updates and merge with the serverMap into a date->tokens map
         try {
             com.livon.app.data.repository.ReservationRepositoryImpl.localReservationsFlow.collect { localList: List<com.livon.app.data.repository.ReservationRepositoryImpl.LocalReservation> ->
                 val map = mutableMapOf<LocalDate, MutableSet<String>>()
-                // merge server-side tokens per date into map
-                try {
-                    // serverTokens were collected into a temporary set previously; better re-collect server-side with dates
-                    val srvRes = try { repo.getMyReservations(status = "upcoming", type = null) } catch (t: Throwable) { Result.failure<com.livon.app.data.remote.api.ReservationListResponse>(t) }
-                    if (srvRes.isSuccess) {
-                        val body = srvRes.getOrNull()
-                        body?.items?.forEach { dto ->
-                            try {
-                                val coachUserId = dto.coach?.userId
-                                if ((dto.type ?: "ONE") == "ONE" && coachUserId == coachId) {
-                                    val startIso = dto.startAt
-                                    if (!startIso.isNullOrBlank()) {
-                                        val start = java.time.LocalDateTime.parse(startIso)
-                                        val date = start.toLocalDate()
-                                        val token = if (start.hour < 12) {
-                                            val h = if (start.hour % 12 == 0) 12 else (start.hour % 12)
-                                            "AM_${h}:00"
-                                        } else {
-                                            val hh = start.hour % 12
-                                            val h = if (hh == 0) 12 else hh
-                                            "PM_${h}:00"
-                                        }
-                                        map.getOrPut(date) { mutableSetOf() }.add(token)
-                                    }
-                                }
-                            } catch (_: Throwable) { }
-                        }
-                    }
-                } catch (_: Throwable) { /* ignore */ }
+                // start with server map
+                serverMap.forEach { (d, tokens) -> map[d] = tokens.toMutableSet() }
 
                 // add local reservations into map
                 localList.forEach { lr ->

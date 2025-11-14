@@ -65,10 +65,16 @@ class ReservationRepositoryImpl : ReservationRepository {
         }
     }
 
-    // Adjusted to match interface: include preQna param (backend ignores it for class reservation)
     override suspend fun reserveClass(classId: String, preQna: String?): Result<Int> {
+        // Cache-first: if local cache already contains this class id, avoid hitting server
+        try {
+            val numericIdCheck = classId.toIntOrNull() ?: -(classId.hashCode())
+            if (localReservations.any { it.id == numericIdCheck }) {
+                return Result.success(numericIdCheck)
+            }
+        } catch (_: Throwable) { /* ignore */ }
+
         return try {
-            // backend does not expect a body for class reservation; log preQna for debugging
             if (preQna != null) {
                 Log.d("ReservationRepo", "reserveClass: preQna provided but ignored by API: $preQna")
             }
@@ -85,15 +91,15 @@ class ReservationRepositoryImpl : ReservationRepository {
                 )
                 // Emit updated reservations list
                 localReservationsFlow.emit(localReservations.toList())
+                // invalidate cached my-reservations so subsequent reads hit server or refresh
+                synchronized(cacheLock) { cachedMyReservations = null; cachedAt = 0 }
                 Result.success(res.result)
             } else Result.failure(Exception(res.message ?: "Unknown"))
         } catch (t: Throwable) {
-            // Improved error logging: if this is an HTTP exception, try to extract server error body
             try {
                 if (t is retrofit2.HttpException) {
                     val errorBody = try { t.response()?.errorBody()?.string() } catch (_: Throwable) { null }
                     Log.e("ReservationRepo", "reserveClass failed: http ${t.code()} ${t.message()} body=$errorBody", t)
-                    // if server indicates duplicate participant (DB unique constraint), mark as ALREADY_RESERVED
                     if (errorBody != null && (errorBody.contains("uk_participant_user_consultation") || errorBody.contains("Duplicate entry"))) {
                         Log.w("ReservationRepo", "reserveClass: duplicate participant detected -> returning ALREADY_RESERVED body=$errorBody")
                         // Attempt to enrich local cache entry with class detail (startAt/title/coach)
@@ -101,14 +107,13 @@ class ReservationRepositoryImpl : ReservationRepository {
                             val numericId = classId.toIntOrNull() ?: -(classId.hashCode())
                             val exists = localReservations.any { it.id == numericId }
                             if (!exists) {
-                                // try fetch class detail to get accurate start/end and names
                                 try {
-                                    val groupApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.GroupConsultationApiService::class.java)
+                                    val groupApi = RetrofitProvider.createService(com.livon.app.data.remote.api.GroupConsultationApiService::class.java)
                                     val detailRes = groupApi.findClassDetail(classId)
                                     if (detailRes.isSuccess && detailRes.result != null) {
                                         val dto = detailRes.result
-                                        val startIso = dto.startAt ?: java.time.LocalDateTime.now().format(fmt)
-                                        val endIso = dto.endAt ?: java.time.LocalDateTime.now().plusHours(1).format(fmt)
+                                        val startIso = dto.startAt ?: LocalDateTime.now().format(fmt)
+                                        val endIso = dto.endAt ?: LocalDateTime.now().plusHours(1).format(fmt)
                                         val title = dto.title
                                         val coachName = dto.coach?.nickname ?: dto.coach?.id ?: ""
                                         localReservations.add(
@@ -122,43 +127,39 @@ class ReservationRepositoryImpl : ReservationRepository {
                                                 coachName = coachName
                                             )
                                         )
-                                        // Emit updated reservations list after adding fallback entry
                                         localReservationsFlow.emit(localReservations.toList())
                                     } else {
-                                        // fallback minimal entry
                                         localReservations.add(
                                             LocalReservation(
                                                 id = numericId,
                                                 type = ReservationType.GROUP,
                                                 coachId = "",
-                                                startAt = java.time.LocalDateTime.now().format(fmt),
-                                                endAt = java.time.LocalDateTime.now().plusHours(1).format(fmt),
+                                                startAt = LocalDateTime.now().format(fmt),
+                                                endAt = LocalDateTime.now().plusHours(1).format(fmt),
                                                 classTitle = null,
                                                 coachName = null
                                             )
                                         )
-                                        // Emit updated reservations list after adding fallback entry
                                         localReservationsFlow.emit(localReservations.toList())
                                     }
                                 } catch (_: Throwable) {
-                                    // network/detail fetch failed: still add minimal local reservation
                                     localReservations.add(
                                         LocalReservation(
                                             id = numericId,
                                             type = ReservationType.GROUP,
                                             coachId = "",
-                                            startAt = java.time.LocalDateTime.now().format(fmt),
-                                            endAt = java.time.LocalDateTime.now().plusHours(1).format(fmt),
+                                            startAt = LocalDateTime.now().format(fmt),
+                                            endAt = LocalDateTime.now().plusHours(1).format(fmt),
                                             classTitle = null,
                                             coachName = null
                                         )
                                     )
-                                    // Emit updated reservations list after adding fallback entry
                                     localReservationsFlow.emit(localReservations.toList())
                                 }
                             }
                         } catch (_: Throwable) { }
-                        // Return a failure but with a sentinel message so ViewModel can act idempotently
+                        // invalidate cache to allow recovery fetch attempts later
+                        synchronized(cacheLock) { cachedMyReservations = null; cachedAt = 0 }
                         return Result.failure(Exception("ALREADY_RESERVED:${errorBody}"))
                     }
                     return Result.failure(Exception(errorBody ?: t.message))
@@ -182,6 +183,8 @@ class ReservationRepositoryImpl : ReservationRepository {
                 localReservations.removeAll { it.id == consultationId }
                 // Emit updated reservations list
                 localReservationsFlow.emit(localReservations.toList())
+                // invalidate cached my-reservations
+                synchronized(cacheLock) { cachedMyReservations = null; cachedAt = 0 }
                 Result.success(Unit)
             } else {
                 Result.failure(Exception(res.message ?: "Unknown"))
@@ -233,6 +236,8 @@ class ReservationRepositoryImpl : ReservationRepository {
                 localReservations.removeAll { it.id == consultationId }
                 // Emit updated reservations list
                 localReservationsFlow.emit(localReservations.toList())
+                // invalidate cached my-reservations
+                synchronized(cacheLock) { cachedMyReservations = null; cachedAt = 0 }
                 Result.success(Unit)
             } else Result.failure(Exception(res.message ?: "Unknown"))
         } catch (t: Throwable) {
@@ -270,13 +275,30 @@ class ReservationRepositoryImpl : ReservationRepository {
 
     // New: fetch reservations from server
     override suspend fun getMyReservations(status: String, type: String?): Result<com.livon.app.data.remote.api.ReservationListResponse> {
-        return try {
+        // Simple caching to avoid repeated network calls in a short period.
+        try {
+            val now = System.currentTimeMillis()
+            val ttl = 30_000L // 30 seconds
+            synchronized(cacheLock) {
+                val cached = cachedMyReservations
+                val ts = cachedAt
+                if (cached != null && ts + ttl >= now && status == cachedStatus && type == cachedType) {
+                    return Result.success(cached)
+                }
+            }
+
             val res = api.getMyReservations(status = status, type = type)
             if (res.isSuccess && res.result != null) {
-                Result.success(res.result)
-            } else Result.failure(Exception(res.message ?: "Unknown"))
+                synchronized(cacheLock) {
+                    cachedMyReservations = res.result
+                    cachedAt = System.currentTimeMillis()
+                    cachedStatus = status
+                    cachedType = type
+                }
+                return Result.success(res.result)
+            } else return Result.failure(Exception(res.message ?: "Unknown"))
         } catch (t: Throwable) {
-            Result.failure(t)
+            return Result.failure(t)
         }
     }
 
@@ -287,5 +309,20 @@ class ReservationRepositoryImpl : ReservationRepository {
         val localReservations: MutableList<LocalReservation> = mutableListOf()
         // Flow that emits a snapshot list whenever localReservations changes.
         val localReservationsFlow: MutableStateFlow<List<LocalReservation>> = MutableStateFlow(localReservations.toList())
+
+        // --- Caching for getMyReservations ---
+        // Cached result of the last getMyReservations call, null if not cached or cache expired.
+        @Volatile
+        var cachedMyReservations: com.livon.app.data.remote.api.ReservationListResponse? = null
+        // Timestamp of the last cache update
+        @Volatile
+        var cachedAt: Long = 0
+        // Cached status and type parameters for the last getMyReservations call
+        @Volatile
+        var cachedStatus: String? = null
+        @Volatile
+        var cachedType: String? = null
+        // lock object for synchronizing cache access
+        private val cacheLock = Any()
     }
 }

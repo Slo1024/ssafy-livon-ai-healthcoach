@@ -37,8 +37,14 @@ import { StreamingControls } from "../../components/streaming/button/StreamingCo
 import {
   ParticipantInfo,
   ParticipantDetail,
+  ParticipantModalData,
 } from "../../components/streaming/participant/ParticipantInfo";
-import { getParticipantInfoApi } from "../../api/reservationApi";
+import {
+  getParticipantInfoApi,
+  getCoachConsultationsApi,
+  CoachConsultation,
+  ParticipantInfoResponse,
+} from "../../api/reservationApi";
 
 const API_BASE_URL =
   CONFIG.API_BASE_URL ||
@@ -209,6 +215,13 @@ export const StreamingPage: React.FC = () => {
   >({});
   const [isLoadingParticipantInfo, setIsLoadingParticipantInfo] =
     useState(false);
+  
+  // 상담 정보 (preQna, aiSummary 포함)
+  const [consultationInfo, setConsultationInfo] = useState<CoachConsultation | null>(null);
+  const [isLoadingConsultationInfo, setIsLoadingConsultationInfo] = useState(false);
+  
+  // 참여자 정보 API 응답 저장 (ParticipantModalData 생성용)
+  const [participantInfoResponse, setParticipantInfoResponse] = useState<ParticipantInfoResponse | null>(null);
 
   // 참여자 정보를 API에서 가져오는 함수
   const fetchParticipantInfo = useCallback(async () => {
@@ -240,6 +253,9 @@ export const StreamingPage: React.FC = () => {
 
       console.log("🔵 [참여자 정보] API 응답:", participantInfo);
 
+      // ParticipantModalData 생성을 위해 응답 저장
+      setParticipantInfoResponse(participantInfo);
+
       // API 응답을 ParticipantDetail 형식으로 변환
       const memberInfo = participantInfo.memberInfo;
       const healthData = memberInfo.healthData;
@@ -264,15 +280,11 @@ export const StreamingPage: React.FC = () => {
       if (healthData.weight) {
         notesParts.push(`체중: ${healthData.weight}kg`);
       }
-      if (healthData.steps) {
+      if (typeof healthData.steps === "number") {
         notesParts.push(`일일 걸음 수: ${healthData.steps}걸음`);
       }
-      if (healthData.sleepTime) {
-        const hours = Math.floor(healthData.sleepTime / 60);
-        const minutes = healthData.sleepTime % 60;
-        notesParts.push(
-          `수면 시간: ${hours}시간 ${minutes > 0 ? `${minutes}분` : ""}`
-        );
+      if (typeof healthData.sleepTime === "number") {
+        notesParts.push(`수면 시간: ${healthData.sleepTime}시간`);
       }
       const notes = notesParts.join(", ");
 
@@ -285,8 +297,8 @@ export const StreamingPage: React.FC = () => {
         const bmi = healthData.weight / Math.pow(healthData.height / 100, 2);
         analysisSummary.push(`BMI: ${bmi.toFixed(1)}`);
       }
-      if (healthData.sleepTime) {
-        const sleepHours = healthData.sleepTime / 60;
+      if (typeof healthData.sleepTime === "number") {
+        const sleepHours = healthData.sleepTime;
         if (sleepHours < 7) {
           analysisSummary.push("수면 시간이 부족합니다.");
         } else if (sleepHours > 9) {
@@ -380,10 +392,64 @@ export const StreamingPage: React.FC = () => {
     }
   }, [user?.role, isAuthLoading, location.state, remoteTracks]);
 
+  // 상담 정보 미리 로드 (preQna, aiSummary 가져오기)
+  const fetchConsultationInfo = useCallback(async () => {
+    if (user?.role !== "coach" || isAuthLoading) {
+      return;
+    }
+
+    const consultationId =
+      location.state?.consultationId || location.state?.reservationId;
+    if (!consultationId) {
+      return;
+    }
+
+    const accessToken = localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
+    if (!accessToken) {
+      return;
+    }
+
+    setIsLoadingConsultationInfo(true);
+    try {
+      console.log("🔵 [상담 정보] API 호출 시작:", { consultationId });
+      // upcoming과 past 모두 확인 (현재 진행 중인 상담은 upcoming에 있을 수 있음)
+      const [upcomingResponse, pastResponse] = await Promise.all([
+        getCoachConsultationsApi(accessToken, "upcoming", undefined, 0, 100),
+        getCoachConsultationsApi(accessToken, "past", undefined, 0, 100),
+      ]);
+
+      // consultationId로 상담 찾기
+      const allConsultations = [...upcomingResponse.items, ...pastResponse.items];
+      const consultation = allConsultations.find(
+        (c) => c.consultationId === Number(consultationId)
+      );
+
+      if (consultation) {
+        console.log("🔵 [상담 정보] 조회 성공:", consultation);
+        setConsultationInfo(consultation);
+      } else {
+        console.warn("⚠️ [상담 정보] 해당 consultationId를 찾을 수 없습니다:", consultationId);
+      }
+    } catch (error) {
+      console.error("❌ [상담 정보] API 호출 오류:", error);
+    } finally {
+      setIsLoadingConsultationInfo(false);
+    }
+  }, [user?.role, isAuthLoading, location.state]);
+
+  // 상담 정보 미리 로드
+  useEffect(() => {
+    fetchConsultationInfo();
+  }, [fetchConsultationInfo]);
+
   // 참여자 정보 가져오기 (코치이고 consultationId가 있을 때)
   useEffect(() => {
     fetchParticipantInfo();
   }, [fetchParticipantInfo]);
+
+  useEffect(() => {
+    fetchConsultationInfo();
+  }, [fetchConsultationInfo]);
 
   // remoteTracks 업데이트 시 참가자 정보와 매칭하여 identity 업데이트
   useEffect(() => {
@@ -429,28 +495,46 @@ export const StreamingPage: React.FC = () => {
   }, [remoteTracks, participantInfoMap, user?.role]);
 
   const handleOpenParticipantInfo = useCallback(
-    (identity: string) => {
+    async (identity: string) => {
       // 코치인 경우 항상 모달 열기
       if (user?.role === "coach") {
         setSelectedParticipantId(identity);
-        // 참여자 정보가 아직 로드되지 않았고 consultationId가 있으면 로드 시도
-        if (!participantInfoMap[identity]) {
-          const consultationId =
-            location.state?.consultationId || location.state?.reservationId;
-          if (consultationId && !isLoadingParticipantInfo) {
-            fetchParticipantInfo();
+        
+        const consultationId =
+          location.state?.consultationId || location.state?.reservationId;
+        
+        // 참여자 정보가 없으면 로드 시도
+        if (!participantInfoResponse && consultationId && !isLoadingParticipantInfo) {
+          try {
+            await fetchParticipantInfo();
+          } catch (error) {
+            console.error("참여자 정보 로드 실패:", error);
           }
         }
+        
+        // 상담 정보가 없으면 로드 시도
+        if (!consultationInfo && consultationId && !isLoadingConsultationInfo) {
+          try {
+            await fetchConsultationInfo();
+          } catch (error) {
+            console.error("상담 정보 로드 실패:", error);
+          }
+        }
+
       } else if (participantInfoMap[identity]) {
         setSelectedParticipantId(identity);
       }
     },
     [
       participantInfoMap,
+      participantInfoResponse,
+      consultationInfo,
       user?.role,
       location.state,
       isLoadingParticipantInfo,
+      isLoadingConsultationInfo,
       fetchParticipantInfo,
+          fetchConsultationInfo,
     ]
   );
 
@@ -1489,35 +1573,20 @@ export const StreamingPage: React.FC = () => {
 
       <ParticipantInfo
         open={Boolean(selectedParticipantId)}
-        participant={
-          selectedParticipantId
-            ? participantInfoMap[selectedParticipantId] ||
-              (() => {
-                // participantInfoMap에 없으면 remoteTracks에서 참가자 이름 찾기
-                const remoteTrack = remoteTracks.find(
-                  (item) => item.participantIdentity === selectedParticipantId
-                );
-                const participantName =
-                  remoteTrack?.participant?.name ||
-                  remoteTrack?.participantIdentity ||
-                  selectedParticipantId;
-
-                // 기본 participant 정보 반환
-                return {
-                  name: participantName,
-                  badges: [],
-                  notes: "",
-                  questions: [],
-                  analysis: {
-                    generatedAt: "",
-                    type: "",
-                    summary: "",
-                    tip: "",
-                  },
-                };
-              })()
+        data={
+          selectedParticipantId && participantInfoResponse
+            ? {
+                participantInfo: participantInfoResponse,
+                preQna: consultationInfo?.preQna,
+                aiSummary: consultationInfo?.aiSummary,
+              }
             : undefined
         }
+        isLoading={
+          Boolean(selectedParticipantId) &&
+          (isLoadingParticipantInfo || isLoadingConsultationInfo)
+        }
+        error={null}
         onClose={handleCloseParticipantInfo}
       />
     </StreamingContainer>

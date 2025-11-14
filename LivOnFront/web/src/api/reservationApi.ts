@@ -276,7 +276,7 @@ export const getCoachAvailableTimesApi = async (
 
 // ===== 코치용 상담 관리 =====
 
-interface CoachConsultation {
+export interface CoachConsultation {
   consultationId: number;
   type: string;
   status: string;
@@ -327,7 +327,7 @@ export interface MemberInfo {
   profileImage?: string;
   height?: number;
   weight?: number;
-  sleepTime?: number;
+  sleepTime?: number; // 시간 단위
   preQna?: string;
 }
 
@@ -349,24 +349,24 @@ export const getMemberInfoApi = async (
 
 // ===== 참여자 정보 조회 =====
 
-interface HealthData {
+export interface HealthData {
   height?: number;
   weight?: number;
   steps?: number;
-  sleepTime?: number; // 분 단위
+  sleepTime?: number; // 시간 단위
   activityLevel?: string;
   sleepQuality?: string;
   stressLevel?: string;
 }
 
-interface ParticipantMemberInfo {
+export interface ParticipantMemberInfo {
   nickname: string;
   gender: string;
   ageGroup: string;
   healthData: HealthData;
 }
 
-interface ParticipantInfoResponse {
+export interface ParticipantInfoResponse {
   memberInfo: ParticipantMemberInfo;
 }
 

@@ -16,7 +16,6 @@ import { LoginPage } from "../pages/auth/LoginPage";
 import { SignupPage } from "../pages/auth/SignupPage";
 import { TermsPage } from "../pages/main/TermsPage";
 import { SignupCompletePage } from "../pages/auth/SignupCompletePage";
-import { MyPageVerificationPage } from "../pages/coach/MyPageVerificationPage";
 import { MyPageInfoPage } from "../pages/coach/MyPageInfoPage";
 import { ClassListPage } from "../pages/coach/ClassListPage";
 import { ClassSetupPage } from "../pages/coach/ClassSetupPage";
@@ -84,14 +83,6 @@ export const AppRouter: React.FC = () => {
             element={
               <ProtectedRoute requiredRole="coach">
                 <ClassSetupPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/mypage/coach-verification"
-            element={
-              <ProtectedRoute requiredRole="coach">
-                <MyPageVerificationPage />
               </ProtectedRoute>
             }
           />

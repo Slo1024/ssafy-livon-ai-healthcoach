@@ -95,8 +95,10 @@ interface ChatMessage {
   sender: string;
   message: string;
   timestamp: Date;
+  timestampString?: string; // UTC 시간 문자열 (서버에서 받은 원본)
   senderImage?: string;
   senderUserId?: string;
+  messageType?: "ENTER" | "TALK" | "LEAVE";
 }
 
 export const StreamingPage: React.FC = () => {
@@ -823,16 +825,29 @@ export const StreamingPage: React.FC = () => {
                 });
 
                 // 과거 메시지를 ChatMessage 형식으로 변환
-                // 서버에서 받는 userId (UUID)를 그대로 표시
-                const convertedMessages: ChatMessage[] = pastMessages.map(
-                  (msg) => ({
-                    id: msg.id,
-                    sender: msg.userId, // UUID를 그대로 표시
-                    message: msg.content,
-                    timestamp: new Date(msg.sentAt),
-                    senderUserId: msg.userId,
-                  })
-                );
+                // 시스템 메시지(ENTER, LEAVE)인 경우 발신자를 "알림"으로 설정
+                // 빈 메시지는 필터링
+                // 시간대 변환은 ChatPanel에서 처리
+                const convertedMessages: ChatMessage[] = pastMessages
+                  .filter((msg) => msg.content && msg.content.trim() !== "") // 빈 메시지 필터링
+                  .map((msg) => {
+                    const isSystemMessage = 
+                      msg.messageType === "ENTER" || msg.messageType === "LEAVE";
+                    // 서버 응답에 nickname이 포함되어 있을 수 있음 (타입에는 없지만 실제 응답에 포함될 수 있음)
+                    const msgWithNickname = msg as any;
+                    const senderName = isSystemMessage 
+                      ? "알림" 
+                      : msgWithNickname.nickname || msgWithNickname.userNickname || msg.userId;
+                    return {
+                      id: msg.id,
+                      sender: senderName, // 닉네임 우선, 없으면 userId
+                      message: msg.content,
+                      timestamp: new Date(msg.sentAt), // ChatPanel에서 UTC 파싱 및 한국 시간대 변환 처리
+                      timestampString: msg.sentAt, // UTC 시간 문자열 (ChatPanel에서 명시적으로 파싱)
+                      senderUserId: msg.userId,
+                      messageType: msg.messageType,
+                    };
+                  });
                 // 시간순 정렬 (오래된 것부터 최신 순서로 - 최신 메시지가 아래로)
                 const sortedMessages = convertedMessages.sort(
                   (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
@@ -868,24 +883,15 @@ export const StreamingPage: React.FC = () => {
                           userObject: user,
                         });
 
-                        // ENTER, LEAVE 같은 시스템 메시지는 표시하지 않음
-                        if (
-                          message.type === "ENTER" ||
-                          message.type === "LEAVE"
-                        ) {
-                          console.log(
-                            "🔵 [채팅] 시스템 메시지 무시:",
-                            message.type
-                          );
-                          return;
-                        }
-
-                        // TALK 타입 메시지만 처리
-                        if (message.type !== "TALK") {
-                          console.log(
-                            "🔵 [채팅] 알 수 없는 메시지 타입:",
-                            message.type
-                          );
+                        // 모든 타입의 메시지 처리 (ENTER, LEAVE, TALK 모두 표시)
+                        // 시스템 메시지(ENTER, LEAVE)는 발신자를 "알림"으로 표시
+                        
+                        // 빈 메시지 필터링 (LEAVE 타입이면서 빈 메시지인 경우 제외)
+                        if (!message.message || message.message.trim() === "") {
+                          console.log("🔵 [채팅] 빈 메시지 무시:", {
+                            messageId: message.id,
+                            type: message.type,
+                          });
                           return;
                         }
 
@@ -963,17 +969,22 @@ export const StreamingPage: React.FC = () => {
                           });
 
                           // 새 메시지 생성
-                          // 서버에서 받는 senderId (UUID)를 그대로 표시
-                          const senderName =
-                            message.sender?.userId || "Unknown";
+                          // 시스템 메시지(ENTER, LEAVE)인 경우 발신자를 "알림"으로 설정
+                          const isSystemMessage = 
+                            message.type === "ENTER" || message.type === "LEAVE";
+                          const senderName = isSystemMessage
+                            ? "알림"
+                            : message.sender?.nickname || message.sender?.userId || "Unknown";
 
                           const newMessage: ChatMessage = {
                             id: message.id,
                             sender: senderName,
                             message: message.message,
-                            timestamp: new Date(message.sentAt),
+                            timestamp: new Date(message.sentAt), // ChatPanel에서 UTC 파싱 및 한국 시간대 변환 처리
+                            timestampString: message.sentAt, // UTC 시간 문자열 (ChatPanel에서 명시적으로 파싱)
                             senderImage: message.sender?.userImage || undefined,
                             senderUserId: message.sender?.userId,
+                            messageType: message.type,
                           };
 
                           console.log("🔵 [채팅] 새 메시지 추가:", {

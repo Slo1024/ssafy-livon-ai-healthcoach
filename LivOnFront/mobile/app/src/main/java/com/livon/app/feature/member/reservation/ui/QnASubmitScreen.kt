@@ -209,22 +209,26 @@ fun QnASubmitScreen(
                 val submitted = questions.filter { it.isNotBlank() }
                 // 전달: 이전 백스택 엔트리에 저장하여 호출자(ReservationDetailScreen 등)가 이를 읽고 갱신할 수 있게 함
                 try {
+                    // keep previous behavior (mark origin entry) for health-flow return handling
                     navController?.previousBackStackEntry?.savedStateHandle?.set("qna_submitted", true)
                     navController?.previousBackStackEntry?.savedStateHandle?.set("qna_list", submitted)
                 } catch (_: Exception) {
                     // ignore if navController not present or setting fails
                 }
 
+                // Trigger reservation creation via ViewModel
                 onConfirmReservation(submitted)
-                // NOTE: navigation (to reservations/home) is handled by caller via onConfirmReservation in NavGraph
-            },
-            onChangeHealthInfo = {
-                showDialog = false
-                onNavigateToMyHealthInfo()
-            }
-        )
-    }
-}
+
+                // Navigation to Reservations is handled by the NavGraph LaunchedEffect observing
+                // the ReservationViewModel actionState; avoid navigating here to prevent races.
+             },
+             onChangeHealthInfo = {
+                 showDialog = false
+                 onNavigateToMyHealthInfo()
+             }
+         )
+     }
+ }
 
 @Composable
 private fun QnaInputItem(

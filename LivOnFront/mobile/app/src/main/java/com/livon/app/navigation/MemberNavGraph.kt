@@ -17,6 +17,7 @@ import java.net.URLDecoder
 import java.time.LocalDate
 import com.livon.app.feature.member.reservation.vm.ClassReservationViewModel
 import com.livon.app.feature.member.home.ui.MemberHomeRoute
+import com.livon.app.feature.member.home.ui.DataMetric
 
 // UI imports
 import androidx.compose.foundation.layout.*
@@ -74,11 +75,34 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         val resState by reservationVm.uiState.collectAsState()
         LaunchedEffect(Unit) { reservationVm.loadUpcoming() }
 
+        // Build metrics list from MyInfoUiState so MemberHomeRoute can render '내 데이터' tiles
+        val metricsList = remember(userState.info) {
+            val list = mutableListOf<DataMetric>()
+            val info = userState.info
+            if (info != null) {
+                val h = info.heightCm?.takeIf { it.isNotBlank() }
+                val w = info.weightKg?.takeIf { it.isNotBlank() }
+                if (h != null || w != null) {
+                    val hv = (h ?: "-") + " / " + (w ?: "-")
+                    list.add(DataMetric("신장/몸무게", hv, "평균: 169cm / 평균: 60Kg"))
+                }
+                info.sleepHours?.takeIf { it.isNotBlank() }?.let { list.add(DataMetric("수면시간", it, "평균: 7시간")) }
+                info.activityLevel?.takeIf { it.isNotBlank() }?.let { list.add(DataMetric("활동 수준", it, "평균: 보통")) }
+                info.caffeine?.takeIf { it.isNotBlank() }?.let { list.add(DataMetric("카페인", it, "평균: 하루 2잔")) }
+            }
+            // fallback: show two placeholder tiles so UI isn't empty
+            if (list.isEmpty()) {
+                list.add(DataMetric("신장/몸무게", "-", ""))
+                list.add(DataMetric("수면시간", "-", ""))
+            }
+            list
+        }
+
         MemberHomeRoute(
             onTapBooking = { nav.navigate(Routes.ReservationModeSelect) },
             onTapReservations = { nav.navigate(Routes.Reservations) },
             onTapMyPage = { nav.navigate(Routes.MyPage) },
-            metrics = emptyList(),
+            metrics = metricsList,
             upcoming = emptyList(),
             upcomingReservations = if (resState.items.isNotEmpty()) resState.items else emptyList(),
             // pass companyName from MyInfoUiState.organizations (added to MyInfoUiState)
@@ -208,24 +232,11 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
 
         val actionState by reservationVmForQna.actionState.collectAsState()
 
+
+
         LaunchedEffect(actionState.success) {
             if (actionState.success == true) {
-                // If the ViewModel returned a createdReservationId, navigate straight to its detail
-                val createdId = actionState.createdReservationId
-                if (createdId != null) {
-                    val target = "reservation_detail/${createdId}/upcoming"
-                    nav.navigate(target) { popUpTo(Routes.MemberHome) { inclusive = false } }
-
-                    // Try to push qna_list from local cache into the newly-created backStackEntry so ReservationDetailScreen observes it
-                    try {
-                        val entry = nav.currentBackStackEntry
-                        val preQnaRaw = com.livon.app.data.repository.ReservationRepositoryImpl.localReservations.find { it.id == createdId }?.preQna
-                        val parsed = preQnaRaw?.split("\n")?.filter { it.isNotBlank() } ?: emptyList()
-                        if (parsed.isNotEmpty()) entry?.savedStateHandle?.set("qna_list", parsed)
-                    } catch (_: Throwable) { }
-                } else {
-                    nav.navigate(Routes.Reservations) { popUpTo(Routes.MemberHome) { inclusive = false } }
-                }
+                nav.navigate(Routes.Reservations) { popUpTo(Routes.MemberHome) { inclusive = false } }
             }
         }
 

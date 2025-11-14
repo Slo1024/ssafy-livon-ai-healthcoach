@@ -37,6 +37,7 @@ import com.livon.app.feature.shared.auth.ui.LifestyleSmokingScreen
 import com.livon.app.feature.shared.auth.ui.SignupState
 import java.net.URLEncoder
 import java.time.LocalDate
+import kotlinx.coroutines.*
 
 object Routes {
     const val Landing = "landing"
@@ -409,66 +410,98 @@ fun NavGraphBuilder.authNavGraph(navController: NavHostController) {
         )
     }
 
-    // Lifestyle: caffeine (final) — for now navigate back to MemberHome; backend posting is handled elsewhere
+    // Lifestyle: caffeine (final) — post health survey then navigate back, marking origin entries as updated
     composable(Routes.LifeCaffeine) {
         LifestyleCaffeinIntakeScreen(
             onBack = { navController.popBackStack() },
             onNext = { caffeine ->
                 SignupState.caffeine = caffeine
                 Log.d("AppNavGraph","Lifestyle(caffeine) finished (caffeine=$caffeine)")
-                // Try to post survey to backend here (omitted). After success, check savedStateHandle to determine where to return.
-                // The caller (QnA or MyInfo) saved an origin marker on its own backStackEntry before navigating here.
-                // The immediate previousBackStackEntry should be that caller. Check it for qna_origin/myinfo_origin.
-                try {
-                    val prev = navController.previousBackStackEntry
-                    val prevSaved = prev?.savedStateHandle
 
-                    val qnaOrigin = prevSaved?.get<Map<String, String>>("qna_origin")
-                    if (qnaOrigin != null) {
-                        // clear origin and mark health_updated so QnASubmitScreen will re-open dialog
-                        prevSaved.remove<Map<String, String>>("qna_origin")
-                        prevSaved.set("health_updated", true)
+                // Build HealthSurveyRequest from SignupState
+                val heightInt = SignupState.height?.filter { it.isDigit() }?.toIntOrNull() ?: 0
+                val weightInt = SignupState.weight?.filter { it.isDigit() }?.toIntOrNull() ?: 0
+                val avgSleep = SignupState.sleepHours?.filter { it.isDigit() }?.toIntOrNull() ?: 0
+
+                val req = com.livon.app.data.remote.api.HealthSurveyRequest(
+                    steps = 0,
+                    sleepTime = SignupState.sleepHours?.filter { it.isDigit() }?.toIntOrNull() ?: 0,
+                    disease = SignupState.condition,
+                    sleepQuality = SignupState.sleepQuality,
+                    medicationsInfo = SignupState.medication,
+                    painArea = SignupState.painArea,
+                    stressLevel = SignupState.stress,
+                    smokingStatus = SignupState.smoking,
+                    avgSleepHours = avgSleep,
+                    activityLevel = SignupState.activityLevel,
+                    caffeineIntakeLevel = SignupState.caffeine,
+                    height = heightInt,
+                    weight = weightInt
+                )
+
+                // Post survey on IO and then handle navigation on Main
+                val userApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.UserApiService::class.java)
+                val userRepo = com.livon.app.domain.repository.UserRepository(userApi)
+
+                kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    val postRes = try { userRepo.postHealthSurvey(req) } catch (t: Throwable) { Result.failure<Boolean>(t) }
+                    if (postRes.isSuccess) Log.d("AppNavGraph", "postHealthSurvey success") else Log.w("AppNavGraph", "postHealthSurvey failed: ${postRes.exceptionOrNull()?.message}")
+
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        // After posting, set flags / navigate depending on origin markers
                         try {
-                            navController.popBackStack(prev.destination.id, false)
-                            return@LifestyleCaffeinIntakeScreen
+                            val prev = navController.previousBackStackEntry
+                            val prevSaved = prev?.savedStateHandle
+
+                            val qnaOrigin = prevSaved?.get<Map<String, String>>("qna_origin")
+                            if (qnaOrigin != null) {
+                                prevSaved.remove<Map<String, String>>("qna_origin")
+                                prevSaved.set("health_updated", true)
+                                try {
+                                    navController.popBackStack(prev.destination.id, false)
+                                    return@withContext
+                                } catch (t: Throwable) {
+                                    Log.w("AppNavGraph", "Failed to popBackStack to QnA entry", t)
+                                }
+                            }
+
+                            val myinfoOrigin = prevSaved?.get<Boolean>("myinfo_origin")
+                            if (myinfoOrigin == true) {
+                                prevSaved.remove<Boolean>("myinfo_origin")
+                                prevSaved.set("health_updated", true)
+                                safeNavigate(Routes.MyInfo)
+                                return@withContext
+                            }
                         } catch (t: Throwable) {
-                            Log.w("AppNavGraph", "Failed to popBackStack to QnA entry", t)
+                            Log.w("AppNavGraph", "Error while handling origin flags on previousBackStackEntry", t)
+                        }
+
+                        // marker route handling
+                        try {
+                            val marker = SignupState.qnaMarkerRoute
+                            if (!marker.isNullOrBlank()) {
+                                SignupState.qnaMarkerRoute = null
+                                navController.navigate(marker) {}
+                                navController.currentBackStackEntry?.savedStateHandle?.set("health_updated", true)
+                                return@withContext
+                            }
+                        } catch (t: Throwable) {
+                            Log.w("AppNavGraph", "Failed to navigate to qnaMarkerRoute", t)
+                        }
+
+                        // default fallback: go to MemberHome and set health_updated on its entry
+                        try {
+                            navController.navigate(Routes.MemberHome)
+                            navController.currentBackStackEntry?.savedStateHandle?.set("health_updated", true)
+                        } catch (t: Throwable) {
+                            Log.w("AppNavGraph", "Fallback navigate to MemberHome failed", t)
+                            try { safeNavigate(Routes.MemberHome) } catch (_: Throwable) {}
                         }
                     }
-
-                    val myinfoOrigin = prevSaved?.get<Boolean>("myinfo_origin")
-                    if (myinfoOrigin == true) {
-                        prevSaved.remove<Boolean>("myinfo_origin")
-                        prevSaved.set("health_updated", true)
-                        safeNavigate(Routes.MyInfo)
-                        return@LifestyleCaffeinIntakeScreen
-                    }
-                } catch (t: Throwable) {
-                    Log.w("AppNavGraph", "Error while handling origin flags on previousBackStackEntry", t)
                 }
-
-                // Fallback: if previous entry wasn't found or didn't have qna_origin, but we have a marker route saved,
-                // navigate to it and set health_updated on the newly-created entry so the QnASubmitScreen will show dialog.
-                try {
-                    val marker = SignupState.qnaMarkerRoute
-                    if (!marker.isNullOrBlank()) {
-                        SignupState.qnaMarkerRoute = null
-                        navController.navigate(marker) {
-                            // open as a new instance on top; we'll set savedStateHandle immediately after
-                        }
-                        // set flag so the new QnASubmitScreen re-opens dialog
-                        navController.currentBackStackEntry?.savedStateHandle?.set("health_updated", true)
-                        return@LifestyleCaffeinIntakeScreen
-                    }
-                } catch (t: Throwable) {
-                    Log.w("AppNavGraph", "Failed to navigate to qnaMarkerRoute", t)
-                }
-
-                // Default fallback: go to MemberHome
-                safeNavigate(Routes.MemberHome)
-             }
-         )
-     }
+            }
+        )
+    }
 
     composable(Routes.SignUpComplete) {
         SignUpCompleteScreen(username = SignupState.nickname, onStart = {

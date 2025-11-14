@@ -74,7 +74,10 @@ fun ReservationDetailScreen(
 
     // Observe savedStateHandle flags if navController provided
     val backStackEntry = navController?.currentBackStackEntry
-    val savedStateHandle = backStackEntry?.savedStateHandle
+    // Prefer previousBackStackEntry because caller may set qna data on the Reservations entry
+    val prevBackStackEntry = navController?.previousBackStackEntry
+    // Use previous entry's savedStateHandle if available, else fallback to current
+    val savedStateHandle: androidx.lifecycle.SavedStateHandle? = prevBackStackEntry?.savedStateHandle ?: backStackEntry?.savedStateHandle
     val qnaSubmittedFlow = remember(savedStateHandle) { savedStateHandle?.getStateFlow("qna_submitted", false) }
     val qnaSubmitted by (qnaSubmittedFlow?.collectAsState(initial = false) ?: remember { mutableStateOf(false) })
     val qnaListFlow = remember(savedStateHandle) { savedStateHandle?.getStateFlow("qna_list", emptyList<String>()) }
@@ -88,8 +91,16 @@ fun ReservationDetailScreen(
             }
             // clear flags so they don't re-trigger repeatedly
             try {
-                savedStateHandle?.set("qna_submitted", false)
-                savedStateHandle?.set("qna_list", emptyList<String>())
+                savedStateHandle?.let { ssh ->
+                    ssh.set("qna_submitted", false)
+                    ssh.set("qna_list", emptyList<String>())
+                    // also clear any per-id key if present
+                    val createdId = ssh.get<String>("created_reservation_id")
+                    if (!createdId.isNullOrBlank()) {
+                        ssh.set("qna_list_$createdId", emptyList<String>())
+                        ssh.set("created_reservation_id", null)
+                    }
+                }
             } catch (_: Exception) {
                 // ignore
             }

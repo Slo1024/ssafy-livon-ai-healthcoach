@@ -55,18 +55,83 @@ fun CoachDetailScreen(
     val placeholderAvailableDates = remember { mutableStateOf<Set<LocalDate>>(emptySet()) }
     val placeholderAvailableTimesByDate = remember { mutableStateOf<Map<LocalDate, List<String>>>(emptyMap()) }
 
-    // reservedTimeTokens: set of time token strings like "AM_9:00" or "PM_3:00" representing times that are already reserved
-    val reservedTimeTokens = remember { mutableStateOf<Set<String>>(emptySet()) }
+    // reservedTimeTokensByDate: map date -> set of time tokens (e.g., "AM_9:00") reserved on that date
+    val reservedTimeTokensByDate = remember { mutableStateOf<Map<LocalDate, Set<String>>>(emptyMap()) }
+    // keep a union set for fallback or previews
+    val reservedTimeTokensAll = remember { mutableStateOf<Set<String>>(emptySet()) }
 
-    // Collect local reservation cache updates to keep reserved tokens in sync (covers cancel/reserve changes)
+    // Combine server-side upcoming reservations and local cache updates to compute reserved tokens.
     LaunchedEffect(coachId) {
+        val repo = com.livon.app.data.repository.ReservationRepositoryImpl()
+        // 1) fetch server-side upcoming reservations once and extract tokens
+        val serverTokens = mutableSetOf<String>()
+        try {
+            val res = try { repo.getMyReservations(status = "upcoming", type = null) } catch (t: Throwable) { Result.failure<com.livon.app.data.remote.api.ReservationListResponse>(t) }
+            if (res.isSuccess) {
+                val body = res.getOrNull()
+                body?.items?.forEach { dto ->
+                    try {
+                        val coachUserId = dto.coach?.userId
+                        if ((dto.type ?: "ONE") == "ONE" && coachUserId == coachId) {
+                            val startIso = dto.startAt
+                            if (!startIso.isNullOrBlank()) {
+                                val start = java.time.LocalDateTime.parse(startIso)
+                                val token = if (start.hour < 12) {
+                                    val h = if (start.hour % 12 == 0) 12 else (start.hour % 12)
+                                    "AM_${h}:00"
+                                } else {
+                                    val hh = start.hour % 12
+                                    val h = if (hh == 0) 12 else hh
+                                    "PM_${h}:00"
+                                }
+                                serverTokens.add(token)
+                            }
+                        }
+                    } catch (_: Throwable) { }
+                }
+            }
+        } catch (_: Throwable) { /* ignore server fetch errors */ }
+
+        // 2) collect local cache updates and merge with server tokens into a date->tokens map
         try {
             com.livon.app.data.repository.ReservationRepositoryImpl.localReservationsFlow.collect { localList: List<com.livon.app.data.repository.ReservationRepositoryImpl.LocalReservation> ->
-                val tokens = mutableSetOf<String>()
+                val map = mutableMapOf<LocalDate, MutableSet<String>>()
+                // merge server-side tokens per date into map
+                try {
+                    // serverTokens were collected into a temporary set previously; better re-collect server-side with dates
+                    val srvRes = try { repo.getMyReservations(status = "upcoming", type = null) } catch (t: Throwable) { Result.failure<com.livon.app.data.remote.api.ReservationListResponse>(t) }
+                    if (srvRes.isSuccess) {
+                        val body = srvRes.getOrNull()
+                        body?.items?.forEach { dto ->
+                            try {
+                                val coachUserId = dto.coach?.userId
+                                if ((dto.type ?: "ONE") == "ONE" && coachUserId == coachId) {
+                                    val startIso = dto.startAt
+                                    if (!startIso.isNullOrBlank()) {
+                                        val start = java.time.LocalDateTime.parse(startIso)
+                                        val date = start.toLocalDate()
+                                        val token = if (start.hour < 12) {
+                                            val h = if (start.hour % 12 == 0) 12 else (start.hour % 12)
+                                            "AM_${h}:00"
+                                        } else {
+                                            val hh = start.hour % 12
+                                            val h = if (hh == 0) 12 else hh
+                                            "PM_${h}:00"
+                                        }
+                                        map.getOrPut(date) { mutableSetOf() }.add(token)
+                                    }
+                                }
+                            } catch (_: Throwable) { }
+                        }
+                    }
+                } catch (_: Throwable) { /* ignore */ }
+
+                // add local reservations into map
                 localList.forEach { lr ->
                     try {
                         if (lr.type == com.livon.app.data.repository.ReservationType.PERSONAL && lr.coachId == coachId) {
                             val start = java.time.LocalDateTime.parse(lr.startAt)
+                            val date = start.toLocalDate()
                             val token = if (start.hour < 12) {
                                 val h = if (start.hour % 12 == 0) 12 else (start.hour % 12)
                                 "AM_${h}:00"
@@ -75,11 +140,15 @@ fun CoachDetailScreen(
                                 val h = if (hh == 0) 12 else hh
                                 "PM_${h}:00"
                             }
-                            tokens.add(token)
+                            map.getOrPut(date) { mutableSetOf() }.add(token)
                         }
                     } catch (_: Throwable) { }
                 }
-                reservedTimeTokens.value = tokens
+
+                // finalize map and union
+                val finalMap = map.mapValues { it.value.toSet() }
+                reservedTimeTokensByDate.value = finalMap
+                reservedTimeTokensAll.value = finalMap.values.flatten().toSet()
             }
         } catch (_: Throwable) { /* ignore collection errors */ }
     }
@@ -158,9 +227,9 @@ fun CoachDetailScreen(
                     Text(text = coach.name, style = MaterialTheme.typography.titleLarge, modifier = Modifier.align(Alignment.CenterHorizontally))
                     Spacer(Modifier.height(12.dp))
 
-                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                         Text(text = "코치 소개", style = MaterialTheme.typography.titleLarge)
-                        Spacer(Modifier.height(16.dp))
+                        Spacer(Modifier.height(20.dp))
                         Text(text = "직무", style = MaterialTheme.typography.titleLarge)
                         Text(text = coach.job ?: "", style = MaterialTheme.typography.bodyMedium)
                         Spacer(Modifier.height(16.dp))
@@ -238,7 +307,8 @@ fun CoachDetailScreen(
                                         if (hour != null && allowedAmHours.contains(hour)) Pair(valStr.removePrefix("AM_"), valStr) else null
                                     } ?: amItems
 
-                                TimeGrid(timeItems = amFiltered, selected = selectedTime, onSelect = { t -> selectedTime = t }, disabledTokens = reservedTimeTokens.value)
+                                val disabledForSelected = selectedDate?.let { reservedTimeTokensByDate.value[it] } ?: emptySet()
+                                TimeGrid(timeItems = amFiltered, selected = selectedTime, onSelect = { t -> selectedTime = t }, disabledTokens = disabledForSelected)
 
                                 Spacer(Modifier.height(8.dp))
                                 Text(text = "오후", style = MaterialTheme.typography.titleSmall)
@@ -250,7 +320,7 @@ fun CoachDetailScreen(
                                         if (hour != null && allowedPmHours.contains(hour)) Pair(valStr.removePrefix("PM_"), valStr) else null
                                     } ?: pmItems
 
-                                TimeGrid(timeItems = pmFiltered, selected = selectedTime, onSelect = { t -> selectedTime = t }, disabledTokens = reservedTimeTokens.value)
+                                TimeGrid(timeItems = pmFiltered, selected = selectedTime, onSelect = { t -> selectedTime = t }, disabledTokens = disabledForSelected)
 
                                 Spacer(Modifier.height(40.dp)) // extra spacing so content not hidden by bottom bar
                             }

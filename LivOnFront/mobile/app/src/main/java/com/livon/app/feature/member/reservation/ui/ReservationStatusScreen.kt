@@ -137,8 +137,10 @@ fun ReservationStatusScreen(
                                 imageUrl = item.classImageUrl,
                                 coachProfileResId = null,
                                 coachProfileImageUrl = item.coachProfileImageUrl,
-                                showCoachProfile = item.isPersonal || (item.sessionTypeLabel == null && item.coachProfileImageUrl != null),
-                                // [핵심 수정] onDetail 호출 시 isPast=false 전달
+                                showCoachProfile =
+                                    (item.sessionTypeLabel == "개인 상담" || item.isPersonal),
+
+                                            // [핵심 수정] onDetail 호출 시 isPast=false 전달
                                 onDetail = { onDetail(item, false) },
                                 onCancel = if (!item.isLive) ({ cancelTarget = item; showCancelDialog = true }) else null,
                                 // If debugForceJoin is enabled, provide onJoin even when not live
@@ -168,7 +170,7 @@ fun ReservationStatusScreen(
                                 imageUrl = item.classImageUrl,
                                 coachProfileResId = null,
                                 coachProfileImageUrl = item.coachProfileImageUrl,
-                                showCoachProfile = item.isPersonal,
+                                showCoachProfile = isPersonal,
                                 // [핵심 수정] onDetail 호출 시 isPast=true 전달
                                 onDetail = { onDetail(item, true) },
                                 onCancel = null,

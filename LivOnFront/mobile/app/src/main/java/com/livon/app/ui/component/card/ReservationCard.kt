@@ -123,7 +123,7 @@ fun ReservationCard(
     imageUrl: String? = null,
     // coach profile image (used when reservation is 개인 상담)
     coachProfileResId: Int? = null,
-    coachProfileImageUrl: String?,
+    coachProfileImageUrl: String? = null,
     showCoachProfile: Boolean = false,
 
     // 버튼/동작

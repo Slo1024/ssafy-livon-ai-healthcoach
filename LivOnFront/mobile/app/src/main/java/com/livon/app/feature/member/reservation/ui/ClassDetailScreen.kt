@@ -199,7 +199,7 @@ fun ClassDetailScreen(
             Spacer(Modifier.height(24.dp))
 
             // 추가 여백을 주어 내용이 길어질 때도 아래 버튼과 겹치지 않도록 함
-            Spacer(Modifier.height(72.dp))
+//            Spacer(Modifier.height(72.dp))
         }
     }
 

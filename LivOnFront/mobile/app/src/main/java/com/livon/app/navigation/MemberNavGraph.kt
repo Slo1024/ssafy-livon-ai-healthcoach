@@ -6,6 +6,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import com.livon.app.R
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -21,6 +22,7 @@ import java.net.URLDecoder
 import java.time.LocalDate
 import android.util.Log
 import android.widget.Toast
+import kotlinx.coroutines.launch
 
 // UI imports
 import androidx.compose.ui.Modifier
@@ -623,12 +625,50 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         val userState by userVm.uiState.collectAsState()
         LaunchedEffect(Unit) { userVm.load() }
 
+        // Context and reservation repo for logout cleanup
+        val contextForMyPage = LocalContext.current
+        val reservationRepoForLogout = remember { com.livon.app.data.repository.ReservationRepositoryImpl() }
+        val coroutineScope = rememberCoroutineScope()
+
+        // create authViewModel for logout handling
+        val authApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.AuthApiService::class.java)
+        val authRepo = remember { com.livon.app.domain.repository.AuthRepository(authApi) }
+        val authFactory = remember {
+            object : androidx.lifecycle.ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                    return com.livon.app.feature.member.auth.vm.AuthViewModel(authRepo) as T
+                }
+            }
+        }
+        val authViewModel: com.livon.app.feature.member.auth.vm.AuthViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = authFactory)
+
         com.livon.app.feature.member.my.MyPageScreen(
             userName = userState.info?.nickname,
             profileImageUri = userState.info?.profileImageUri,
             onBack = { nav.popBackStack() },
             onClickHealthInfo = { try { nav.navigate(Routes.MyInfo) } catch (_: Throwable) {} },
-            onClickFaq = { /* TODO: navigate to FAQ if exists */ }
+            onClickFaq = { /* TODO: navigate to FAQ if exists */ },
+
+            onLogoutConfirm = {
+                // capture current token before clearing it in AuthViewModel
+                val ownerToken = com.livon.app.data.session.SessionManager.getTokenSync()
+                try { authViewModel.logout() } catch (_: Throwable) {}
+                // clear persisted and in-memory reservations for that owner
+                try {
+                    coroutineScope.launch {
+                        try { reservationRepoForLogout.clearLocalReservationsForOwner(ownerToken) } catch (_: Throwable) {}
+                        try { reservationRepoForLogout.clearPersistedReservationsForOwner(contextForMyPage, ownerToken) } catch (_: Throwable) {}
+                    }
+                } catch (_: Throwable) {}
+                try {
+                    nav.navigate(Routes.EmailLogin) {
+                        popUpTo(Routes.Landing) { inclusive = true }
+                    }
+                } catch (_: Throwable) {
+                    try { nav.navigate(Routes.Landing) } catch (_: Throwable) {}
+                }
+            }
         )
     }
 }

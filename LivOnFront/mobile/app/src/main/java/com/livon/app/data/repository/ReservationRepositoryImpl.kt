@@ -10,6 +10,8 @@ import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import android.content.Context
 import com.squareup.moshi.Types
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class ReservationRepositoryImpl : ReservationRepository {
     private val api = RetrofitProvider.createService(ReservationApiService::class.java)
@@ -377,7 +379,7 @@ class ReservationRepositoryImpl : ReservationRepository {
                         localReservations.removeAll { (it.ownerToken ?: "") == (owner ?: "") }
                         localReservations.addAll(parsed)
                     }
-                    try { localReservationsFlow.emit(localReservations.toList()) } catch (_: Throwable) { }
+                    try { localReservationsFlow.emit(localReservations.toList()) } catch (_: Throwable) {}
                 }
             }
         } catch (t: Throwable) {
@@ -392,6 +394,31 @@ class ReservationRepositoryImpl : ReservationRepository {
             persistLocalReservations(context)
         } catch (t: Throwable) {
             android.util.Log.w("ReservationRepo", "syncFromServerAndPersist failed", t)
+        }
+    }
+
+    // Remove persisted reservations entry for a specific owner token
+    fun clearPersistedReservationsForOwner(context: Context, ownerToken: String?) {
+        try {
+            val keySuffix = ownerToken?.hashCode()?.toString() ?: "anon"
+            val prefs = context.getSharedPreferences("reservation_prefs", Context.MODE_PRIVATE)
+            prefs.edit().remove("local_reservations_json_v1_$keySuffix").apply()
+        } catch (t: Throwable) {
+            android.util.Log.w("ReservationRepo", "clearPersistedReservationsForOwner failed", t)
+        }
+    }
+
+    // Clear in-memory local reservations for the given owner token and emit updated flow
+    suspend fun clearLocalReservationsForOwner(ownerToken: String?) {
+        try {
+            withContext(Dispatchers.IO) {
+                synchronized(cacheLock) {
+                    localReservations.removeAll { (it.ownerToken ?: "") == (ownerToken ?: "") }
+                }
+                try { localReservationsFlow.emit(localReservations.toList()) } catch (_: Throwable) {}
+            }
+        } catch (t: Throwable) {
+            android.util.Log.w("ReservationRepo", "clearLocalReservationsForOwner failed", t)
         }
     }
 }

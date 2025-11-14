@@ -26,4 +26,7 @@ data class ApiResponse<T>(
 interface AuthApiService {
     @POST("user/sign-in")
     suspend fun signIn(@Body req: SignInRequest): ApiResponse<SignInResult>
+
+    @retrofit2.http.DELETE("user/logout")
+    suspend fun logout(): ApiResponse<String>
 }

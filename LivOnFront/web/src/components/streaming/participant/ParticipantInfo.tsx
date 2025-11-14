@@ -1,5 +1,5 @@
-import React from 'react';
-import styled from 'styled-components';
+import React from "react";
+import styled from "styled-components";
 
 export interface ParticipantDetail {
   name: string;
@@ -185,7 +185,7 @@ const QuestionItem = styled.div`
   line-height: 1.4;
 
   &:before {
-    content: 'Q.';
+    content: "Q.";
     color: #4c6ef5;
     font-weight: 700;
   }
@@ -248,7 +248,11 @@ const ConfirmButton = styled.button`
   }
 `;
 
-export const ParticipantInfo: React.FC<ParticipantInfoProps> = ({ open, participant, onClose }) => {
+export const ParticipantInfo: React.FC<ParticipantInfoProps> = ({
+  open,
+  participant,
+  onClose,
+}) => {
   if (!open) {
     return null;
   }
@@ -272,31 +276,55 @@ export const ParticipantInfo: React.FC<ParticipantInfoProps> = ({ open, particip
       <Card onClick={(e) => e.stopPropagation()}>
         <Header>
           <Name>{participantData.name} 회원님 정보</Name>
-          <Subtext>회원님의 신체 데이터를 AI로 분석한 결과를 확인할 수 있습니다.</Subtext>
+          <Subtext>
+            회원님의 신체 데이터를 AI로 분석한 결과를 확인할 수 있습니다.
+          </Subtext>
         </Header>
 
         <Body>
           <PhysicalSection>
             <Avatar>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              >
                 <circle cx="12" cy="8" r="4" />
                 <path d="M4 20c0-3.314 3.134-6 7-6h2c3.866 0 7 2.686 7 6" />
               </svg>
             </Avatar>
             <div>
               <SectionTitle>신체 정보</SectionTitle>
-              <PhysicalList>
-                <li>신장 </li>
-                <li>체중 </li>
-                <li>수면 시간 </li>
-              </PhysicalList>
+              {participantData.notes ? (
+                <MemoText>{participantData.notes}</MemoText>
+              ) : (
+                <PhysicalList>
+                  <li>신체 정보 없음</li>
+                </PhysicalList>
+              )}
             </div>
           </PhysicalSection>
 
+          {participantData.badges.length > 0 && (
+            <div>
+              <SectionTitle>건강 상태</SectionTitle>
+              <PhysicalList>
+                {participantData.badges.map((badge, index) => (
+                  <li key={`${participantData.name}-badge-${index}`}>
+                    {badge}
+                  </li>
+                ))}
+              </PhysicalList>
+            </div>
+          )}
+
           <AnalysisBox>
             <SectionTitle>AI 분석 결과</SectionTitle>
-            <AnalysisSummary>{participantData.analysis.summary || ''}</AnalysisSummary>
-            <AnalysisTip>{participantData.analysis.tip || ''}</AnalysisTip>
+            <AnalysisSummary>
+              {participantData.analysis.summary || ""}
+            </AnalysisSummary>
+            <AnalysisTip>{participantData.analysis.tip || ""}</AnalysisTip>
           </AnalysisBox>
 
           <div>
@@ -304,7 +332,11 @@ export const ParticipantInfo: React.FC<ParticipantInfoProps> = ({ open, particip
             <Questions>
               {participantData.questions.length > 0 ? (
                 participantData.questions.map((question, index) => (
-                  <QuestionItem key={`${participantData.name}-question-${index}`}>{question}</QuestionItem>
+                  <QuestionItem
+                    key={`${participantData.name}-question-${index}`}
+                  >
+                    {question}
+                  </QuestionItem>
                 ))
               ) : (
                 <QuestionItem>질문이 없습니다.</QuestionItem>
@@ -322,4 +354,3 @@ export const ParticipantInfo: React.FC<ParticipantInfoProps> = ({ open, particip
     </Overlay>
   );
 };
-

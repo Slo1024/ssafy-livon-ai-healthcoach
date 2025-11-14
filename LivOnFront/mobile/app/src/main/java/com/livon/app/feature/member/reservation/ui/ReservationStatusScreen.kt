@@ -54,7 +54,10 @@ data class ReservationUi(
 
     // 지난 예약 전용
     val sessionTypeLabel: String? = null, // "그룹 상담" | "개인 상담"
-    val hasAiReport: Boolean = false      // 개인상담 + 리포트 있을 때만 AI 버튼
+    val hasAiReport: Boolean = false,     // 개인상담 + 리포트 있을 때만 AI 버튼
+
+    // convenience flag to indicate personal consultation
+    val isPersonal: Boolean = false
 )
 
 @Composable
@@ -132,6 +135,9 @@ fun ReservationStatusScreen(
                                 classIntro = item.classIntro,
                                 imageResId = item.imageResId,
                                 imageUrl = item.classImageUrl,
+                                coachProfileResId = null,
+                                coachProfileImageUrl = item.coachProfileImageUrl,
+                                showCoachProfile = item.isPersonal || (item.sessionTypeLabel == null && item.coachProfileImageUrl != null),
                                 // [핵심 수정] onDetail 호출 시 isPast=false 전달
                                 onDetail = { onDetail(item, false) },
                                 onCancel = if (!item.isLive) ({ cancelTarget = item; showCancelDialog = true }) else null,
@@ -160,6 +166,9 @@ fun ReservationStatusScreen(
                                 classIntro = item.classIntro,
                                 imageResId = item.imageResId,
                                 imageUrl = item.classImageUrl,
+                                coachProfileResId = null,
+                                coachProfileImageUrl = item.coachProfileImageUrl,
+                                showCoachProfile = item.isPersonal,
                                 // [핵심 수정] onDetail 호출 시 isPast=true 전달
                                 onDetail = { onDetail(item, true) },
                                 onCancel = null,

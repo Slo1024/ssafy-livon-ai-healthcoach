@@ -88,7 +88,7 @@ class ReservationViewModel(
                                     coachName = dto.coach?.nickname ?: dto.coach?.userId ?: "",
                                     coachRole = dto.coach?.job ?: "",
                                     coachIntro = dto.coach?.introduce ?: "",
-                                    coachWorkplace = dto.coach?.organizations,
+                                    coachWorkplace = dto.coach?.organizations ?: "",
                                     timeText = formatTimeText(start, end),
                                     classIntro = dto.description ?: "",
                                     imageResId = null,
@@ -101,7 +101,8 @@ class ReservationViewModel(
                                     aiSummary = dto.aiSummary,
                                     coachId = dto.coach?.userId,
                                     coachProfileImageUrl = dto.coach?.profileImage,
-                                    qnas = dto.preQna?.split("\n")?.filter { it.isNotBlank() } ?: emptyList()
+                                    qnas = dto.preQna?.split("\n")?.filter { it.isNotBlank() } ?: emptyList(),
+                                    isPersonal = ((dto.type ?: "ONE") == "ONE")
                                 )
                             } catch (t: Throwable) {
                                 Log.w("ReservationVM", "Failed to map reservation item", t)
@@ -143,7 +144,8 @@ class ReservationViewModel(
                                     aiSummary = null,
                                     qnas = lr.preQna?.split("\n")?.filter { it.isNotBlank() } ?: emptyList(),
                                     coachId = lr.coachId,
-                                    coachProfileImageUrl = null
+                                    coachProfileImageUrl = null,
+                                    isPersonal = (lr.type == com.livon.app.data.repository.ReservationType.PERSONAL)
                                 )
                             } catch (_: Throwable) { null }
                         }
@@ -161,12 +163,34 @@ class ReservationViewModel(
                     val ids = finalList.map { it.id }
                     Log.d("ReservationVM", "Mapped reservations count=${finalList.size}, ids=${ids.joinToString()}")
                 } catch (_: Throwable) {}
-                _uiState.value = ReservationsUiState(items = finalList, isLoading = false)
+
+                // Filter finalList according to requested status:
+                // - upcoming: include items whose startAtIso is in the future or items marked isLive
+                // - past: include items whose startAtIso is in the past
+                val now = LocalDateTime.now()
+                val filteredList = finalList.filter { item ->
+                    try {
+                        val startIso = item.startAtIso
+                        val start = if (!startIso.isNullOrBlank()) LocalDateTime.parse(startIso) else null
+                        if (status == "upcoming") {
+                            // include if start is null (fallback), or start >= now, or item isLive
+                            (start == null) || item.isLive || !start.isBefore(now)
+                        } else {
+                            // past: include only if start exists and is before now
+                            (start != null && start.isBefore(now))
+                        }
+                    } catch (_: Throwable) {
+                        // on parse error, conservatively include in upcoming to avoid hiding
+                        status == "upcoming"
+                    }
+                }
+
+                _uiState.value = ReservationsUiState(items = filteredList, isLoading = false)
              } catch (t: Throwable) {
                  _uiState.value = ReservationsUiState(items = emptyList(), isLoading = false, errorMessage = t.message)
              }
-        }
-    }
+         }
+     }
 
 
     private fun formatTimeText(start: LocalDateTime, end: LocalDateTime): String {

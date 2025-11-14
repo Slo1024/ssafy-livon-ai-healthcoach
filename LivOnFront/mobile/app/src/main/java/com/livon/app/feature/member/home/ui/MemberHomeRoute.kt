@@ -208,7 +208,7 @@ fun MemberHomeRoute(
                         Card(
                             modifier = Modifier
                                 .width(140.dp)
-                                .height(104.dp),
+                                .height(110.dp),
                             shape = RoundedCornerShape(6.dp),
                             colors = CardDefaults.cardColors(containerColor = Color.White),
                             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
@@ -250,7 +250,7 @@ fun MemberHomeRoute(
                                         color = Color.Gray,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.padding(top = 4.dp)
+                                        modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
                                     )
                                 }
                             }

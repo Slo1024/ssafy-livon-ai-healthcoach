@@ -28,6 +28,10 @@ const StyledButton = styled.button<{ $variant?: string; $size?: string }>`
     color: #2d79f3;
   }
 
+  &:focus {
+    outline: none;
+  }
+
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;

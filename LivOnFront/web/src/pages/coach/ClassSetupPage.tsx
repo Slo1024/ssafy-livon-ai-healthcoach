@@ -173,9 +173,14 @@ const SaveButton = styled.button`
   cursor: pointer;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
+  outline: none;
 
   &:hover {
     background-color: #3b5dd8;
+  }
+
+  &:focus {
+    outline: none;
   }
 
   &:disabled {
@@ -195,9 +200,14 @@ const CancelButton = styled.button`
   cursor: pointer;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
+  outline: none;
 
   &:hover {
     background-color: #f9fafb;
+  }
+
+  &:focus {
+    outline: none;
   }
 `;
 

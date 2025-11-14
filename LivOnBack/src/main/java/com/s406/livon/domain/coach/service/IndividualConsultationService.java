@@ -1,6 +1,8 @@
 package com.s406.livon.domain.coach.service;
 
 import com.s406.livon.domain.coach.dto.request.IndivualConsultationReservationRequestDto;
+import com.s406.livon.domain.coach.dto.request.InstantConsultationCreateRequestDto;
+import com.s406.livon.domain.coach.dto.response.InstantConsultationResponseDto;
 import com.s406.livon.domain.coach.entity.Consultation;
 import com.s406.livon.domain.coach.entity.IndividualConsultation;
 import com.s406.livon.domain.coach.entity.Participant;
@@ -97,6 +99,50 @@ public class IndividualConsultationService {
                         .build()
         );
         return saved.getId();
+    }
+
+    public InstantConsultationResponseDto createInstantConsultation(
+            UUID coachId,
+            InstantConsultationCreateRequestDto requestDto
+    ) {
+        User coach = userRepository.findById(coachId)
+                .orElseThrow(() -> new CoachHandler(ErrorStatus.USER_NOT_FOUND));
+
+        if (!coach.isCoach()) {
+            throw new CoachHandler(ErrorStatus.USER_NOT_AUTHORITY);
+        }
+
+        int duration = Math.max(15, requestDto.durationOrDefault());
+        int capacity = Math.max(1, requestDto.capacityOrDefault());
+        LocalDateTime startAt = LocalDateTime.now();
+        LocalDateTime endAt = startAt.plusMinutes(duration);
+
+        Consultation consultation = Consultation.builder()
+                .coach(coach)
+                .capacity(capacity)
+                .startAt(startAt)
+                .endAt(endAt)
+                .type(Consultation.Type.ONE)
+                .sessionId("")
+                .status(Consultation.Status.OPEN)
+                .build();
+        consultationRepository.save(consultation);
+        consultation.generateSessionId();
+
+        if (!participantRepository.existsByUserIdAndConsultationId(coach.getId(), consultation.getId())) {
+            participantRepository.save(Participant.of(coach, consultation));
+        }
+
+        individualConsultationRepository.save(
+                IndividualConsultation.builder()
+                        .consultation(consultation)
+                        .preQnA(requestDto.preQnA())
+                        .build()
+        );
+
+        log.info("즉시 상담 생성 - coachId: {}, consultationId: {}, duration: {}분",
+                coachId, consultation.getId(), duration);
+        return InstantConsultationResponseDto.of(consultation);
     }
 
 

@@ -1,7 +1,8 @@
 package com.s406.livon.domain.coach.controller;
 
-import com.s406.livon.domain.coach.dto.request.GroupConsultationCreateRequestDto;
 import com.s406.livon.domain.coach.dto.request.IndivualConsultationReservationRequestDto;
+import com.s406.livon.domain.coach.dto.request.InstantConsultationCreateRequestDto;
+import com.s406.livon.domain.coach.dto.response.InstantConsultationResponseDto;
 import com.s406.livon.domain.coach.service.IndividualConsultationService;
 import com.s406.livon.global.security.jwt.JwtTokenProvider;
 import com.s406.livon.global.web.response.ApiResponse;
@@ -11,9 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
@@ -49,5 +48,20 @@ public class IndividualConsultationController {
         UUID userId = jwtTokenProvider.getUserId(token.substring(7));
         individualConsultationService.cancelOneOnOneConsultation(consultationId, userId);
         return ApiResponse.of(SuccessStatus.DELETE_SUCCESS, null);
+    }
+
+    @PostMapping("/instant")
+    @Operation(
+            summary = "즉시 1:1 상담 방 생성",
+            description = "코치가 즉시 사용 가능한 상담 방(세션)을 생성합니다."
+    )
+    public ResponseEntity<ApiResponse<InstantConsultationResponseDto>> createInstantConsultation(
+            @RequestHeader("Authorization") String token,
+            @Valid @RequestBody InstantConsultationCreateRequestDto requestDto
+    ) {
+        UUID userId = jwtTokenProvider.getUserId(token.substring(7));
+        InstantConsultationResponseDto response =
+                individualConsultationService.createInstantConsultation(userId, requestDto);
+        return ResponseEntity.ok(ApiResponse.of(SuccessStatus.INSERT_SUCCESS, response));
     }
 }

@@ -39,4 +39,4 @@ out/
 application*.yml
 
 ### GCP key ###
-livon*.json
+livon*.

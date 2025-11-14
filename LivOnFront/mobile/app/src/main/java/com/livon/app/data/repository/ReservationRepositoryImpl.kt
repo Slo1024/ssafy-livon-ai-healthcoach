@@ -1,6 +1,8 @@
 package com.livon.app.data.repository
 
 import com.livon.app.core.network.RetrofitProvider
+import com.livon.app.data.remote.api.InstantConsultationRequest
+import com.livon.app.data.remote.api.InstantConsultationResponse
 import com.livon.app.data.remote.api.ReservationApiService
 import com.livon.app.data.remote.api.ReserveCoachRequest
 import com.livon.app.domain.repository.ReservationRepository
@@ -167,6 +169,28 @@ class ReservationRepositoryImpl : ReservationRepository {
                 Log.e("ReservationRepo", "Failed to extract http error body", t2)
             }
             Log.e("ReservationRepo", "reserveClass failed", t)
+            Result.failure(t)
+        }
+    }
+
+    override suspend fun createInstantConsultation(
+        durationMinutes: Int,
+        capacity: Int,
+        preQna: String?
+    ): Result<InstantConsultationResponse> {
+        return try {
+            val req = InstantConsultationRequest(
+                durationMinutes = durationMinutes,
+                capacity = capacity,
+                preQnA = preQna
+            )
+            val res = api.createInstantConsultation(req)
+            if (res.isSuccess && res.result != null) {
+                Result.success(res.result)
+            } else {
+                Result.failure(Exception(res.message ?: "Unknown"))
+            }
+        } catch (t: Throwable) {
             Result.failure(t)
         }
     }

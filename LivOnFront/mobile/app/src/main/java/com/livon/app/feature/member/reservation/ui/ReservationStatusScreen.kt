@@ -74,6 +74,9 @@ fun ReservationStatusScreen(
     }
 
     var tab by remember { mutableStateOf(ReservationTab.CURRENT) }
+    // Cancellation modal state: which reservation is targeted for cancellation
+    var showCancelDialog by remember { mutableStateOf(false) }
+    var cancelTarget by remember { mutableStateOf<ReservationUi?>(null) }
 
     // Debug toggle: when true, force showJoin for all cards so developer can test "입장하기" 버튼
     val debugForceJoin = remember { mutableStateOf(false) }
@@ -131,7 +134,7 @@ fun ReservationStatusScreen(
                                 imageUrl = item.classImageUrl,
                                 // [핵심 수정] onDetail 호출 시 isPast=false 전달
                                 onDetail = { onDetail(item, false) },
-                                onCancel = if (!item.isLive) ({ onCancel(item) }) else null,
+                                onCancel = if (!item.isLive) ({ cancelTarget = item; showCancelDialog = true }) else null,
                                 // If debugForceJoin is enabled, provide onJoin even when not live
                                 onJoin   = if (item.isLive || debugForceJoin.value)  ({ onJoin(item) })   else null,
                                 onAiAnalyze = null,
@@ -185,6 +188,25 @@ fun ReservationStatusScreen(
                 }
             }
         }
+    }
+
+    // Render cancellation modal outside of CommonScreenC so it overlays the entire screen (including TopBar)
+    if (showCancelDialog && cancelTarget != null) {
+        ReservationCompleteDialog(
+            onDismiss = { showCancelDialog = false; cancelTarget = null },
+            onConfirm = {
+                try {
+                    cancelTarget?.let { onCancel(it) }
+                } catch (_: Throwable) {}
+                showCancelDialog = false
+                cancelTarget = null
+            },
+            titleText = "예약을 취소하시겠습니까?",
+            subtitleText = null,
+            showCancelButton = true,
+            confirmLabel = "확인",
+            cancelLabel = "취소"
+        )
     }
 }
 

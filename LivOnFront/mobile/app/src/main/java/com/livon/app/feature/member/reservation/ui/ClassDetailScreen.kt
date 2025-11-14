@@ -7,6 +7,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,16 +26,10 @@ import com.livon.app.ui.component.button.PrimaryButtonBottom
 import com.livon.app.ui.component.navbar.HomeNavBar
 import com.livon.app.ui.component.overlay.TopBar
 import com.livon.app.ui.theme.LivonTheme
-import androidx.compose.ui.zIndex
-
-// Coil image loading
 import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-
-import java.net.URLEncoder
-import java.time.LocalDate
 
 /**
  * 클래스 상세 화면 (캘린더/시간 선택 없음)
@@ -52,6 +50,8 @@ fun ClassDetailScreen(
     imageUrl: String? = null, // 서버에서 전달되는 이미지 URL 있으면 우선 사용
     navController: NavHostController? = null // optional nav controller to let HomeNavBar navigate directly
 ) {
+    var showReserveDialog by remember { mutableStateOf(false) }
+
     Scaffold(
         contentWindowInsets = WindowInsets(0),
         topBar = {
@@ -71,8 +71,8 @@ fun ClassDetailScreen(
                 PrimaryButtonBottom(
                     text = "예약 하기",
                     onClick = {
-                        // Always delegate to onReserveClick; the caller (NavGraph) decides where to navigate
-                        onReserveClick()
+                        // show confirmation modal here; onConfirm will call onReserveClick
+                        showReserveDialog = true
                     },
                     bottomMargin = 0.dp,
                     applyNavPadding = false,
@@ -151,7 +151,7 @@ fun ClassDetailScreen(
             Spacer(Modifier.height(12.dp))
 
             // 하단: 클래스 소개 등
-            SectionTitle(text = "클래스 소개")
+            SectionTitle()
             Spacer(Modifier.height(10.dp))
 
             // 클래스 소개 본문: SemiBold 16, 회색
@@ -202,14 +202,30 @@ fun ClassDetailScreen(
             Spacer(Modifier.height(72.dp))
         }
     }
+
+    // Full-screen reservation confirmation modal (same overlay as QnASubmit)
+    if (showReserveDialog) {
+        ReservationCompleteDialog(
+            onDismiss = { showReserveDialog = false },
+            onConfirm = {
+                showReserveDialog = false
+                onReserveClick()
+            },
+            onChangeHealthInfo = {
+                // If user wants to change health info, navigate via provided navController or caller
+                showReserveDialog = false
+                try { navController?.let { /* let caller handle navigation by onReserveClick flow or separate handler */ } } catch (_: Throwable) {}
+            }
+        )
+    }
 }
 
 /* -------------------- 재사용 소구성 -------------------- */
 
 @Composable
-private fun SectionTitle(text: String) {
+private fun SectionTitle() {
     Text(
-        text = text,
+        text = "클래스 소개",
         style = MaterialTheme.typography.titleSmall.copy(
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold

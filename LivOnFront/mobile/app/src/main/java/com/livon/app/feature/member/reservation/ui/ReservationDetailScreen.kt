@@ -96,14 +96,18 @@ fun ReservationDetailScreen(
         }
     }
 
+    // showDeleteDialog must be stored at the composable root so the modal overlay can cover the whole screen.
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
     CommonScreenC(
         // ── TopBar: 지난 예약일 때만 오른쪽 "삭제" 노출
         topBar = { modifier ->
             Box(modifier) {
                 TopBar(title = "예약 상세", onBack = onBack)
+                // show delete button and hook up to styled modal (ReservationCompleteDialog)
                 if (type != ReservationDetailType.Current) {
                     TextButton(
-                        onClick = onDelete,
+                        onClick = { showDeleteDialog = true },
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
                             .padding(end = Spacing.Horizontal)
@@ -185,6 +189,22 @@ fun ReservationDetailScreen(
      ) {
          // CommonScreenC의 content 블록은 사용하지 않음(가로 패딩이 붙기 때문)
      }
+
+    // Render delete confirmation modal outside of topBar so the overlay covers the whole screen.
+    if (showDeleteDialog) {
+        ReservationCompleteDialog(
+            onDismiss = { showDeleteDialog = false },
+            onConfirm = {
+                showDeleteDialog = false
+                onDelete()
+            },
+            titleText = "예약을 삭제하시겠습니까?",
+            subtitleText = null,
+            showCancelButton = true,
+            confirmLabel = "확인",
+            cancelLabel = "취소"
+        )
+    }
  }
 
 /* ─────────── 공통 카드 컨테이너 (외각선 0.6dp, 내부 패딩 16/12) ─────────── */

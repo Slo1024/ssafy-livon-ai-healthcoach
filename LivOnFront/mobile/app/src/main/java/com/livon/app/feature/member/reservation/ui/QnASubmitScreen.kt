@@ -282,13 +282,18 @@ private fun QnaInputItem(
     }
 }
 
-
-
 @Composable
 fun ReservationCompleteDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
-    onChangeHealthInfo: () -> Unit
+    onChangeHealthInfo: (() -> Unit)? = null,
+    titleText: String = "예약이 완료 되었습니다.",
+    subtitleText: String? = "내 건강 정보를 바꾸고 싶으신가요?",
+    subtitleIsLink: Boolean = subtitleText != null && onChangeHealthInfo != null,
+    showCancelButton: Boolean = false,
+    confirmLabel: String = "확인",
+    cancelLabel: String = "취소",
+    confirmEnabled: Boolean = true
 ) {
     try { android.util.Log.d("ReservationDialog", "Composing ReservationCompleteDialog") } catch (_: Throwable) {}
     Box(
@@ -307,14 +312,12 @@ fun ReservationCompleteDialog(
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
                 .align(Alignment.Center)
-//                .heightIn(min = 200.dp, max = 220.dp), // 최소/최대 높이 지정
                 .wrapContentHeight(),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+            colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
-                // Added a small close control at the top-right so user can dismiss the dialog
+                // close control top-right
                 Box(modifier = Modifier.fillMaxWidth()) {
-                    // spacer to keep title centered
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "X",
@@ -335,23 +338,34 @@ fun ReservationCompleteDialog(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        "예약이 완료 되었습니다.",
+                        titleText,
                         style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
                         textAlign = TextAlign.Center
                     )
-                    Text(
-                        text = "내 건강 정보를 바꾸고 싶으신가요?",
-                        style = TextStyle(
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = LiveRed,
-                            textDecoration = TextDecoration.Underline
-                        ),
-                        modifier = Modifier
-                            .clickable(onClick = onChangeHealthInfo)
-                            .padding(horizontal = 12.dp),
-                        textAlign = TextAlign.Center
-                    )
+
+                    if (subtitleText != null) {
+                        if (subtitleIsLink && onChangeHealthInfo != null) {
+                            Text(
+                                text = subtitleText,
+                                style = TextStyle(
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = LiveRed,
+                                    textDecoration = TextDecoration.Underline
+                                ),
+                                modifier = Modifier
+                                    .clickable(onClick = onChangeHealthInfo)
+                                    .padding(horizontal = 12.dp),
+                                textAlign = TextAlign.Center
+                            )
+                        } else {
+                            Text(
+                                text = subtitleText,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
                     Spacer(modifier = Modifier.height(4.dp))
                 }
 
@@ -361,22 +375,53 @@ fun ReservationCompleteDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Text(
-                    text = "확인",
-                    modifier = Modifier
+                if (showCancelButton) {
+                    Row(modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(onClick = onConfirm)
-                        .padding(vertical = 26.dp),
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodyLarge
-                )
+                        .height(56.dp)) {
+                        Text(
+                            text = cancelLabel,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { onDismiss() }
+                                .padding(vertical = 16.dp),
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Normal)
+                        )
+
+                        // Confirm button respects confirmEnabled
+                        Text(
+                            text = confirmLabel,
+                            modifier = Modifier
+                                .weight(1f)
+                                .then(
+                                    if (confirmEnabled) Modifier.clickable { onConfirm() } else Modifier
+                                )
+                                .padding(vertical = 16.dp),
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = if (confirmEnabled) MaterialTheme.colorScheme.primary else Color(0xFF9E9E9E),
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        )
+                    }
+                } else {
+                    Text(
+                        text = confirmLabel,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(if (confirmEnabled) Modifier.clickable(onClick = onConfirm) else Modifier)
+                            .padding(vertical = 26.dp),
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            color = if (confirmEnabled) MaterialTheme.colorScheme.onBackground else Color(0xFF9E9E9E)
+                        )
+                    )
+                }
             }
         }
     }
 }
-
-
-
 
 @Preview(showBackground = true)
 @Composable

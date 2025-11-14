@@ -28,8 +28,6 @@ import androidx.compose.runtime.mutableStateOf
 import android.util.Log
 import androidx.compose.foundation.clickable
 import android.widget.Toast
-import kotlinx.coroutines.awaitCancellation
-import androidx.lifecycle.Observer
 import com.livon.app.feature.member.reservation.ui.ReservationDetailType
 import com.livon.app.feature.member.reservation.ui.CoachMini
 import com.livon.app.feature.member.reservation.ui.SessionInfo
@@ -715,42 +713,21 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             }
         }
 
-        // Use Material AlertDialog to avoid z-order/visibility problems with custom overlays
-        AlertDialog(
-             onDismissRequest = { nav.popBackStack() },
-             title = { Text(text = "예약 완료") },
-             text = {
-                 Column {
-                     Text(text = "예약이 완료 되었습니다.")
-                     Spacer(modifier = Modifier.height(8.dp))
-                     Text(
-                         text = "내 건강 정보를 바꾸고 싶으신가요?",
-                         color = androidx.compose.ui.graphics.Color(0xFFD32F2F),
-                         modifier = Modifier.clickable {
-                             val entry = nav.currentBackStackEntry
-                             entry?.savedStateHandle?.set("qna_origin", mapOf("type" to "class", "classId" to classIdArg))
-                             nav.navigate(Routes.HealthHeight)
-                         }
-                     )
-                 }
-             },
-             confirmButton = {
-                 // disable confirm while check in progress (null) or if already reserved (true)
-                 val disabled = (alreadyReserved.value == null) || (alreadyReserved.value == true)
-                 TextButton(
-                     onClick = {
-                         Log.d("MemberNavGraph", "class_confirm: confirm clicked for classId=$classIdArg (requested)")
-                         confirmRequested.value = true
-                     },
-                      enabled = !disabled
-                  ) {
-                      Text(if (alreadyReserved.value == null) "확인" else if (alreadyReserved.value == true) "이미 예약됨" else "확인")
-                  }
-              },
-              dismissButton = {
-                 TextButton(onClick = { nav.popBackStack() }) { Text("취소") }
-              }
-         )
+        // Use the shared ReservationCompleteDialog (same design as QnASubmitScreen)
+        ReservationCompleteDialog(
+            onDismiss = { nav.popBackStack() },
+            onConfirm = {
+                Log.d("MemberNavGraph", "class_confirm: confirm clicked for classId=$classIdArg (requested)")
+                confirmRequested.value = true
+            },
+            onChangeHealthInfo = {
+                val entry = nav.currentBackStackEntry
+                entry?.savedStateHandle?.set("qna_origin", mapOf("type" to "class", "classId" to classIdArg))
+                nav.navigate(Routes.HealthHeight)
+            },
+            // disable confirm while checking (null) or if alreadyReserved
+            confirmEnabled = (alreadyReserved.value == false)
+        )
 
          // LaunchedEffect for confirmRequested: runs final suspend recheck and calls reserveClass if safe
          LaunchedEffect(confirmRequested.value) {

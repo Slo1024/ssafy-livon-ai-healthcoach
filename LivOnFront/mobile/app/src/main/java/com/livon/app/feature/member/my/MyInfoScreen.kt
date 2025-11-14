@@ -21,9 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.foundation.background
-import com.livon.app.ui.theme.Gray2
-import androidx.compose.material3.HorizontalDivider
+import com.livon.app.feature.member.reservation.ui.ReservationCompleteDialog
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -201,65 +199,20 @@ fun MyInfoScreen(
         Spacer(Modifier.height(30.dp))
     }
 
-    // Confirmation modal overlay
+    // Confirmation modal overlay (use shared ReservationCompleteDialog for consistent styling)
     if (showEditModal) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(color = Gray2.copy(alpha = 0.6f))
-        ) {
-            // Modal: full width except common horizontal padding, aspect ratio 275:160
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Spacing.Horizontal)
-                    .aspectRatio(275f / 160f)
-                    .align(Alignment.Center),
-                shape = RoundedCornerShape(10.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
-            ) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    Box(modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "건강정보를\n수정하시겠습니까?",
-                            style = MaterialTheme.typography.titleMedium,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-
-                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
-
-                    Row(modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)) {
-                        Text(
-                            text = "취소",
-                            modifier = Modifier
-                                .weight(1f)
-                                .clickable { showEditModal = false }
-                                .padding(vertical = 16.dp),
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Normal)
-                        )
-
-                        Text(
-                            text = "확인",
-                            modifier = Modifier
-                                .weight(1f)
-                                .clickable {
-                                    showEditModal = false
-                                    onEditConfirm()
-                                }
-                                .padding(vertical = 16.dp),
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
-                        )
-                    }
-                }
-            }
-        }
+        ReservationCompleteDialog(
+            onDismiss = { showEditModal = false },
+            onConfirm = {
+                showEditModal = false
+                onEditConfirm()
+            },
+            titleText = "건강정보를\n수정하시겠습니까?",
+            subtitleText = null,
+            showCancelButton = true,
+            confirmLabel = "확인",
+            cancelLabel = "취소"
+        )
     }
 }
 

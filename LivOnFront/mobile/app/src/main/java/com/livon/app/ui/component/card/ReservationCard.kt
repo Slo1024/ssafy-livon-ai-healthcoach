@@ -30,6 +30,17 @@ import com.livon.app.R
 import com.livon.app.ui.theme.Gray2   // 프로젝트 테마에 맞춰주세요
 import com.livon.app.ui.theme.Main   // main 색상
 
+fun Modifier.noRippleClickable(onClick: () -> Unit): Modifier = composed {
+    val interactionSource = remember { MutableInteractionSource() }
+    this.then(
+        Modifier.clickable(
+            interactionSource = interactionSource,
+            indication = null,
+            onClick = onClick
+        )
+    )
+}
+
 @Composable
 private fun PillOutlineButton(
     text: String,
@@ -252,7 +263,7 @@ fun ReservationCard(
                             radius = 20.dp,
                             borderColor = MaterialTheme.colorScheme.outline,
                             textColor = Gray2,
-                            onClick = onCancel
+                            onClick = { try { onCancel.invoke() } catch (_: Throwable) {} }
                         )
                     }
 
@@ -280,16 +291,9 @@ fun ReservationCard(
             }
         }
     }
-}
 
-fun Modifier.noRippleClickable(onClick: () -> Unit): Modifier = composed {
-    clickable(
-        indication = null,
-        interactionSource = remember { MutableInteractionSource() },
-        onClick = onClick
-    )
+    // Note: cancellation confirmation is handled by parent screen as a full-screen modal
 }
-
 
 
 /* ─────────────────────────────────────────────

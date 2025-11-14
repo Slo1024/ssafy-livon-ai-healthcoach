@@ -38,6 +38,7 @@ import {
   ParticipantInfo,
   ParticipantDetail,
 } from "../../components/streaming/participant/ParticipantInfo";
+import { getParticipantInfoApi } from "../../api/reservationApi";
 
 const API_BASE_URL =
   CONFIG.API_BASE_URL ||
@@ -203,35 +204,254 @@ export const StreamingPage: React.FC = () => {
     return `consultation-${consultationId}`;
   });
 
-  const participantInfoMap = useMemo<Record<string, ParticipantDetail>>(
-    () => ({
-      김싸피: {
-        name: "김싸피",
-        badges: ["고혈압", "수면 질 저하", "활동 부족"],
-        notes: "혈압약 복용 중이므로 격렬한 운동은 피해주세요.",
-        questions: ["전완근을 키우고 싶어요.", "겟폴다운을 잘하고 싶어요."],
+  const [participantInfoMap, setParticipantInfoMap] = useState<
+    Record<string, ParticipantDetail>
+  >({});
+  const [isLoadingParticipantInfo, setIsLoadingParticipantInfo] =
+    useState(false);
+
+  // 참여자 정보를 API에서 가져오는 함수
+  const fetchParticipantInfo = useCallback(async () => {
+    // 코치가 아니거나 consultationId가 없으면 API 호출하지 않음
+    if (user?.role !== "coach" || isAuthLoading) {
+      return;
+    }
+
+    const consultationId =
+      location.state?.consultationId || location.state?.reservationId;
+    if (!consultationId) {
+      return;
+    }
+
+    // 토큰 가져오기
+    const accessToken = localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
+    if (!accessToken) {
+      console.warn("⚠️ [참여자 정보] 인증 토큰이 없습니다.");
+      return;
+    }
+
+    setIsLoadingParticipantInfo(true);
+    try {
+      console.log("🔵 [참여자 정보] API 호출 시작:", { consultationId });
+      const participantInfo = await getParticipantInfoApi(
+        accessToken,
+        consultationId
+      );
+
+      console.log("🔵 [참여자 정보] API 응답:", participantInfo);
+
+      // API 응답을 ParticipantDetail 형식으로 변환
+      const memberInfo = participantInfo.memberInfo;
+      const healthData = memberInfo.healthData;
+
+      // badges 생성: 건강 상태 데이터 기반
+      const badges: string[] = [];
+      if (healthData.activityLevel) {
+        badges.push(`활동 수준: ${healthData.activityLevel}`);
+      }
+      if (healthData.sleepQuality) {
+        badges.push(`수면 질: ${healthData.sleepQuality}`);
+      }
+      if (healthData.stressLevel) {
+        badges.push(`스트레스 수준: ${healthData.stressLevel}`);
+      }
+
+      // notes 생성: 건강 데이터 요약
+      const notesParts: string[] = [];
+      if (healthData.height) {
+        notesParts.push(`신장: ${healthData.height}cm`);
+      }
+      if (healthData.weight) {
+        notesParts.push(`체중: ${healthData.weight}kg`);
+      }
+      if (healthData.steps) {
+        notesParts.push(`일일 걸음 수: ${healthData.steps}걸음`);
+      }
+      if (healthData.sleepTime) {
+        const hours = Math.floor(healthData.sleepTime / 60);
+        const minutes = healthData.sleepTime % 60;
+        notesParts.push(
+          `수면 시간: ${hours}시간 ${minutes > 0 ? `${minutes}분` : ""}`
+        );
+      }
+      const notes = notesParts.join(", ");
+
+      // questions: preQna가 있으면 사용 (실제로는 별도 필드가 필요할 수 있음)
+      const questions: string[] = [];
+
+      // analysis 생성: 건강 데이터 기반 분석 결과
+      const analysisSummary: string[] = [];
+      if (healthData.height && healthData.weight) {
+        const bmi = healthData.weight / Math.pow(healthData.height / 100, 2);
+        analysisSummary.push(`BMI: ${bmi.toFixed(1)}`);
+      }
+      if (healthData.sleepTime) {
+        const sleepHours = healthData.sleepTime / 60;
+        if (sleepHours < 7) {
+          analysisSummary.push("수면 시간이 부족합니다.");
+        } else if (sleepHours > 9) {
+          analysisSummary.push("수면 시간이 충분합니다.");
+        }
+      }
+      if (healthData.steps) {
+        if (healthData.steps < 5000) {
+          analysisSummary.push("일일 활동량을 늘리는 것이 좋습니다.");
+        } else if (healthData.steps >= 10000) {
+          analysisSummary.push("활동량이 충분합니다.");
+        }
+      }
+
+      const analysisTip: string[] = [];
+      if (healthData.sleepQuality === "poor") {
+        analysisTip.push("규칙적인 수면 패턴을 유지하세요.");
+      }
+      if (healthData.stressLevel === "high") {
+        analysisTip.push("스트레스 관리를 위한 운동을 추천합니다.");
+      }
+      if (healthData.activityLevel === "low") {
+        analysisTip.push("점진적으로 활동량을 늘려가세요.");
+      }
+
+      const participantDetail: ParticipantDetail = {
+        name: memberInfo.nickname,
+        badges,
+        notes,
+        questions,
         analysis: {
-          generatedAt: "2025. 11. 11.",
+          generatedAt: new Date().toLocaleDateString("ko-KR", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          }),
           type: "건강 상태 분석",
           summary:
-            "현재 혈압 수치와 건강 상태를 종합적으로 분석한 결과, 규칙적인 운동과 건강한 식습관 유지가 필요합니다.",
-          tip: "혈압약 복용 중이므로 격렬한 운동은 피하세요.",
+            analysisSummary.length > 0
+              ? analysisSummary.join(" ")
+              : "건강 데이터를 분석한 결과입니다.",
+          tip:
+            analysisTip.length > 0
+              ? analysisTip.join(" ")
+              : "규칙적인 운동과 건강한 식습관을 유지하세요.",
         },
-      },
-    }),
-    []
-  );
+      };
+
+      // 참가자 identity 찾기 (remoteTracks에서 참가자와 매칭)
+      // 1:1 상담이므로 remoteTracks의 첫 번째 원격 참가자를 참가자로 간주
+      // 닉네임이나 identity로 매칭 시도
+      let participantIdentity = memberInfo.nickname;
+
+      // remoteTracks에서 닉네임이 일치하는 참가자 찾기
+      const matchingParticipant = remoteTracks.find(
+        (track) =>
+          track.participant?.name === memberInfo.nickname ||
+          track.participantIdentity === memberInfo.nickname
+      );
+
+      if (matchingParticipant) {
+        // remoteTracks의 identity를 우선 사용
+        participantIdentity =
+          matchingParticipant.participantIdentity ||
+          matchingParticipant.participant?.identity ||
+          memberInfo.nickname;
+      }
+
+      setParticipantInfoMap((prev) => ({
+        ...prev,
+        [participantIdentity]: participantDetail,
+      }));
+
+      // 닉네임으로도 매핑 추가 (참가자 이름만으로도 접근 가능하도록)
+      if (participantIdentity !== memberInfo.nickname) {
+        setParticipantInfoMap((prev) => ({
+          ...prev,
+          [memberInfo.nickname]: participantDetail,
+        }));
+      }
+
+      console.log("🔵 [참여자 정보] 변환 완료:", {
+        identity: participantIdentity,
+        detail: participantDetail,
+      });
+    } catch (error) {
+      console.error("❌ [참여자 정보] API 호출 오류:", error);
+      // 에러 발생 시에도 화상 통화는 계속되도록 조용히 처리
+    } finally {
+      setIsLoadingParticipantInfo(false);
+    }
+  }, [user?.role, isAuthLoading, location.state, remoteTracks]);
+
+  // 참여자 정보 가져오기 (코치이고 consultationId가 있을 때)
+  useEffect(() => {
+    fetchParticipantInfo();
+  }, [fetchParticipantInfo]);
+
+  // remoteTracks 업데이트 시 참가자 정보와 매칭하여 identity 업데이트
+  useEffect(() => {
+    if (
+      user?.role !== "coach" ||
+      Object.keys(participantInfoMap).length === 0
+    ) {
+      return;
+    }
+
+    // participantInfoMap의 항목들을 순회하며 remoteTracks와 매칭
+    const updatedMap: Record<string, ParticipantDetail> = {
+      ...participantInfoMap,
+    };
+
+    Object.entries(participantInfoMap).forEach(([key, detail]) => {
+      // key가 닉네임인 경우, remoteTracks에서 해당 참가자 찾기
+      const matchingParticipant = remoteTracks.find(
+        (track) =>
+          track.participant?.name === detail.name ||
+          track.participantIdentity === detail.name ||
+          track.participant?.name === key ||
+          track.participantIdentity === key
+      );
+
+      if (matchingParticipant) {
+        const participantIdentity =
+          matchingParticipant.participantIdentity ||
+          matchingParticipant.participant?.identity ||
+          key;
+
+        // identity로 매핑 추가 (기존 key와 다를 경우)
+        if (participantIdentity !== key) {
+          updatedMap[participantIdentity] = detail;
+        }
+      }
+    });
+
+    // 변경사항이 있으면 업데이트
+    if (JSON.stringify(updatedMap) !== JSON.stringify(participantInfoMap)) {
+      setParticipantInfoMap(updatedMap);
+    }
+  }, [remoteTracks, participantInfoMap, user?.role]);
 
   const handleOpenParticipantInfo = useCallback(
     (identity: string) => {
       // 코치인 경우 항상 모달 열기
       if (user?.role === "coach") {
         setSelectedParticipantId(identity);
+        // 참여자 정보가 아직 로드되지 않았고 consultationId가 있으면 로드 시도
+        if (!participantInfoMap[identity]) {
+          const consultationId =
+            location.state?.consultationId || location.state?.reservationId;
+          if (consultationId && !isLoadingParticipantInfo) {
+            fetchParticipantInfo();
+          }
+        }
       } else if (participantInfoMap[identity]) {
         setSelectedParticipantId(identity);
       }
     },
-    [participantInfoMap, user?.role]
+    [
+      participantInfoMap,
+      user?.role,
+      location.state,
+      isLoadingParticipantInfo,
+      fetchParticipantInfo,
+    ]
   );
 
   const handleCloseParticipantInfo = useCallback(() => {
@@ -251,7 +471,9 @@ export const StreamingPage: React.FC = () => {
     }
 
     // 고유한 identity 생성 (participantName + consultationId + timestamp + random)
-    const uniqueIdentity = `${participantName}-${consultationId}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    const uniqueIdentity = `${participantName}-${consultationId}-${Date.now()}-${Math.random()
+      .toString(36)
+      .substring(2, 9)}`;
 
     const requestBody = {
       consultationId: consultationId, // Long 타입
@@ -908,8 +1130,8 @@ export const StreamingPage: React.FC = () => {
 
   // 디버깅용: remoteTracks와 room 참가자 정보 로그
   useEffect(() => {
-    console.log('=== Remote Tracks Debug ===');
-    console.log('Remote tracks count:', remoteTracks.length);
+    console.log("=== Remote Tracks Debug ===");
+    console.log("Remote tracks count:", remoteTracks.length);
     remoteTracks.forEach((item, index) => {
       console.log(`Track ${index}:`, {
         participantIdentity: item.participantIdentity,
@@ -919,12 +1141,12 @@ export const StreamingPage: React.FC = () => {
         trackKind: item.trackPublication.kind,
       });
     });
-    
-    console.log('=== Room Participants Debug ===');
+
+    console.log("=== Room Participants Debug ===");
     if (room) {
-      console.log('Room participants count:', room.remoteParticipants.size);
+      console.log("Room participants count:", room.remoteParticipants.size);
       room.remoteParticipants.forEach((participant) => {
-        console.log('Participant:', {
+        console.log("Participant:", {
           identity: participant.identity,
           name: participant.name,
           sid: participant.sid,
@@ -933,7 +1155,7 @@ export const StreamingPage: React.FC = () => {
         });
       });
     } else {
-      console.log('Room is not connected yet');
+      console.log("Room is not connected yet");
     }
   }, [remoteTracks, room]);
 
@@ -1269,7 +1491,8 @@ export const StreamingPage: React.FC = () => {
         open={Boolean(selectedParticipantId)}
         participant={
           selectedParticipantId
-            ? participantInfoMap[selectedParticipantId] || (() => {
+            ? participantInfoMap[selectedParticipantId] ||
+              (() => {
                 // participantInfoMap에 없으면 remoteTracks에서 참가자 이름 찾기
                 const remoteTrack = remoteTracks.find(
                   (item) => item.participantIdentity === selectedParticipantId
@@ -1278,7 +1501,7 @@ export const StreamingPage: React.FC = () => {
                   remoteTrack?.participant?.name ||
                   remoteTrack?.participantIdentity ||
                   selectedParticipantId;
-                
+
                 // 기본 participant 정보 반환
                 return {
                   name: participantName,

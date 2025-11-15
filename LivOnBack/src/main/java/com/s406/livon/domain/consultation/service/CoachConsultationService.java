@@ -11,6 +11,8 @@ import com.s406.livon.domain.consultation.dto.response.CoachConsultationResponse
 import com.s406.livon.domain.consultation.dto.response.CoachConsultationResponseDto.ParticipantInfoDto;
 import com.s406.livon.domain.consultation.dto.response.ParticipantInfoResponseDto;
 import com.s406.livon.domain.consultation.repository.ConsultationRepository;
+import com.s406.livon.domain.ai.gms.service.AiAnalysisService;
+import com.s406.livon.domain.ai.gms.dto.response.AiSummaryResponseDto;
 import com.s406.livon.domain.user.entity.HealthSurvey;
 import com.s406.livon.domain.user.entity.User;
 import com.s406.livon.domain.user.repository.HealthSurveyRepository;
@@ -42,6 +44,7 @@ public class CoachConsultationService {
     private final IndividualConsultationRepository individualConsultationRepository;
     private final GroupConsultationRepository groupConsultationRepository;
     private final HealthSurveyRepository healthSurveyRepository;
+    private final AiAnalysisService aiAnalysisService;
 
     public PaginatedResponse<CoachConsultationResponseDto> getCoachConsultations(
             UUID coachId,
@@ -235,14 +238,24 @@ public class CoachConsultationService {
         HealthSurvey healthSurvey = healthSurveyRepository.findByUserId(participant.getId())
                         .orElse(null); // 데이터가 없으면 null로 처리
 
-        // 8. 응답 DTO 생성
-        return buildParticipantInfoResponse(participant, healthSurvey);
+        // 8. AI 분석 요약 조회
+        String aiSummary = null;
+        try {
+            AiSummaryResponseDto aiSummaryResponse = aiAnalysisService.getSummary(participant.getId());
+            aiSummary = aiSummaryResponse.getSummary();
+        } catch (Exception e) {
+            log.warn("AI 분석 요약 조회 실패 - userId: {}, error: {}", participant.getId(), e.getMessage());
+            // AI 분석 요약이 없어도 다른 정보는 정상적으로 반환
+        }
+
+        // 9. 응답 DTO 생성
+        return buildParticipantInfoResponse(participant, healthSurvey, aiSummary);
     }
 
     /**
      * 참여자 정보 응답 DTO 생성
      */
-    private ParticipantInfoResponseDto buildParticipantInfoResponse(User participant, HealthSurvey healthSurvey) {
+    private ParticipantInfoResponseDto buildParticipantInfoResponse(User participant, HealthSurvey healthSurvey, String aiSummary) {
         // 연령대 계산
         String ageGroup = calculateAgeGroup(participant.getBirthdate());
 
@@ -267,6 +280,7 @@ public class CoachConsultationService {
 
         return ParticipantInfoResponseDto.builder()
                         .memberInfo(memberInfo)
+                        .aiSummary(aiSummary)
                         .build();
     }
 

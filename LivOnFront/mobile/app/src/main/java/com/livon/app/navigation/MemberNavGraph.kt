@@ -4,6 +4,7 @@ package com.livon.app.navigation
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -411,7 +412,12 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             onDetail = { item, isPast ->
                 try {
                     val type = if (isPast) "past" else "upcoming"
-                    nav.navigate("reservation_detail/${item.id}/$type")
+                    val route = "reservation_detail/${item.id}/$type"
+                    Log.d("MemberNavGraph", "onDetail clicked: navigating to $route for item.id=${item.id}, isPast=$isPast")
+                    nav.navigate(route) {
+                        // 네비게이션 옵션: 현재 화면을 백스택에 유지
+                        launchSingleTop = true
+                    }
                 } catch (t: Throwable) {
                     Log.w("MemberNavGraph", "Failed to navigate to reservation_detail", t)
                 }
@@ -484,22 +490,32 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
 
         val stateDetail by reservationVmDetail.uiState.collectAsState()
         val sessionTokenDetail by com.livon.app.data.session.SessionManager.token.collectAsState()
+        
+        // 데이터 로드 완료 여부 추적
+        var dataLoaded by remember { mutableStateOf(false) }
 
         // [핵심 수정] type에 따라 올바른 목록을 불러옵니다. 세션 토큰이 있을 때만 로드
         LaunchedEffect(type, id, sessionTokenDetail) {
             if (!sessionTokenDetail.isNullOrBlank()) {
+                dataLoaded = false
                 if (type == "past") {
                     reservationVmDetail.loadPast()
                 } else {
                     reservationVmDetail.loadUpcoming()
                 }
+                // 데이터 로드 완료 대기 (로딩이 완료되고 items가 업데이트될 때까지)
+                kotlinx.coroutines.delay(300)
+                dataLoaded = true
             }
         }
 
         // 로딩 중이거나 찾을 수 없는 경우를 처리
         // 먼저 현재 상태에서 찾아보고, 없으면 로딩 완료까지 대기
         val found = stateDetail.items.find { it.id == id }
-        val isLoading = stateDetail.isLoading && found == null && stateDetail.items.isEmpty()
+        val isLoading = (stateDetail.isLoading || !dataLoaded) && found == null
+        
+        // 디버깅 로그
+        Log.d("MemberNavGraph", "ReservationDetailScreen: id=$id, type=$type, isLoading=$isLoading, dataLoaded=$dataLoaded, items.count=${stateDetail.items.size}, found=${found != null}, itemIds=${stateDetail.items.map { it.id }.joinToString()}")
 
         // 로딩 중일 때는 로딩 화면 표시
         if (isLoading) {

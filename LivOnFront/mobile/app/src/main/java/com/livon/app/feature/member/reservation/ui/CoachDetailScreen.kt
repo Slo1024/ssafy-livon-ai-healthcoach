@@ -63,10 +63,47 @@ fun CoachDetailScreen(
 
     val ctx = LocalContext.current
     // Combine server-side upcoming reservations and local cache updates to compute reserved tokens.
+    // [수정] 코치의 모든 예약된 시간을 가져와서 비활성화 처리 (다른 사용자가 예약한 경우 포함)
     LaunchedEffect(coachId) {
         val repo = com.livon.app.data.repository.ReservationRepositoryImpl()
         try { repo.loadPersistedReservations(ctx) } catch (_: Throwable) {}
-         // Fetch server-side upcoming reservations once and build a map of date->tokens
+        
+        // [수정] 코치의 모든 예약된 시간을 가져오는 API 호출 시도
+        val coachApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.CoachApiService::class.java)
+        val allBookedTimesMap = mutableMapOf<LocalDate, MutableSet<String>>()
+        
+        // [수정] 코치의 모든 예약된 시간을 가져오기
+        // API가 날짜별로 예약 정보를 반환한다면, 주요 날짜 범위(오늘부터 30일 후까지)에서 조회
+        try {
+            val today = LocalDate.now()
+            val dateRange = (0..30).map { today.plusDays(it.toLong()) }
+            
+            dateRange.forEach { date ->
+                try {
+                    val dateStr = date.toString() // YYYY-MM-DD 형식
+                    val availableTimesRes = try {
+                        coachApi.getCoachAvailableTimes(coachId, date = dateStr)
+                    } catch (t: Throwable) {
+                        // API가 아직 구현되지 않았거나 특정 날짜 조회 실패 시 무시
+                        null
+                    }
+                    
+                    if (availableTimesRes != null && availableTimesRes.isSuccess) {
+                        val response = availableTimesRes.result
+                        response?.bookedTimes?.forEach { token ->
+                            // 토큰 형식: "AM_9:00", "PM_2:00" 등
+                            allBookedTimesMap.getOrPut(date) { mutableSetOf() }.add(token)
+                        }
+                    }
+                } catch (_: Throwable) { /* 특정 날짜 조회 실패 시 무시하고 계속 */ }
+            }
+        } catch (_: Throwable) { 
+            // API가 구현되지 않았을 수 있으므로 실패해도 계속 진행
+            android.util.Log.d("CoachDetailScreen", "getCoachAvailableTimes API not available, using current user reservations only")
+        }
+        
+        // Fetch server-side upcoming reservations once and build a map of date->tokens
+        // [수정] 현재 사용자의 예약도 포함하여 병합
         val serverMap = mutableMapOf<LocalDate, MutableSet<String>>()
         try {
             val res = try { repo.getMyReservations(status = "upcoming", type = null) } catch (t: Throwable) { Result.failure<com.livon.app.data.remote.api.ReservationListResponse>(t) }
@@ -75,6 +112,9 @@ fun CoachDetailScreen(
                 body?.items?.forEach { dto ->
                     try {
                         val coachUserId = dto.coach?.userId
+                        // [수정] 현재 사용자의 예약만이 아니라, 해당 코치의 모든 예약을 확인해야 하지만
+                        // getMyReservations는 현재 사용자의 예약만 반환하므로, 
+                        // 다른 사용자의 예약은 getCoachAvailableTimes API를 통해 확인 필요
                         if ((dto.type ?: "ONE") == "ONE" && coachUserId == coachId) {
                             val startIso = dto.startAt
                             if (!startIso.isNullOrBlank()) {
@@ -95,15 +135,32 @@ fun CoachDetailScreen(
                 }
             }
         } catch (_: Throwable) { /* ignore server fetch errors */ }
+        
+        // [수정] 모든 예약된 시간을 병합 (현재 사용자 + 다른 사용자)
+        allBookedTimesMap.forEach { (date, tokens) ->
+            serverMap.getOrPut(date) { mutableSetOf() }.addAll(tokens)
+        }
 
-        // collect local cache updates and merge with the serverMap into a date->tokens map
+        // [수정] collect local cache updates and merge with the serverMap into a date->tokens map
+        // 예약 취소 시 자동으로 갱신되도록 localReservationsFlow를 구독
+        // [수정] 예약 취소 후 코치의 모든 예약 정보를 다시 가져와서 allBookedTimesMap 갱신
         try {
             com.livon.app.data.repository.ReservationRepositoryImpl.localReservationsFlow.collect { localList: List<com.livon.app.data.repository.ReservationRepositoryImpl.LocalReservation> ->
                 val map = mutableMapOf<LocalDate, MutableSet<String>>()
-                // start with server map
+                
+                // [수정] 예약 취소 후 최신 예약 정보를 다시 가져오기 (비동기)
+                // [참고] LaunchedEffect 내부에서는 별도 코루틴 스코프 불필요
+                // 대신 선택된 날짜가 변경될 때만 해당 날짜의 예약 정보를 동적으로 로드
+                
+                // start with server map (현재 사용자 예약 + 다른 사용자 예약)
                 serverMap.forEach { (d, tokens) -> map[d] = tokens.toMutableSet() }
+                
+                // [수정] allBookedTimesMap도 다시 병합 (최신 상태 유지)
+                allBookedTimesMap.forEach { (date, tokens) ->
+                    map.getOrPut(date) { mutableSetOf() }.addAll(tokens)
+                }
 
-                // add local reservations into map
+                // add local reservations into map (최근 생성된 예약 포함, 취소된 예약은 제외됨)
                 localList.forEach { lr ->
                     try {
                         if (lr.type == com.livon.app.data.repository.ReservationType.PERSONAL && lr.coachId == coachId) {
@@ -130,14 +187,46 @@ fun CoachDetailScreen(
         } catch (_: Throwable) { /* ignore collection errors */ }
     }
 
-    // ensure mutual exclusivity: when date changes, clear selectedTime and hide time selection
-    LaunchedEffect(selectedDate) {
+    // [수정] 선택된 날짜가 변경될 때 해당 날짜의 예약 정보를 동적으로 로드
+    LaunchedEffect(selectedDate, coachId) {
         if (selectedDate == null) {
             selectedTime = null
             showTimeSelection = false
         } else {
             // if date changed by user selection, clear any previously chosen time
             selectedTime = null
+            
+            // [추가] 선택된 날짜의 예약 정보를 동적으로 로드
+            try {
+                val coachApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.CoachApiService::class.java)
+                val dateStr = selectedDate.toString() // YYYY-MM-DD 형식
+                val availableTimesRes = try {
+                    coachApi.getCoachAvailableTimes(coachId, date = dateStr)
+                } catch (t: Throwable) {
+                    // API가 아직 구현되지 않았을 수 있으므로 실패해도 계속 진행
+                    null
+                }
+                
+                if (availableTimesRes != null && availableTimesRes.isSuccess) {
+                    val response = availableTimesRes.result
+                    // [수정] selectedDate를 먼저 null-check하고 로컬 변수로 캡처하여 smart-cast 가능하도록 함
+                    selectedDate?.let { sd ->
+                        val currentMap = reservedTimeTokensByDate.value.toMutableMap()
+                        val tokens = currentMap.getOrPut(sd) { mutableSetOf() }.toMutableSet()
+                        
+                        // 모든 토큰을 추가
+                        response?.bookedTimes?.forEach { token ->
+                            tokens.add(token)
+                        }
+                        
+                        // 한 번만 상태 업데이트
+                        if (tokens.isNotEmpty()) {
+                            currentMap[sd] = tokens.toSet()
+                            reservedTimeTokensByDate.value = currentMap
+                        }
+                    }
+                }
+            } catch (_: Throwable) { /* API 호출 실패 시 무시 */ }
         }
     }
 

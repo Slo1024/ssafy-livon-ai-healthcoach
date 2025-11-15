@@ -101,13 +101,13 @@ fun ClassReservationScreen(
                     items(filtered, key = { it.id }) { item ->
                         val isClosed = item.currentParticipants >= item.maxParticipants
                         val isUserReserved = reservedClassIds.value.contains(item.id)
+                        val isEnabled = !isClosed && !isUserReserved
+                        
                         ClassCard(
                             classInfo = item,
                             onCardClick = {
-                                if (isClosed || isUserReserved) {
-                                    try { android.util.Log.d("ClassReservationScreen", "class ${item.id} is full or already reserved by user; navigation blocked") } catch (t: Throwable) { android.util.Log.w("ClassReservationScreen","log failed", t) }
-                                    // no-op if full or already reserved
-                                } else {
+                                // [수정] enabled가 false면 클릭 이벤트가 전달되지 않으므로 여기서는 그냥 처리
+                                if (isEnabled) {
                                     if (navController != null) {
                                         try {
                                             navController.navigate("class_detail/${item.id}")
@@ -118,18 +118,22 @@ fun ClassReservationScreen(
                                         onCardClick(item)
                                     }
                                 }
+                                // enabled=false일 때는 onCardClick 자체가 호출되지 않음
                             },
                             onCoachClick = {
-                                // Debug logging: show submitted coachId and guard empty ids
-                                try {
-                                    android.util.Log.d("ClassReservationScreen", "CoachView clicked: coachId=${item.coachId}")
-                                } catch (t: Throwable) { android.util.Log.w("ClassReservationScreen","log failed", t) }
-                                // item.coachId is non-nullable in model; treat empty/blank as missing
-                                val coachIdArg = if (item.coachId.isBlank()) "" else item.coachId
-                                if (coachIdArg.isBlank()) android.util.Log.w("ClassReservationScreen", "coachId is blank; cannot navigate to coach detail")
-                                onCoachClick(coachIdArg)
-                            }
-                            , enabled = !isClosed && !isUserReserved
+                                // [수정] 만원이거나 이미 예약한 경우 코치 보기도 비활성화
+                                if (isEnabled) {
+                                    // Debug logging: show submitted coachId and guard empty ids
+                                    try {
+                                        android.util.Log.d("ClassReservationScreen", "CoachView clicked: coachId=${item.coachId}")
+                                    } catch (t: Throwable) { android.util.Log.w("ClassReservationScreen","log failed", t) }
+                                    // item.coachId is non-nullable in model; treat empty/blank as missing
+                                    val coachIdArg = if (item.coachId.isBlank()) "" else item.coachId
+                                    if (coachIdArg.isBlank()) android.util.Log.w("ClassReservationScreen", "coachId is blank; cannot navigate to coach detail")
+                                    onCoachClick(coachIdArg)
+                                }
+                            },
+                            enabled = isEnabled // [수정] 만원이거나 이미 예약한 경우 비활성화
                         )
                     }
                 }

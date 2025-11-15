@@ -9,7 +9,9 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @EnableAsync
 @SpringBootApplication
 public class LivOnApplication {
+
     public static void main(String[] args) {
         SpringApplication.run(LivOnApplication.class, args);
     }
+    
 }

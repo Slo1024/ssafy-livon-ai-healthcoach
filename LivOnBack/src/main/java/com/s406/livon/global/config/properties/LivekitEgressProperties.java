@@ -23,9 +23,4 @@ public class LivekitEgressProperties {
      * Prefix used when composing file paths inside the configured bucket.
      */
     private String filePrefix = "recordings";
-
-    /**
-     * Optional custom recorder base url (LiveKit Recorder) when required.
-     */
-    private String customBaseUrl = "";
 }

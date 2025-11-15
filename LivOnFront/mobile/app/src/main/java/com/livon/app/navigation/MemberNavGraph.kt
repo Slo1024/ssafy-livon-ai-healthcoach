@@ -248,10 +248,21 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
 
 
 
+        // [수정] 예약 성공 후 즉시 로컬 캐시 동기화 및 예약 현황 화면으로 이동
+        // reservations 화면에서 사용할 수 있도록 reservationCreatedFlow를 전달해야 하지만,
+        // 여기서는 직접 예약 현황 화면으로 이동하기 전에 loadUpcoming을 호출하도록 개선
         LaunchedEffect(actionState.success) {
             if (actionState.success == true) {
-                try { reservationRepoForQna.syncFromServerAndPersist(ctxQna) } catch (_: Throwable) {}
-                try { reservationRepoForQna.persistLocalReservations(ctxQna) } catch (_: Throwable) {}
+                try { 
+                    // 서버와 동기화하여 최신 예약 정보 가져오기
+                    reservationRepoForQna.syncFromServerAndPersist(ctxQna) 
+                } catch (_: Throwable) {}
+                try { 
+                    // 로컬 캐시 저장
+                    reservationRepoForQna.persistLocalReservations(ctxQna) 
+                } catch (_: Throwable) {}
+                // 예약 현황 화면으로 이동 (서버 동기화 후 약간의 지연을 두어 데이터가 준비되도록 함)
+                kotlinx.coroutines.delay(500) // 서버 동기화 및 localReservationsFlow emit 완료 대기
                 nav.navigate(Routes.Reservations) { popUpTo(Routes.MemberHome) { inclusive = false } }
             }
         }
@@ -352,8 +363,24 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         // Get context for Intent
         val context = LocalContext.current
         
-        // 예약 취소 성공 시 목록 갱신
+        // [수정] 예약 취소 성공 시 목록 갱신 + 예약 생성 후 화면 진입 시에도 목록 갱신
         val actionState by reservationVm.actionState.collectAsState()
+        
+        // [수정] 화면 진입 시에도 최신 예약 목록을 로드하도록 개선
+        // 예약 생성 후 예약 현황 화면으로 이동할 때 데이터가 갱신되도록 함
+        LaunchedEffect(Unit) {
+            try {
+                com.livon.app.data.repository.ReservationRepositoryImpl.localReservationsFlow.collect {
+                    // 로컬 캐시가 업데이트되면 예약 목록을 다시 로드 (debounce 적용)
+                    kotlinx.coroutines.delay(400) // 서버 동기화 완료를 위한 지연
+                    if (!sessionToken.isNullOrBlank()) {
+                        reservationVm.loadUpcoming()
+                        pastVm.loadPast()
+                    }
+                }
+            } catch (_: Throwable) { /* ignore collection errors */ }
+        }
+        
         LaunchedEffect(actionState.success) {
             if (actionState.success == true) {
                 // 취소 성공 시 목록 갱신

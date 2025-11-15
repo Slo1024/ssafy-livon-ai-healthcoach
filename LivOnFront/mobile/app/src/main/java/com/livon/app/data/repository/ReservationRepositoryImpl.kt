@@ -311,7 +311,6 @@ class ReservationRepositoryImpl : ReservationRepository {
                 synchronized(cacheLock) {
                     // preserve any existing local placeholders not present on server
                     val existingLocal = localReservations.toList()
-                    localReservations.clear()
                     val serverIds = mutableSetOf<Int>()
                     
                     // [수정] 취소되지 않은 항목만 로컬 캐시에 추가
@@ -326,24 +325,45 @@ class ReservationRepositoryImpl : ReservationRepository {
                             val coachName = it.coach?.nickname
                             val owner = com.livon.app.data.session.SessionManager.getTokenSync()
                             val lr = LocalReservation(id = id, type = type, coachId = coachId, startAt = startIso, endAt = endIso, classTitle = it.title, coachName = coachName, ownerToken = owner)
+                            // 기존 항목과 동일한 ID가 있으면 업데이트, 없으면 추가
+                            localReservations.removeAll { it.id == id && (it.ownerToken ?: "") == (owner ?: "") }
                             localReservations.add(lr)
                             snapshot.add(lr)
                         } catch (_: Throwable) { /* ignore individual item parse failures */ }
                     }
-                    // [수정] 서버에 있는 ID만 유지, 서버에 없는(취소된) 항목은 제외
-                    // 최근 생성된 항목만 추가 (서버에 아직 반영되지 않은 경우만)
+                    // [수정] 서버에 없는 기존 로컬 항목 처리
+                    // 서버에 없는 항목은 취소되었거나 최근 생성되었을 수 있음
+                    // 최근 생성된 항목은 서버 동기화 지연으로 아직 반영되지 않았을 수 있으므로 보존
+                    val now = LocalDateTime.now()
+                    val owner = com.livon.app.data.session.SessionManager.getTokenSync()
                     for (ex in existingLocal) {
-                        // 서버에 있는 ID는 이미 위에서 추가했으므로, 서버에 없는 ID만 확인
-                        // 하지만 서버에 없다는 것은 취소되었거나 최근 생성되었을 수 있음
-                        // 최근 생성된 항목은 서버 동기화가 아직 안되었을 수 있으므로 시간 체크 필요
-                        // 간단하게: 서버에 없는 항목은 제외 (취소된 것으로 간주)
-                        // 최근 생성 항목은 서버 동기화 후 다시 추가될 것
-                        if (!serverIds.contains(ex.id)) {
-                            // 서버에 없는 항목은 제외 (취소된 것으로 간주)
-                            // 로그는 남기되 제외
+                        if (!serverIds.contains(ex.id) && (ex.ownerToken ?: "") == (owner ?: "")) {
                             try {
-                                android.util.Log.d("ReservationRepo", "refreshLocalReservationsFromServer: excluding local item id=${ex.id} (not on server, likely cancelled)")
-                            } catch (_: Throwable) {}
+                                // 서버에 없는 로컬 항목은 미래 예약이면 보존 (서버 동기화 지연 가능)
+                                // 과거 예약은 취소된 것으로 간주하여 제외
+                                val start = LocalDateTime.parse(ex.startAt)
+                                val isFuture = start.isAfter(now)
+                                if (isFuture) {
+                                    // 미래 예약은 보존 (서버 동기화 지연 가능)
+                                    if (!snapshot.any { it.id == ex.id }) {
+                                        localReservations.removeAll { it.id == ex.id && (it.ownerToken ?: "") == (owner ?: "") }
+                                        localReservations.add(ex)
+                                        snapshot.add(ex)
+                                        android.util.Log.d("ReservationRepo", "refreshLocalReservationsFromServer: preserving future local item id=${ex.id} (not on server yet, likely recent creation)")
+                                    }
+                                } else {
+                                    // 서버에 없고 과거 예약은 제외 (취소된 것으로 간주)
+                                    localReservations.removeAll { it.id == ex.id && (it.ownerToken ?: "") == (owner ?: "") }
+                                    android.util.Log.d("ReservationRepo", "refreshLocalReservationsFromServer: excluding past local item id=${ex.id} (not on server, likely cancelled)")
+                                }
+                            } catch (_: Throwable) {
+                                // 파싱 실패 시 보존 (안전을 위해)
+                                if (!snapshot.any { it.id == ex.id }) {
+                                    localReservations.removeAll { it.id == ex.id && (it.ownerToken ?: "") == (owner ?: "") }
+                                    localReservations.add(ex)
+                                    snapshot.add(ex)
+                                }
+                            }
                         }
                     }
                 }

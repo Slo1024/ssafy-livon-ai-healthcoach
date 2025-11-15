@@ -43,16 +43,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import livekit.org.webrtc.EglBase
-import android.hardware.display.DisplayManager
-import android.hardware.display.VirtualDisplay
-import android.media.MediaRecorder
-import android.media.MediaScannerConnection
-import android.media.projection.MediaProjection
-import android.os.Environment
 import com.livon.app.data.session.SessionManager
 import io.ktor.client.request.header
-import java.io.File
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 
 
 class RoomLayoutActivity : AppCompatActivity() {
@@ -77,12 +73,8 @@ class RoomLayoutActivity : AppCompatActivity() {
         }
     }
 
-    private lateinit var mediaProjectionManager: MediaProjectionManager
-    private var mediaProjection: MediaProjection? = null
-    private var mediaRecorder: MediaRecorder? = null
-    private var virtualDisplay: VirtualDisplay? = null
-    private var isRecording: Boolean = false
-    private var videoFile: File? = null
+    private var activeEgressId: String? = null
+    private var resourcesReleased: Boolean = false
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -111,22 +103,6 @@ class RoomLayoutActivity : AppCompatActivity() {
         }
     }
 
-    private val screenRecordLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
-            val intent = Intent(this, ScreenRecordService::class.java).apply {
-                putExtra("resultCode", result.resultCode)
-                putExtra("data", result.data)
-            }
-
-        } else {
-            Toast.makeText(this, "화면 녹화 권한이 거부되었습니다.", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -136,8 +112,6 @@ class RoomLayoutActivity : AppCompatActivity() {
         room = LiveKit.create(applicationContext)
         _room.value = room
 
-
-        mediaProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
         setContent {
             val uiState = _uiState.collectAsState().value
@@ -369,97 +343,97 @@ class RoomLayoutActivity : AppCompatActivity() {
     }
 
     private fun startRecordingRequest() {
-        val intent = mediaProjectionManager.createScreenCaptureIntent()
-        screenRecordLauncher.launch(intent)
-    }
-
-    private fun startScreenRecording(resultCode: Int, data: Intent) {
-        if (isRecording) return
-
-        val dm = resources.displayMetrics
-        val width = dm.widthPixels
-        val height = dm.heightPixels
-        val density = dm.densityDpi
-
-        val moviesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES)
-        if (!moviesDir.exists()) moviesDir.mkdirs()
-        videoFile = File(moviesDir, "record_${System.currentTimeMillis()}.mp4")
-
-        mediaRecorder = MediaRecorder().apply {
-            setAudioSource(MediaRecorder.AudioSource.MIC)
-            setVideoSource(MediaRecorder.VideoSource.SURFACE)
-            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-            setOutputFile(videoFile!!.absolutePath)
-            setVideoEncoder(MediaRecorder.VideoEncoder.H264)
-            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-            setVideoSize(width, height)
-            setVideoEncodingBitRate(5 * 1024 * 1024)
-            setVideoFrameRate(30)
-            prepare()
+        val consultationId = intent.getLongExtra("consultationId", -1L)
+        if (consultationId == -1L) {
+            Log.w("LiveKitRecording", "consultationId not provided. Skipping remote recording start.")
+            return
+        }
+        if (activeEgressId != null) {
+            Log.d("LiveKitRecording", "Recording already active: $activeEgressId")
+            return
         }
 
-        mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data)
-
-        mediaProjection?.registerCallback(object : MediaProjection.Callback() {
-            override fun onStop() {
-                super.onStop()
-                if (isRecording) {
-                    try {
-                        stopScreenRecording()
-                    } catch (e: RuntimeException) {
-                        Log.e("ScreenRecord", "MediaRecorder stop failed: ${e.message}")
-                        videoFile?.delete()
-                    }
-                }
+        lifecycleScope.launch {
+            val jwtToken = SessionManager.getTokenSync()
+            if (jwtToken.isNullOrBlank()) {
+                Log.w("LiveKitRecording", "JWT token missing. Cannot start recording.")
+                return@launch
             }
-        }, null)
-
-        virtualDisplay = mediaProjection?.createVirtualDisplay(
-            "ScreenRecording",
-            width, height, density,
-            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-            mediaRecorder?.surface, null, null
-        )
-
-
-        mediaRecorder?.start()
-        isRecording = true
-        Toast.makeText(this, "화면 녹화 시작!", Toast.LENGTH_SHORT).show()
+            try {
+                val apiResponse = withContext(Dispatchers.IO) {
+                    client.post(Urls.applicationServerUrl + "livekit/recordings/start") {
+                        contentType(ContentType.Application.Json)
+                        header(HttpHeaders.Authorization, "Bearer $jwtToken")
+                        setBody(RemoteRecordingStartRequest(consultationId))
+                    }.body<RemoteRecordingResponse<RemoteRecordingStartResult>>()
+                }
+                if (apiResponse.isSuccess && apiResponse.result != null) {
+                    activeEgressId = apiResponse.result.egressId
+                    Log.d("LiveKitRecording", "Remote recording started. egressId=$activeEgressId")
+                } else {
+                    Log.e("LiveKitRecording", "Failed to start remote recording: ${apiResponse.message}")
+                }
+            } catch (e: Exception) {
+                Log.e("LiveKitRecording", "Remote recording start error", e)
+            }
+        }
     }
 
-    private fun stopScreenRecording() {
-        if (!isRecording) return
+    private suspend fun stopRemoteRecording() {
+        val egressId = activeEgressId ?: return
+        val consultationId = intent.getLongExtra("consultationId", -1L)
+        if (consultationId == -1L) {
+            Log.w("LiveKitRecording", "consultationId missing. Cannot stop recording.")
+            activeEgressId = null
+            return
+        }
+        val jwtToken = SessionManager.getTokenSync()
+        if (jwtToken.isNullOrBlank()) {
+            Log.w("LiveKitRecording", "JWT token missing. Cannot stop recording.")
+            activeEgressId = null
+            return
+        }
 
         try {
-            mediaRecorder?.apply {
-                stop()
-                reset()
-                release()
+            val apiResponse = withContext(Dispatchers.IO) {
+                client.post(Urls.applicationServerUrl + "livekit/recordings/stop") {
+                    contentType(ContentType.Application.Json)
+                    header(HttpHeaders.Authorization, "Bearer $jwtToken")
+                    setBody(RemoteRecordingStopRequest(consultationId, egressId))
+                }.body<RemoteRecordingResponse<RemoteRecordingStopResult>>()
             }
-            virtualDisplay?.release()
-            mediaProjection?.stop()
-
-            videoFile?.let { file ->
-                MediaScannerConnection.scanFile(this, arrayOf(file.absolutePath), null) { path, uri ->
-                    Log.d("ScreenRecord", "Saved to gallery: $path")
-                }
-                Toast.makeText(this, "영상 저장 완료! 갤러리에서 확인하세요.", Toast.LENGTH_LONG).show()
+            if (apiResponse.isSuccess) {
+                val fileCount = apiResponse.result?.files?.size ?: 0
+                Log.d("LiveKitRecording", "Remote recording stopped. files=$fileCount")
+            } else {
+                Log.w("LiveKitRecording", "Failed to stop remote recording: ${apiResponse.message}")
             }
-
         } catch (e: Exception) {
-            Log.e("ScreenRecord", "Error stopping recording", e)
+            Log.e("LiveKitRecording", "Remote recording stop error", e)
         } finally {
-            mediaRecorder = null
-            virtualDisplay = null
-            mediaProjection = null
-            isRecording = false
+            activeEgressId = null
         }
     }
 
     override fun onDestroy() {
+        runBlocking {
+            stopRemoteRecording()
+        }
+        releaseResources()
         super.onDestroy()
+    }
 
-        stopScreenRecording()
+    private fun leaveRoom() {
+        lifecycleScope.launch {
+            stopRemoteRecording()
+            releaseResources()
+            finish()
+        }
+    }
+
+    private fun releaseResources() {
+        if (resourcesReleased) return
+        resourcesReleased = true
 
         try {
             room.disconnect()
@@ -477,16 +451,11 @@ class RoomLayoutActivity : AppCompatActivity() {
         }
         eglBase = null
 
-        client.close()
-    }
-
-    private fun leaveRoom() {
-        stopScreenRecording()
-
-        room.disconnect()
-        client.close()
-        eglBase?.release()
-        finish()
+        try {
+            client.close()
+        } catch (e: Exception) {
+            Log.w("RoomLayoutActivity", "HttpClient close error: ${e.message}")
+        }
     }
 
     private suspend fun getToken(consultationId: Long, participantName: String): String {

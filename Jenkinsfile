@@ -141,13 +141,16 @@ pipeline {
                         '''
 
                         // 3) local.properties 생성 (Gradle이 SDK 경로 인식)
-                        dir('LivOnFront/mobile') {
-                            sh '''
-                                set -e
-                                echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
-                                echo "[ok] Generated local.properties:"
-                                cat local.properties
-                            '''
+                        withCredentials([file(credentialsId: 'mobile-local-properties', variable: 'LOCAL_PROPS_FILE')]) {
+                            dir('LivOnFront/mobile') {
+                                sh '''
+                                    set -e
+                                    cp "$LOCAL_PROPS_FILE" local.properties
+                                    grep -q '^sdk.dir=' local.properties && sed -i 's|^sdk\\.dir=.*|sdk.dir='"$ANDROID_SDK_ROOT"'|' local.properties || echo "sdk.dir=$ANDROID_SDK_ROOT" >> local.properties
+                                    echo "[ok] Generated local.properties:"
+                                    cat local.properties
+                                '''
+                            }
                         }
                     }
                 }

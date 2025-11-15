@@ -119,9 +119,7 @@ public class RecordingService {
     }
 
     private String buildFilePath(Consultation consultation, String filename) {
-        String prefix = StringUtils.hasText(egressProperties.getFilePrefix())
-                ? egressProperties.getFilePrefix()
-                : "recordings";
+        String prefix = egressProperties.getFilePrefix();
         String baseName = StringUtils.hasText(filename)
                 ? filename
                 : consultation.getSessionId() + "_" + FILE_TS.format(LocalDateTime.now());

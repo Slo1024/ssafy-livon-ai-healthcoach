@@ -67,8 +67,7 @@ public class RecordingService {
                         null,
                         null,
                         false,
-                        false,
-                        egressProperties.getCustomBaseUrl()
+                        false
                 )
         );
 

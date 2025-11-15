@@ -256,60 +256,45 @@ public class GroupConsultationService {
         consultation.cancel();
     }
 
-    /**
-     * 클래스 예약하기
-     */
     @DistributedLock(
-            key = "'consultation:' + #classId",
-            waitTime = 3,
-            leaseTime = 5,
-            timeUnit = TimeUnit.SECONDS
+                    key = "'consultation:' + #classId",
+                    waitTime = 3,
+                    leaseTime = 5,
+                    timeUnit = TimeUnit.SECONDS
     )
     public Long reserveGroupConsultation(UUID userId, Long classId) {
 
         // 1. 사용자 조회
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CoachHandler(ErrorStatus.USER_NOT_FOUND));
+                        .orElseThrow(() -> new CoachHandler(ErrorStatus.USER_NOT_FOUND));
 
         // 2. 클래스 존재 여부 확인 및 조회
         Consultation consultation = consultationRepository.findById(classId)
-                .orElseThrow(() -> new CoachHandler(ErrorStatus.CONSULTATION_NOT_FOUND));
+                        .orElseThrow(() -> new CoachHandler(ErrorStatus.CONSULTATION_NOT_FOUND));
 
-        // 3. 클래스 타입 검증 (GROUP 타입인지 확인)
+        // 3. 클래스 타입 검증
         if (consultation.getType() != Consultation.Type.GROUP) {
             throw new CoachHandler(ErrorStatus.CONSULTATION_TYPE_MISMATCH);
         }
 
-        // 4. 클래스 상태 검증 (OPEN 상태인지 확인)
+        // 4. 클래스 상태 검증
         if (consultation.getStatus() != Consultation.Status.OPEN) {
             throw new CoachHandler(ErrorStatus.CONSULTATION_ALREADY_CLOSED);
         }
 
-        // 5. 현재 참가 인원 확인 및 정원 검증
-        Long currentParticipants = participantRepository.countByConsultationId(classId);
-        if (currentParticipants >= consultation.getCapacity()) {
-            throw new CoachHandler(ErrorStatus.CONSULTATION_CAPACITY_FULL);
-        }
-
-        // 6. 중복 예약 방지 (이미 예약한 사용자인지 확인)
+        // 5. 중복 예약 방지 (먼저 체크)
         if (participantRepository.existsByUserIdAndConsultationId(userId, classId)) {
             throw new CoachHandler(ErrorStatus.CONSULTATION_ALREADY_RESERVED);
         }
 
-
-        // 5. 정원 체크 (회원만 카운트) → 저장 전 체크
+        // 6. 정원 체크 (코치 제외한 회원 수만 카운트)
         UUID coachId = consultation.getCoach().getId();
         long currentMembers = participantRepository.countMembersExcludingCoach(consultation.getId(), coachId);
         if (currentMembers >= consultation.getCapacity()) {
             throw new CoachHandler(ErrorStatus.CONSULTATION_CAPACITY_FULL);
         }
 
-        // 6. 사용자 참가자 저장 (중복 방지)
-        if (!participantRepository.existsByUserIdAndConsultationId(userId, consultation.getId())) {
-            participantRepository.save(Participant.of(user, consultation));
-        }
-
-        // 7. Participant 생성 및 저장
+        // 7. Participant 생성 및 저장 (한 번만!)
         Participant participant = Participant.of(user, consultation);
         participantRepository.save(participant);
 

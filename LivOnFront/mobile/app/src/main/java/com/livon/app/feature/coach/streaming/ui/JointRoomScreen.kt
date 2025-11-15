@@ -14,14 +14,17 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.livon.app.R
+import com.livon.app.feature.shared.streaming.QuickRoomUiState
 import androidx.compose.foundation.text.KeyboardOptions
 
 @Composable
 fun JoinRoomScreen(
     initialParticipantName: String,
     initialRoomName: String,
-    onJoinClicked: (participantName: String, roomName: String) -> Unit,
-    modifier: Modifier = Modifier
+    onJoinClicked: (roomName: String, participantName: String) -> Unit,
+    modifier: Modifier = Modifier,
+    quickRoomState: QuickRoomUiState = QuickRoomUiState(),
+    onCreateRoomClicked: ((participantName: String) -> Unit)? = null
 ) {
     var participantName by remember { mutableStateOf(initialParticipantName) }
     var roomName by remember { mutableStateOf(initialRoomName) }
@@ -82,12 +85,55 @@ fun JoinRoomScreen(
         Button(
             onClick = {
                 isJoinButtonEnabled = false
-                onJoinClicked(participantName, roomName)
+                onJoinClicked(roomName, participantName)
             },
             enabled = isJoinButtonEnabled,
             modifier = Modifier.padding(top = 24.dp)
         ) {
             Text(stringResource(id = R.string.joinBtn), fontWeight = FontWeight.Bold)
+        }
+
+        if (onCreateRoomClicked != null) {
+            Divider(modifier = Modifier
+                .padding(vertical = 24.dp)
+                .fillMaxWidth())
+
+            Text(
+                text = "빠르게 방 만들기",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier
+                    .align(Alignment.Start)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+
+            if (!quickRoomState.errorMessage.isNullOrBlank()) {
+                Text(
+                    text = quickRoomState.errorMessage ?: "",
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier
+                        .align(Alignment.Start)
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
+
+            Button(
+                onClick = { onCreateRoomClicked(participantName) },
+                enabled = !quickRoomState.isCreating,
+                modifier = Modifier.padding(top = 12.dp)
+            ) {
+                if (quickRoomState.isCreating) {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .size(18.dp)
+                            .padding(end = 8.dp),
+                        strokeWidth = 2.dp
+                    )
+                    Text("생성 중...")
+                } else {
+                    Text("새 상담 방 생성", fontWeight = FontWeight.Bold)
+                }
+            }
         }
     }
 }

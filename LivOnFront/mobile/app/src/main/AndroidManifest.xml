@@ -50,10 +50,6 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
 
-        <service
-            android:name=".feature.shared.streaming.ScreenRecordService"
-            android:exported="false"
-            android:foregroundServiceType="mediaProjection" />
     </application>
 
 </manifest>

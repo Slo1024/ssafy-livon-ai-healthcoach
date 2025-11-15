@@ -50,10 +50,8 @@ class StreamingChatViewModel(
                 ChatStompManager.subscriptionReady.collect { isReady ->
                     if (isReady && !isChatRoomInfoRequested) {
                         isChatRoomInfoRequested = true // 플래그 설정하여 중복 실행 방지
-                        Log.d("StreamingChatViewModel", "웹소켓 연결 완료, POST 요청 시작")
                         
                         // 3) POST /api/v1/goods/chat?consultationId=방번호 요청 (구독 전에 먼저 실행)
-                        Log.d("StreamingChatViewModel", "채팅방 정보 조회 시작: consultationId=$consultationId")
                         repository.getChatRoomInfo(consultationId, jwtToken)
                             .onSuccess { chatRoomInfo ->
                                 Log.d("StreamingChatViewModel", "채팅방 정보 조회 성공: chatRoomId=${chatRoomInfo.chatRoomId}, consultationId=${chatRoomInfo.consultationId}, status=${chatRoomInfo.chatRoomStatus}")

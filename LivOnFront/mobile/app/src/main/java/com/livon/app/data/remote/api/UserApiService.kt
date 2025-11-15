@@ -54,6 +54,12 @@ data class HealthSurveyRequest(
     val weight: Int = 0
 )
 
+// Response DTO for AI health summary
+data class HealthSummaryResponse(
+    val userId: String,
+    val summary: String
+)
+
 interface UserApiService {
     @GET("user/my-info")
     suspend fun getMyInfo(): ApiResponse<MyInfoResponse>
@@ -64,4 +70,8 @@ interface UserApiService {
     // POST health survey
     @POST("user/health-survey")
     suspend fun postHealthSurvey(@Body req: HealthSurveyRequest): ApiResponse<Any?>
+
+    // POST AI health summary
+    @POST("ai/health-summary")
+    suspend fun postHealthSummary(): ApiResponse<HealthSummaryResponse>
 }

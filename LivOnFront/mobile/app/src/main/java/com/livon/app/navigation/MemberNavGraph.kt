@@ -57,6 +57,23 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         val userState by userVm.uiState.collectAsState()
         LaunchedEffect(Unit) { userVm.load() }
 
+        // [추가] 건강 설문 완료 후 데이터 갱신을 위한 health_updated 플래그 감지
+        val backStackEntry = nav.currentBackStackEntry
+        val savedStateHandle = backStackEntry?.savedStateHandle
+        val healthUpdatedFlow = remember(savedStateHandle) { savedStateHandle?.getStateFlow("health_updated", false) }
+        val healthUpdated by (healthUpdatedFlow?.collectAsState(initial = false) ?: remember { mutableStateOf(false) })
+
+        LaunchedEffect(healthUpdated) {
+            if (healthUpdated) {
+                // 건강 설문 완료 후 데이터 새로고침
+                userVm.load()
+                // 플래그 초기화
+                try {
+                    savedStateHandle?.set("health_updated", false)
+                } catch (_: Throwable) {}
+            }
+        }
+
         // Setup Reservation ViewModel
         val reservationRepo = remember { com.livon.app.data.repository.ReservationRepositoryImpl() }
         val ctxForReservation = LocalContext.current
@@ -835,6 +852,23 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         val userState by userVm.uiState.collectAsState()
         LaunchedEffect(Unit) { userVm.load() }
 
+        // [추가] 건강 설문 완료 후 데이터 갱신을 위한 health_updated 플래그 감지
+        val backStackEntry = nav.currentBackStackEntry
+        val savedStateHandle = backStackEntry?.savedStateHandle
+        val healthUpdatedFlow = remember(savedStateHandle) { savedStateHandle?.getStateFlow("health_updated", false) }
+        val healthUpdated by (healthUpdatedFlow?.collectAsState(initial = false) ?: remember { mutableStateOf(false) })
+
+        LaunchedEffect(healthUpdated) {
+            if (healthUpdated) {
+                // 건강 설문 완료 후 데이터 새로고침
+                userVm.load()
+                // 플래그 초기화
+                try {
+                    savedStateHandle?.set("health_updated", false)
+                } catch (_: Throwable) {}
+            }
+        }
+
         val info = userState.info
         // Provide a fallback state while loading
         val stateForUi = info ?: com.livon.app.feature.member.my.MyInfoUiState(
@@ -861,7 +895,17 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             state = stateForUi,
             onBack = { nav.popBackStack() },
             onEditClick = { /* optional: could navigate to HealthHeight for editing */ },
-            onEditConfirm = { /* optional: post-edit action */ }
+            onEditConfirm = {
+                // [수정] 건강 정보 수정 플로우: HealthHeight로 네비게이션 및 myinfo_origin 플래그 설정
+                try {
+                    val prev = nav.previousBackStackEntry
+                    val prevSaved = prev?.savedStateHandle
+                    prevSaved?.set("myinfo_origin", true)
+                    nav.navigate(com.livon.app.navigation.Routes.HealthHeight)
+                } catch (e: Throwable) {
+                    android.util.Log.w("MemberNavGraph", "Failed to navigate to health survey from MyInfo", e)
+                }
+            }
         )
     }
 }

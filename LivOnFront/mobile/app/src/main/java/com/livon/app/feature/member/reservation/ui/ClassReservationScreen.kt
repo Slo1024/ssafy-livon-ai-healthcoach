@@ -123,14 +123,14 @@ fun ClassReservationScreen(
                             onCoachClick = {
                                 // [수정] 만원이거나 이미 예약한 경우 코치 보기도 비활성화
                                 if (isEnabled) {
-                                    // Debug logging: show submitted coachId and guard empty ids
-                                    try {
-                                        android.util.Log.d("ClassReservationScreen", "CoachView clicked: coachId=${item.coachId}")
-                                    } catch (t: Throwable) { android.util.Log.w("ClassReservationScreen","log failed", t) }
-                                    // item.coachId is non-nullable in model; treat empty/blank as missing
-                                    val coachIdArg = if (item.coachId.isBlank()) "" else item.coachId
-                                    if (coachIdArg.isBlank()) android.util.Log.w("ClassReservationScreen", "coachId is blank; cannot navigate to coach detail")
-                                    onCoachClick(coachIdArg)
+                                    // [수정] coachId가 비어있지 않은 경우에만 네비게이션
+                                    val coachIdArg = item.coachId.takeIf { it.isNotBlank() }
+                                    if (coachIdArg != null) {
+                                        android.util.Log.d("ClassReservationScreen", "CoachView clicked: coachId=$coachIdArg")
+                                        onCoachClick(coachIdArg)
+                                    } else {
+                                        android.util.Log.w("ClassReservationScreen", "coachId is blank; cannot navigate to coach detail")
+                                    }
                                 }
                             },
                             enabled = isEnabled // [수정] 만원이거나 이미 예약한 경우 비활성화

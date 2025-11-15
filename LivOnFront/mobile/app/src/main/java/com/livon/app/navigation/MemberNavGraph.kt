@@ -578,7 +578,10 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 onBack = { nav.popBackStack() },
                 onDelete = { /* TODO */ },
                 onSeeCoach = {
-                    found.coachId?.let { cid -> try { nav.navigate("coach_detail/$cid/personal") } catch (_: Throwable) {} }
+                    // [수정] ReservationDetailScreen에서 코치 보기는 showSchedule=false (예약 기능 없는 단순 정보 화면)
+                    found.coachId?.let { cid -> try { nav.navigate("coach_detail/$cid/group") } catch (e: Throwable) {
+                        Log.w("MemberNavGraph", "Failed to navigate to coach detail from reservation detail", e)
+                    } }
                 },
                 onSeeAiDetail = {
                     // navigate to AiResultScreen with encoded params
@@ -630,7 +633,18 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         ClassReservationScreen(
             classes = classesToShow,
             onCardClick = { item -> nav.navigate("class_detail/${item.id}") },
-            onCoachClick = { coachId -> nav.navigate("coach_detail/$coachId/group") },
+            onCoachClick = { coachId ->
+                // [수정] coachId가 비어있지 않은 경우에만 네비게이션
+                if (coachId.isNotBlank()) {
+                    try {
+                        nav.navigate("coach_detail/$coachId/group")
+                    } catch (e: Throwable) {
+                        android.util.Log.w("MemberNavGraph", "Failed to navigate to coach detail from class reservation", e)
+                    }
+                } else {
+                    android.util.Log.w("MemberNavGraph", "coachId is blank; cannot navigate to coach detail")
+                }
+            },
             navController = nav
         )
     }

@@ -7,7 +7,8 @@ import lombok.Builder;
  */
 @Builder
 public record ParticipantInfoResponseDto(
-        MemberInfo memberInfo
+        MemberInfo memberInfo,
+        String aiSummary
 ) {
     
     @Builder

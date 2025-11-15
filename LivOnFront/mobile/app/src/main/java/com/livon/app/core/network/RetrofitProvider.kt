@@ -1,5 +1,6 @@
 package com.livon.app.core.network
 
+import android.util.Log
 import com.livon.app.BuildConfig
 import com.livon.app.data.session.SessionManager
 import com.squareup.moshi.Moshi
@@ -24,9 +25,21 @@ object RetrofitProvider {
 
     private val authInterceptor = Interceptor { chain ->
         val reqBuilder = chain.request().newBuilder()
-        SessionManager.getTokenSync()?.let { token ->
-            reqBuilder.addHeader("Authorization", "Bearer $token")
+        val token = SessionManager.getTokenSync()
+        val request = chain.request()
+        
+        // Authorization 헤더 추가
+        token?.let { 
+            reqBuilder.addHeader("Authorization", "Bearer $it")
+        } ?: run {
+            Log.w("RetrofitProvider", "토큰이 없어서 Authorization 헤더를 추가할 수 없습니다.")
         }
+        
+        // POST 요청이고 본문이 비어있으면 Content-Type 헤더 추가 (nginx 호환성)
+        if (request.method == "POST" && request.body == null) {
+            reqBuilder.addHeader("Content-Type", "application/json")
+        }
+        
         chain.proceed(reqBuilder.build())
     }
 

@@ -327,9 +327,11 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         val upcomingState by reservationVm.uiState.collectAsState() // loadUpcoming 결과를 담음
         val pastState = remember { mutableStateOf<List<ReservationUi>>(emptyList()) } // loadPast 결과를 담을 별도 상태
 
+        // [수정] 화면 진입 시마다 최신 데이터를 서버에서 가져옵니다.
         // 세션 토큰이 있을 때만 데이터 로드 (앱 재시작 후에도 로드되도록)
         LaunchedEffect(sessionToken) {
             if (!sessionToken.isNullOrBlank()) {
+                Log.d("MemberNavGraph", "ReservationStatusScreen: loading upcoming and past reservations")
                 reservationVm.loadUpcoming()
             }
         }
@@ -340,6 +342,16 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         
         LaunchedEffect(sessionToken) {
             if (!sessionToken.isNullOrBlank()) {
+                pastVm.loadPast()
+            }
+        }
+        
+        // [수정] 화면 진입 시마다 최신 데이터 로드 (예약 생성 후 돌아왔을 때 반영)
+        LaunchedEffect(Unit) {
+            if (!sessionToken.isNullOrBlank()) {
+                Log.d("MemberNavGraph", "ReservationStatusScreen: screen entered, reloading reservations")
+                kotlinx.coroutines.delay(300) // 짧은 지연으로 서버 동기화 대기
+                reservationVm.loadUpcoming()
                 pastVm.loadPast()
             }
         }
@@ -374,8 +386,9 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             try {
                 com.livon.app.data.repository.ReservationRepositoryImpl.localReservationsFlow.collect {
                     // 로컬 캐시가 업데이트되면 예약 목록을 다시 로드 (debounce 적용)
-                    kotlinx.coroutines.delay(400) // 서버 동기화 완료를 위한 지연
+                    kotlinx.coroutines.delay(800) // 서버 동기화 완료를 위한 지연 시간 증가
                     if (!sessionToken.isNullOrBlank()) {
+                        Log.d("MemberNavGraph", "localReservationsFlow updated: reloading upcoming and past reservations")
                         reservationVm.loadUpcoming()
                         pastVm.loadPast()
                     }
@@ -383,13 +396,19 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
             } catch (_: Throwable) { /* ignore collection errors */ }
         }
         
+        // [수정] 예약 성공 시 목록 갱신 - 서버 동기화를 위한 짧은 지연
+        // class_detail에서 이미 지연 후 이동하므로, 여기서는 추가 로드만 수행
         LaunchedEffect(actionState.success) {
             if (actionState.success == true) {
-                // 취소 성공 시 목록 갱신
+                val createdId = actionState.createdReservationId
+                Log.d("MemberNavGraph", "Reservation success detected (createdId=$createdId), reloading reservations")
+                // 짧은 지연 후 예약 목록 재로드 (서버 동기화 대기)
+                kotlinx.coroutines.delay(500)
                 reservationVm.loadUpcoming()
                 pastVm.loadPast()
                 // 로컬 저장소에도 반영
                 try { reservationRepo.persistLocalReservations(ctxForReservation) } catch (_: Throwable) {}
+                Log.d("MemberNavGraph", "Reservations reloaded after success: upcoming=${reservationVm.uiState.value.items.size}")
             }
         }
 
@@ -653,27 +672,42 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         val actionStateByClass by reservationVmForClass.actionState.collectAsState()
         val ctx = LocalContext.current
 
-        // Navigate to reservations when class reservation succeeds or when repository indicates ALREADY_RESERVED
-        LaunchedEffect(actionStateByClass.success, actionStateByClass.errorMessage) {
-            val err = actionStateByClass.errorMessage ?: ""
-            try {
-                if (actionStateByClass.success == true) {
+        // [수정] 예약 성공 시 ReservationStatusScreen으로 이동
+        // 서버 응답만 기준으로 처리하며, 짧은 지연 후 이동하여 서버 동기화 완료 대기
+        LaunchedEffect(actionStateByClass.success) {
+            if (actionStateByClass.success == true) {
+                Log.d("MemberNavGraph", "Class reservation succeeded, navigating to ReservationStatusScreen after delay")
+                // 서버 동기화를 위한 짧은 지연 (Repository에서 이미 500ms 지연 후 refresh 호출)
+                kotlinx.coroutines.delay(800) // Repository 지연(500ms) + 여유(300ms)
+                
+                // 로컬 캐시 저장 (선택적)
+                try { 
+                    reservationRepoForClass.persistLocalReservations(ctx) 
+                } catch (_: Throwable) { /* ignore */ }
+                
+                // 예약 현황 화면으로 이동
+                try {
+                    nav.navigate(Routes.Reservations) { 
+                        popUpTo(Routes.MemberHome) { inclusive = false } 
+                    }
+                } catch (e: Throwable) { 
+                    Log.w("MemberNavGraph", "Failed to navigate to reservations screen", e)
+                }
+            } else if (actionStateByClass.success == false) {
+                val err = actionStateByClass.errorMessage ?: ""
+                // 이미 예약된 경우에도 예약 현황 화면으로 이동 (사용자가 자신의 예약을 확인할 수 있도록)
+                if (err.contains("이미 예약") || err.contains("이미 예약된")) {
+                    Log.d("MemberNavGraph", "Class already reserved, navigating to ReservationStatusScreen")
+                    kotlinx.coroutines.delay(500)
                     try {
-                        try { reservationRepoForClass.syncFromServerAndPersist(ctx) } catch (_: Throwable) {}
-                        try { reservationRepoForClass.persistLocalReservations(ctx) } catch (_: Throwable) {}
-                        nav.navigate(Routes.Reservations) { popUpTo(Routes.MemberHome) { inclusive = false } }
-                    } catch (_: Throwable) { /* ignore navigation errors */ }
-                } else if (actionStateByClass.success == false && (err.contains("이미 예약") || err.contains("ALREADY_RESERVED") || err.contains("이미 예약된"))) {
-                    // refresh will have been called by VM; navigate to Reservations so user sees it
-                    try {
-                        nav.navigate(Routes.Reservations) { popUpTo(Routes.MemberHome) { inclusive = false } }
+                        nav.navigate(Routes.Reservations) { 
+                            popUpTo(Routes.MemberHome) { inclusive = false } 
+                        }
                     } catch (_: Throwable) { /* ignore */ }
                     try {
                         Toast.makeText(ctx, "이미 예약된 클래스입니다.", Toast.LENGTH_SHORT).show()
                     } catch (_: Throwable) { /* ignore */ }
                 }
-            } catch (_: Throwable) {
-                // ignore
             }
         }
 

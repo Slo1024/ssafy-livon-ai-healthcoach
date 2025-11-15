@@ -89,26 +89,29 @@ class ReservationRepositoryImpl : ReservationRepository {
     }
 
     override suspend fun reserveClass(classId: String, preQna: String?): Result<Int> {
-        // Cache-first: if local cache already contains this class id, avoid hitting server
-        try {
-            val numericIdCheck = classId.toIntOrNull() ?: -(classId.hashCode())
-            if (localReservations.any { it.id == numericIdCheck }) {
-                return Result.success(numericIdCheck)
-            }
-        } catch (_: Throwable) { /* ignore */ }
-
+        // [수정] 서버가 Source of Truth이므로 항상 서버 API를 호출합니다.
+        // 백엔드에서 중복 체크를 처리하므로 클라이언트는 서버 응답 코드에만 의존합니다.
+        
+        Log.d("ReservationRepo", "reserveClass: calling API for classId=$classId")
+        
         return try {
             if (preQna != null) {
                 Log.d("ReservationRepo", "reserveClass: preQna provided but ignored by API: $preQna")
             }
             val res = api.reserveClass(classId)
+            Log.d("ReservationRepo", "reserveClass API response: isSuccess=${res.isSuccess}, result=${res.result}, message=${res.message}")
+            
             if (res.isSuccess && res.result != null) {
                 val createdId = res.result
+                Log.d("ReservationRepo", "reserveClass: success, createdId=$createdId")
+                
+                // [수정] 서버에서 예약이 성공적으로 생성되었으므로 로컬 캐시에 추가 (Optimistic UI)
                 try {
                     synchronized(cacheLock) {
-                        // remove existing placeholder with same id for this owner if present
                         val owner = com.livon.app.data.session.SessionManager.getTokenSync()
+                        // 기존 항목이 있다면 제거 (같은 ID, 같은 소유자)
                         localReservations.removeAll { it.id == createdId && (it.ownerToken ?: "") == (owner ?: "") }
+                        // 새 예약 추가
                         localReservations.add(LocalReservation(
                             id = createdId,
                             type = ReservationType.GROUP,
@@ -121,52 +124,60 @@ class ReservationRepositoryImpl : ReservationRepository {
                             ownerToken = owner
                         ))
                     }
-                    try { localReservationsFlow.emit(localReservations.toList()); Log.d("ReservationRepo", "emit localReservations after reserveClass: count=${localReservations.size}") } catch (_: Throwable) {}
+                    try { 
+                        localReservationsFlow.emit(localReservations.toList())
+                        Log.d("ReservationRepo", "emit localReservations after reserveClass: count=${localReservations.size}, createdId=$createdId")
+                    } catch (_: Throwable) {}
                 } catch (_: Throwable) { }
 
-                // Invalidate cache and refresh authoritative reservations from server
+                // 캐시 무효화 - 서버에서 최신 데이터를 가져오도록
                 synchronized(cacheLock) { cachedMyReservations = null; cachedAt = 0 }
                 
-                // [수정] 예약 생성 직후 서버 동기화 지연을 고려하여 약간의 지연 후 서버에서 최신 데이터 가져오기
+                // [수정] 예약 생성 직후 서버 동기화를 위해 짧은 지연 후 서버에서 최신 데이터 가져오기
                 try {
-                    kotlinx.coroutines.delay(800) // 서버 동기화 대기
+                    kotlinx.coroutines.delay(500) // 서버 동기화 대기 (짧은 지연)
                     refreshLocalReservationsFromServer()
                 } catch (_: Throwable) { /* ignore */ }
                 
                 Result.success(createdId)
-            } else Result.failure(Exception(res.message ?: "Unknown"))
-        } catch (t: Throwable) {
-            try {
-                if (t is retrofit2.HttpException) {
-                    val errorBody = try { t.response()?.errorBody()?.string() } catch (_: Throwable) { null }
-                    Log.e("ReservationRepo", "reserveClass failed: http ${t.code()} ${t.message()} body=$errorBody", t)
-                    if (errorBody != null && (errorBody.contains("uk_participant_user_consultation") || errorBody.contains("Duplicate entry"))) {
-                        Log.w("ReservationRepo", "reserveClass: duplicate participant detected -> attempting server verification body=$errorBody")
-                        // Try to confirm server-side participant via getMyReservations; only add local cache if server confirms
-                        try {
-                            val numericId = classId.toIntOrNull() ?: -(classId.hashCode())
-                            // Invalidate cached my-reservations so we fetch fresh
-                            synchronized(cacheLock) { cachedMyReservations = null; cachedAt = 0 }
-                            val myRes = try { api.getMyReservations(status = "upcoming", type = null) } catch (t: Throwable) { null }
-                            if (myRes != null && myRes.isSuccess && myRes.result != null) {
-                                val found = myRes.result.items.firstOrNull { it.consultationId == numericId }
-                                if (found != null) {
-                                    // Sync entire server list into local cache rather than adding single placeholder
-                                    try { refreshLocalReservationsFromServer() } catch (_: Throwable) { /* ignore */ }
-                                    return Result.success(found.consultationId)
-                                }
-                            }
-                        } catch (_: Throwable) { /* ignore verification errors */ }
-                        // Could not confirm on server -> do not add unconfirmed placeholder, return ALREADY_RESERVED failure
-                        return Result.failure(Exception("ALREADY_RESERVED:${errorBody}"))
-                    }
-                    return Result.failure(Exception(errorBody ?: t.message))
-                }
-            } catch (t2: Throwable) {
-                Log.e("ReservationRepo", "Failed to extract http error body", t2)
+            } else {
+                // 서버 응답이 실패인 경우
+                val errorMsg = res.message ?: "Unknown error"
+                Log.e("ReservationRepo", "reserveClass: API returned failure: $errorMsg")
+                Result.failure(Exception(errorMsg))
             }
-            Log.e("ReservationRepo", "reserveClass failed", t)
-            Result.failure(t)
+        } catch (t: Throwable) {
+            // [수정] HTTP 에러는 서버 응답 코드에 따라 처리 (백엔드가 중복 체크 처리)
+            if (t is retrofit2.HttpException) {
+                val errorBody = try { t.response()?.errorBody()?.string() } catch (_: Throwable) { null }
+                val httpCode = t.code()
+                Log.e("ReservationRepo", "reserveClass failed: http $httpCode ${t.message()} body=$errorBody", t)
+                
+                // HTTP 상태 코드에 따라 처리 (서버가 중복 체크를 처리하므로 클라이언트는 코드만 확인)
+                when (httpCode) {
+                    409 -> {
+                        // Conflict - 서버가 이미 예약되었다고 응답
+                        Log.w("ReservationRepo", "reserveClass: 409 Conflict - already reserved")
+                        Result.failure(Exception("이미 예약된 클래스입니다."))
+                    }
+                    400 -> {
+                        // Bad Request - 잘못된 요청
+                        Log.w("ReservationRepo", "reserveClass: 400 Bad Request")
+                        Result.failure(Exception(errorBody ?: "잘못된 요청입니다."))
+                    }
+                    500 -> {
+                        // Server Error
+                        Log.w("ReservationRepo", "reserveClass: 500 Server Error")
+                        Result.failure(Exception(errorBody ?: "서버 오류가 발생했습니다."))
+                    }
+                    else -> {
+                        Result.failure(Exception(errorBody ?: t.message()))
+                    }
+                }
+            } else {
+                Log.e("ReservationRepo", "reserveClass failed", t)
+                Result.failure(t)
+            }
         }
     }
 

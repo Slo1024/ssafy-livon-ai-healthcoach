@@ -75,14 +75,55 @@ class ReservationViewModel(
      */
     private fun loadReservationsByStatus(status: String) {
         viewModelScope.launch(Dispatchers.IO) {
+            Log.d("ReservationVM", "loadReservationsByStatus: start loading status=$status")
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             try {
-                val serverRes = try {
-                    repo.getMyReservations(status = status, type = null)
+                // [수정] 개인(ONE)과 그룹(GROUP) 예약을 각각 호출하여 모두 가져옵니다.
+                val serverResPersonal = try {
+                    repo.getMyReservations(status = status, type = "ONE")
                 } catch (t: Throwable) {
-                    Log.w("ReservationVM", "getMyReservations(status=$status) call failed", t)
+                    Log.w("ReservationVM", "getMyReservations(status=$status, type=ONE) call failed", t)
                     Result.failure(t)
                 }
+                
+                val serverResGroup = try {
+                    repo.getMyReservations(status = status, type = "GROUP")
+                } catch (t: Throwable) {
+                    Log.w("ReservationVM", "getMyReservations(status=$status, type=GROUP) call failed", t)
+                    Result.failure(t)
+                }
+                
+                // 두 응답을 합쳐서 처리
+                val combinedItems = mutableListOf<com.livon.app.data.remote.api.ReservationItemDto>()
+                
+                if (serverResPersonal.isSuccess) {
+                    val body = serverResPersonal.getOrNull()
+                    body?.items?.let { combinedItems.addAll(it) }
+                }
+                
+                if (serverResGroup.isSuccess) {
+                    val body = serverResGroup.getOrNull()
+                    body?.items?.let { combinedItems.addAll(it) }
+                }
+                
+                // 합친 결과를 사용하여 처리 (기존 로직과 호환)
+                val serverRes = if (serverResPersonal.isSuccess || serverResGroup.isSuccess) {
+                    // 임시로 하나의 성공 응답을 생성 (기존 로직 호환)
+                    Result.success(com.livon.app.data.remote.api.ReservationListResponse(
+                        page = 0,
+                        pageSize = combinedItems.size,
+                        totalItems = combinedItems.size,
+                        totalPages = 1,
+                        items = combinedItems
+                    ))
+                } else {
+                    Result.failure<com.livon.app.data.remote.api.ReservationListResponse>(
+                        serverResPersonal.exceptionOrNull() ?: serverResGroup.exceptionOrNull() ?: Exception("Unknown error")
+                    )
+                }
+                
+                Log.d("ReservationVM", "loadReservationsByStatus: combined items count=${combinedItems.size}, status=$status")
+                Log.d("ReservationVM", "loadReservationsByStatus: serverRes isSuccess=${serverRes.isSuccess}, status=$status")
 
                 val mappedFromServer = if (serverRes.isSuccess) {
                     val body = serverRes.getOrNull()
@@ -214,7 +255,7 @@ class ReservationViewModel(
 
                 try {
                     val ids = finalList.map { it.id }
-                    Log.d("ReservationVM", "Mapped reservations count=${finalList.size}, ids=${ids.joinToString()}")
+                    Log.d("ReservationVM", "loadReservationsByStatus: Mapped reservations count=${finalList.size}, status=$status, ids=${ids.joinToString()}")
                 } catch (_: Throwable) {}
 
                 // Filter finalList according to requested status:
@@ -270,8 +311,11 @@ class ReservationViewModel(
                     filteredList
                 }
 
+                Log.d("ReservationVM", "loadReservationsByStatus: filtered and sorted items count=${sorted.size}, status=$status")
                 _uiState.value = ReservationsUiState(items = sorted, isLoading = false)
+                Log.d("ReservationVM", "loadReservationsByStatus: uiState updated with ${sorted.size} items, status=$status")
              } catch (t: Throwable) {
+                 Log.e("ReservationVM", "loadReservationsByStatus: error loading status=$status", t)
                  _uiState.value = ReservationsUiState(items = emptyList(), isLoading = false, errorMessage = t.message)
              }
          }

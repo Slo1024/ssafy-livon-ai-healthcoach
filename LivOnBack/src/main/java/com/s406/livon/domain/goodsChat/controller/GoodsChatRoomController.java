@@ -1,7 +1,7 @@
 package com.s406.livon.domain.goodsChat.controller;
 
 
-import com.s406.livon.domain.goodsChat.document.GoodsChatMessage;
+import com.s406.livon.domain.goodsChat.dto.response.GoodsChatMessageResponse;
 import com.s406.livon.domain.goodsChat.dto.response.GoodsChatRoomResponse;
 import com.s406.livon.domain.goodsChat.service.GoodsChatService;
 import com.s406.livon.domain.user.entity.User;
@@ -43,12 +43,12 @@ public class GoodsChatRoomController {
      * @return
      */
     @GetMapping("/{chatRoomId}/message")
-    public ResponseEntity<ApiResponse<List<GoodsChatMessage>>> getGoodsChatRoomMessages(
+    public ResponseEntity<ApiResponse<List<GoodsChatMessageResponse>>> getGoodsChatRoomMessages(
             @PathVariable Long chatRoomId,
             @AuthenticationPrincipal User user,
             @RequestParam(required = false) LocalDateTime lastSentAt
     ) {
-        List<GoodsChatMessage> response = goodsChatService.getChatRoomMessages(chatRoomId, user.getId(), lastSentAt);
+        List<GoodsChatMessageResponse> response = goodsChatService.getChatRoomMessages(chatRoomId, user.getId(), lastSentAt);
         return ResponseEntity.ok(ApiResponse.onSuccess(response));
     }
 

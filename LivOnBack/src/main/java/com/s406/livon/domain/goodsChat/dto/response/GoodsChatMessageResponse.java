@@ -19,10 +19,11 @@ public class GoodsChatMessageResponse {
     private final String chatMessageId;
     private final Long roomId;
     private final UUID senderId;
-//    private final String senderNickname;
+    private final String senderNickname;
+    private final String senderRole;
     private final String message;
     private final String messageType;
-//    private final String senderImageUrl;
+    private final String senderImageUrl;
     private final LocalDateTime sentAt;
 
     public static GoodsChatMessageResponse of(GoodsChatMessage chatMessage, User sender) {
@@ -30,8 +31,9 @@ public class GoodsChatMessageResponse {
                 .chatMessageId(chatMessage.getId())
                 .roomId(chatMessage.getChatRoomId())
                 .senderId(sender.getId())
-//                .senderNickname(sender.getNickname())
-//                .senderImageUrl(FileUtils.getThumbnailImageUrl(sender.getImageUrl()))
+                .senderNickname(sender.getNickname())
+                .senderRole(sender.getRoles().isEmpty() ? null : sender.getRoles().get(0).getRoleName())
+                .senderImageUrl(sender.getProfileImage())
                 .message(chatMessage.getContent())
                 .messageType(chatMessage.getMessageType().getValue())
                 .sentAt(chatMessage.getSentAt())

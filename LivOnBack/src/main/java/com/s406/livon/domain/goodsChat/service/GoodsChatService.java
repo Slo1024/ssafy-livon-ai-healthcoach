@@ -6,6 +6,7 @@ import com.s406.livon.domain.coach.repository.ConsultationReservationRepository;
 import com.s406.livon.domain.coach.repository.ParticipantRepository;
 import com.s406.livon.domain.goodsChat.document.GoodsChatMessage;
 import com.s406.livon.domain.goodsChat.dto.response.ChatRoomUserResponseDto;
+import com.s406.livon.domain.goodsChat.dto.response.GoodsChatMessageResponse;
 import com.s406.livon.domain.goodsChat.dto.response.GoodsChatRoomResponse;
 import com.s406.livon.domain.goodsChat.entity.GoodsChatPart;
 import com.s406.livon.domain.goodsChat.entity.GoodsChatRoom;
@@ -27,8 +28,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -111,23 +114,15 @@ public class GoodsChatService {
 
     //
     @Transactional(readOnly = true)
-    public List<GoodsChatMessage> getChatRoomMessages(Long chatRoomId, UUID userId, LocalDateTime lastSentAt) {
+    public List<GoodsChatMessageResponse> getChatRoomMessages(Long chatRoomId, UUID userId, LocalDateTime lastSentAt) {
         validateMemberInChatRoom(userId, chatRoomId);
 //        StopWatch stopWatch = new StopWatch(); // (1) 스톱워치 생성
 //
 //        System.out.println(chatRoomId+" "+ lastSentAt+ " ");
         List<GoodsChatMessage> chatMessages = fetchMessagesFromCacheOrDB(chatRoomId, lastSentAt, 20);
-
-//        stopWatch.start("데이터 변환 로직"); // (2) 타이머 시작 (작업 이름 지정)
-//        try {
-//            List<GoodsChatMessage> test = fetchMessagesFromCacheOrDB(chatRoomId, lastSentAt, 20);
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//        stopWatch.stop(); // (3) 타이머 중지
-//        System.out.println(stopWatch.prettyPrint());
-        return chatMessages;
-//        return chatMessages;
+        
+        // N+1 방지를 위해 userId 리스트로 일괄 조회
+        return mapMessagesToResponses(chatMessages);
     }
 
     private void validateMemberInChatRoom(UUID userId, Long chatRoomId) {
@@ -191,17 +186,33 @@ public class GoodsChatService {
         return participantList.stream().map(ChatRoomUserResponseDto::toDto).toList();
     }
 
-    // 메시지 발신자 정보 조회 및 DTO 매핑
-//    private List<GoodsChatMessageResponse> mapMessagesToResponses(List<GoodsChatMessage> chatMessages) {
-//        List<GoodsChatMessageResponse> goodsChatMessageResponses = new ArrayList<>();
-//
-//        for (GoodsChatMessage chatMessage : chatMessages) {
-//            UUID userId = chatMessage.getUserId();
-//            User user = findUserById(userId);
-//            goodsChatMessageResponses.add(GoodsChatMessageResponse.of(chatMessage, user));
-//        }
-//        return goodsChatMessageResponses;
-//    }
+    // 메시지 발신자 정보 조회 및 DTO 매핑 (N+1 방지를 위해 일괄 조회)
+    private List<GoodsChatMessageResponse> mapMessagesToResponses(List<GoodsChatMessage> chatMessages) {
+        if (chatMessages.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        // 1. 모든 메시지의 userId 추출
+        List<UUID> userIds = chatMessages.stream()
+                .map(GoodsChatMessage::getUserId)
+                .distinct()
+                .collect(Collectors.toList());
+        
+        // 2. 일괄 조회하여 Map으로 변환
+        Map<UUID, User> userMap = userRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(User::getId, user -> user));
+        
+        // 3. 메시지를 Response로 변환
+        return chatMessages.stream()
+                .map(chatMessage -> {
+                    User sender = userMap.get(chatMessage.getUserId());
+                    if (sender == null) {
+                        throw new UserHandler(ErrorStatus.USER_NOT_FOUND);
+                    }
+                    return GoodsChatMessageResponse.of(chatMessage, sender);
+                })
+                .collect(Collectors.toList());
+    }
 
 //
 //    private void validateMemberParticipation(Long memberId, Long chatRoomId) {

@@ -248,21 +248,22 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
 
 
 
-        // [수정] 예약 성공 후 즉시 로컬 캐시 동기화 및 예약 현황 화면으로 이동
-        // reservations 화면에서 사용할 수 있도록 reservationCreatedFlow를 전달해야 하지만,
-        // 여기서는 직접 예약 현황 화면으로 이동하기 전에 loadUpcoming을 호출하도록 개선
+        // [수정] 예약 성공 후 서버 동기화 및 예약 현황 화면으로 이동
+        // 예약 생성 직후 서버가 새 예약을 반영하는데 시간이 걸릴 수 있으므로 충분한 지연 후 이동
         LaunchedEffect(actionState.success) {
             if (actionState.success == true) {
                 try { 
-                    // 서버와 동기화하여 최신 예약 정보 가져오기
+                    // 서버와 동기화하여 최신 예약 정보 가져오기 (ReservationRepositoryImpl.reserveCoach에서 이미 처리됨)
                     reservationRepoForQna.syncFromServerAndPersist(ctxQna) 
                 } catch (_: Throwable) {}
                 try { 
                     // 로컬 캐시 저장
                     reservationRepoForQna.persistLocalReservations(ctxQna) 
                 } catch (_: Throwable) {}
-                // 예약 현황 화면으로 이동 (서버 동기화 후 약간의 지연을 두어 데이터가 준비되도록 함)
-                kotlinx.coroutines.delay(500) // 서버 동기화 및 localReservationsFlow emit 완료 대기
+                // 예약 현황 화면으로 이동 (서버 동기화 완료 대기)
+                // ReservationRepositoryImpl.reserveCoach에서 이미 800ms 지연 후 refreshLocalReservationsFromServer() 호출하므로
+                // 여기서는 추가 지연을 두어 서버 데이터가 준비되도록 함
+                kotlinx.coroutines.delay(1500) // 서버 동기화 완료 대기 (800ms + 여유)
                 nav.navigate(Routes.Reservations) { popUpTo(Routes.MemberHome) { inclusive = false } }
             }
         }

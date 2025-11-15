@@ -73,8 +73,14 @@ class ReservationRepositoryImpl : ReservationRepository {
 
                 // Invalidate cached my-reservations so subsequent reads refresh from server
                 synchronized(cacheLock) { cachedMyReservations = null; cachedAt = 0 }
-                // Attempt to refresh authoritative reservations from server and sync local cache (best-effort)
-                try { refreshLocalReservationsFromServer() } catch (_: Throwable) { /* ignore refresh failures */ }
+                
+                // [수정] 예약 생성 직후 서버 동기화 지연을 고려하여 약간의 지연 후 서버에서 최신 데이터 가져오기
+                // 서버가 새 예약을 반영하는데 시간이 걸릴 수 있으므로 짧은 지연 후 재조회
+                try {
+                    kotlinx.coroutines.delay(800) // 서버 동기화 대기
+                    refreshLocalReservationsFromServer()
+                } catch (_: Throwable) { /* ignore refresh failures */ }
+                
                 Result.success(createdId)
             } else Result.failure(Exception(res.message ?: "Unknown"))
         } catch (t: Throwable) {
@@ -120,7 +126,13 @@ class ReservationRepositoryImpl : ReservationRepository {
 
                 // Invalidate cache and refresh authoritative reservations from server
                 synchronized(cacheLock) { cachedMyReservations = null; cachedAt = 0 }
-                try { refreshLocalReservationsFromServer() } catch (_: Throwable) { /* ignore */ }
+                
+                // [수정] 예약 생성 직후 서버 동기화 지연을 고려하여 약간의 지연 후 서버에서 최신 데이터 가져오기
+                try {
+                    kotlinx.coroutines.delay(800) // 서버 동기화 대기
+                    refreshLocalReservationsFromServer()
+                } catch (_: Throwable) { /* ignore */ }
+                
                 Result.success(createdId)
             } else Result.failure(Exception(res.message ?: "Unknown"))
         } catch (t: Throwable) {

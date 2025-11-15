@@ -151,27 +151,33 @@ class ReservationViewModel(
                     }?.toSet() ?: emptySet()
                 } catch (_: Throwable) { emptySet() }
                 
+                // [수정] 로컬 캐시는 Optimistic UI를 위한 임시 저장소입니다.
+                // 서버 응답이 신뢰할 수 있는 소스(Source of Truth)이므로, 서버 응답을 우선 사용합니다.
+                // 다만, 예약 생성 직후 서버 동기화 지연으로 인해 서버 응답에 없는 미래 예약은 임시로 포함합니다.
                 try {
                     if (repo is com.livon.app.data.repository.ReservationRepositoryImpl) {
                         val ownerToken = com.livon.app.data.session.SessionManager.getTokenSync()
                         val local = com.livon.app.data.repository.ReservationRepositoryImpl.localReservations.filter { (it.ownerToken ?: "") == (ownerToken ?: "") }
                         
-                        // [핵심 수정] 서버 응답에 있는 ID만 포함 (서버에 없는 = 취소된 예약은 제외)
-                        // 서버 응답에 있지만 CANCELLED 상태인 경우는 이미 mappedFromServer에서 제외됨
-                        // 따라서 allServerItemIds에 있으면서 서버 데이터에도 있는 항목만 포함
+                        val now = LocalDateTime.now()
                         val localItems = local
-                            .filter { lr -> 
-                                // 서버 응답에 있는 ID인 경우에만 포함
-                                // (서버에 없으면 취소된 것으로 간주하여 제외)
-                                allServerItemIds.contains(lr.id.toString())
-                            }
                             .mapNotNull { lr ->
                             try {
-                                // 서버에서 이미 가져온 항목은 스킵 (서버 데이터가 우선)
+                                // 서버에서 이미 가져온 항목은 스킵 (서버 데이터가 우선, Source of Truth)
                                 if (serverIds.contains(lr.id.toString())) return@mapNotNull null
                                 
                                 val start = LocalDateTime.parse(lr.startAt)
                                 val end = LocalDateTime.parse(lr.endAt)
+                                
+                                // [수정] 서버 응답에 없는 항목은 미래 예약인 경우에만 임시로 포함
+                                // (과거 예약은 취소된 것으로 간주하여 제외)
+                                // 이는 Optimistic UI를 위한 것으로, 서버 동기화가 완료되면 서버 데이터로 대체됩니다.
+                                val isInServer = allServerItemIds.contains(lr.id.toString())
+                                val isFuture = start.isAfter(now)
+                                
+                                // 서버 응답에 있거나, 미래 예약인 경우만 포함
+                                if (!isInServer && !isFuture) return@mapNotNull null
+                                
                                 ReservationUi(
                                     id = lr.id.toString(),
                                     date = start.toLocalDate(),

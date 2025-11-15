@@ -22,6 +22,7 @@ import java.net.URLDecoder
 import java.time.LocalDate
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.foundation.layout.fillMaxSize
 import kotlinx.coroutines.launch
 
 // UI imports
@@ -292,6 +293,16 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
     // [수정됨] 예약 현황 화면
     composable("reservations") {
         val reservationRepo = remember { com.livon.app.data.repository.ReservationRepositoryImpl() }
+        val ctxForReservation = LocalContext.current
+        
+        // 세션 토큰을 확인하여 로그인 상태에서만 데이터 로드
+        val sessionToken by com.livon.app.data.session.SessionManager.token.collectAsState()
+        LaunchedEffect(sessionToken) {
+            if (!sessionToken.isNullOrBlank()) {
+                try { reservationRepo.loadPersistedReservations(ctxForReservation) } catch (_: Throwable) {}
+            }
+        }
+        
         val reservationVm = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
@@ -303,17 +314,26 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         val upcomingState by reservationVm.uiState.collectAsState() // loadUpcoming 결과를 담음
         val pastState = remember { mutableStateOf<List<ReservationUi>>(emptyList()) } // loadPast 결과를 담을 별도 상태
 
-        // LaunchedEffect를 두 개 사용하여 각각 로드
-        LaunchedEffect(Unit) {
-            reservationVm.loadUpcoming()
+        // 세션 토큰이 있을 때만 데이터 로드 (앱 재시작 후에도 로드되도록)
+        LaunchedEffect(sessionToken) {
+            if (!sessionToken.isNullOrBlank()) {
+                reservationVm.loadUpcoming()
+            }
         }
-        LaunchedEffect(Unit) {
-            // 별도의 ViewModel을 만들거나, 하나의 ViewModel에서 두 상태를 관리할 수 있음
-            // 여기서는 같은 VM을 재사용하지만, 실제로는 별도 상태 관리가 더 명확함.
-            // 임시로 past 목록을 불러오기 위해 새 VM 인스턴스를 만드는 방식을 사용
-            val pastVm = com.livon.app.feature.member.reservation.vm.ReservationViewModel(reservationRepo)
-            pastVm.loadPast()
-            pastVm.uiState.collect { pastState.value = it.items }
+        
+        // past 목록을 별도로 관리하기 위한 별도 ViewModel 인스턴스
+        val pastVm = remember { com.livon.app.feature.member.reservation.vm.ReservationViewModel(reservationRepo) }
+        val pastVmState by pastVm.uiState.collectAsState()
+        
+        LaunchedEffect(sessionToken) {
+            if (!sessionToken.isNullOrBlank()) {
+                pastVm.loadPast()
+            }
+        }
+        
+        // past 상태 업데이트
+        LaunchedEffect(pastVmState.items) {
+            pastState.value = pastVmState.items
         }
 
         // Setup UserViewModel to get user nickname
@@ -331,6 +351,18 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
 
         // Get context for Intent
         val context = LocalContext.current
+        
+        // 예약 취소 성공 시 목록 갱신
+        val actionState by reservationVm.actionState.collectAsState()
+        LaunchedEffect(actionState.success) {
+            if (actionState.success == true) {
+                // 취소 성공 시 목록 갱신
+                reservationVm.loadUpcoming()
+                pastVm.loadPast()
+                // 로컬 저장소에도 반영
+                try { reservationRepo.persistLocalReservations(ctxForReservation) } catch (_: Throwable) {}
+            }
+        }
 
         // 디버그 로그
         try {
@@ -362,7 +394,7 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 if (idInt == null) {
                     Log.w("MemberNavGraph", "onCancel called but id not int: ${item.id}")
                 } else {
-                    if ((item.sessionTypeLabel ?: "").contains("개인")) {
+                    if ((item.sessionTypeLabel ?: "").contains("개인") || item.isPersonal) {
                         reservationVm.cancelIndividual(idInt)
                     } else {
                         reservationVm.cancelGroupParticipation(idInt)
@@ -423,19 +455,33 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
         }) as com.livon.app.feature.member.reservation.vm.ReservationViewModel
 
         val stateDetail by reservationVmDetail.uiState.collectAsState()
+        val sessionTokenDetail by com.livon.app.data.session.SessionManager.token.collectAsState()
 
-        // [핵심 수정] type에 따라 올바른 목록을 불러옵니다.
-        LaunchedEffect(type, id) {
-            if (type == "past") {
-                reservationVmDetail.loadPast()
-            } else {
-                reservationVmDetail.loadUpcoming()
+        // [핵심 수정] type에 따라 올바른 목록을 불러옵니다. 세션 토큰이 있을 때만 로드
+        LaunchedEffect(type, id, sessionTokenDetail) {
+            if (!sessionTokenDetail.isNullOrBlank()) {
+                if (type == "past") {
+                    reservationVmDetail.loadPast()
+                } else {
+                    reservationVmDetail.loadUpcoming()
+                }
             }
         }
 
+        // 로딩 중이거나 찾을 수 없는 경우를 처리
+        // 먼저 현재 상태에서 찾아보고, 없으면 로딩 완료까지 대기
         val found = stateDetail.items.find { it.id == id }
+        val isLoading = stateDetail.isLoading && found == null && stateDetail.items.isEmpty()
 
-        if (found != null) {
+        // 로딩 중일 때는 로딩 화면 표시
+        if (isLoading) {
+            androidx.compose.foundation.layout.Box(
+                modifier = androidx.compose.ui.Modifier.fillMaxSize(),
+                contentAlignment = androidx.compose.ui.Alignment.Center
+            ) {
+                androidx.compose.material3.CircularProgressIndicator()
+            }
+        } else if (found != null) {
             // build coach and session objects expected by ReservationDetailScreen
             val coachMini = CoachMini(
                 name = found.coachName.ifEmpty { "코치" },
@@ -483,8 +529,18 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                 },
                 navController = nav
              )
-        } else {
-            // ... (기존 로딩/에러 UI 로직은 동일) ...
+        } else if (!isLoading) {
+            // 데이터를 찾을 수 없을 때 이전 화면으로 돌아가기
+            LaunchedEffect(Unit) {
+                nav.popBackStack()
+            }
+            // 로딩 화면 표시 (popBackStack이 완료될 때까지)
+            androidx.compose.foundation.layout.Box(
+                modifier = androidx.compose.ui.Modifier.fillMaxSize(),
+                contentAlignment = androidx.compose.ui.Alignment.Center
+            ) {
+                androidx.compose.material3.CircularProgressIndicator()
+            }
         }
     }
 

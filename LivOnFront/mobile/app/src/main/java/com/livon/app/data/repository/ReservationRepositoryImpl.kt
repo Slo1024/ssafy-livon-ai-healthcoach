@@ -303,6 +303,9 @@ class ReservationRepositoryImpl : ReservationRepository {
             val apiRes = api.getMyReservations(status = "upcoming", type = null)
             if (apiRes.isSuccess && apiRes.result != null) {
                 val items = apiRes.result.items
+                // [수정] 취소된 예약 제외 (CANCELLED 상태 필터링)
+                val activeItems = items.filter { (it.status ?: "OPEN") != "CANCELLED" }
+                
                 // rebuild localReservations from server items
                 val snapshot = mutableListOf<LocalReservation>()
                 synchronized(cacheLock) {
@@ -310,7 +313,9 @@ class ReservationRepositoryImpl : ReservationRepository {
                     val existingLocal = localReservations.toList()
                     localReservations.clear()
                     val serverIds = mutableSetOf<Int>()
-                    for (it in items) {
+                    
+                    // [수정] 취소되지 않은 항목만 로컬 캐시에 추가
+                    for (it in activeItems) {
                         try {
                             val id = it.consultationId
                             serverIds.add(id)
@@ -325,11 +330,20 @@ class ReservationRepositoryImpl : ReservationRepository {
                             snapshot.add(lr)
                         } catch (_: Throwable) { /* ignore individual item parse failures */ }
                     }
-                    // re-add any existing local placeholders that server did not return (likely recent creates)
+                    // [수정] 서버에 있는 ID만 유지, 서버에 없는(취소된) 항목은 제외
+                    // 최근 생성된 항목만 추가 (서버에 아직 반영되지 않은 경우만)
                     for (ex in existingLocal) {
+                        // 서버에 있는 ID는 이미 위에서 추가했으므로, 서버에 없는 ID만 확인
+                        // 하지만 서버에 없다는 것은 취소되었거나 최근 생성되었을 수 있음
+                        // 최근 생성된 항목은 서버 동기화가 아직 안되었을 수 있으므로 시간 체크 필요
+                        // 간단하게: 서버에 없는 항목은 제외 (취소된 것으로 간주)
+                        // 최근 생성 항목은 서버 동기화 후 다시 추가될 것
                         if (!serverIds.contains(ex.id)) {
-                            localReservations.add(ex)
-                            snapshot.add(ex)
+                            // 서버에 없는 항목은 제외 (취소된 것으로 간주)
+                            // 로그는 남기되 제외
+                            try {
+                                android.util.Log.d("ReservationRepo", "refreshLocalReservationsFromServer: excluding local item id=${ex.id} (not on server, likely cancelled)")
+                            } catch (_: Throwable) {}
                         }
                     }
                 }

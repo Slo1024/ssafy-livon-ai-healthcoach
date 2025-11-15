@@ -134,14 +134,42 @@ class ReservationViewModel(
                 } else emptyList()
 
                 // Merge server results with in-memory cache so locally-added reservations are shown as well
+                // [수정] 서버에서 가져온 ID 목록을 기준으로 로컬 캐시 병합 (서버에 없는 = 취소된 예약은 제외)
                 val finalList = mappedFromServer.toMutableList()
+                // 서버에서 가져온 모든 ID 집합 (취소되지 않은 활성 예약만 포함)
+                val serverIds = finalList.map { it.id }.toMutableSet()
+                
+                // 서버 응답의 원본 items에서도 모든 ID를 수집 (취소된 것 포함하여 필터링용)
+                // [수정] 서버 응답의 모든 항목 ID를 수집하여 로컬 캐시 필터링에 사용
+                val allServerItemIds = try {
+                    val body = serverRes.getOrNull()
+                    body?.items?.mapNotNull { dto -> 
+                        try { 
+                            // CANCELLED 상태 여부와 관계없이 모든 ID 수집
+                            dto.consultationId.toString() 
+                        } catch (_: Throwable) { null }
+                    }?.toSet() ?: emptySet()
+                } catch (_: Throwable) { emptySet() }
+                
                 try {
                     if (repo is com.livon.app.data.repository.ReservationRepositoryImpl) {
                         val ownerToken = com.livon.app.data.session.SessionManager.getTokenSync()
                         val local = com.livon.app.data.repository.ReservationRepositoryImpl.localReservations.filter { (it.ownerToken ?: "") == (ownerToken ?: "") }
-                        val existingIds = finalList.map { it.id }.toMutableSet()
-                        val localItems = local.mapNotNull { lr ->
+                        
+                        // [핵심 수정] 서버 응답에 있는 ID만 포함 (서버에 없는 = 취소된 예약은 제외)
+                        // 서버 응답에 있지만 CANCELLED 상태인 경우는 이미 mappedFromServer에서 제외됨
+                        // 따라서 allServerItemIds에 있으면서 서버 데이터에도 있는 항목만 포함
+                        val localItems = local
+                            .filter { lr -> 
+                                // 서버 응답에 있는 ID인 경우에만 포함
+                                // (서버에 없으면 취소된 것으로 간주하여 제외)
+                                allServerItemIds.contains(lr.id.toString())
+                            }
+                            .mapNotNull { lr ->
                             try {
+                                // 서버에서 이미 가져온 항목은 스킵 (서버 데이터가 우선)
+                                if (serverIds.contains(lr.id.toString())) return@mapNotNull null
+                                
                                 val start = LocalDateTime.parse(lr.startAt)
                                 val end = LocalDateTime.parse(lr.endAt)
                                 ReservationUi(
@@ -168,11 +196,11 @@ class ReservationViewModel(
                                 )
                             } catch (_: Throwable) { null }
                         }
-                        // Append only those local items whose id is not already present
+                        // Append only those local items whose id is not already present in server results
                         localItems.forEach { li ->
-                            if (!existingIds.contains(li.id)) {
+                            if (!serverIds.contains(li.id)) {
                                 finalList.add(li)
-                                existingIds.add(li.id)
+                                serverIds.add(li.id)
                             }
                         }
                     }
@@ -354,26 +382,34 @@ class ReservationViewModel(
             Log.d("ReservationVM", "cancelIndividual: start id=$consultationId")
             _actionState.value = ReservationActionState(isLoading = true, success = null, errorMessage = null)
             // optimistic UI: remove item locally immediately and keep backup to restore on failure
-            val prev = _uiState.value.items
-            _uiState.value = _uiState.value.copy(items = prev.filterNot { it.id == consultationId.toString() })
+            val prevItems = _uiState.value.items
+            _uiState.value = _uiState.value.copy(items = prevItems.filterNot { it.id == consultationId.toString() })
             try {
-                val token = com.livon.app.data.session.SessionManager.getTokenSync()
-                Log.d("ReservationVM", "cancelIndividual: calling repo with id=$consultationId tokenPresent=${!token.isNullOrBlank()}")
-                 val res = repo.cancelIndividual(consultationId)
-                 if (res.isSuccess) {
-                     Log.d("ReservationVM", "cancelIndividual: success id=$consultationId")
-                     _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null)
-                     loadUpcoming()
-                 } else {
-                     Log.d("ReservationVM", "cancelIndividual: failure id=$consultationId, ex=${res.exceptionOrNull()?.message}")
-                     // restore previous list on failure
-                     _uiState.value = _uiState.value.copy(items = prev)
+                // 2. [DB] Repository를 통해 서버 API를 호출한다.
+                val res = repo.cancelIndividual(consultationId)
+
+                // 3. [DB] API 호출 결과를 확인한다.
+                if (res.isSuccess) {
+                    // 이 시점에서 서버 DB에서는 데이터가 *이미* 성공적으로 삭제되었습니다.
+                    Log.d("ReservationVM", "cancelIndividual: success id=$consultationId")
+                    _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null)
+
+                    // 4. [UI] 이제 화면을 어떻게 할지 결정한다.
+                    // loadUpcoming() // <- 이 코드는 삭제된 데이터를 포함한 '전체 목록'을 다시 가져와 화면을 갱신하는 역할 *뿐*입니다.
+                    // DB 상태에 영향을 주지 않습니다.
+
+                } else {
+                    // 5. [DB] API 호출이 실패했다 (DB에서 데이터가 삭제되지 않았다).
+                    // 6. [UI] 따라서 화면을 원래대로 복원한다.
+
+                    Log.d("ReservationVM", "cancelIndividual: failure id=$consultationId, ex=${res.exceptionOrNull()?.message}")
+                    _uiState.value = _uiState.value.copy(items = prevItems)
                      _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = res.exceptionOrNull()?.message)
                  }
              } catch (t: Throwable) {
                  Log.e("ReservationVM", "cancelIndividual: exception", t)
                  // restore previous list on exception
-                 _uiState.value = _uiState.value.copy(items = prev)
+                 _uiState.value = _uiState.value.copy(items = prevItems)
                  _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = t.message)
              }
          }
@@ -384,8 +420,8 @@ class ReservationViewModel(
             Log.d("ReservationVM", "cancelGroupParticipation: start id=$consultationId")
             _actionState.value = ReservationActionState(isLoading = true, success = null, errorMessage = null)
             // optimistic UI: remove item locally immediately and keep backup to restore on failure
-            val prev = _uiState.value.items
-            _uiState.value = _uiState.value.copy(items = prev.filterNot { it.id == consultationId.toString() })
+            val prevItems = _uiState.value.items
+            _uiState.value = _uiState.value.copy(items = prevItems.filterNot { it.id == consultationId.toString() })
             try {
                 val token = com.livon.app.data.session.SessionManager.getTokenSync()
                 Log.d("ReservationVM", "cancelGroupParticipation: calling repo with id=$consultationId tokenPresent=${!token.isNullOrBlank()}")
@@ -393,17 +429,16 @@ class ReservationViewModel(
                  if (res.isSuccess) {
                      Log.d("ReservationVM", "cancelGroupParticipation: success id=$consultationId")
                      _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null)
-                     loadUpcoming()
                  } else {
                      Log.d("ReservationVM", "cancelGroupParticipation: failure id=$consultationId, ex=${res.exceptionOrNull()?.message}")
                      // restore previous list on failure
-                     _uiState.value = _uiState.value.copy(items = prev)
+                     _uiState.value = _uiState.value.copy(items = prevItems)
                      _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = res.exceptionOrNull()?.message)
                  }
              } catch (t: Throwable) {
                  Log.e("ReservationVM", "cancelGroupParticipation: exception", t)
                  // restore previous list on exception
-                 _uiState.value = _uiState.value.copy(items = prev)
+                 _uiState.value = _uiState.value.copy(items = prevItems)
                  _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = t.message)
              }
          }

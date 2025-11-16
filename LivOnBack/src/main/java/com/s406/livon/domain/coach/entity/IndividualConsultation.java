@@ -32,4 +32,18 @@ public class IndividualConsultation {
 
     @Column(columnDefinition = "TEXT")
     private String aiSummary; // AI 요약
+
+    /**
+     * AI 요약을 업데이트합니다.
+     */
+    public void updateAiSummary(String aiSummary) {
+        this.aiSummary = aiSummary;
+    }
+
+    /**
+     * 사전 QnA를 업데이트합니다.
+     */
+    public void updatePreQnA(String preQnA) {
+        this.preQnA = preQnA;
+    }
 }

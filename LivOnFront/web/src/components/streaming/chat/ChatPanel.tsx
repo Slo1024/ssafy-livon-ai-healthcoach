@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import styled from "styled-components";
+import profilePictureIcon from "../../../assets/images/profile_picture.png";
 
 const ChatPanelContainer = styled.div<{ $isOpen: boolean }>`
   width: ${(props) => (props.$isOpen ? "320px" : "0")};
@@ -38,11 +39,20 @@ const ChatMessage = styled.div`
   gap: 8px;
 `;
 
-const ChatAvatar = styled.div`
+const ChatAvatar = styled.div<{
+  $isSystem: boolean;
+  $isDefault?: boolean;
+  $hasImage?: boolean;
+}>`
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background-color: #4965f6;
+  background-color: ${(props) =>
+    props.$hasImage
+      ? "#f9fafb"
+      : props.$isSystem || props.$isDefault
+      ? "#f9fafb"
+      : "#4965f6"};
   color: #ffffff;
   display: flex;
   align-items: center;
@@ -50,6 +60,13 @@ const ChatAvatar = styled.div`
   font-size: 12px;
   font-weight: 600;
   flex-shrink: 0;
+  overflow: hidden;
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 `;
 
 const ChatMessageContent = styled.div`
@@ -60,10 +77,16 @@ const ChatMessageSender = styled.div`
   font-size: 12px;
   font-weight: 600;
   color: #111827;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
+`;
+
+const ChatSenderRole = styled.span`
+  font-size: 11px;
+  font-weight: 500;
+  color: #6366f1;
 `;
 
 const ChatMessageTime = styled.span`
@@ -139,6 +162,8 @@ interface ChatMessage {
   message: string;
   timestamp: Date;
   timestampString?: string; // UTC 시간 문자열 (서버에서 받은 원본)
+  senderImage?: string;
+  senderRole?: string;
   senderUserId?: string;
   messageType?: "ENTER" | "TALK" | "LEAVE";
 }
@@ -219,7 +244,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
     }
   }, [messages, isLoadingMessages]);
 
-  const getInitials = (name: string) => {
+const getInitials = (name: string) => {
     return name
       .split(" ")
       .map((n) => n[0])
@@ -327,12 +352,35 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                 msg.message.includes("퇴장하셨습니다");
               const displaySender = isSystemMessage ? "알림" : msg.sender;
               
+              const avatarSrc = isSystemMessage
+                ? profilePictureIcon
+                : msg.senderImage || profilePictureIcon; // 회원 이미지 없으면 기본 이미지 사용
+              const hasExplicitSenderImage =
+                !isSystemMessage && Boolean(msg.senderImage && msg.senderImage.length > 0);
+              const hasImage = Boolean(avatarSrc);
+
               return (
                 <ChatMessage key={msg.id}>
-                  <ChatAvatar>{getInitials(displaySender)}</ChatAvatar>
+                  <ChatAvatar
+                    $isSystem={isSystemMessage}
+                    $isDefault={!hasExplicitSenderImage && !isSystemMessage}
+                    $hasImage={hasImage}
+                  >
+                    {hasImage ? (
+                      <img
+                        src={avatarSrc!}
+                        alt={`${displaySender} 프로필`}
+                      />
+                    ) : (
+                      getInitials(displaySender)
+                    )}
+                  </ChatAvatar>
                   <ChatMessageContent>
                     <ChatMessageSender>
                       {displaySender}
+                      {msg.senderRole && !isSystemMessage && (
+                        <ChatSenderRole>{msg.senderRole}</ChatSenderRole>
+                      )}
                       <ChatMessageTime>{formatTime(msg.timestamp, msg.timestampString)}</ChatMessageTime>
                     </ChatMessageSender>
                     <ChatMessageText>{msg.message}</ChatMessageText>

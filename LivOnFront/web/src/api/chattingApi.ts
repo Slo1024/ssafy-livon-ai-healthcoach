@@ -75,6 +75,8 @@ export interface GoodsChatMessage {
   content: string;
   sentAt: string; // ISO date-time
   role: "COACH" | "MEMBER";
+  nickname?: string;
+  profileImageUrl?: string;
   messageType: "ENTER" | "TALK" | "LEAVE";
 }
 
@@ -96,6 +98,8 @@ export interface GoodsChatMessageResponse {
     userId: string;
     nickname: string;
     userImage?: string;
+    profileImageUrl?: string;
+    role?: string;
   };
   // STOMP 클라이언트에 저장된 userId (비교용)
   currentUserId?: string;

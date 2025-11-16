@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { InquirySuccessModal } from '../../components/common/Modal';
+import { ROUTES } from '../../constants/routes';
 
 const PageContainer = styled.div`
   min-height: 100vh;
@@ -229,6 +230,8 @@ export const InquiryPage: React.FC = () => {
       agree: false,
     });
     setShowSuccessModal(false);
+    // 홈으로 이동
+    navigate(ROUTES.HOME);
   };
 
   return (

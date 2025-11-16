@@ -76,10 +76,17 @@ const DownloadButton = styled.a`
 
   &:hover {
     background-color: #3d54d4;
+    text-decoration: none;
   }
 
   &:active {
     background-color: #2d3fa9;
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: none;
+    text-decoration: none;
   }
 `;
 
@@ -99,18 +106,7 @@ const MetaItem = styled.div`
   }
 `;
 
-const ListLink = styled.a`
-  display: inline-block;
-  margin-top: 16px;
-  color: #4965f6;
-  font-weight: 600;
-  text-decoration: none;
-  border-bottom: 1px solid transparent;
 
-  &:hover {
-    border-bottom-color: currentColor;
-  }
-`;
 
 const ImageContainer = styled.div`
   width: 100%;
@@ -158,7 +154,6 @@ const formatFileSize = (bytes?: number | null): string | undefined => {
 export const DownloadPage: React.FC = () => {
   const [meta, setMeta] = useState<ApkMeta>({ available: false });
   const downloadUrl = useMemo(() => "/download/livon-latest.apk", []);
-  const listUrl = useMemo(() => "/download/", []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -257,8 +252,6 @@ export const DownloadPage: React.FC = () => {
               </MetaItem>
             )}
           </MetaWrapper>
-
-          <ListLink href={listUrl}>다운로드 파일 전체 목록 보기</ListLink>
         </TextSection>
 
         <ImageContainer>

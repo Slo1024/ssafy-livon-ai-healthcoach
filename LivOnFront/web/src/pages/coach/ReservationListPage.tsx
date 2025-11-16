@@ -9,6 +9,7 @@ import {
   ReservationCancelConfirmModal,
   ReservationCancelSuccessModal,
 } from "../../components/common/Modal";
+import type { ApplicationMember } from "../../components/common/Modal";
 import { useAuth } from "../../hooks/useAuth";
 import { ROUTES } from "../../constants/routes";
 import {
@@ -405,6 +406,8 @@ interface CoachConsultation {
     nickname: string;
     profileImage: string;
     email: string;
+    status?: "PENDING" | "APPROVED" | string;
+    applicationStatus?: "PENDING" | "APPROVED" | string;
   }>;
 }
 
@@ -423,6 +426,13 @@ export const ReservationListPage: React.FC = () => {
   const [selectedMemberName, setSelectedMemberName] = useState<string>("");
   const [showApplicationApprovalModal, setShowApplicationApprovalModal] =
     useState(false);
+  const [selectedParticipants, setSelectedParticipants] = useState<
+    ApplicationMember[]
+  >([]);
+  const [
+    selectedApplicationConsultationId,
+    setSelectedApplicationConsultationId,
+  ] = useState<number | null>(null);
   const [showCancelConfirmModal, setShowCancelConfirmModal] = useState(false);
   const [showCancelSuccessModal, setShowCancelSuccessModal] = useState(false);
   const [cancelReservationId, setCancelReservationId] = useState<number | null>(
@@ -577,28 +587,63 @@ export const ReservationListPage: React.FC = () => {
   const [selectedConsultationId, setSelectedConsultationId] = useState<
     number | null
   >(null);
+  const [
+    shouldReopenApplicationModal,
+    setShouldReopenApplicationModal,
+  ] = useState(false);
 
   const handleViewMember = (
     memberName: string,
     memberId?: string,
-    consultationId?: number
+    consultationId?: number,
+    options?: { reopenApplicationModal?: boolean }
   ) => {
     setSelectedMemberName(memberName);
     setSelectedMemberId(memberId || null);
     setSelectedConsultationId(consultationId || null);
+    setShouldReopenApplicationModal(Boolean(options?.reopenApplicationModal));
     setShowMemberInfoModal(true);
   };
 
+  const handleCloseMemberInfoModal = () => {
+    setShowMemberInfoModal(false);
+    setSelectedMemberId(null);
+    setSelectedConsultationId(null);
+    if (shouldReopenApplicationModal) {
+      setShowApplicationApprovalModal(true);
+      setShouldReopenApplicationModal(false);
+    }
+  };
+
   const handleViewAppliedMembers = (
+    consultationId: number,
     participants?: Array<{
       userId: string;
       nickname: string;
       profileImage: string;
       email: string;
+      status?: "PENDING" | "APPROVED" | string;
+      applicationStatus?: "PENDING" | "APPROVED" | string;
     }>
   ) => {
     if (participants && participants.length > 0) {
+      const normalizedParticipants: ApplicationMember[] = participants.map(
+        (participant) => ({
+          id: participant.userId,
+          name: participant.nickname,
+          status:
+            participant.status === "APPROVED" ||
+            participant.applicationStatus === "APPROVED"
+              ? "APPROVED"
+              : "PENDING",
+        })
+      );
+      setSelectedParticipants(normalizedParticipants);
+      setSelectedApplicationConsultationId(consultationId);
       setShowApplicationApprovalModal(true);
+    } else {
+      setSelectedParticipants([]);
+      setSelectedApplicationConsultationId(null);
     }
   };
 
@@ -755,15 +800,15 @@ export const ReservationListPage: React.FC = () => {
                             상담 시작
                           </StartConsultationButton>
                           {isIndividual && firstParticipant ? (
-                            <ViewMemberButton
-                              onClick={() =>
-                                handleViewMember(
-                                  firstParticipant.nickname,
-                                  firstParticipant.userId,
-                                  reservation.consultationId
-                                )
-                              }
-                            >
+                      <ViewMemberButton
+                        onClick={() =>
+                          handleViewMember(
+                            firstParticipant.nickname,
+                            firstParticipant.userId,
+                            reservation.consultationId
+                          )
+                        }
+                      >
                               {firstParticipant.nickname} 회원 보기
                             </ViewMemberButton>
                           ) : (
@@ -771,6 +816,7 @@ export const ReservationListPage: React.FC = () => {
                               $compact
                               onClick={() =>
                                 handleViewAppliedMembers(
+                                  reservation.consultationId,
                                   reservation.participants
                                 )
                               }
@@ -842,11 +888,7 @@ export const ReservationListPage: React.FC = () => {
         {/* 회원 정보 모달 */}
         <MemberInfoModal
           open={showMemberInfoModal}
-          onClose={() => {
-            setShowMemberInfoModal(false);
-            setSelectedMemberId(null);
-            setSelectedConsultationId(null);
-          }}
+          onClose={handleCloseMemberInfoModal}
           memberName={selectedMemberName}
           memberId={selectedMemberId || undefined}
           consultationId={selectedConsultationId || undefined}
@@ -860,11 +902,20 @@ export const ReservationListPage: React.FC = () => {
         {/* 신청 회원 예약 승인 모달 */}
         <ApplicationApprovalModal
           open={showApplicationApprovalModal}
-          onClose={() => setShowApplicationApprovalModal(false)}
-          members={reservations
-            .filter((r) => r.participants && r.participants.length > 0)
-            .flatMap((r) => r.participants || [])
-            .map((p) => ({ id: p.userId, name: p.nickname }))}
+          onClose={() => {
+            setShowApplicationApprovalModal(false);
+            setSelectedApplicationConsultationId(null);
+            setSelectedMemberId(null);
+            setShouldReopenApplicationModal(false);
+          }}
+          members={selectedParticipants}
+          consultationId={selectedApplicationConsultationId || undefined}
+          onMemberInfoClick={(memberName, memberId) => {
+            handleViewMember(memberName, memberId, undefined, {
+              reopenApplicationModal: true,
+            });
+            setShowApplicationApprovalModal(false);
+          }}
         />
 
         {/* 예약 취소 확인 모달 */}

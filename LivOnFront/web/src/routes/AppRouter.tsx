@@ -146,10 +146,10 @@ export const AppRouter: React.FC = () => {
           <Route path={ROUTES.INQUIRY} element={<InquiryPage />} />
 
           {/* 404 페이지 */}
-          {/** <Route path={ROUTES.NOT_FOUND} element={<NotFoundPage />} /> */}
+          <Route path={ROUTES.NOT_FOUND} element={<NotFoundPage />} />
 
-          {/* 기본 리다이렉트 */}
-          {/** <Route path="*" element={<Navigate to={ROUTES.NOT_FOUND} replace />} /> */}
+          {/* 정의되지 않은 모든 경로는 404 페이지로 리다이렉트 */}
+          <Route path="*" element={<Navigate to={ROUTES.NOT_FOUND} replace />} />
         </Routes>
       </Layout>
     </Router>

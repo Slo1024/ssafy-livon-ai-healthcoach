@@ -8,7 +8,7 @@ services:
       - "8082:8081" # 외부:내부 포트
     volumes:
       - ../LivOnBack/src:/app/src
-      - ../keys:/app/keys:ro
+      # - ../keys:/app/keys:ro
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - GCP_KEY_FILE=/app/keys/livon-477113-1cbd80f7207d.json

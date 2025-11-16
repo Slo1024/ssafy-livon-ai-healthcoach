@@ -23,6 +23,7 @@ RUN mkdir -p /app/config && chown -R app:app /app
 COPY --from=builder /workspace/build/libs/*.jar /app/app.jar
 # application.yml 복사 (JAR 안에서 참조될 위치로) / 🔑 yml 소유자를 app으로 지정
 COPY --chown=app:app application.yml /app/config/application.yml
+COPY --chown=app:app keys/livon-477113-1cbd80f7207d.json /app/keys/livon-477113-1cbd80f7207d.json
 
 USER app
 EXPOSE 8081

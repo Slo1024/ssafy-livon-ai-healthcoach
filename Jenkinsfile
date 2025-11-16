@@ -46,6 +46,10 @@ pipeline {
                             rm -rf keys
                             mkdir -p keys
                             cp -f "$GCP_KEY_FILE" keys/livon-477113-1cbd80f7207d.json
+                            
+                            echo "📂 현재 위치: $(pwd)"
+                            echo "📄 keys 폴더 내용:"
+                            ls -l keys
                         """
 
                         sh """

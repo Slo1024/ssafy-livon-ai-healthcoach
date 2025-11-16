@@ -3,6 +3,7 @@ package com.livon.app.ui.component.streaming
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -12,6 +13,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.input.pointer.pointerInput
 import com.livon.app.R
 import io.livekit.android.room.Room
 import io.livekit.android.room.track.VideoTrack
@@ -27,7 +29,8 @@ fun StreamingCamera(
     isScreenShare: Boolean = false,
     eglBaseContext: livekit.org.webrtc.EglBase.Context,
     room: Room? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onDoubleTap: (() -> Unit)? = null
 ) {
     val isLocalTrack = track is LocalVideoTrack
 
@@ -87,6 +90,19 @@ fun StreamingCamera(
                     }
                 }
             )
+
+            // Double-tap overlay to toggle focus
+            if (onDoubleTap != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onDoubleTap = { onDoubleTap.invoke() }
+                            )
+                        }
+                )
+            }
         } else {
             Box(
                 modifier = Modifier

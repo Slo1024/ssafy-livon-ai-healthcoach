@@ -65,6 +65,7 @@ fun LiveStreamingCoachScreen(
 
     var currentScreen by remember { mutableStateOf("streaming") } // "streaming", "participant", "chatting"
     var showHeader by remember { mutableStateOf(false) } // default: header hidden
+    var focusedTrackSid by remember { mutableStateOf<String?>(null) } // double-tap focus
 
     LivonTheme {
         when (currentScreen) {
@@ -160,6 +161,24 @@ fun LiveStreamingCoachScreen(
                                 .fillMaxSize()
                                 .padding(paddingValues)
                         ) {
+                            focusedTrackSid?.let { sid ->
+                                val focused = participantTracks.firstOrNull { it.track?.sid == sid }
+                                if (focused != null) {
+                                    StreamingCamera(
+                                        track = focused.track as? VideoTrack,
+                                        userName = focused.participantIdentity,
+                                        isCameraEnabled = focused.isCameraEnabled,
+                                        isScreenShare = focused.isScreenShare,
+                                        eglBaseContext = eglBaseContext,
+                                        room = room,
+                                        modifier = Modifier.fillMaxSize(),
+                                        onDoubleTap = { focusedTrackSid = null }
+                                    )
+                                    return@Box
+                                } else {
+                                    focusedTrackSid = null
+                                }
+                            }
                             when (remoteTracks.size) {
                                 0 -> {
                                     coachTrackInfo?.let { me ->
@@ -170,7 +189,8 @@ fun LiveStreamingCoachScreen(
                                             isScreenShare = me.isScreenShare,
                                             eglBaseContext = eglBaseContext,
                                             room = room,
-                                            modifier = Modifier.fillMaxSize()
+                                            modifier = Modifier.fillMaxSize(),
+                                            onDoubleTap = { me.track?.sid?.let { focusedTrackSid = it } }
                                         )
                                     } ?: Text("비디오 스트림을 준비 중입니다.")
                                 }
@@ -216,7 +236,8 @@ fun LiveStreamingCoachScreen(
                                                 isScreenShare = remote.isScreenShare,
                                                 eglBaseContext = eglBaseContext,
                                                 room = room,
-                                                modifier = Modifier.fillMaxSize()
+                                                modifier = Modifier.fillMaxSize(),
+                                                onDoubleTap = { remote.track?.sid?.let { focusedTrackSid = it } }
                                             )
                                         }
                                     }
@@ -250,7 +271,8 @@ fun LiveStreamingCoachScreen(
                                                         isScreenShare = true,
                                                         eglBaseContext = eglBaseContext,
                                                         room = room,
-                                                        modifier = Modifier.fillMaxSize()
+                                                        modifier = Modifier.fillMaxSize(),
+                                                        onDoubleTap = { screenShareRemote.track?.sid?.let { focusedTrackSid = it } }
                                                     )
                                                 }
                                             }
@@ -293,7 +315,8 @@ fun LiveStreamingCoachScreen(
                                                                             isScreenShare = t.isScreenShare,
                                                                             eglBaseContext = eglBaseContext,
                                                                             room = room,
-                                                                            modifier = Modifier.fillMaxSize()
+                                                                            modifier = Modifier.fillMaxSize(),
+                                                                            onDoubleTap = { t.track?.sid?.let { focusedTrackSid = it } }
                                                                         )
                                                                     }
                                                                 } else {
@@ -316,7 +339,8 @@ fun LiveStreamingCoachScreen(
                                                                             isScreenShare = t.isScreenShare,
                                                                             eglBaseContext = eglBaseContext,
                                                                             room = room,
-                                                                            modifier = Modifier.fillMaxSize()
+                                                                            modifier = Modifier.fillMaxSize(),
+                                                                            onDoubleTap = { t.track?.sid?.let { focusedTrackSid = it } }
                                                                         )
                                                                     }
                                                                 } else {

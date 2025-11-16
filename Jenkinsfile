@@ -29,7 +29,10 @@ pipeline {
                     def CONTAINER = IS_PROD ? 'livon-be-prod' : 'livon-be-dev'
                     def PROJECT = IS_PROD ? 'livon-prod' : 'livon-dev'
 
-                    withCredentials([file(credentialsId: PROPERTIES_ID, variable: 'APP_PROPS_FILE')]) {
+                    withCredentials([
+                        file(credentialsId: PROPERTIES_ID, variable: 'APP_PROPS_FILE'), 
+                        file(credentialsId: 'gcp-key', variable: 'GCP_KEY_FILE')
+                    ]) {
                         dir('LivOnBack') {
                             sh '''
                                 echo "📦 Copying application.yml..."
@@ -37,6 +40,13 @@ pipeline {
                                 cp -f "$APP_PROPS_FILE" application.yml
                             '''
                         }
+
+                        sh """
+                            echo "🔐 워크스페이스 루트에 keys 폴더 생성 및 GCP 키 복사..."
+                            rm -rf keys
+                            mkdir -p keys
+                            cp -f "$GCP_KEY_FILE" keys/livon-477113-1cbd80f7207d.json
+                        """
 
                         sh """
                             echo "🗑️ Removing existing BE container (${CONTAINER}) if present..."
@@ -141,13 +151,16 @@ pipeline {
                         '''
 
                         // 3) local.properties 생성 (Gradle이 SDK 경로 인식)
-                        dir('LivOnFront/mobile') {
-                            sh '''
-                                set -e
-                                echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
-                                echo "[ok] Generated local.properties:"
-                                cat local.properties
-                            '''
+                        withCredentials([file(credentialsId: 'mobile-local-properties', variable: 'LOCAL_PROPS_FILE')]) {
+                            dir('LivOnFront/mobile') {
+                                sh '''
+                                    set -e
+                                    cp "$LOCAL_PROPS_FILE" local.properties
+                                    grep -q '^sdk.dir=' local.properties && sed -i 's|^sdk\\.dir=.*|sdk.dir='"$ANDROID_SDK_ROOT"'|' local.properties || echo "sdk.dir=$ANDROID_SDK_ROOT" >> local.properties
+                                    echo "[ok] Generated local.properties:"
+                                    cat local.properties
+                                '''
+                            }
                         }
                     }
                 }

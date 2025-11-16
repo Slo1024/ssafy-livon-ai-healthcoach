@@ -35,23 +35,17 @@ class ChatApiImpl(
         lastSentAt: String?,
         accessToken: String?
     ): ChatMessageResponseDto {
-        val authHeader = accessToken?.let { token ->
-            if (token.startsWith("Bearer ", ignoreCase = true)) token else "Bearer $token"
-        }
         return try {
-            Log.d("ChatApi", "요청 시작: reservationId=$reservationId")
-            Log.d("ChatApi", "lastSentAt: $lastSentAt")
-            Log.d("ChatApi", "accessToken 존재: ${accessToken != null}")
             service.getChatMessages(
                 roomId = reservationId,
                 lastSentAt = lastSentAt,
-                authorization = authHeader
+                authorization = null  // authInterceptor에서 이미 처리됨
             )
         } catch (e: HttpException) {
-            Log.e("ChatApi", "요청 실패: HTTP ${e.code()} ${e.message()}", e)
+            Log.e("ChatApi", "채팅 메시지 조회 실패: HTTP ${e.code()} ${e.message()}", e)
             throw e
         } catch (e: Exception) {
-            Log.e("ChatApi", "요청 실패: ${e.message}", e)
+            Log.e("ChatApi", "채팅 메시지 조회 실패: ${e.message}", e)
             throw e
         }
     }
@@ -60,21 +54,16 @@ class ChatApiImpl(
         consultationId: Long,
         accessToken: String?
     ): ChatRoomInfoResponseDto {
-        val authHeader = accessToken?.let { token ->
-            if (token.startsWith("Bearer ", ignoreCase = true)) token else "Bearer $token"
-        }
         return try {
-            Log.d("ChatApi", "채팅방 정보 조회 시작: consultationId=$consultationId")
-            Log.d("ChatApi", "accessToken 존재: ${accessToken != null}")
             service.getChatRoomInfo(
                 consultationId = consultationId,
-                authorization = authHeader
+                authorization = null  // authInterceptor에서 이미 처리됨
             )
         } catch (e: HttpException) {
-            Log.e("ChatApi", "요청 실패: HTTP ${e.code()} ${e.message()}", e)
+            Log.e("ChatApi", "채팅방 정보 조회 실패: HTTP ${e.code()} ${e.message()}", e)
             throw e
         } catch (e: Exception) {
-            Log.e("ChatApi", "요청 실패: ${e.message}", e)
+            Log.e("ChatApi", "채팅방 정보 조회 실패: ${e.message}", e)
             throw e
         }
     }

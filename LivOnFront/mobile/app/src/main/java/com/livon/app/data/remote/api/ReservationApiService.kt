@@ -14,6 +14,19 @@ data class ReserveCoachRequest(
     val preQnA: String? = null
 )
 
+data class InstantConsultationRequest(
+    val durationMinutes: Int = 60,
+    val capacity: Int = 1,
+    val preQnA: String? = null
+)
+
+data class InstantConsultationResponse(
+    val consultationId: Long,
+    val sessionId: String,
+    val startAt: String,
+    val endAt: String
+)
+
 // Response DTOs for my-reservations
 data class ReservationListResponse(
     val page: Int,
@@ -58,6 +71,11 @@ interface ReservationApiService {
      */
     @POST("individual-consultations")
     suspend fun reserveCoach(@Body req: ReserveCoachRequest): ApiResponse<Int>
+
+    @POST("individual-consultations/instant")
+    suspend fun createInstantConsultation(
+        @Body req: InstantConsultationRequest
+    ): ApiResponse<InstantConsultationResponse>
 
     /**
      * 그룹(클래스) 예약

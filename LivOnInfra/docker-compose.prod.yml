@@ -6,10 +6,11 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8081:8081"
-    # volumes:
-    #  - ../LivOnBack/src:/app/src
+    volumes:
+      - ../keys:/app/keys:ro
     environment:
       - SPRING_PROFILES_ACTIVE=prod
+      - GCP_KEY_FILE=/app/keys/livon-477113-1cbd80f7207d.json
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: always

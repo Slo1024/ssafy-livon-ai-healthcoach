@@ -80,4 +80,11 @@ public class Consultation {
         }
         this.sessionId = "consultation-" + this.id;
     }
+
+    /**
+     * 영상 URL을 업데이트합니다.
+     */
+    public void updateVideoUrl(String videoUrl) {
+        this.videoUrl = videoUrl;
+    }
 }

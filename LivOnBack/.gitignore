@@ -38,10 +38,5 @@ out/
 
 application*.yml
 
-<<<<<<< HEAD
 ### GCP key ###
 livon*.json
-=======
-### Google Cloud key ###
-livon*.json
->>>>>>> 9d8c468d296be24cac7edac3d6e46b28b988d7b7

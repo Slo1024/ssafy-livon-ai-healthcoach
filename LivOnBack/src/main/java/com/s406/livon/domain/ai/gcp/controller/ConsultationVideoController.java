@@ -30,7 +30,7 @@ public class ConsultationVideoController {
     private final ConsultationVideoService consultationVideoService;
 
     /**
-     * 영상을 업로드하고 자동으로 AI 요약을 생성합니다.
+     * 영상을 업로드하고 자동으로 AI 요약을 생성
      * 
      * @param consultationId 상담 ID
      * @param videoFile 영상 파일
@@ -52,8 +52,6 @@ public class ConsultationVideoController {
             
             @Parameter(description = "사전 QnA")
             @RequestParam(value = "preQnA", required = false) String preQnA) throws IOException {
-        
-        log.info("Received upload and summarize request for consultation ID: {}", consultationId);
 
         VideoSummaryResponseDto response = consultationVideoService.uploadAndSummarize(
                 consultationId, videoFile, preQnA);
@@ -63,7 +61,7 @@ public class ConsultationVideoController {
     }
 
     /**
-     * 이미 업로드된 영상에 대해 요약을 재생성합니다.
+     * 이미 업로드된 영상에 대해 요약을 재생성
      * 
      * @param consultationId 상담 ID
      * @param preQnA 사전 QnA (선택사항)
@@ -80,8 +78,6 @@ public class ConsultationVideoController {
             
             @Parameter(description = "사전 QnA")
             @RequestParam(value = "preQnA", required = false) String preQnA) {
-        
-        log.info("Received regenerate summary request for consultation ID: {}", consultationId);
 
         VideoSummaryResponseDto response = consultationVideoService.regenerateSummary(
                 consultationId, preQnA);
@@ -91,7 +87,7 @@ public class ConsultationVideoController {
     }
 
     /**
-     * 상담 영상을 삭제합니다.
+     * 상담 영상을 삭제
      * 
      * @param consultationId 상담 ID
      * @return 삭제 결과
@@ -104,8 +100,6 @@ public class ConsultationVideoController {
     public ResponseEntity<?> deleteVideo(
             @Parameter(description = "상담 ID", required = true)
             @PathVariable Long consultationId) {
-        
-        log.info("Received delete video request for consultation ID: {}", consultationId);
 
         consultationVideoService.deleteConsultationVideo(consultationId);
 

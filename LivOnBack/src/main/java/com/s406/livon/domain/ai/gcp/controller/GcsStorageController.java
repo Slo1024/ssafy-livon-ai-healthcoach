@@ -45,15 +45,9 @@ public class GcsStorageController {
             @Parameter(description = "영상 파일", required = true)
             @RequestParam("file") MultipartFile file) throws IOException {
         
-        log.info("Uploading video for consultation ID: {}, file size: {} bytes", 
-                consultationId, file.getSize());
-
         // GCS에 업로드
         String gcsUri = gcsStorageService.uploadVideo(file, consultationId);
         String publicUrl = gcsStorageService.getPublicUrl(gcsUri);
-
-        log.info("Successfully uploaded video for consultation ID: {}, GCS URI: {}", 
-                consultationId, gcsUri);
 
         VideoUploadResponseDto response = VideoUploadResponseDto.builder()
                 .consultationId(consultationId)
@@ -76,8 +70,6 @@ public class GcsStorageController {
     public ResponseEntity<?> deleteVideo(
             @Parameter(description = "GCS URI", required = true)
             @RequestParam String gcsUri) {
-        
-        log.info("Deleting video from GCS: {}", gcsUri);
 
         gcsStorageService.deleteVideo(gcsUri);
 
@@ -96,8 +88,6 @@ public class GcsStorageController {
     public ResponseEntity<?> checkVideoExists(
             @Parameter(description = "GCS URI", required = true)
             @RequestParam String gcsUri) {
-        
-        log.info("Checking if video exists in GCS: {}", gcsUri);
 
         boolean exists = gcsStorageService.exists(gcsUri);
         

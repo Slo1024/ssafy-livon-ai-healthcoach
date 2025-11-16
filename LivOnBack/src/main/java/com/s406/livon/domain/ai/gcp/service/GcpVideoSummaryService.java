@@ -32,14 +32,13 @@ public class GcpVideoSummaryService {
     private final IndividualConsultationRepository individualConsultationRepository;
 
     /**
-     * 영상을 분석하고 요약을 생성합니다.
+     * 영상을 분석하고 요약을 생성
      * 
      * @param requestDto 영상 요약 요청 정보
      * @return 영상 요약 결과
      */
     @Transactional
     public VideoSummaryResponseDto generateVideoSummary(VideoSummaryRequestDto requestDto) {
-        log.info("Starting video summary generation for consultation ID: {}", requestDto.getConsultationId());
 
         IndividualConsultation individualConsultation = individualConsultationRepository
                 .findById(requestDto.getConsultationId())
@@ -75,15 +74,12 @@ public class GcpVideoSummaryService {
             }
 
             Content content = Content.newBuilder()
+                    .setRole("user")
                     .addAllParts(parts)
                     .build();
 
             GenerateContentResponse response = model.generateContent(content);
             String summary = extractTextFromResponse(response);
-
-            log.info("Successfully generated video summary for consultation ID: {}", 
-                    requestDto.getConsultationId());
-
             saveAiSummary(individualConsultation, summary);
 
             return VideoSummaryResponseDto.builder()
@@ -99,7 +95,7 @@ public class GcpVideoSummaryService {
     }
 
     /**
-     * 영상 분석을 위한 프롬프트를 생성합니다.
+     * 영상 분석을 위한 프롬프트를 생성
      */
     private String buildPrompt(VideoSummaryRequestDto requestDto) {
         StringBuilder promptBuilder = new StringBuilder();
@@ -131,7 +127,7 @@ public class GcpVideoSummaryService {
     }
 
     /**
-     * 비디오 URL을 GCS URI 형식으로 변환합니다.
+     * 비디오 URL을 GCS URI 형식으로 변환
      */
     private String convertToGcsUri(String videoUrl) {
         // 이미 GCS URI 형식인 경우
@@ -159,7 +155,7 @@ public class GcpVideoSummaryService {
     }
 
     /**
-     * GenerateContentResponse에서 텍스트를 추출합니다.
+     * GenerateContentResponse에서 텍스트를 추출
      */
     private String extractTextFromResponse(GenerateContentResponse response) {
         if (response.getCandidatesCount() == 0) {
@@ -179,17 +175,16 @@ public class GcpVideoSummaryService {
     }
 
     /**
-     * AI 요약을 DB에 저장합니다.
+     * AI 요약을 DB에 저장
      */
     @Transactional
     public void saveAiSummary(IndividualConsultation consultation, String summary) {
         consultation.updateAiSummary(summary);
         individualConsultationRepository.save(consultation);
-        log.info("AI summary saved for consultation ID: {}", consultation.getId());
     }
 
     /**
-     * 저장된 요약을 조회합니다.
+     * 저장된 요약을 조회
      */
     @Transactional(readOnly = true)
     public VideoSummaryResponseDto getSummary(Long consultationId) {

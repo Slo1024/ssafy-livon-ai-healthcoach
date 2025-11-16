@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Configuration;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.List;
 
 /**
  * GCP (Google Cloud Platform) 설정 클래스
@@ -18,6 +19,9 @@ import java.io.IOException;
 @Configuration
 @Getter
 public class GcpConfig {
+
+    private static final List<String> CLOUD_SCOPES =
+            List.of("https://www.googleapis.com/auth/cloud-platform");
 
     @Value("${gcp.project.id}")
     private String projectId;
@@ -39,12 +43,9 @@ public class GcpConfig {
      */
     @Bean
     public Storage googleCloudStorage() throws IOException {
-        GoogleCredentials credentials = GoogleCredentials
-                .fromStream(new FileInputStream(credentialsLocation));
-
         return StorageOptions.newBuilder()
                 .setProjectId(projectId)
-                .setCredentials(credentials)
+                .setCredentials(loadCredentials())
                 .build()
                 .getService();
     }
@@ -54,8 +55,13 @@ public class GcpConfig {
      */
     @Bean
     public GoogleCredentials googleCredentials() throws IOException {
-        return GoogleCredentials
-                .fromStream(new FileInputStream(credentialsLocation));
+        return loadCredentials();
+    }
+
+    private GoogleCredentials loadCredentials() throws IOException {
+        try (FileInputStream fis = new FileInputStream(credentialsLocation)) {
+            return GoogleCredentials.fromStream(fis)
+                    .createScoped(CLOUD_SCOPES);
+        }
     }
 }
-

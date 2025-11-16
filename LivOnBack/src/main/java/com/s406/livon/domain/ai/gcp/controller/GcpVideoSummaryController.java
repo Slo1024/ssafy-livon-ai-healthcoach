@@ -26,7 +26,7 @@ public class GcpVideoSummaryController {
     private final GcpVideoSummaryService gcpVideoSummaryService;
 
     /**
-     * 1대1 코칭 영상을 분석하고 요약을 생성합니다.
+     * 1대1 코칭 영상을 분석하고 요약을 생성
      * 
      * @param requestDto 영상 요약 요청 정보
      * @return 생성된 요약
@@ -35,9 +35,6 @@ public class GcpVideoSummaryController {
     @Operation(summary = "영상 요약 생성", description = "1대1 코칭 영상을 AI로 분석하여 요약을 생성합니다.")
     public ResponseEntity<?> generateSummary(
             @RequestBody VideoSummaryRequestDto requestDto) {
-        
-        log.info("Received video summary request for consultation ID: {}", 
-                requestDto.getConsultationId());
         
         VideoSummaryResponseDto response = gcpVideoSummaryService.generateVideoSummary(requestDto);
         
@@ -56,8 +53,6 @@ public class GcpVideoSummaryController {
     public ResponseEntity<?> getSummary(
             @Parameter(description = "상담 ID", required = true)
             @PathVariable Long consultationId) {
-        
-        log.info("Retrieving video summary for consultation ID: {}", consultationId);
         
         VideoSummaryResponseDto response = gcpVideoSummaryService.getSummary(consultationId);
         

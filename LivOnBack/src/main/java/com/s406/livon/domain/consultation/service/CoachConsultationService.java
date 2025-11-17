@@ -194,14 +194,14 @@ public class CoachConsultationService {
     }
 
     /**
-     * 코치가 자신의 1:1 상담 참여자 정보를 조회
+     * 코치가 자신의 상담 참여자 정보를 조회
      *
      * @param consultationId 상담 ID
      * @param coachId 코치 ID (JWT에서 추출)
-     * @return 참여자 정보
+     * @return 참여자 정보 목록
      */
     @Transactional(readOnly = true)
-    public ParticipantInfoResponseDto getParticipantInfo(Long consultationId, UUID coachId) {
+    public List<ParticipantInfoResponseDto> getParticipantInfo(Long consultationId, UUID coachId) {
         // 1. consultation 조회 및 검증
         Consultation consultation = consultationRepository.findById(consultationId)
                         .orElseThrow(() -> new GeneralException(ErrorStatus.CONSULTATION_NOT_FOUND));
@@ -216,40 +216,35 @@ public class CoachConsultationService {
             throw new GeneralException(ErrorStatus.CONSULTATION_ALREADY_CLOSED);
         }
 
-        // 4. 1:1 상담인지 확인
-        if (consultation.getType() != Consultation.Type.ONE) {
-            throw new GeneralException(ErrorStatus.CONSULTATION_NOT_ONE_ON_ONE);
-        }
-
-        // 5. 개별 상담 정보 조회
-        IndividualConsultation individualConsultation = individualConsultationRepository.findById(consultationId)
-                        .orElseThrow(() -> new GeneralException(ErrorStatus.CONSULTATION_NOT_FOUND));
-
-        // 6. 참여자 정보 조회 (1:1이므로 예약한 사용자 정보)
-        // participants 테이블에서 해당 상담의 참여자 조회
+        // 4. 참여자 정보 조회
         List<Participant> participants = participantRepository.findParticipantByConsultationId(consultationId);
         if (participants.isEmpty()) {
             throw new GeneralException(ErrorStatus.CONSULTATION_NOT_FOUND);
         }
 
-        User participant = participants.get(0).getUser(); // 1:1이므로 첫 번째 참여자가 유일한 참여자
+        // 5. 각 참여자에 대해 정보 조회 및 DTO 생성
+        return participants.stream()
+                .map(participant -> {
+                    User user = participant.getUser();
+                    
+                    // 건강 설문 데이터 조회
+                    HealthSurvey healthSurvey = healthSurveyRepository.findByUserId(user.getId())
+                            .orElse(null); // 데이터가 없으면 null로 처리
 
-        // 7. 건강 설문 데이터 조회
-        HealthSurvey healthSurvey = healthSurveyRepository.findByUserId(participant.getId())
-                        .orElse(null); // 데이터가 없으면 null로 처리
+                    // AI 분석 요약 조회
+                    String aiSummary = null;
+                    try {
+                        AiSummaryResponseDto aiSummaryResponse = aiAnalysisService.getSummary(user.getId());
+                        aiSummary = aiSummaryResponse.getSummary();
+                    } catch (Exception e) {
+                        log.warn("AI 분석 요약 조회 실패 - userId: {}, error: {}", user.getId(), e.getMessage());
+                        // AI 분석 요약이 없어도 다른 정보는 정상적으로 반환
+                    }
 
-        // 8. AI 분석 요약 조회
-        String aiSummary = null;
-        try {
-            AiSummaryResponseDto aiSummaryResponse = aiAnalysisService.getSummary(participant.getId());
-            aiSummary = aiSummaryResponse.getSummary();
-        } catch (Exception e) {
-            log.warn("AI 분석 요약 조회 실패 - userId: {}, error: {}", participant.getId(), e.getMessage());
-            // AI 분석 요약이 없어도 다른 정보는 정상적으로 반환
-        }
-
-        // 9. 응답 DTO 생성
-        return buildParticipantInfoResponse(participant, healthSurvey, aiSummary);
+                    // 응답 DTO 생성
+                    return buildParticipantInfoResponse(user, healthSurvey, aiSummary);
+                })
+                .collect(Collectors.toList());
     }
 
     /**

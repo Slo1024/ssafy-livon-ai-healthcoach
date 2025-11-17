@@ -3,7 +3,10 @@ package com.s406.livon.domain.ai.gcp.config;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
+import com.s406.livon.global.config.properties.MinioProperties;
+import io.minio.MinioClient;
 import lombok.Getter;
+import okhttp3.OkHttpClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,6 +22,19 @@ import java.util.List;
 @Configuration
 @Getter
 public class GcpConfig {
+
+    @Bean
+    public OkHttpClient okHttpClient() {
+        return new OkHttpClient();
+    }
+
+    @Bean
+    public MinioClient minioClient(MinioProperties minioProperties) {
+        return MinioClient.builder()
+                .endpoint(minioProperties.getEndpoint())
+                .credentials(minioProperties.getAccessKey(), minioProperties.getSecretKey())
+                .build();
+    }
 
     private static final List<String> CLOUD_SCOPES =
             List.of("https://www.googleapis.com/auth/cloud-platform");

@@ -1,5 +1,6 @@
 package com.s406.livon.domain.openvidu.service;
 
+import com.s406.livon.domain.ai.gcp.service.EgressPollingService;
 import com.s406.livon.domain.coach.entity.Consultation;
 import com.s406.livon.domain.coach.repository.ParticipantRepository;
 import com.s406.livon.domain.consultation.repository.ConsultationRepository;
@@ -42,6 +43,9 @@ public class RecordingService {
     private final LivekitEgressProperties egressProperties;
     private final MinioProperties minioProperties;
 
+    private final EgressPollingService egressPollingService;
+
+    @Transactional
     public RecordingStartResponseDto startRecording(UUID userId, RecordingStartRequestDto request) {
         Consultation consultation = consultationRepository.findById(request.consultationId())
                 .orElseThrow(() -> new CoachHandler(ErrorStatus.CONSULTATION_NOT_FOUND));
@@ -81,6 +85,7 @@ public class RecordingService {
                 .build();
     }
 
+    @Transactional
     public RecordingStopResponseDto stopRecording(UUID userId, RecordingStopRequestDto request) {
         Consultation consultation = consultationRepository.findById(request.consultationId())
                 .orElseThrow(() -> new CoachHandler(ErrorStatus.CONSULTATION_NOT_FOUND));
@@ -88,6 +93,10 @@ public class RecordingService {
         validateAccess(userId, consultation);
 
         LivekitEgress.EgressInfo info = execute(egressServiceClient.stopEgress(request.egressId()));
+
+        egressPollingService.pollForRecordingCompletion(info.getEgressId(), consultation.getId(), consultation.getSessionId());
+
+        log.info("녹화 중지 요청 수신 및 백그라운드 폴링 시작. Egress ID: {}", info.getEgressId());
 
         List<RecordingFileResultDto> files = info.getFileResultsList().stream()
                 .map(file -> RecordingFileResultDto.builder()

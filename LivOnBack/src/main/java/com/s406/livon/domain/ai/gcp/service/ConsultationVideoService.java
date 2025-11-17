@@ -21,6 +21,7 @@ import java.io.IOException;
 import io.minio.GetObjectArgs;
 import io.minio.MinioClient;
 import java.io.InputStream;
+import java.net.URL;
 
 /**
  * 상담 영상 통합 서비스
@@ -36,7 +37,6 @@ public class ConsultationVideoService {
     private final ConsultationRepository consultationRepository;
     private final IndividualConsultationRepository individualConsultationRepository;
 
-    private final MinioClient minioClient;
     private final MinioProperties minioProperties;
 
     /**
@@ -92,42 +92,53 @@ public class ConsultationVideoService {
 
         String bucketName = minioProperties.getBucket();
 
-        int bucketPathIndex = videoUrl.indexOf("/" + bucketName + "/");
-        if (bucketPathIndex == -1) {
-            log.error("MinIO URL에 설정된 버킷 이름({})을 찾을 수 없습니다. URL: {}", bucketName, videoUrl);
-            throw new IllegalArgumentException("MinIO URL에서 버킷 경로를 찾을 수 없습니다: " + bucketName);
-        }
-
-        String objectKey = videoUrl.substring(bucketPathIndex + bucketName.length() + 2); // +2는 양쪽 슬래시
-        String filename = objectKey.substring(objectKey.lastIndexOf('/') + 1);
-
-        log.debug("MinIO GetObject. Bucket: {}, Key: {}", bucketName, objectKey);
-
         try {
-            InputStream videoStream = minioClient.getObject(
+            // 1. [신규] videoUrl을 파싱하여 동적 엔드포인트 추출
+            URL url = new URL(videoUrl);
+            // 예: "http://ov.s406.site:9000"
+            String dynamicEndpoint = url.getProtocol() + "://" + url.getHost() + ":" + url.getPort();
+
+            // 예: "/openvidu-appdata/recordings/consultation-285/...mp4"
+            String fullPath = url.getPath();
+
+            // 2. [수정] 버킷 이름(Bucket Name)을 기준으로 Object Key(파일 경로) 추출
+            int bucketPathIndex = fullPath.indexOf("/" + bucketName + "/");
+            if (bucketPathIndex == -1) {
+                log.error("MinIO URL 경로에 버킷 이름({})을 찾을 수 없습니다. URL: {}", bucketName, videoUrl);
+                throw new IllegalArgumentException("MinIO URL에서 버킷 경로를 찾을 수 없습니다.");
+            }
+            // 예: "recordings/consultation-285/...mp4"
+            String objectKey = fullPath.substring(bucketPathIndex + bucketName.length() + 2);
+            String filename = objectKey.substring(objectKey.lastIndexOf('/') + 1);
+
+            log.debug("MinIO GetObject. Endpoint: {}, Bucket: {}, Key: {}", dynamicEndpoint, bucketName, objectKey);
+
+            // 3. [신규] 동적 엔드포인트로 임시 MinioClient 생성
+            MinioClient tempClient = MinioClient.builder()
+                    .endpoint(dynamicEndpoint) // 하드코딩 대신 동적 엔드포인트 사용
+                    .credentials(minioProperties.getAccessKey(), minioProperties.getSecretKey())
+                    .build();
+
+            // 4. [수정] 임시 클라이언트(tempClient)로 파일 다운로드
+            InputStream videoStream = tempClient.getObject(
                     GetObjectArgs.builder()
                             .bucket(bucketName)
                             .object(objectKey)
                             .build()
             );
 
+            // 5. (변경 없음) InputStream -> byte[] -> MultipartFile
             byte[] videoBytes = videoStream.readAllBytes();
             videoStream.close();
-
             log.info("uploadAndSummarizeFromUrl: MinIO 다운로드 완료. bytes={}, filename={}", videoBytes.length, filename);
+            MultipartFile videoFile = new MockMultipartFile("file", filename, "video/mp4", videoBytes);
 
-            MultipartFile videoFile = new MockMultipartFile(
-                    "file",
-                    filename,
-                    "video/mp4",
-                    videoBytes
-            );
-
+            // 6. (변경 없음) 기존 로직 호출
             uploadAndSummarize(consultationId, videoFile, preQnA);
 
-        } catch (Exception e) {
+        } catch (Exception e) { // MalformedURLException, MinioException, IOException 등
             log.error("URL로부터 영상 처리 중 예외 발생. consultationId={}", consultationId, e);
-            throw new RuntimeException("URL 영상 처리 실패", e); // 이 부분이 로그에 찍힘
+            throw new RuntimeException("URL 영상 처리 실패", e);
         }
     }
 

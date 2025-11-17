@@ -9,6 +9,7 @@ import {
   ReservationCancelConfirmModal,
   ReservationCancelSuccessModal,
 } from "../../components/common/Modal";
+import type { ApplicationMember } from "../../components/common/Modal";
 import { useAuth } from "../../hooks/useAuth";
 import { ROUTES } from "../../constants/routes";
 import {
@@ -405,6 +406,8 @@ interface CoachConsultation {
     nickname: string;
     profileImage: string;
     email: string;
+    status?: "PENDING" | "APPROVED" | string;
+    applicationStatus?: "PENDING" | "APPROVED" | string;
   }>;
 }
 
@@ -423,6 +426,13 @@ export const ReservationListPage: React.FC = () => {
   const [selectedMemberName, setSelectedMemberName] = useState<string>("");
   const [showApplicationApprovalModal, setShowApplicationApprovalModal] =
     useState(false);
+  const [selectedParticipants, setSelectedParticipants] = useState<
+    ApplicationMember[]
+  >([]);
+  const [
+    selectedApplicationConsultationId,
+    setSelectedApplicationConsultationId,
+  ] = useState<number | null>(null);
   const [showCancelConfirmModal, setShowCancelConfirmModal] = useState(false);
   const [showCancelSuccessModal, setShowCancelSuccessModal] = useState(false);
   const [cancelReservationId, setCancelReservationId] = useState<number | null>(
@@ -577,28 +587,63 @@ export const ReservationListPage: React.FC = () => {
   const [selectedConsultationId, setSelectedConsultationId] = useState<
     number | null
   >(null);
+  const [
+    shouldReopenApplicationModal,
+    setShouldReopenApplicationModal,
+  ] = useState(false);
 
   const handleViewMember = (
     memberName: string,
     memberId?: string,
-    consultationId?: number
+    consultationId?: number,
+    options?: { reopenApplicationModal?: boolean }
   ) => {
     setSelectedMemberName(memberName);
     setSelectedMemberId(memberId || null);
     setSelectedConsultationId(consultationId || null);
+    setShouldReopenApplicationModal(Boolean(options?.reopenApplicationModal));
     setShowMemberInfoModal(true);
   };
 
+  const handleCloseMemberInfoModal = () => {
+    setShowMemberInfoModal(false);
+    setSelectedMemberId(null);
+    setSelectedConsultationId(null);
+    if (shouldReopenApplicationModal) {
+      setShowApplicationApprovalModal(true);
+      setShouldReopenApplicationModal(false);
+    }
+  };
+
   const handleViewAppliedMembers = (
+    consultationId: number,
     participants?: Array<{
       userId: string;
       nickname: string;
       profileImage: string;
       email: string;
+      status?: "PENDING" | "APPROVED" | string;
+      applicationStatus?: "PENDING" | "APPROVED" | string;
     }>
   ) => {
     if (participants && participants.length > 0) {
+      const normalizedParticipants: ApplicationMember[] = participants.map(
+        (participant) => ({
+          id: participant.userId,
+          name: participant.nickname,
+          status:
+            participant.status === "APPROVED" ||
+            participant.applicationStatus === "APPROVED"
+              ? "APPROVED"
+              : "PENDING",
+        })
+      );
+      setSelectedParticipants(normalizedParticipants);
+      setSelectedApplicationConsultationId(consultationId);
       setShowApplicationApprovalModal(true);
+    } else {
+      setSelectedParticipants([]);
+      setSelectedApplicationConsultationId(null);
     }
   };
 
@@ -710,11 +755,41 @@ export const ReservationListPage: React.FC = () => {
                   );
                   const classType = getClassType(reservation.type);
                   const isIndividual = reservation.type === "ONE";
+                  // 코치 본인을 제외한 첫 번째 참가자(회원) 찾기
+                  // user.id는 이메일일 수 있고, participants.userId는 UUID이므로
+                  // userId와 email 둘 다 비교해야 함
+                  const coachUserId = user?.id;
+                  const coachEmail = user?.email;
+                  // console.log("🔍 [ReservationListPage] Debug Info:", {
+                  //   consultationId: reservation.consultationId,
+                  //   coachUserId: coachUserId,
+                  //   coachEmail: coachEmail,
+                  //   coachUserNickname: user?.nickname,
+                  //   participants: reservation.participants?.map((p) => ({
+                  //     userId: p.userId,
+                  //     email: p.email,
+                  //     nickname: p.nickname,
+                  //     isCoachByUserId: p.userId === coachUserId,
+                  //     isCoachByEmail: p.email === coachEmail,
+                  //   })),
+                  // });
                   const firstParticipant =
                     reservation.participants &&
                     reservation.participants.length > 0
-                      ? reservation.participants[0]
+                      ? reservation.participants.find((participant) => {
+                          // userId와 email 둘 다 비교
+                          const isNotCoach =
+                            participant.userId !== coachUserId &&
+                            participant.email !== coachEmail;
+                          // console.log(
+                          //   `  - Checking participant: ${participant.nickname} (userId: ${participant.userId}, email: ${participant.email}) - isNotCoach: ${isNotCoach}`
+                          // );
+                          return isNotCoach;
+                        }) || null
                       : null;
+                  // console.log(
+                  //   `  ✅ Selected firstParticipant: ${firstParticipant?.nickname} (${firstParticipant?.userId})`
+                  // );
 
                   return (
                     <TableRow key={reservation.consultationId}>
@@ -727,16 +802,18 @@ export const ReservationListPage: React.FC = () => {
                             ? "개인 상담 / 코칭"
                             : reservation.title || "제목 없음"}
                         </ClassTitle>
-                        {reservation.type === "GROUP" && reservation.description && (
-                          <ClassDescription>
-                            {reservation.description}
-                          </ClassDescription>
-                        )}
+                        {reservation.type === "GROUP" &&
+                          reservation.description && (
+                            <ClassDescription>
+                              {reservation.description}
+                            </ClassDescription>
+                          )}
                         {reservation.type === "GROUP" &&
                           reservation.capacity !== undefined &&
                           reservation.currentParticipants !== undefined && (
                             <ClassCapacityInfo>
-                              예약 인원: {reservation.currentParticipants} / {reservation.capacity}명
+                              예약 인원: {reservation.currentParticipants} /{" "}
+                              {reservation.capacity}명
                             </ClassCapacityInfo>
                           )}
                       </TableCell>
@@ -755,15 +832,15 @@ export const ReservationListPage: React.FC = () => {
                             상담 시작
                           </StartConsultationButton>
                           {isIndividual && firstParticipant ? (
-                            <ViewMemberButton
-                              onClick={() =>
-                                handleViewMember(
-                                  firstParticipant.nickname,
-                                  firstParticipant.userId,
-                                  reservation.consultationId
-                                )
-                              }
-                            >
+                      <ViewMemberButton
+                        onClick={() =>
+                          handleViewMember(
+                            firstParticipant.nickname,
+                            firstParticipant.userId,
+                            reservation.consultationId
+                          )
+                        }
+                      >
                               {firstParticipant.nickname} 회원 보기
                             </ViewMemberButton>
                           ) : (
@@ -771,6 +848,7 @@ export const ReservationListPage: React.FC = () => {
                               $compact
                               onClick={() =>
                                 handleViewAppliedMembers(
+                                  reservation.consultationId,
                                   reservation.participants
                                 )
                               }
@@ -842,11 +920,7 @@ export const ReservationListPage: React.FC = () => {
         {/* 회원 정보 모달 */}
         <MemberInfoModal
           open={showMemberInfoModal}
-          onClose={() => {
-            setShowMemberInfoModal(false);
-            setSelectedMemberId(null);
-            setSelectedConsultationId(null);
-          }}
+          onClose={handleCloseMemberInfoModal}
           memberName={selectedMemberName}
           memberId={selectedMemberId || undefined}
           consultationId={selectedConsultationId || undefined}
@@ -860,11 +934,20 @@ export const ReservationListPage: React.FC = () => {
         {/* 신청 회원 예약 승인 모달 */}
         <ApplicationApprovalModal
           open={showApplicationApprovalModal}
-          onClose={() => setShowApplicationApprovalModal(false)}
-          members={reservations
-            .filter((r) => r.participants && r.participants.length > 0)
-            .flatMap((r) => r.participants || [])
-            .map((p) => ({ id: p.userId, name: p.nickname }))}
+          onClose={() => {
+            setShowApplicationApprovalModal(false);
+            setSelectedApplicationConsultationId(null);
+            setSelectedMemberId(null);
+            setShouldReopenApplicationModal(false);
+          }}
+          members={selectedParticipants}
+          consultationId={selectedApplicationConsultationId || undefined}
+          onMemberInfoClick={(memberName, memberId) => {
+            handleViewMember(memberName, memberId, undefined, {
+              reopenApplicationModal: true,
+            });
+            setShowApplicationApprovalModal(false);
+          }}
         />
 
         {/* 예약 취소 확인 모달 */}

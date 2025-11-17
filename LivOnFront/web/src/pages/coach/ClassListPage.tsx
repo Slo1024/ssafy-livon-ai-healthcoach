@@ -13,6 +13,8 @@ import { ROUTES } from "../../constants/routes";
 import {
   getMyGroupConsultationsApi,
   deleteGroupConsultationApi,
+  updateGroupConsultationApi,
+  getGroupConsultationDetailApi,
   GroupConsultationListItem,
 } from "../../api/classApi";
 
@@ -267,6 +269,7 @@ export const ClassListPage: React.FC = () => {
   const [showDeleteSuccessModal, setShowDeleteSuccessModal] = useState(false);
   const [editingClass, setEditingClass] =
     useState<GroupConsultationListItem | null>(null);
+  const [editingClassDescription, setEditingClassDescription] = useState<string>("");
   const [deletingClassId, setDeletingClassId] = useState<number | null>(null);
 
   // API 관련 상태
@@ -335,9 +338,20 @@ export const ClassListPage: React.FC = () => {
     setFilterValue(e.target.value);
   };
 
-  const handleEditClick = (classItem: GroupConsultationListItem) => {
+  const handleEditClick = async (classItem: GroupConsultationListItem) => {
     setEditingClass(classItem);
     setShowEditModal(true);
+    
+    // 클래스 상세 정보를 가져와서 description 등 추가 정보 로드
+    try {
+      const detailResponse = await getGroupConsultationDetailApi(classItem.id);
+      if (detailResponse.isSuccess && detailResponse.result) {
+        setEditingClassDescription(detailResponse.result.description || "");
+      }
+    } catch (err) {
+      console.error("클래스 상세 정보 조회 오류:", err);
+      setEditingClassDescription("");
+    }
   };
 
   const handleDeleteClick = (classId: number) => {
@@ -345,18 +359,105 @@ export const ClassListPage: React.FC = () => {
     setShowDeleteConfirmModal(true);
   };
 
-  const handleSave = (_data: {
+  const handleSave = async (data: {
     name: string;
     description: string;
     targetMember: string;
     dateTime: string;
     file?: string;
   }) => {
-    // 저장 로직 (추후 API 연동)
-    setShowEditModal(false);
-    setShowSaveConfirmModal(true);
-    // 저장 후 목록 새로고침
-    fetchClasses(currentPage);
+    if (!editingClass) return;
+
+    try {
+      // dateTime 문자열을 파싱하여 startAt과 endAt 추출
+      // 형식: "YYYY-MM-DD HH:mm ~ HH:mm" 또는 "YYYY년 MM월 DD일 오전/오후 HH:mm ~ 오전/오후 HH:mm"
+      let startAt = editingClass.startAt;
+      let endAt = editingClass.endAt;
+
+      // dateTime이 있으면 파싱 시도
+      if (data.dateTime) {
+        // ISO 형식이 아닌 경우 파싱 로직 추가 필요
+        // 일단 기존 날짜를 유지하고 시간만 업데이트하는 방식으로 처리
+        // 실제 구현에서는 dateTime 파싱 로직이 필요할 수 있음
+      }
+
+      // API 호출을 위한 데이터 준비
+      const updateData: {
+        title?: string;
+        description?: string;
+        startAt?: string;
+        endAt?: string;
+        imageUrl?: string;
+      } = {};
+
+      if (data.name && data.name !== editingClass.title) {
+        updateData.title = data.name;
+      }
+      if (data.description) {
+        updateData.description = data.description;
+      }
+      if (data.file && data.file !== editingClass.imageUrl) {
+        updateData.imageUrl = data.file;
+      }
+      if (startAt !== editingClass.startAt) {
+        updateData.startAt = startAt;
+      }
+      if (endAt !== editingClass.endAt) {
+        updateData.endAt = endAt;
+      }
+
+      // API 호출
+      const response = await updateGroupConsultationApi(
+        editingClass.id,
+        updateData
+      );
+
+      if (response.isSuccess) {
+        setShowEditModal(false);
+        setShowSaveConfirmModal(true);
+        
+        // 목록 새로고침
+        await fetchClasses(currentPage);
+        
+        // 수정된 클래스의 최신 정보를 가져와서 editingClass 업데이트
+        try {
+          const detailResponse = await getGroupConsultationDetailApi(editingClass.id);
+          if (detailResponse.isSuccess && detailResponse.result) {
+            const updatedClass: GroupConsultationListItem = {
+              id: detailResponse.result.id,
+              title: detailResponse.result.title,
+              imageUrl: detailResponse.result.imageUrl,
+              startAt: detailResponse.result.startAt,
+              endAt: detailResponse.result.endAt,
+              capacity: detailResponse.result.capacity,
+              currentParticipants: detailResponse.result.currentParticipants,
+              availableSeats: detailResponse.result.availableSeats,
+              isFull: detailResponse.result.isFull,
+              coachName: detailResponse.result.coach.nickname,
+              coachProfileImage: detailResponse.result.coach.profileImage,
+            };
+            setEditingClass(updatedClass);
+            setEditingClassDescription(detailResponse.result.description || "");
+          }
+        } catch (err) {
+          console.error("클래스 상세 정보 조회 오류:", err);
+          // 상세 정보 조회 실패해도 목록에서 최신 정보를 가져올 수 있음
+          const updatedClass = classes.find(c => c.id === editingClass.id);
+          if (updatedClass) {
+            setEditingClass(updatedClass);
+          }
+        }
+      } else {
+        setError(response.message || "클래스 수정에 실패했습니다.");
+        setShowEditModal(false);
+      }
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "클래스 수정에 실패했습니다.";
+      setError(errorMessage);
+      setShowEditModal(false);
+      console.error("클래스 수정 오류:", err);
+    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -518,10 +619,13 @@ export const ClassListPage: React.FC = () => {
       {editingClass && (
         <ClassEditModal
           open={showEditModal}
-          onClose={() => setShowEditModal(false)}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingClassDescription("");
+          }}
           classNameData={{
             name: editingClass.title,
-            description: "",
+            description: editingClassDescription,
             targetMember: "",
             dateTime: `${formatDate(editingClass.startAt)} ${formatTime(editingClass.startAt, editingClass.endAt)}`,
             file: editingClass.imageUrl || "",

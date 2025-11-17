@@ -39,4 +39,18 @@ class AuthViewModel(private val repo: AuthRepository) : ViewModel() {
             _state.value = AuthUiState(isLoading = false, error = (res.exceptionOrNull()?.message ?: "로그인 실패"))
         }
     }
+
+    fun logout() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _state.value = AuthUiState(isLoading = true)
+            try {
+                repo.logout()
+                // Clear session token regardless of backend response
+                SessionManager.clear()
+                _state.value = AuthUiState(isLoading = false, success = true)
+            } catch (t: Throwable) {
+                _state.value = AuthUiState(isLoading = false, error = t.message ?: "logout failed")
+            }
+        }
+    }
 }

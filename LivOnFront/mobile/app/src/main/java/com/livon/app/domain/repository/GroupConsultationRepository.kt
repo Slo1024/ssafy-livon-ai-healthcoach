@@ -16,8 +16,8 @@ class GroupConsultationRepository(private val api: GroupConsultationApiService) 
                     val date = try { LocalDate.parse(dto.startAt?.substring(0,10)) } catch (t: Throwable) { LocalDate.now() }
                     SampleClassInfo(
                         id = dto.id.toString(),
-                        // NOTE: class list API does not include coach UUID in sample; avoid assigning coachName to coachId
-                        coachId = "",
+                        // [수정] API 응답에 포함된 coachId 사용
+                        coachId = dto.coachId ?: "",
                         date = date,
                         time = dto.startAt?.let { s ->
                             try {

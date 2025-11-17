@@ -66,7 +66,7 @@ fun HomeNavBar(
     navController: NavHostController? = null,
     onNavigate: (route: String) -> Unit,
 ) {
-    val navItems = BottomNavRoute.values()
+    val navItems = BottomNavRoute.entries
 
     Surface(
         modifier = modifier
@@ -84,16 +84,20 @@ fun HomeNavBar(
                 BottomNavItem(
                     item = item,
                     isSelected = currentRoute == item.routeName,
-                    navController = navController,
                     onClick = { route ->
                         // If navController provided, HomeNavBar will perform default navigation mapping.
                         if (navController != null) {
-                            when (route) {
-                                BottomNavRoute.HOME.routeName -> navController.navigate(com.livon.app.navigation.Routes.MemberHome)
-                                BottomNavRoute.BOOKING.routeName -> navController.navigate(com.livon.app.navigation.Routes.ReservationModeSelect)
-                                BottomNavRoute.RESERVATIONS.routeName -> navController.navigate(com.livon.app.navigation.Routes.Reservations)
-                                BottomNavRoute.MY_PAGE.routeName -> navController.navigate(com.livon.app.navigation.Routes.MyPage)
-                                else -> { /* noop */ }
+                            try {
+                                when (route) {
+                                    BottomNavRoute.HOME.routeName -> navController.navigate(com.livon.app.navigation.Routes.MemberHome)
+                                    BottomNavRoute.BOOKING.routeName -> navController.navigate(com.livon.app.navigation.Routes.ReservationModeSelect)
+                                    BottomNavRoute.RESERVATIONS.routeName -> navController.navigate(com.livon.app.navigation.Routes.Reservations)
+                                    BottomNavRoute.MY_PAGE.routeName -> navController.navigate(com.livon.app.navigation.Routes.MyPage)
+                                    else -> { /* noop */ }
+                                }
+                            } catch (t: Throwable) {
+                                // safe guard: if navigation target is not in graph, fallback to MemberHome
+                                try { navController.navigate(com.livon.app.navigation.Routes.MemberHome) } catch (_: Throwable) {}
                             }
                         } else {
                             onNavigate(route)
@@ -109,7 +113,6 @@ fun HomeNavBar(
 private fun RowScope.BottomNavItem(
     item: BottomNavRoute,
     isSelected: Boolean,
-    navController: NavHostController? = null,
     onClick: (String) -> Unit
 ) {
     val iconRes = item.icon
@@ -156,6 +159,7 @@ private fun HomeNavBarHomeSelectedPreview() {
 }
 
 
+@Suppress("unused")
 @Composable
 private fun TestNavBarNoResources(currentRoute: String?, onNavigate: (String) -> Unit) {
     Row(

@@ -291,7 +291,14 @@ fun ReservationCard(
                         radius = 20.dp,
                         borderColor = Main,
                         textColor = Main,
-                        onClick = onDetail
+                        onClick = {
+                            android.util.Log.d("ReservationCard", "예약 상세 버튼 클릭됨")
+                            try {
+                                onDetail()
+                            } catch (t: Throwable) {
+                                android.util.Log.e("ReservationCard", "onDetail 호출 실패", t)
+                            }
+                        }
                     )
 
                     if (showCancel && onCancel != null) {

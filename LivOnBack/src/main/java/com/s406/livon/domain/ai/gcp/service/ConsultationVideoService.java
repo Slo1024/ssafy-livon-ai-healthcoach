@@ -93,33 +93,33 @@ public class ConsultationVideoService {
         String bucketName = minioProperties.getBucket();
 
         try {
-            // 1. [신규] videoUrl을 파싱하여 동적 엔드포인트 추출
-            URL url = new URL(videoUrl);
-            // 예: "http://ov.s406.site:9000"
-            String dynamicEndpoint = url.getProtocol() + "://" + url.getHost() + ":" + url.getPort();
+            // 1. [수정] videoUrl 파싱은 오직 '파일 경로(Object Key)'를 얻기 위해서만 사용합니다.
+            URL url = new URL(videoUrl); // videoUrl은 "http://127.0.0.1:9100/..."
+            String fullPath = url.getPath(); // "/openvidu-appdata/..."
 
-            // 예: "/openvidu-appdata/recordings/consultation-285/...mp4"
-            String fullPath = url.getPath();
-
-            // 2. [수정] 버킷 이름(Bucket Name)을 기준으로 Object Key(파일 경로) 추출
+            // 2. Object Key(파일 경로) 추출
             int bucketPathIndex = fullPath.indexOf("/" + bucketName + "/");
             if (bucketPathIndex == -1) {
                 log.error("MinIO URL 경로에 버킷 이름({})을 찾을 수 없습니다. URL: {}", bucketName, videoUrl);
                 throw new IllegalArgumentException("MinIO URL에서 버킷 경로를 찾을 수 없습니다.");
             }
-            // 예: "recordings/consultation-285/...mp4"
-            String objectKey = fullPath.substring(bucketPathIndex + bucketName.length() + 2);
+            String objectKey = fullPath.substring(bucketPathIndex + bucketName.length() + 2); // +2는 양쪽 슬래시
             String filename = objectKey.substring(objectKey.lastIndexOf('/') + 1);
 
-            log.debug("MinIO GetObject. Endpoint: {}, Bucket: {}, Key: {}", dynamicEndpoint, bucketName, objectKey);
+            // 3. [핵심] MinIO 클라이언트는 'public' 주소로 생성
+            // Egress가 반환한 '127.0.0.1' (잘못된 호스트)를 무시합니다.
+            // 로컬 테스트 시 성공했던 주소를 사용합니다.
+            String correctMinioEndpoint = "http://ov.s406.site:9000";
 
-            // 3. [신규] 동적 엔드포인트로 임시 MinioClient 생성
+            log.debug("MinIO GetObject. Endpoint: {} (Ignoring URL host), Bucket: {}, Key: {}",
+                    correctMinioEndpoint, bucketName, objectKey);
+
             MinioClient tempClient = MinioClient.builder()
-                    .endpoint(dynamicEndpoint) // 하드코딩 대신 동적 엔드포인트 사용
+                    .endpoint(correctMinioEndpoint) // ★ 실제 Public 주소 사용
                     .credentials(minioProperties.getAccessKey(), minioProperties.getSecretKey())
                     .build();
 
-            // 4. [수정] 임시 클라이언트(tempClient)로 파일 다운로드
+            // 4. 파일 다운로드
             InputStream videoStream = tempClient.getObject(
                     GetObjectArgs.builder()
                             .bucket(bucketName)

@@ -755,11 +755,41 @@ export const ReservationListPage: React.FC = () => {
                   );
                   const classType = getClassType(reservation.type);
                   const isIndividual = reservation.type === "ONE";
+                  // 코치 본인을 제외한 첫 번째 참가자(회원) 찾기
+                  // user.id는 이메일일 수 있고, participants.userId는 UUID이므로
+                  // userId와 email 둘 다 비교해야 함
+                  const coachUserId = user?.id;
+                  const coachEmail = user?.email;
+                  // console.log("🔍 [ReservationListPage] Debug Info:", {
+                  //   consultationId: reservation.consultationId,
+                  //   coachUserId: coachUserId,
+                  //   coachEmail: coachEmail,
+                  //   coachUserNickname: user?.nickname,
+                  //   participants: reservation.participants?.map((p) => ({
+                  //     userId: p.userId,
+                  //     email: p.email,
+                  //     nickname: p.nickname,
+                  //     isCoachByUserId: p.userId === coachUserId,
+                  //     isCoachByEmail: p.email === coachEmail,
+                  //   })),
+                  // });
                   const firstParticipant =
                     reservation.participants &&
                     reservation.participants.length > 0
-                      ? reservation.participants[0]
+                      ? reservation.participants.find((participant) => {
+                          // userId와 email 둘 다 비교
+                          const isNotCoach =
+                            participant.userId !== coachUserId &&
+                            participant.email !== coachEmail;
+                          // console.log(
+                          //   `  - Checking participant: ${participant.nickname} (userId: ${participant.userId}, email: ${participant.email}) - isNotCoach: ${isNotCoach}`
+                          // );
+                          return isNotCoach;
+                        }) || null
                       : null;
+                  // console.log(
+                  //   `  ✅ Selected firstParticipant: ${firstParticipant?.nickname} (${firstParticipant?.userId})`
+                  // );
 
                   return (
                     <TableRow key={reservation.consultationId}>
@@ -772,16 +802,18 @@ export const ReservationListPage: React.FC = () => {
                             ? "개인 상담 / 코칭"
                             : reservation.title || "제목 없음"}
                         </ClassTitle>
-                        {reservation.type === "GROUP" && reservation.description && (
-                          <ClassDescription>
-                            {reservation.description}
-                          </ClassDescription>
-                        )}
+                        {reservation.type === "GROUP" &&
+                          reservation.description && (
+                            <ClassDescription>
+                              {reservation.description}
+                            </ClassDescription>
+                          )}
                         {reservation.type === "GROUP" &&
                           reservation.capacity !== undefined &&
                           reservation.currentParticipants !== undefined && (
                             <ClassCapacityInfo>
-                              예약 인원: {reservation.currentParticipants} / {reservation.capacity}명
+                              예약 인원: {reservation.currentParticipants} /{" "}
+                              {reservation.capacity}명
                             </ClassCapacityInfo>
                           )}
                       </TableCell>

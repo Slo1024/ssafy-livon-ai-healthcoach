@@ -275,10 +275,18 @@ class RoomLayoutActivity : AppCompatActivity() {
                         val pub = event.publication
                         Log.d("LiveKitDebug", "Track muted: ${pub.sid}, source: ${pub.source}")
                         if (pub.source == Track.Source.CAMERA) {
-                            val pid = event.participant.identity?.value
-                            if (pid != null) {
+                            // participantIdentity가 nickname으로 설정되어 있으므로, nickname으로 매칭
+                            val participantName = event.participant.name?.takeIf { it.isNotBlank() } 
+                                ?: event.participant.identity?.value
+                            if (participantName != null) {
                                 _participantTracks.update { list ->
-                                    list.map { if (!it.isLocal && it.participantIdentity == pid) it.copy(isCameraEnabled = false) else it }
+                                    list.map { 
+                                        if (!it.isLocal && it.participantIdentity == participantName) {
+                                            it.copy(isCameraEnabled = false)
+                                        } else {
+                                            it
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -287,10 +295,18 @@ class RoomLayoutActivity : AppCompatActivity() {
                         val pub = event.publication
                         Log.d("LiveKitDebug", "Track unmuted: ${pub.sid}, source: ${pub.source}")
                         if (pub.source == Track.Source.CAMERA) {
-                            val pid = event.participant.identity?.value
-                            if (pid != null) {
+                            // participantIdentity가 nickname으로 설정되어 있으므로, nickname으로 매칭
+                            val participantName = event.participant.name?.takeIf { it.isNotBlank() } 
+                                ?: event.participant.identity?.value
+                            if (participantName != null) {
                                 _participantTracks.update { list ->
-                                    list.map { if (!it.isLocal && it.participantIdentity == pid) it.copy(isCameraEnabled = true) else it }
+                                    list.map { 
+                                        if (!it.isLocal && it.participantIdentity == participantName) {
+                                            it.copy(isCameraEnabled = true)
+                                        } else {
+                                            it
+                                        }
+                                    }
                                 }
                             }
                         }

@@ -80,8 +80,12 @@ class StreamingChatViewModel(
                 // JSON 파싱은 서버 응답 형식에 맞게 조정하세요.
                 val message = try {
                     val json = JSONObject(payload)
-                    // role이 없거나 빈 문자열이면 "MEMBER"로 기본값 설정
-                    val roleString = json.optString("role", "").takeIf { it.isNotBlank() } ?: "MEMBER"
+                    // senderRole 우선, 없으면 role 사용, 둘 다 없으면 "MEMBER"로 기본값 설정
+                    val roleString = json.optString("senderRole", "")
+                        .takeIf { it.isNotBlank() }
+                        ?: json.optString("role", "")
+                        .takeIf { it.isNotBlank() }
+                        ?: "MEMBER"
                     ChatMessage(
                         id = json.optString("id", UUID.randomUUID().toString()),
                         chatRoomId = json.optInt("roomId", consultationId.toInt()),
@@ -89,7 +93,9 @@ class StreamingChatViewModel(
                         content = json.optString("message", ""),
                         sentAt = json.optString("sentAt", Instant.now().toString()),
                         role = roleString,
-                        messageType = json.optString("type", "TEXT")
+                        messageType = json.optString("type", "TEXT"),
+                        nickname = json.optString("senderNickname", null).takeIf { it.isNotBlank() },
+                        profileImageUrl = json.optString("senderImageUrl", null).takeIf { it.isNotBlank() }
                     )
                 } catch (e: Exception) {
                     Log.e("StreamingChatViewModel", "수신 메시지 파싱 실패: ${e.message}")
@@ -127,9 +133,20 @@ class StreamingChatViewModel(
                             return@update state // 변경 없음
                         }
                         
-                        // 중복이 아니면 추가
+                        // 중복이 아니면 추가하고, 같은 userId를 가진 기존 메시지들의 role과 profileImageUrl도 업데이트
                         val updated = (state.messages + message)
                             .distinctBy { it.id } // ID 중복 제거 (안전장치)
+                            .map { existingMessage ->
+                                // 같은 userId를 가진 메시지의 role과 profileImageUrl을 새 메시지의 값으로 업데이트
+                                if (existingMessage.userId == message.userId && existingMessage.id != message.id) {
+                                    existingMessage.copy(
+                                        role = message.role,
+                                        profileImageUrl = message.profileImageUrl ?: existingMessage.profileImageUrl
+                                    )
+                                } else {
+                                    existingMessage
+                                }
+                            }
                             .sortedBy { it.sentAt }
                         state.copy(messages = updated)
                     }

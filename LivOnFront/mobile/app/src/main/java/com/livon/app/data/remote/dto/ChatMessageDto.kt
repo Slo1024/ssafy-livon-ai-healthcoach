@@ -17,8 +17,11 @@ data class ChatMessageDto(
     @Json(name = "senderRole")
     val role: String,
     @Json(name = "messageType")
-    val messageType: String
-    // 서버 응답에 있지만 사용하지 않는 필드: senderNickname, senderImageUrl
+    val messageType: String,
+    @Json(name = "senderNickname")
+    val senderNickname: String? = null,
+    @Json(name = "senderImageUrl")
+    val senderImageUrl: String? = null
 )
 
 data class ChatMessageResponseDto(

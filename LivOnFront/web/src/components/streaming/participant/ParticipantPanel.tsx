@@ -98,11 +98,11 @@ const ParticipantItem = styled.div`
   border-radius: 8px;
 `;
 
-const ParticipantAvatar = styled.div`
+const ParticipantAvatar = styled.div<{ $hasImage?: boolean }>`
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background-color: #4965f6;
+  background-color: ${(props) => (props.$hasImage ? "transparent" : "#4965f6")};
   color: #ffffff;
   display: flex;
   align-items: center;
@@ -110,6 +110,13 @@ const ParticipantAvatar = styled.div`
   font-size: 14px;
   font-weight: 600;
   flex-shrink: 0;
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 `;
 
 const ParticipantInfo = styled.div`
@@ -150,7 +157,29 @@ interface ParticipantPanelProps {
   onParticipantSearchChange: (value: string) => void;
   isVideoEnabled: boolean;
   isAudioEnabled: boolean;
+  localProfileImage?: string;
 }
+
+const parseParticipantMetadata = (metadata?: string) => {
+  if (!metadata) return {};
+  try {
+    const parsed = JSON.parse(metadata);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (error) {
+    console.warn("참가자 metadata 파싱 실패:", error);
+    return {};
+  }
+};
+
+const getProfileImageFromMetadata = (metadata: any) => {
+  if (!metadata) return undefined;
+  return (
+    metadata.profileImageUrl ||
+    metadata.profileImage ||
+    metadata.avatarUrl ||
+    undefined
+  );
+};
 
 export const ParticipantPanel: React.FC<ParticipantPanelProps> = ({
   isOpen,
@@ -160,6 +189,7 @@ export const ParticipantPanel: React.FC<ParticipantPanelProps> = ({
   onParticipantSearchChange,
   isVideoEnabled,
   isAudioEnabled,
+  localProfileImage,
 }) => {
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
@@ -167,19 +197,12 @@ export const ParticipantPanel: React.FC<ParticipantPanelProps> = ({
 
   const getRemoteDisplayName = (item: RemoteTrackInfo) => {
     const remoteParticipant = item.participant;
+    const metadata = parseParticipantMetadata(remoteParticipant?.metadata);
+    if (metadata && typeof metadata.nickname === 'string') {
+      return metadata.nickname;
+    }
     if (remoteParticipant?.name) {
       return remoteParticipant.name;
-    }
-    // LiveKit 참가자 metadata에 닉네임 JSON이 담겨 있다면 파싱해서 닉네임 사용
-    if (remoteParticipant?.metadata) {
-      try {
-        const metadata = JSON.parse(remoteParticipant.metadata);
-        if (metadata && typeof metadata.nickname === 'string') {
-          return metadata.nickname;
-        }
-      } catch (error) {
-        console.warn('참가자 metadata 파싱 실패:', error);
-      }
     }
     return item.participantIdentity;
   };
@@ -198,6 +221,7 @@ export const ParticipantPanel: React.FC<ParticipantPanelProps> = ({
     type: 'local' | 'remote';
     identity: string;
     displayName: string;
+    profileImage?: string;
     data?: RemoteTrackInfo;
   }> = [];
   
@@ -211,13 +235,19 @@ export const ParticipantPanel: React.FC<ParticipantPanelProps> = ({
       type: 'local',
       identity: localName,
       displayName: localName,
+      profileImage: localProfileImage,
     });
   }
 
   // 원격 참가자 필터링 및 추가
   const participantList = Array.from(uniqueParticipants.values());
   participantList.forEach((item) => {
-    const displayName = getRemoteDisplayName(item);
+    const participantMetadata = parseParticipantMetadata(
+      item.participant?.metadata
+    );
+    const displayName =
+      getRemoteDisplayName(item) ?? item.participantIdentity;
+    const profileImage = getProfileImageFromMetadata(participantMetadata);
     if (
       !participantSearchQuery ||
       displayName.toLowerCase().includes(participantSearchQuery.toLowerCase())
@@ -226,6 +256,7 @@ export const ParticipantPanel: React.FC<ParticipantPanelProps> = ({
         type: 'remote',
         identity: item.participant.identity || item.participantIdentity,
         displayName,
+        profileImage,
         data: item,
       });
     }
@@ -260,7 +291,16 @@ export const ParticipantPanel: React.FC<ParticipantPanelProps> = ({
             if (participant.type === 'local') {
               return (
                 <ParticipantItem key="local-participant">
-                  <ParticipantAvatar>{getInitials(participant.displayName)}</ParticipantAvatar>
+                  <ParticipantAvatar $hasImage={Boolean(participant.profileImage)}>
+                    {participant.profileImage ? (
+                      <img
+                        src={participant.profileImage}
+                        alt={`${participant.displayName} 프로필`}
+                      />
+                    ) : (
+                      getInitials(participant.displayName)
+                    )}
+                  </ParticipantAvatar>
                   <ParticipantInfo>
                     <ParticipantListItemName>{participant.displayName} (나)</ParticipantListItemName>
                     <ParticipantStatus>
@@ -285,7 +325,16 @@ export const ParticipantPanel: React.FC<ParticipantPanelProps> = ({
 
               return (
                 <ParticipantItem key={participant.identity}>
-                  <ParticipantAvatar>{getInitials(participant.displayName)}</ParticipantAvatar>
+                  <ParticipantAvatar $hasImage={Boolean(participant.profileImage)}>
+                    {participant.profileImage ? (
+                      <img
+                        src={participant.profileImage}
+                        alt={`${participant.displayName} 프로필`}
+                      />
+                    ) : (
+                      getInitials(participant.displayName)
+                    )}
+                  </ParticipantAvatar>
                   <ParticipantInfo>
                     <ParticipantListItemName>{participant.displayName}</ParticipantListItemName>
                     <ParticipantStatus>

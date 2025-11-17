@@ -78,6 +78,17 @@ const ScreenShareInfo = styled.div`
   gap: 8px;
 `;
 
+const pickNonEmptyString = (
+  ...values: Array<string | undefined | null>
+): string | undefined => {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim() !== "") {
+      return value;
+    }
+  }
+  return undefined;
+};
+
 const MainContentArea = styled.div`
   flex: 1;
   display: flex;
@@ -103,6 +114,7 @@ interface ChatMessage {
   timestamp: Date;
   timestampString?: string; // UTC 시간 문자열 (서버에서 받은 원본)
   senderImage?: string;
+  senderRole?: string;
   senderUserId?: string;
   messageType?: "ENTER" | "TALK" | "LEAVE";
 }
@@ -498,29 +510,36 @@ export const StreamingPage: React.FC = () => {
     async (identity: string) => {
       // 코치인 경우 항상 모달 열기
       if (user?.role === "coach") {
-        setSelectedParticipantId(identity);
-        
         const consultationId =
           location.state?.consultationId || location.state?.reservationId;
-        
-        // 참여자 정보가 없으면 로드 시도
-        if (!participantInfoResponse && consultationId && !isLoadingParticipantInfo) {
-          try {
-            await fetchParticipantInfo();
-          } catch (error) {
-            console.error("참여자 정보 로드 실패:", error);
+
+        // 모달을 열기 전에 필요한 데이터 확보
+        if (consultationId) {
+          // 참여자 정보가 없으면 로드 시도
+          if (
+            !participantInfoResponse &&
+            !isLoadingParticipantInfo
+          ) {
+            try {
+              await fetchParticipantInfo();
+            } catch (error) {
+              console.error("참여자 정보 로드 실패:", error);
+            }
           }
-        }
-        
-        // 상담 정보가 없으면 로드 시도
-        if (!consultationInfo && consultationId && !isLoadingConsultationInfo) {
-          try {
-            await fetchConsultationInfo();
-          } catch (error) {
-            console.error("상담 정보 로드 실패:", error);
+
+          // 상담 정보가 없으면 로드 시도
+          if (!consultationInfo && !isLoadingConsultationInfo) {
+            try {
+              await fetchConsultationInfo();
+            } catch (error) {
+              console.error("상담 정보 로드 실패:", error);
+            }
           }
         }
 
+        setSelectedParticipantId(identity);
+
+        // 참여자 정보가 없으면 로드 시도
       } else if (participantInfoMap[identity]) {
         setSelectedParticipantId(identity);
       }
@@ -915,19 +934,54 @@ export const StreamingPage: React.FC = () => {
                 const convertedMessages: ChatMessage[] = pastMessages
                   .filter((msg) => msg.content && msg.content.trim() !== "") // 빈 메시지 필터링
                   .map((msg) => {
-                    const isSystemMessage = 
+                    const isSystemMessage =
                       msg.messageType === "ENTER" || msg.messageType === "LEAVE";
-                    // 서버 응답에 nickname이 포함되어 있을 수 있음 (타입에는 없지만 실제 응답에 포함될 수 있음)
                     const msgWithNickname = msg as any;
-                    const senderName = isSystemMessage 
-                      ? "알림" 
-                      : msgWithNickname.nickname || msgWithNickname.userNickname || msg.userId;
+                    const senderData = msgWithNickname.sender || {};
+                    const senderName = isSystemMessage
+                      ? "알림"
+                      : pickNonEmptyString(
+                          senderData.nickname,
+                          senderData.userNickname,
+                          msgWithNickname.senderNickname,
+                          msg.nickname,
+                          msgWithNickname.nickname,
+                          msgWithNickname.userNickname,
+                          msgWithNickname.name,
+                          msg.userId
+                        ) || "Unknown";
+                    const senderImage = isSystemMessage
+                      ? undefined
+                      : pickNonEmptyString(
+                          senderData.profileImageUrl,
+                          senderData.userImage,
+                          senderData.profileImage,
+                          msg.profileImageUrl,
+                          msgWithNickname.profileImageUrl,
+                          msgWithNickname.userImage,
+                          msgWithNickname.profileImage,
+                          msgWithNickname.memberImage,
+                          msgWithNickname.avatarUrl,
+                          // 최후수단: 내 메시지라면 내 프로필 이미지 사용
+                          (msg.userId && user?.id === msg.userId ? user?.profileImage : undefined)
+                        );
+                    const senderRole = isSystemMessage
+                      ? undefined
+                      : pickNonEmptyString(
+                          senderData.role,
+                          senderData.userRole,
+                          msg.role,
+                          msgWithNickname.role,
+                          msgWithNickname.userRole
+                        );
                     return {
                       id: msg.id,
-                      sender: senderName, // 닉네임 우선, 없으면 userId
+                      sender: senderName,
                       message: msg.content,
-                      timestamp: new Date(msg.sentAt), // ChatPanel에서 UTC 파싱 및 한국 시간대 변환 처리
-                      timestampString: msg.sentAt, // UTC 시간 문자열 (ChatPanel에서 명시적으로 파싱)
+                      timestamp: new Date(msg.sentAt),
+                      timestampString: msg.sentAt,
+                      senderImage,
+                      senderRole,
                       senderUserId: msg.userId,
                       messageType: msg.messageType,
                     };
@@ -1056,9 +1110,42 @@ export const StreamingPage: React.FC = () => {
                           // 시스템 메시지(ENTER, LEAVE)인 경우 발신자를 "알림"으로 설정
                           const isSystemMessage = 
                             message.type === "ENTER" || message.type === "LEAVE";
+                          const senderData = (message.sender as any) || {};
                           const senderName = isSystemMessage
                             ? "알림"
-                            : message.sender?.nickname || message.sender?.userId || "Unknown";
+                            : pickNonEmptyString(
+                                senderData.nickname,
+                                senderData.userNickname,
+                                message.sender?.nickname,
+                                (message as any).senderNickname,
+                                (message as any).userNickname,
+                                message.sender?.userId
+                              ) || "Unknown";
+
+                          const resolvedSenderImage = isSystemMessage
+                            ? undefined
+                            : pickNonEmptyString(
+                                senderData.profileImageUrl,
+                                senderData.userImage,
+                                senderData.profileImage,
+                                message.sender?.profileImageUrl,
+                                message.sender?.userImage,
+                                (message.sender as any)?.profileImage,
+                                (message.sender as any)?.imageUrl,
+                                // 내 메시지라면 내 프로필 이미지로 보강
+                                (message.sender?.userId &&
+                                  message.sender.userId === user?.id
+                                  ? user?.profileImage
+                                  : undefined)
+                              );
+                          const resolvedSenderRole = isSystemMessage
+                            ? undefined
+                            : pickNonEmptyString(
+                                senderData.role,
+                                message.sender?.role,
+                                (message.sender as any)?.role,
+                                (message.sender as any)?.userRole
+                              );
 
                           const newMessage: ChatMessage = {
                             id: message.id,
@@ -1066,7 +1153,8 @@ export const StreamingPage: React.FC = () => {
                             message: message.message,
                             timestamp: new Date(message.sentAt), // ChatPanel에서 UTC 파싱 및 한국 시간대 변환 처리
                             timestampString: message.sentAt, // UTC 시간 문자열 (ChatPanel에서 명시적으로 파싱)
-                            senderImage: message.sender?.userImage || undefined,
+                            senderImage: resolvedSenderImage,
+                            senderRole: resolvedSenderRole,
                             senderUserId: message.sender?.userId,
                             messageType: message.type,
                           };
@@ -1537,6 +1625,7 @@ export const StreamingPage: React.FC = () => {
           onParticipantSearchChange={setParticipantSearchQuery}
           isVideoEnabled={isVideoEnabled}
           isAudioEnabled={isAudioEnabled}
+          localProfileImage={user?.profileImage}
         />
 
         {/* 채팅 패널 */}
@@ -1578,7 +1667,9 @@ export const StreamingPage: React.FC = () => {
             ? {
                 participantInfo: participantInfoResponse,
                 preQna: consultationInfo?.preQna,
-                aiSummary: consultationInfo?.aiSummary,
+                aiSummary:
+                  participantInfoResponse.aiSummary ??
+                  consultationInfo?.aiSummary,
               }
             : undefined
         }

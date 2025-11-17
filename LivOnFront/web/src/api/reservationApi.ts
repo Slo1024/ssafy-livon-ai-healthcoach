@@ -40,17 +40,15 @@ export const createIndividualConsultationApi = async (
   return response.data.result;
 };
 
-// 1:1 상담 취소
+// 1:1 상담 취소 (코치용)
+// 백엔드 스펙 기준: DELETE /api/v1/coaches/consultations/{consultationId}
 export const cancelIndividualConsultationApi = async (
   token: string,
   consultationId: number
 ): Promise<void> => {
-  await axios.delete(
-    `${API_BASE_URL}/individual-consultations/${consultationId}`,
-    {
-      headers: { Authorization: `Bearer ${token}` },
-    }
-  );
+  await axios.delete(`${API_BASE_URL}/coaches/consultations/${consultationId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
 };
 
 // ===== 그룹 상담(클래스) 관련 =====
@@ -102,7 +100,7 @@ interface PaginatedResponse<T> {
 // 클래스 목록 조회
 export const getGroupConsultationsApi = async (
   token: string,
-  sameOrganization: boolean = false,
+  sameOwner: boolean = false,
   page: number = 0,
   size: number = 10
 ): Promise<PaginatedResponse<GroupConsultationListItem>> => {
@@ -112,7 +110,7 @@ export const getGroupConsultationsApi = async (
     message: string;
     result: PaginatedResponse<GroupConsultationListItem>;
   }>(`${API_BASE_URL}/group-consultations`, {
-    params: { sameOrganization, page, size },
+    params: { sameOrganization: sameOwner, page, size },
     headers: { Authorization: `Bearer ${token}` },
   });
   return response.data.result;
@@ -160,7 +158,7 @@ export const createGroupConsultationApi = async (
   return response.data.result;
 };
 
-// 클래스 참여 취소
+// 클래스 참여 취소 (코치/참가자 공용: 참가자 취소 시 해당 엔드포인트 사용)
 export const cancelGroupConsultationParticipationApi = async (
   token: string,
   consultationId: number
@@ -368,6 +366,7 @@ export interface ParticipantMemberInfo {
 
 export interface ParticipantInfoResponse {
   memberInfo: ParticipantMemberInfo;
+  aiSummary?: string;
 }
 
 /**

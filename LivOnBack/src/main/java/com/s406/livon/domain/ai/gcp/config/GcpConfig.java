@@ -32,26 +32,6 @@ public class GcpConfig {
         return new OkHttpClient();
     }
 
-    @Bean
-    public MinioClient minioClient(MinioProperties minioProperties) {
-        // 1. 설정 파일에서 잘못된 엔드포인트(..:9100)를 읽어옵니다.
-        String brokenEndpoint = minioProperties.getEndpoint();
-
-        // 2. [핵심] 잘못된 포트(9100)를 올바른 포트(9000)로 강제 변경합니다.
-        String fixedEndpoint = brokenEndpoint.replace(":9100", ":9000");
-
-        // 수정 로그 추가
-        if (!brokenEndpoint.equals(fixedEndpoint)) {
-            log.warn("!!! MinIO 엔드포인트 강제 수정 !!!: {} -> {}", brokenEndpoint, fixedEndpoint);
-        }
-
-        // 3. 올바른 주소(..:9000)로 MinioClient를 생성합니다.
-        return MinioClient.builder()
-                .endpoint(fixedEndpoint) // "http://127.0.0.1:9000" (예시)
-                .credentials(minioProperties.getAccessKey(), minioProperties.getSecretKey())
-                .build();
-    }
-
     private static final List<String> CLOUD_SCOPES =
             List.of("https://www.googleapis.com/auth/cloud-platform");
 

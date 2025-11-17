@@ -39,7 +39,6 @@ public class ConsultationVideoService {
     private final MinioClient minioClient;
     private final MinioProperties minioProperties;
 
-
     /**
      * 영상을 업로드하고 자동으로 요약을 생성
      * 
@@ -91,30 +90,20 @@ public class ConsultationVideoService {
     public void uploadAndSummarizeFromUrl(Long consultationId, String videoUrl, String preQnA) {
         log.info("uploadAndSummarizeFromUrl: MinIO URL로부터 요약 처리 시작. consultationId={}", consultationId);
 
-        // 1. [수정] URL에서 MinIO 버킷 이름과 객체 키(경로) 분리
-        // (Egress가 반환하는 URL은 'http://[엔드포인트]/[버킷이름]/[객체키]' 형식)
         String bucketName = minioProperties.getBucket();
 
-        // URL에서 "/[버킷이름]/" 부분을 찾아 그 뒤부터를 objectKey로 인식
         int bucketPathIndex = videoUrl.indexOf("/" + bucketName + "/");
         if (bucketPathIndex == -1) {
             log.error("MinIO URL에 설정된 버킷 이름({})을 찾을 수 없습니다. URL: {}", bucketName, videoUrl);
             throw new IllegalArgumentException("MinIO URL에서 버킷 경로를 찾을 수 없습니다: " + bucketName);
         }
 
-        // 예: "/openvidu-appdata/recordings/consultation-285/...mp4"
-        String objectKeyWithBucket = videoUrl.substring(bucketPathIndex + 1);
-        // 예: "openvidu-appdata/recordings/consultation-285/...mp4"
-        // (만약 MinioProperties의 bucket이 URL의 경로와 100% 일치한다면)
-
-        // [더 안전한 방식] Egress가 저장한 버킷이름(minioProperties.getBucket())을 기준으로 키를 재조합
         String objectKey = videoUrl.substring(bucketPathIndex + bucketName.length() + 2); // +2는 양쪽 슬래시
         String filename = objectKey.substring(objectKey.lastIndexOf('/') + 1);
 
         log.debug("MinIO GetObject. Bucket: {}, Key: {}", bucketName, objectKey);
 
         try {
-            // 2. [수정] MinIO SDK로 파일 다운로드 (InputStream 가져오기)
             InputStream videoStream = minioClient.getObject(
                     GetObjectArgs.builder()
                             .bucket(bucketName)
@@ -122,13 +111,11 @@ public class ConsultationVideoService {
                             .build()
             );
 
-            // 3. [수정] InputStream에서 byte[] 읽기
             byte[] videoBytes = videoStream.readAllBytes();
             videoStream.close();
 
             log.info("uploadAndSummarizeFromUrl: MinIO 다운로드 완료. bytes={}, filename={}", videoBytes.length, filename);
 
-            // 4. byte[]를 MultipartFile 객체로 변환 (변경 없음)
             MultipartFile videoFile = new MockMultipartFile(
                     "file",
                     filename,
@@ -136,12 +123,11 @@ public class ConsultationVideoService {
                     videoBytes
             );
 
-            // 5. 기존 업로드/요약 로직 호출 (변경 없음)
             uploadAndSummarize(consultationId, videoFile, preQnA);
 
-        } catch (Exception e) { // MinioException, IOException 등 모든 예외 처리
+        } catch (Exception e) {
             log.error("URL로부터 영상 처리 중 예외 발생. consultationId={}", consultationId, e);
-            throw new RuntimeException("URL 영상 처리 실패", e);
+            throw new RuntimeException("URL 영상 처리 실패", e); // 이 부분이 로그에 찍힘
         }
     }
 

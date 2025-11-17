@@ -6,6 +6,7 @@ import com.google.cloud.storage.StorageOptions;
 import com.s406.livon.global.config.properties.MinioProperties;
 import io.minio.MinioClient;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -15,10 +16,13 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.List;
 
+
 /**
  * GCP (Google Cloud Platform) 설정 클래스
  * Vertex AI 및 Cloud Storage 관련 설정을 담당
  */
+
+@Slf4j
 @Configuration
 @Getter
 public class GcpConfig {
@@ -30,8 +34,20 @@ public class GcpConfig {
 
     @Bean
     public MinioClient minioClient(MinioProperties minioProperties) {
+        // 1. 설정 파일에서 잘못된 엔드포인트(..:9100)를 읽어옵니다.
+        String brokenEndpoint = minioProperties.getEndpoint();
+
+        // 2. [핵심] 잘못된 포트(9100)를 올바른 포트(9000)로 강제 변경합니다.
+        String fixedEndpoint = brokenEndpoint.replace(":9100", ":9000");
+
+        // 수정 로그 추가
+        if (!brokenEndpoint.equals(fixedEndpoint)) {
+            log.warn("!!! MinIO 엔드포인트 강제 수정 !!!: {} -> {}", brokenEndpoint, fixedEndpoint);
+        }
+
+        // 3. 올바른 주소(..:9000)로 MinioClient를 생성합니다.
         return MinioClient.builder()
-                .endpoint(minioProperties.getEndpoint())
+                .endpoint(fixedEndpoint) // "http://127.0.0.1:9000" (예시)
                 .credentials(minioProperties.getAccessKey(), minioProperties.getSecretKey())
                 .build();
     }

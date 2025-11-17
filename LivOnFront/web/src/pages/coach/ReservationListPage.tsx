@@ -449,6 +449,31 @@ export const ReservationListPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const pageSize = 10;
+  // 취소된 예약 ID 추적 (새로고침 시 제외하기 위함) - localStorage에서 불러오기
+  const loadCancelledReservationIds = (): Set<number> => {
+    try {
+      const stored = localStorage.getItem("cancelledReservationIds");
+      if (stored) {
+        const ids = JSON.parse(stored) as number[];
+        return new Set(ids);
+      }
+    } catch (e) {
+      console.error("취소된 예약 ID 로드 오류:", e);
+    }
+    return new Set<number>();
+  };
+  const [cancelledReservationIds, setCancelledReservationIds] = useState<Set<number>>(
+    loadCancelledReservationIds
+  );
+  
+  // 취소된 예약 ID를 localStorage에 저장하는 헬퍼 함수
+  const saveCancelledReservationIds = (ids: Set<number>) => {
+    try {
+      localStorage.setItem("cancelledReservationIds", JSON.stringify(Array.from(ids)));
+    } catch (e) {
+      console.error("취소된 예약 ID 저장 오류:", e);
+    }
+  };
 
   const nickname = user?.nickname || "";
   const scheduleMessage = nickname
@@ -537,7 +562,13 @@ export const ReservationListPage: React.FC = () => {
         pageSize
       );
 
-      setReservations(response.items);
+      // 취소된 예약 ID를 제외하고 필터링 (localStorage에서 최신 상태 불러오기)
+      const currentCancelledIds = loadCancelledReservationIds();
+      const filteredItems = response.items.filter(
+        (item) => !currentCancelledIds.has(item.consultationId)
+      );
+
+      setReservations(filteredItems);
       setCurrentPage(response.page);
       setTotalPages(response.totalPages);
     } catch (err) {
@@ -656,6 +687,26 @@ export const ReservationListPage: React.FC = () => {
   const handleCancelConfirm = async () => {
     if (cancelReservationId === null || !cancelReservationType) return;
 
+    const reservationIdToRemove = cancelReservationId;
+
+    // 모달 먼저 닫기
+    closeCancelModal();
+
+    // 취소된 예약 ID에 추가 (새로고침 시에도 제외되도록) - localStorage에도 저장
+    setCancelledReservationIds((prev) => {
+      const newSet = new Set(prev).add(reservationIdToRemove);
+      saveCancelledReservationIds(newSet);
+      return newSet;
+    });
+
+    // 목록에서 해당 예약 즉시 제거 (UI 반응성 향상)
+    setReservations((prev) =>
+      prev.filter((reservation) => reservation.consultationId !== reservationIdToRemove)
+    );
+
+    // 성공 모달 표시
+    setShowCancelSuccessModal(true);
+
     try {
       const token = localStorage.getItem(CONFIG.TOKEN.ACCESS_TOKEN_KEY);
       if (!token) {
@@ -671,18 +722,39 @@ export const ReservationListPage: React.FC = () => {
         );
       }
 
-      closeCancelModal();
-      setShowCancelSuccessModal(true);
-
-      // 목록 새로고침
-      const type = getFilterType(filterValue);
-      fetchReservations(currentPage, type);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : ERROR_MESSAGES.CANCEL_FAILED;
-      setError(errorMessage);
-      closeCancelModal();
-      console.error("예약 취소 오류:", err);
+      // 목록 새로고침하지 않음 (이미 목록에서 제거했고, cancelledReservationIds로 추적 중)
+      // 필요시 백그라운드에서 새로고침 (사용자 경험에 영향 없음)
+      setTimeout(() => {
+        const type = getFilterType(filterValue);
+        fetchReservations(currentPage, type);
+      }, 1000);
+    } catch (err: any) {
+      // 404 또는 400 에러인 경우에도 목록에서 제거 유지 (이미 취소되었거나 존재하지 않는 예약일 수 있음)
+      if (err?.response?.status === 404 || err?.response?.status === 400) {
+        console.warn(`예약 취소 API ${err?.response?.status} 응답 (이미 취소되었거나 존재하지 않는 예약일 수 있음):`, err);
+        // 목록 새로고침하지 않음 (이미 목록에서 제거했고, cancelledReservationIds로 추적 중)
+        setTimeout(() => {
+          const type = getFilterType(filterValue);
+          fetchReservations(currentPage, type);
+        }, 1000);
+      } else {
+        // 다른 에러인 경우 취소된 ID에서 제거하고 목록 복원 (실제 취소가 실패했을 수 있음)
+        setCancelledReservationIds((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(reservationIdToRemove);
+          saveCancelledReservationIds(newSet);
+          return newSet;
+        });
+        
+        const type = getFilterType(filterValue);
+        fetchReservations(currentPage, type);
+        
+        const errorMessage =
+          err instanceof Error ? err.message : ERROR_MESSAGES.CANCEL_FAILED;
+        setError(errorMessage);
+        setShowCancelSuccessModal(false);
+        console.error("예약 취소 오류:", err);
+      }
     }
   };
 
@@ -961,7 +1033,10 @@ export const ReservationListPage: React.FC = () => {
         <ReservationCancelSuccessModal
           open={showCancelSuccessModal}
           onClose={() => setShowCancelSuccessModal(false)}
-          onConfirm={() => setShowCancelSuccessModal(false)}
+          onConfirm={() => {
+            // 확인 버튼을 눌러도 목록을 새로고침하지 않음 (이미 삭제된 상태 유지)
+            setShowCancelSuccessModal(false);
+          }}
         />
       </ContentWrapper>
     </PageContainer>

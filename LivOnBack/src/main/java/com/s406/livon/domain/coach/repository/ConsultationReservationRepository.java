@@ -19,11 +19,13 @@ public interface ConsultationReservationRepository extends JpaRepository<Consult
 
     /**
      * 특정 코치의 특정 날짜 일정 모두 조회(1:1 상담, 1:N 상담, 스스로 막아놓은 시간 모두 포함)
+     * 취소된 예약은 제외
      */
     @Query("SELECT c FROM Consultation c " +
             "WHERE c.coach.id = :coachId " +
             "AND c.startAt >= :startOfDay " +
-            "AND c.startAt < :endOfDay")
+            "AND c.startAt < :endOfDay " +
+            "AND c.status != 'CANCELLED'")
     List<Consultation> findByCoachIdAndDate(@Param("coachId") UUID coachId,
                                             @Param("startOfDay") LocalDateTime startOfDay,
                                             @Param("endOfDay") LocalDateTime endOfDay);

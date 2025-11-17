@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -66,6 +67,9 @@ fun LiveStreamingCoachScreen(
     var currentScreen by remember { mutableStateOf("streaming") } // "streaming", "participant", "chatting"
     var showHeader by remember { mutableStateOf(false) } // default: header hidden
     var focusedTrackSid by remember { mutableStateOf<String?>(null) } // double-tap focus
+    // identity -> display name 매핑 (필요 시 외부 데이터로 채워 넣을 수 있음)
+    val identityToDisplayName = remember { mutableStateMapOf<String, String>() }
+    fun displayNameFor(identity: String): String = identityToDisplayName[identity] ?: identity
 
     LivonTheme {
         when (currentScreen) {
@@ -166,7 +170,7 @@ fun LiveStreamingCoachScreen(
                                 if (focused != null) {
                                     StreamingCamera(
                                         track = focused.track as? VideoTrack,
-                                        userName = focused.participantIdentity,
+                                        userName = displayNameFor(focused.participantIdentity),
                                         isCameraEnabled = focused.isCameraEnabled,
                                         isScreenShare = focused.isScreenShare,
                                         eglBaseContext = eglBaseContext,
@@ -184,7 +188,7 @@ fun LiveStreamingCoachScreen(
                                     coachTrackInfo?.let { me ->
                                         StreamingCamera(
                                             track = me.track as? VideoTrack,
-                                            userName = me.participantIdentity,
+                                            userName = displayNameFor(me.participantIdentity),
                                             isCameraEnabled = me.isCameraEnabled,
                                             isScreenShare = me.isScreenShare,
                                             eglBaseContext = eglBaseContext,
@@ -213,7 +217,7 @@ fun LiveStreamingCoachScreen(
                                             coachTrackInfo?.let { me ->
                                                 StreamingCamera(
                                                     track = me.track as? VideoTrack,
-                                                    userName = me.participantIdentity,
+                                                    userName = displayNameFor(me.participantIdentity),
                                                     isCameraEnabled = me.isCameraEnabled,
                                                     isScreenShare = me.isScreenShare,
                                                     eglBaseContext = eglBaseContext,
@@ -231,7 +235,7 @@ fun LiveStreamingCoachScreen(
                                         ) {
                                             StreamingCamera(
                                                 track = remote.track as? VideoTrack,
-                                                userName = remote.participantIdentity,
+                                                userName = displayNameFor(remote.participantIdentity),
                                                 isCameraEnabled = remote.isCameraEnabled,
                                                 isScreenShare = remote.isScreenShare,
                                                 eglBaseContext = eglBaseContext,
@@ -266,7 +270,7 @@ fun LiveStreamingCoachScreen(
                                                 ) {
                                                     StreamingCamera(
                                                         track = screenShareRemote.track as? VideoTrack,
-                                                        userName = screenShareRemote.participantIdentity,
+                                                        userName = displayNameFor(screenShareRemote.participantIdentity),
                                                         isCameraEnabled = screenShareRemote.isCameraEnabled,
                                                         isScreenShare = true,
                                                         eglBaseContext = eglBaseContext,
@@ -310,7 +314,7 @@ fun LiveStreamingCoachScreen(
                                                                     Box(modifier = Modifier.weight(1f)) {
                                                                         StreamingCamera(
                                                                             track = t.track as? VideoTrack,
-                                                                            userName = t.participantIdentity,
+                                                                            userName = displayNameFor(t.participantIdentity),
                                                                             isCameraEnabled = t.isCameraEnabled,
                                                                             isScreenShare = t.isScreenShare,
                                                                             eglBaseContext = eglBaseContext,
@@ -334,7 +338,7 @@ fun LiveStreamingCoachScreen(
                                                                     Box(modifier = Modifier.weight(1f)) {
                                                                         StreamingCamera(
                                                                             track = t.track as? VideoTrack,
-                                                                            userName = t.participantIdentity,
+                                                                            userName = displayNameFor(t.participantIdentity),
                                                                             isCameraEnabled = t.isCameraEnabled,
                                                                             isScreenShare = t.isScreenShare,
                                                                             eglBaseContext = eglBaseContext,

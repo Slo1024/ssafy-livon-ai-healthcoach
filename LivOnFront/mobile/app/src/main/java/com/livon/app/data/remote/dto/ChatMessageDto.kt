@@ -1,39 +1,54 @@
 package com.livon.app.data.remote.dto
 
-import kotlinx.serialization.Serializable
+import com.squareup.moshi.Json
 
 
-@Serializable
 data class ChatMessageDto(
+    @Json(name = "chatMessageId")
     val id: String,
+    @Json(name = "roomId")
     val chatRoomId: Int,
+    @Json(name = "senderId")
     val userId: String,
+    @Json(name = "message")
     val content: String,
+    @Json(name = "sentAt")
     val sentAt: String,
-    val role: String, // null 가능
+    @Json(name = "senderRole")
+    val role: String,
+    @Json(name = "messageType")
     val messageType: String
+    // 서버 응답에 있지만 사용하지 않는 필드: senderNickname, senderImageUrl
 )
 
-@Serializable
 data class ChatMessageResponseDto(
+    @Json(name = "isSuccess")
     val isSuccess: Boolean,
+    @Json(name = "code")
     val code: String,
+    @Json(name = "message")
     val message: String,
+    @Json(name = "result")
     val result: List<ChatMessageDto>
 )
 
-@Serializable
 data class ChatRoomInfoDto(
+    @Json(name = "chatRoomId")
     val chatRoomId: Long,
+    @Json(name = "consultationId")
     val consultationId: Long,
+    @Json(name = "chatRoomStatus")
     val chatRoomStatus: String
 )
 
-@Serializable
 data class ChatRoomInfoResponseDto(
+    @Json(name = "isSuccess")
     val isSuccess: Boolean,
+    @Json(name = "code")
     val code: String,
+    @Json(name = "message")
     val message: String,
+    @Json(name = "result")
     val result: ChatRoomInfoDto
 )
 

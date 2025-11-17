@@ -46,9 +46,12 @@ export const cancelIndividualConsultationApi = async (
   token: string,
   consultationId: number
 ): Promise<void> => {
-  await axios.delete(`${API_BASE_URL}/coaches/consultations/${consultationId}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  await axios.delete(
+    `${API_BASE_URL}/coaches/consultations/${consultationId}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
 };
 
 // ===== 그룹 상담(클래스) 관련 =====
@@ -370,7 +373,7 @@ export interface ParticipantInfoResponse {
 }
 
 /**
- * 코치가 1:1 상담 참여자 정보 조회 API
+ * 코치가 상담 참여자 정보 조회 API (여러 참여자 정보 리스트 반환)
  * GET /api/v1/coaches/consultations/{consultationId}/participant-info
  * @param token - 인증 토큰
  * @param consultationId - 상담 ID
@@ -378,7 +381,7 @@ export interface ParticipantInfoResponse {
 export const getParticipantInfoApi = async (
   token: string,
   consultationId: number
-): Promise<ParticipantInfoResponse> => {
+): Promise<ParticipantInfoResponse[]> => {
   // 토큰 검증
   if (!token || token.trim() === "") {
     throw new Error("인증 토큰이 없습니다. 로그인이 필요합니다.");
@@ -388,7 +391,7 @@ export const getParticipantInfoApi = async (
     isSuccess: boolean;
     code: string;
     message: string;
-    result: ParticipantInfoResponse;
+    result: ParticipantInfoResponse[];
   }>(
     `${API_BASE_URL}/coaches/consultations/${consultationId}/participant-info`,
     {

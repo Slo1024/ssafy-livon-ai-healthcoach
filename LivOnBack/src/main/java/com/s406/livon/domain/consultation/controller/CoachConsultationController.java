@@ -16,6 +16,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -50,21 +51,21 @@ public class CoachConsultationController {
     }
 
     /**
-     * 코치가 자신의 1:1 상담 참여자 정보를 조회
+     * 코치가 상담 참여자 정보를 조회
      */
     @Operation(
-                    summary = "1:1 상담 참여자 정보 조회",
-                    description = "코치가 자신의 1:1 상담에 예약한 회원의 기본 정보와 건강 데이터를 조회합니다."
+                    summary = "상담 참여자 정보 조회",
+                    description = "코치가 자신의 상담에 예약한 회원들의 기본 정보와 건강 데이터를 조회합니다."
     )
     @GetMapping("/{consultationId}/participant-info")
-    public ApiResponse<ParticipantInfoResponseDto> getParticipantInfo(
+    public ApiResponse<List<ParticipantInfoResponseDto>> getParticipantInfo(
                     @Parameter(description = "상담 ID", required = true)
                     @PathVariable Long consultationId,
                     @Parameter(hidden = true)
                     @RequestHeader("Authorization") String token
     ) {
         UUID coachId = jwtTokenProvider.getUserId(token.substring(7));
-        ParticipantInfoResponseDto response = coachConsultationService.getParticipantInfo(consultationId, coachId);
+        List<ParticipantInfoResponseDto> response = coachConsultationService.getParticipantInfo(consultationId, coachId);
 
         return ApiResponse.onSuccess(response);
     }

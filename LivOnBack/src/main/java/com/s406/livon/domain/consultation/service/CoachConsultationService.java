@@ -25,6 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -46,18 +47,20 @@ public class CoachConsultationService {
     private final HealthSurveyRepository healthSurveyRepository;
     private final AiAnalysisService aiAnalysisService;
 
+    @Transactional(readOnly = true)
     public PaginatedResponse<CoachConsultationResponseDto> getCoachConsultations(
             UUID coachId,
             String status,
             String type,
             Pageable pageable
     ) {
+        log.info("=== Step 1: 검증 시작 ===");
         // status 검증
         if (!status.equals("upcoming") && !status.equals("past")) {
             throw new ConsultationHandler(ErrorStatus._BAD_REQUEST);
         }
 
-        // type 검증 (선택 사항)
+        // type 검증
         Consultation.Type consultationType = null;
         if (type != null) {
             try {
@@ -73,23 +76,30 @@ public class CoachConsultationService {
         LocalDateTime now = LocalDateTime.now();
         boolean isPast = status.equals("past");
 
-        // 1. Consultation 조회 (코치 정보와 자격증 포함)
+        log.info("=== Step 2: Consultation 조회 시작 ===");
         Page<Consultation> consultations = fetchConsultationsWithDetails(
                 coachId, now, isPast, consultationType, pageable
         );
+        log.info("=== Step 2 완료: {} 건 조회 ===", consultations.getTotalElements());
 
-        // 2. Consultation ID 목록 추출
+        log.info("=== Step 3: ID 목록 추출 ===");
         List<Long> consultationIds = consultations.getContent().stream()
                 .map(Consultation::getId)
                 .collect(Collectors.toList());
+        log.info("=== Step 3 완료: ID 목록 = {} ===", consultationIds);
 
-        // 3. N+1 방지: 관련 데이터 일괄 조회
+        log.info("=== Step 4: 관련 데이터 일괄 조회 시작 ===");
         Map<Long, List<Participant>> participantsMap = fetchParticipantsMap(consultationIds);
-        Map<Long, IndividualConsultation> individualConsultationMap = fetchIndividualConsultationMap(consultationIds);
-        Map<Long, GroupConsultation> groupConsultationMap = fetchGroupConsultationMap(consultationIds);
+        log.info("=== Step 4-1 완료: Participants ===");
 
-        // 4. DTO 변환
-        return PaginatedResponse.of(consultations, consultation ->
+        Map<Long, IndividualConsultation> individualConsultationMap = fetchIndividualConsultationMap(consultationIds);
+        log.info("=== Step 4-2 완료: IndividualConsultation ===");
+
+        Map<Long, GroupConsultation> groupConsultationMap = fetchGroupConsultationMap(consultationIds);
+        log.info("=== Step 4-3 완료: GroupConsultation ===");
+
+        log.info("=== Step 5: DTO 변환 시작 ===");
+        PaginatedResponse<CoachConsultationResponseDto> result = PaginatedResponse.of(consultations, consultation ->
                 toCoachConsultationResponse(
                         consultation,
                         participantsMap.getOrDefault(consultation.getId(), List.of()),
@@ -97,6 +107,9 @@ public class CoachConsultationService {
                         groupConsultationMap.get(consultation.getId())
                 )
         );
+        log.info("=== Step 5 완료: DTO 변환 완료 ===");
+
+        return result;
     }
 
     /**
@@ -193,18 +206,11 @@ public class CoachConsultationService {
         return builder.build();
     }
 
-    /**
-     * 코치가 자신의 상담 참여자 정보를 조회
-     *
-     * @param consultationId 상담 ID
-     * @param coachId 코치 ID (JWT에서 추출)
-     * @return 참여자 정보 목록
-     */
     @Transactional(readOnly = true)
     public List<ParticipantInfoResponseDto> getParticipantInfo(Long consultationId, UUID coachId) {
         // 1. consultation 조회 및 검증
         Consultation consultation = consultationRepository.findById(consultationId)
-                        .orElseThrow(() -> new GeneralException(ErrorStatus.CONSULTATION_NOT_FOUND));
+                .orElseThrow(() -> new GeneralException(ErrorStatus.CONSULTATION_NOT_FOUND));
 
         // 2. 코치 권한 확인
         if (!consultation.getCoach().getId().equals(coachId)) {
@@ -226,25 +232,31 @@ public class CoachConsultationService {
         return participants.stream()
                 .map(participant -> {
                     User user = participant.getUser();
-                    
+
                     // 건강 설문 데이터 조회
                     HealthSurvey healthSurvey = healthSurveyRepository.findByUserId(user.getId())
-                            .orElse(null); // 데이터가 없으면 null로 처리
+                            .orElse(null);
 
-                    // AI 분석 요약 조회
-                    String aiSummary = null;
-                    try {
-                        AiSummaryResponseDto aiSummaryResponse = aiAnalysisService.getSummary(user.getId());
-                        aiSummary = aiSummaryResponse.getSummary();
-                    } catch (Exception e) {
-                        log.warn("AI 분석 요약 조회 실패 - userId: {}, error: {}", user.getId(), e.getMessage());
-                        // AI 분석 요약이 없어도 다른 정보는 정상적으로 반환
-                    }
+                    // AI 분석 요약 조회 - 별도 메서드로 분리
+                    String aiSummary = getAiSummaryWithFallback(user.getId());
 
                     // 응답 DTO 생성
                     return buildParticipantInfoResponse(user, healthSurvey, aiSummary);
                 })
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * AI 요약 조회 (예외 발생 시 null 반환)
+     */
+    public String getAiSummaryWithFallback(UUID userId) {
+        try {
+            AiSummaryResponseDto aiSummaryResponse = aiAnalysisService.getSummary(userId);
+            return aiSummaryResponse.getSummary();
+        } catch (Exception e) {
+            log.warn("AI 분석 요약 조회 실패 - userId: {}, error: {}", userId, e.getMessage());
+            return null;
+        }
     }
 
     /**

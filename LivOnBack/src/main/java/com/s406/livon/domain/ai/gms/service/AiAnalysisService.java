@@ -49,6 +49,7 @@ public class AiAnalysisService {
         return generateSummaryInternal(user, survey);
     }
 
+    @Transactional(readOnly = true, noRollbackFor = AiHandler.class)
     public AiSummaryResponseDto getSummary(UUID userId) {
         AiAnalysis analysis = aiAnalysisRepository.findById(userId)
                 .orElseThrow(() -> new AiHandler(ErrorStatus.AI_SUMMARY_NOT_FOUND));

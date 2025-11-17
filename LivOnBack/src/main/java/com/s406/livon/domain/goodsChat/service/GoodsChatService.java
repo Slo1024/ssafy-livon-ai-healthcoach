@@ -163,11 +163,19 @@ public class GoodsChatService {
     }
 
     public List<ChatRoomUserResponseDto> getChatUsersConnection(Long chatRoomId, User user) {
-        boolean isParticipant = participantRepository.existsByUserIdAndConsultationId(user.getId(), chatRoomId);
+        // 1. chatRoomId로 채팅방 조회
+        GoodsChatRoom chatRoom = chatRoomRepository.findById(chatRoomId)
+                .orElseThrow(() -> new ChatHandler(ErrorStatus.CONSULTATION_NOT_FOUND));
+
+        // 2. consultation으로 권한 검증
+        Long consultationId = chatRoom.getConsultation().getId();
+        boolean isParticipant = participantRepository
+                .existsByUserIdAndConsultationId(user.getId(), consultationId);
+
         if (!isParticipant) {
-            // 참여자가 아니면 권한 없음
-            throw new ChatHandler(ErrorStatus.USER_NOT_PARTICIPANT_VALID); // (적절한 ErrorStatus로 변경)
+            throw new ChatHandler(ErrorStatus.USER_NOT_PARTICIPANT_VALID);
         }
+
         Set<UUID> uuidSet = chatHandler.getConnectedUsers(chatRoomId);
         List<ChatRoomUserResponseDto> chatRoomUserResponseDtoList = new ArrayList<>();
         for(UUID uuid : uuidSet){
@@ -177,12 +185,20 @@ public class GoodsChatService {
     }
 
     public Object getChatUsersInfo(Long chatRoomId, User user) {
-        boolean isParticipant = participantRepository.existsByUserIdAndConsultationId(user.getId(), chatRoomId);
+        // 1. chatRoomId로 채팅방 조회
+        GoodsChatRoom chatRoom = chatRoomRepository.findById(chatRoomId)
+                .orElseThrow(() -> new ChatHandler(ErrorStatus.CONSULTATION_NOT_FOUND));
+
+        // 2. consultation으로 권한 검증
+        Long consultationId = chatRoom.getConsultation().getId();
+        boolean isParticipant = participantRepository
+                .existsByUserIdAndConsultationId(user.getId(), consultationId);
+
         if (!isParticipant) {
-            // 참여자가 아니면 권한 없음
-            throw new ChatHandler(ErrorStatus.USER_NOT_PARTICIPANT_VALID); // (적절한 ErrorStatus로 변경)
+            throw new ChatHandler(ErrorStatus.USER_NOT_PARTICIPANT_VALID);
         }
-        List<User> participantList = participantRepository.findByConsultationId(chatRoomId);
+
+        List<User> participantList = participantRepository.findByConsultationId(consultationId);
         return participantList.stream().map(ChatRoomUserResponseDto::toDto).toList();
     }
 

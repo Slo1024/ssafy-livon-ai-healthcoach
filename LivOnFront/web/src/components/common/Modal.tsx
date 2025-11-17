@@ -108,7 +108,6 @@ export type { DateTimePickerModalProps } from "./DateTimePickerModal";
 // 클래스 정보 수정 모달
 // =====================
 
-
 export interface ClassEditModalProps extends BaseModalProps {
   classNameData?: {
     name: string;
@@ -513,11 +512,26 @@ export const MemberInfoModal: React.FC<MemberInfoModalProps> = ({
           });
 
           const response = await getParticipantInfoApi(token, consultationId);
-          const participantInfo = response.memberInfo;
-          const healthData = participantInfo?.healthData;
+
+          // 여러 참여자 정보 중 첫 번째 참여자 사용 (또는 memberId와 일치하는 참여자 찾기)
+          let participantInfo = response[0];
+          if (memberId && response.length > 1) {
+            // memberId와 일치하는 참여자 찾기 (필요시 추가 로직 구현)
+            const found = response.find(
+              (info) =>
+                info.memberInfo.nickname === memberName ||
+                memberName === info.memberInfo.nickname
+            );
+            if (found) {
+              participantInfo = found;
+            }
+          }
+
+          const memberInfo = participantInfo?.memberInfo;
+          const healthData = memberInfo?.healthData;
 
           setMemberInfo({
-            nickname: participantInfo.nickname || memberName || "회원",
+            nickname: memberInfo?.nickname || memberName || "회원",
             height: healthData?.height,
             weight: healthData?.weight,
             sleepTime: healthData?.sleepTime,
@@ -624,9 +638,10 @@ export const MemberInfoModal: React.FC<MemberInfoModalProps> = ({
   const sleepTime = memberInfo?.sleepTime ?? memberData?.sleepTime;
   const qaQuestion = memberInfo?.preQna || question;
   const profileImage = memberInfo?.profileImage || profilePictureIcon;
-  
+
   // 건강 데이터 존재 여부 확인
-  const hasHealthData = height !== undefined || weight !== undefined || sleepTime !== undefined;
+  const hasHealthData =
+    height !== undefined || weight !== undefined || sleepTime !== undefined;
   const hasQnA = qaQuestion && qaQuestion.trim() !== "";
 
   return (
@@ -666,7 +681,9 @@ export const MemberInfoModal: React.FC<MemberInfoModalProps> = ({
                     )}
                   </>
                 ) : (
-                  <MemberDataItem style={{ color: "#6b7280", fontStyle: "italic" }}>
+                  <MemberDataItem
+                    style={{ color: "#6b7280", fontStyle: "italic" }}
+                  >
                     건강 데이터가 없습니다.
                   </MemberDataItem>
                 )}

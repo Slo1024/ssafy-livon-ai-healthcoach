@@ -412,9 +412,19 @@ fun NavGraphBuilder.authNavGraph(navController: NavHostController) {
 
     // Lifestyle: caffeine (final) — post health survey then navigate back, marking origin entries as updated
     composable(Routes.LifeCaffeine) {
+        // [추가] 중복 클릭 방지를 위한 isSubmitting 플래그
+        var isSubmitting by remember { mutableStateOf(false) }
+        
         LifestyleCaffeinIntakeScreen(
             onBack = { navController.popBackStack() },
-            onNext = { caffeine ->
+            onNext = caffeine@ { caffeine ->
+                // [추가] 이미 제출 중이면 중복 실행 방지
+                if (isSubmitting) {
+                    Log.d("AppNavGraph", "Health survey already submitting, ignoring duplicate click")
+                    return@caffeine
+                }
+                
+                isSubmitting = true
                 SignupState.caffeine = caffeine
                 Log.d("AppNavGraph","Lifestyle(caffeine) finished (caffeine=$caffeine)")
 
@@ -443,59 +453,91 @@ fun NavGraphBuilder.authNavGraph(navController: NavHostController) {
                 val userApi = com.livon.app.core.network.RetrofitProvider.createService(com.livon.app.data.remote.api.UserApiService::class.java)
                 val userRepo = com.livon.app.domain.repository.UserRepository(userApi)
 
+                // [수정] health-survey 성공 시 즉시 네비게이션 처리, AI 요약은 백그라운드에서 비동기 실행
                 kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
                     val postRes = try { userRepo.postHealthSurvey(req) } catch (t: Throwable) { Result.failure<Boolean>(t) }
-                    if (postRes.isSuccess) Log.d("AppNavGraph", "postHealthSurvey success") else Log.w("AppNavGraph", "postHealthSurvey failed: ${postRes.exceptionOrNull()?.message}")
+                    
+                    if (postRes.isSuccess) {
+                        Log.d("AppNavGraph", "postHealthSurvey success")
+                        
+                        // [수정] health-survey 성공 시 즉시 네비게이션 처리 (AI 요약 응답을 기다리지 않음)
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            // After posting, set flags / navigate depending on origin markers
+                            try {
+                                val prev = navController.previousBackStackEntry
+                                val prevSaved = prev?.savedStateHandle
 
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        // After posting, set flags / navigate depending on origin markers
-                        try {
-                            val prev = navController.previousBackStackEntry
-                            val prevSaved = prev?.savedStateHandle
-
-                            val qnaOrigin = prevSaved?.get<Map<String, String>>("qna_origin")
-                            if (qnaOrigin != null) {
-                                prevSaved.remove<Map<String, String>>("qna_origin")
-                                prevSaved.set("health_updated", true)
-                                try {
-                                    navController.popBackStack(prev.destination.id, false)
-                                    return@withContext
-                                } catch (t: Throwable) {
-                                    Log.w("AppNavGraph", "Failed to popBackStack to QnA entry", t)
+                                val qnaOrigin = prevSaved?.get<Map<String, String>>("qna_origin")
+                                if (qnaOrigin != null) {
+                                    prevSaved.remove<Map<String, String>>("qna_origin")
+                                    prevSaved.set("health_updated", true)
+                                    try {
+                                        navController.popBackStack(prev.destination.id, false)
+                                        return@withContext
+                                    } catch (t: Throwable) {
+                                        Log.w("AppNavGraph", "Failed to popBackStack to QnA entry", t)
+                                    }
                                 }
+
+                                val myinfoOrigin = prevSaved?.get<Boolean>("myinfo_origin")
+                                if (myinfoOrigin == true) {
+                                    prevSaved.remove<Boolean>("myinfo_origin")
+                                    prevSaved.set("health_updated", true)
+                                    safeNavigate(Routes.MyInfo)
+                                    return@withContext
+                                }
+                            } catch (t: Throwable) {
+                                Log.w("AppNavGraph", "Error while handling origin flags on previousBackStackEntry", t)
                             }
 
-                            val myinfoOrigin = prevSaved?.get<Boolean>("myinfo_origin")
-                            if (myinfoOrigin == true) {
-                                prevSaved.remove<Boolean>("myinfo_origin")
-                                prevSaved.set("health_updated", true)
-                                safeNavigate(Routes.MyInfo)
-                                return@withContext
+                            // marker route handling
+                            try {
+                                val marker = SignupState.qnaMarkerRoute
+                                if (!marker.isNullOrBlank()) {
+                                    SignupState.qnaMarkerRoute = null
+                                    navController.navigate(marker) {}
+                                    navController.currentBackStackEntry?.savedStateHandle?.set("health_updated", true)
+                                    return@withContext
+                                }
+                            } catch (t: Throwable) {
+                                Log.w("AppNavGraph", "Failed to navigate to qnaMarkerRoute", t)
                             }
-                        } catch (t: Throwable) {
-                            Log.w("AppNavGraph", "Error while handling origin flags on previousBackStackEntry", t)
-                        }
 
-                        // marker route handling
-                        try {
-                            val marker = SignupState.qnaMarkerRoute
-                            if (!marker.isNullOrBlank()) {
-                                SignupState.qnaMarkerRoute = null
-                                navController.navigate(marker) {}
+                            // default fallback: go to MemberHome and set health_updated on its entry
+                            try {
+                                navController.navigate(Routes.MemberHome)
                                 navController.currentBackStackEntry?.savedStateHandle?.set("health_updated", true)
-                                return@withContext
+                            } catch (t: Throwable) {
+                                Log.w("AppNavGraph", "Fallback navigate to MemberHome failed", t)
+                                try { safeNavigate(Routes.MemberHome) } catch (_: Throwable) {}
                             }
-                        } catch (t: Throwable) {
-                            Log.w("AppNavGraph", "Failed to navigate to qnaMarkerRoute", t)
                         }
-
-                        // default fallback: go to MemberHome and set health_updated on its entry
-                        try {
-                            navController.navigate(Routes.MemberHome)
-                            navController.currentBackStackEntry?.savedStateHandle?.set("health_updated", true)
-                        } catch (t: Throwable) {
-                            Log.w("AppNavGraph", "Fallback navigate to MemberHome failed", t)
-                            try { safeNavigate(Routes.MemberHome) } catch (_: Throwable) {}
+                        
+                        // [수정] AI 건강 요약 API는 백그라운드에서 비동기로 실행 (화면 전환을 블로킹하지 않음)
+                        kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                            try {
+                                val summaryRes = try { 
+                                    userApi.postHealthSummary() 
+                                } catch (t: Throwable) { 
+                                    Log.w("AppNavGraph", "postHealthSummary API call failed: ${t.message}")
+                                    null
+                                }
+                                if (summaryRes != null) {
+                                    if (summaryRes.isSuccess) {
+                                        Log.d("AppNavGraph", "postHealthSummary success: ${summaryRes.result?.summary}")
+                                    } else {
+                                        Log.w("AppNavGraph", "postHealthSummary failed: ${summaryRes.message}")
+                                    }
+                                }
+                            } catch (t: Throwable) {
+                                Log.w("AppNavGraph", "postHealthSummary exception: ${t.message}")
+                            }
+                        }
+                    } else {
+                        Log.w("AppNavGraph", "postHealthSurvey failed: ${postRes.exceptionOrNull()?.message}")
+                        // [추가] 실패 시 isSubmitting 플래그 해제
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            isSubmitting = false
                         }
                     }
                 }

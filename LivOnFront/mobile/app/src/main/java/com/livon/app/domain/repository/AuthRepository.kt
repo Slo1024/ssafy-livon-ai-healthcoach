@@ -22,4 +22,17 @@ class AuthRepository(private val api: AuthApiService) {
             Result.failure(t)
         }
     }
+
+    suspend fun logout(): Result<String> {
+        return try {
+            val res = try { api.logout() } catch (t: Throwable) { return Result.failure(t) }
+            if (res.isSuccess) {
+                Result.success(res.result ?: "")
+            } else {
+                Result.failure(Exception(res.message ?: "logout failed"))
+            }
+        } catch (t: Throwable) {
+            Result.failure(t)
+        }
+    }
 }

@@ -15,7 +15,8 @@ data class GroupConsultationListItemDto(
     val availableSeats: Int,
     val isFull: Boolean,
     val coachName: String?,
-    val coachProfileImage: String?
+    val coachProfileImage: String?,
+    val coachId: String? // [추가] 그룹 상담 목록 API 응답에 포함되는 코치 ID
 )
 
 data class PaginatedGroupConsultationListResult(

@@ -17,6 +17,24 @@ class ReservationViewModel(
     private val repo: ReservationRepository
 ) : ViewModel() {
 
+    init {
+        // If repository implementation provides a localReservationsFlow, observe it so that
+        // any instance that created or updated local reservations triggers a UI refresh
+        // in this ViewModel (useful when reserve actions happen in a different VM instance).
+        try {
+            if (repo is com.livon.app.data.repository.ReservationRepositoryImpl) {
+                viewModelScope.launch {
+                    com.livon.app.data.repository.ReservationRepositoryImpl.localReservationsFlow.collect {
+                        try {
+                            // refresh upcoming list when local cache changes
+                            loadReservationsByStatus("upcoming")
+                        } catch (_: Throwable) { }
+                    }
+                }
+            }
+        } catch (_: Throwable) { }
+    }
+
     data class ReservationsUiState(
         val items: List<ReservationUi> = emptyList(),
         val isLoading: Boolean = false,
@@ -57,14 +75,55 @@ class ReservationViewModel(
      */
     private fun loadReservationsByStatus(status: String) {
         viewModelScope.launch(Dispatchers.IO) {
+            Log.d("ReservationVM", "loadReservationsByStatus: start loading status=$status")
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             try {
-                val serverRes = try {
-                    repo.getMyReservations(status = status, type = null)
+                // [수정] 개인(ONE)과 그룹(GROUP) 예약을 각각 호출하여 모두 가져옵니다.
+                val serverResPersonal = try {
+                    repo.getMyReservations(status = status, type = "ONE")
                 } catch (t: Throwable) {
-                    Log.w("ReservationVM", "getMyReservations(status=$status) call failed", t)
+                    Log.w("ReservationVM", "getMyReservations(status=$status, type=ONE) call failed", t)
                     Result.failure(t)
                 }
+                
+                val serverResGroup = try {
+                    repo.getMyReservations(status = status, type = "GROUP")
+                } catch (t: Throwable) {
+                    Log.w("ReservationVM", "getMyReservations(status=$status, type=GROUP) call failed", t)
+                    Result.failure(t)
+                }
+                
+                // 두 응답을 합쳐서 처리
+                val combinedItems = mutableListOf<com.livon.app.data.remote.api.ReservationItemDto>()
+                
+                if (serverResPersonal.isSuccess) {
+                    val body = serverResPersonal.getOrNull()
+                    body?.items?.let { combinedItems.addAll(it) }
+                }
+                
+                if (serverResGroup.isSuccess) {
+                    val body = serverResGroup.getOrNull()
+                    body?.items?.let { combinedItems.addAll(it) }
+                }
+                
+                // 합친 결과를 사용하여 처리 (기존 로직과 호환)
+                val serverRes = if (serverResPersonal.isSuccess || serverResGroup.isSuccess) {
+                    // 임시로 하나의 성공 응답을 생성 (기존 로직 호환)
+                    Result.success(com.livon.app.data.remote.api.ReservationListResponse(
+                        page = 0,
+                        pageSize = combinedItems.size,
+                        totalItems = combinedItems.size,
+                        totalPages = 1,
+                        items = combinedItems
+                    ))
+                } else {
+                    Result.failure<com.livon.app.data.remote.api.ReservationListResponse>(
+                        serverResPersonal.exceptionOrNull() ?: serverResGroup.exceptionOrNull() ?: Exception("Unknown error")
+                    )
+                }
+                
+                Log.d("ReservationVM", "loadReservationsByStatus: combined items count=${combinedItems.size}, status=$status")
+                Log.d("ReservationVM", "loadReservationsByStatus: serverRes isSuccess=${serverRes.isSuccess}, status=$status")
 
                 val mappedFromServer = if (serverRes.isSuccess) {
                     val body = serverRes.getOrNull()
@@ -116,15 +175,50 @@ class ReservationViewModel(
                 } else emptyList()
 
                 // Merge server results with in-memory cache so locally-added reservations are shown as well
+                // [수정] 서버에서 가져온 ID 목록을 기준으로 로컬 캐시 병합 (서버에 없는 = 취소된 예약은 제외)
                 val finalList = mappedFromServer.toMutableList()
+                // 서버에서 가져온 모든 ID 집합 (취소되지 않은 활성 예약만 포함)
+                val serverIds = finalList.map { it.id }.toMutableSet()
+                
+                // 서버 응답의 원본 items에서도 모든 ID를 수집 (취소된 것 포함하여 필터링용)
+                // [수정] 서버 응답의 모든 항목 ID를 수집하여 로컬 캐시 필터링에 사용
+                val allServerItemIds = try {
+                    val body = serverRes.getOrNull()
+                    body?.items?.mapNotNull { dto -> 
+                        try { 
+                            // CANCELLED 상태 여부와 관계없이 모든 ID 수집
+                            dto.consultationId.toString() 
+                        } catch (_: Throwable) { null }
+                    }?.toSet() ?: emptySet()
+                } catch (_: Throwable) { emptySet() }
+                
+                // [수정] 로컬 캐시는 Optimistic UI를 위한 임시 저장소입니다.
+                // 서버 응답이 신뢰할 수 있는 소스(Source of Truth)이므로, 서버 응답을 우선 사용합니다.
+                // 다만, 예약 생성 직후 서버 동기화 지연으로 인해 서버 응답에 없는 미래 예약은 임시로 포함합니다.
                 try {
                     if (repo is com.livon.app.data.repository.ReservationRepositoryImpl) {
-                        val local = com.livon.app.data.repository.ReservationRepositoryImpl.localReservations
-                        val existingIds = finalList.map { it.id }.toMutableSet()
-                        val localItems = local.mapNotNull { lr ->
+                        val ownerToken = com.livon.app.data.session.SessionManager.getTokenSync()
+                        val local = com.livon.app.data.repository.ReservationRepositoryImpl.localReservations.filter { (it.ownerToken ?: "") == (ownerToken ?: "") }
+                        
+                        val now = LocalDateTime.now()
+                        val localItems = local
+                            .mapNotNull { lr ->
                             try {
+                                // 서버에서 이미 가져온 항목은 스킵 (서버 데이터가 우선, Source of Truth)
+                                if (serverIds.contains(lr.id.toString())) return@mapNotNull null
+                                
                                 val start = LocalDateTime.parse(lr.startAt)
                                 val end = LocalDateTime.parse(lr.endAt)
+                                
+                                // [수정] 서버 응답에 없는 항목은 미래 예약인 경우에만 임시로 포함
+                                // (과거 예약은 취소된 것으로 간주하여 제외)
+                                // 이는 Optimistic UI를 위한 것으로, 서버 동기화가 완료되면 서버 데이터로 대체됩니다.
+                                val isInServer = allServerItemIds.contains(lr.id.toString())
+                                val isFuture = start.isAfter(now)
+                                
+                                // 서버 응답에 있거나, 미래 예약인 경우만 포함
+                                if (!isInServer && !isFuture) return@mapNotNull null
+                                
                                 ReservationUi(
                                     id = lr.id.toString(),
                                     date = start.toLocalDate(),
@@ -149,11 +243,11 @@ class ReservationViewModel(
                                 )
                             } catch (_: Throwable) { null }
                         }
-                        // Append only those local items whose id is not already present
+                        // Append only those local items whose id is not already present in server results
                         localItems.forEach { li ->
-                            if (!existingIds.contains(li.id)) {
+                            if (!serverIds.contains(li.id)) {
                                 finalList.add(li)
-                                existingIds.add(li.id)
+                                serverIds.add(li.id)
                             }
                         }
                     }
@@ -161,7 +255,7 @@ class ReservationViewModel(
 
                 try {
                     val ids = finalList.map { it.id }
-                    Log.d("ReservationVM", "Mapped reservations count=${finalList.size}, ids=${ids.joinToString()}")
+                    Log.d("ReservationVM", "loadReservationsByStatus: Mapped reservations count=${finalList.size}, status=$status, ids=${ids.joinToString()}")
                 } catch (_: Throwable) {}
 
                 // Filter finalList according to requested status:
@@ -169,24 +263,59 @@ class ReservationViewModel(
                 // - past: include items whose startAtIso is in the past
                 val now = LocalDateTime.now()
                 val filteredList = finalList.filter { item ->
-                    try {
-                        val startIso = item.startAtIso
-                        val start = if (!startIso.isNullOrBlank()) LocalDateTime.parse(startIso) else null
-                        if (status == "upcoming") {
-                            // include if start is null (fallback), or start >= now, or item isLive
-                            (start == null) || item.isLive || !start.isBefore(now)
-                        } else {
-                            // past: include only if start exists and is before now
-                            (start != null && start.isBefore(now))
+                     try {
+                         val startIso = item.startAtIso
+                         val start = if (!startIso.isNullOrBlank()) LocalDateTime.parse(startIso) else null
+                         if (status == "upcoming") {
+                             // include if start is null (fallback), or start >= now, or item isLive
+                             (start == null) || item.isLive || !start.isBefore(now)
+                         } else {
+                             // past: include only if start exists and is before now
+                             (start != null && start.isBefore(now))
+                         }
+                     } catch (_: Throwable) {
+                         // on parse error, conservatively include in upcoming to avoid hiding
+                         status == "upcoming"
+                     }
+                 }
+
+                // Sort the filtered list by proximity to now:
+                // - upcoming: nearest future (or live) first (ascending start time)
+                // - past: most recent past first (descending start time)
+                val sorted = try {
+                    val comparator = Comparator<ReservationUi> { a, b ->
+                        fun parseStart(i: ReservationUi): LocalDateTime? {
+                            return try { i.startAtIso?.let { LocalDateTime.parse(it) } } catch (_: Throwable) { null }
                         }
-                    } catch (_: Throwable) {
-                        // on parse error, conservatively include in upcoming to avoid hiding
-                        status == "upcoming"
+                        val sa = parseStart(a)
+                        val sb = parseStart(b)
+                        when (status) {
+                            "upcoming" -> {
+                                // null starts go to the end
+                                if (sa == null && sb == null) 0
+                                else if (sa == null) 1
+                                else if (sb == null) -1
+                                else sa.compareTo(sb)
+                            }
+                            else -> {
+                                // past: nulls go to the start (but they were filtered out), compare descending
+                                if (sa == null && sb == null) 0
+                                else if (sa == null) 1
+                                else if (sb == null) -1
+                                else sb.compareTo(sa)
+                            }
+                        }
                     }
+                    filteredList.sortedWith(comparator)
+                } catch (t: Throwable) {
+                    filteredList
                 }
 
-                _uiState.value = ReservationsUiState(items = filteredList, isLoading = false)
+                Log.d("ReservationVM", "loadReservationsByStatus: filtered and sorted items count=${sorted.size}, status=$status")
+                _uiState.value = ReservationsUiState(items = sorted, isLoading = false)
+                Log.d("ReservationVM", "loadReservationsByStatus: uiState updated with ${sorted.size} items, status=$status")
              } catch (t: Throwable) {
+                 Log.e("ReservationVM", "loadReservationsByStatus: error loading status=$status", t)
                  _uiState.value = ReservationsUiState(items = emptyList(), isLoading = false, errorMessage = t.message)
              }
          }
@@ -281,18 +410,20 @@ class ReservationViewModel(
                     }
 
                     if (isAlreadyReserved(ex)) {
+                        // Refresh upcoming list so UI shows the reservation, but do NOT mark as success
+                        // to prevent composables (which auto-navigate on success) from opening another modal/route.
                         loadUpcoming()
-                        _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null)
+                        _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = "이미 예약된 시간입니다")
                     } else {
                         val msg = ex?.message ?: "알 수 없는 오류"
                         try { Log.e("ReservationVM", "reserveClass failed: $msg", ex) } catch (_: Throwable) {}
                         _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = msg)
                     }
-                }
-            } catch (t: Throwable) {
-                _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = t.message)
-            }
-        }
+                 }
+             } catch (t: Throwable) {
+                 _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = t.message)
+             }
+         }
     }
 
     // cancel APIs (기존 코드 유지)
@@ -301,54 +432,65 @@ class ReservationViewModel(
             Log.d("ReservationVM", "cancelIndividual: start id=$consultationId")
             _actionState.value = ReservationActionState(isLoading = true, success = null, errorMessage = null)
             // optimistic UI: remove item locally immediately and keep backup to restore on failure
-            val prev = _uiState.value.items
-            _uiState.value = _uiState.value.copy(items = prev.filterNot { it.id == consultationId.toString() })
+            val prevItems = _uiState.value.items
+            _uiState.value = _uiState.value.copy(items = prevItems.filterNot { it.id == consultationId.toString() })
             try {
+                // 2. [DB] Repository를 통해 서버 API를 호출한다.
                 val res = repo.cancelIndividual(consultationId)
+
+                // 3. [DB] API 호출 결과를 확인한다.
                 if (res.isSuccess) {
+                    // 이 시점에서 서버 DB에서는 데이터가 *이미* 성공적으로 삭제되었습니다.
                     Log.d("ReservationVM", "cancelIndividual: success id=$consultationId")
                     _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null)
-                    loadUpcoming()
+
+                    // 4. [UI] 이제 화면을 어떻게 할지 결정한다.
+                    // loadUpcoming() // <- 이 코드는 삭제된 데이터를 포함한 '전체 목록'을 다시 가져와 화면을 갱신하는 역할 *뿐*입니다.
+                    // DB 상태에 영향을 주지 않습니다.
+
                 } else {
+                    // 5. [DB] API 호출이 실패했다 (DB에서 데이터가 삭제되지 않았다).
+                    // 6. [UI] 따라서 화면을 원래대로 복원한다.
+
                     Log.d("ReservationVM", "cancelIndividual: failure id=$consultationId, ex=${res.exceptionOrNull()?.message}")
-                    // restore previous list on failure
-                    _uiState.value = _uiState.value.copy(items = prev)
-                    _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = res.exceptionOrNull()?.message)
-                }
-            } catch (t: Throwable) {
-                Log.e("ReservationVM", "cancelIndividual: exception", t)
-                // restore previous list on exception
-                _uiState.value = _uiState.value.copy(items = prev)
-                _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = t.message)
-            }
-        }
-    }
+                    _uiState.value = _uiState.value.copy(items = prevItems)
+                     _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = res.exceptionOrNull()?.message)
+                 }
+             } catch (t: Throwable) {
+                 Log.e("ReservationVM", "cancelIndividual: exception", t)
+                 // restore previous list on exception
+                 _uiState.value = _uiState.value.copy(items = prevItems)
+                 _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = t.message)
+             }
+         }
+     }
 
     fun cancelGroupParticipation(consultationId: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             Log.d("ReservationVM", "cancelGroupParticipation: start id=$consultationId")
             _actionState.value = ReservationActionState(isLoading = true, success = null, errorMessage = null)
             // optimistic UI: remove item locally immediately and keep backup to restore on failure
-            val prev = _uiState.value.items
-            _uiState.value = _uiState.value.copy(items = prev.filterNot { it.id == consultationId.toString() })
+            val prevItems = _uiState.value.items
+            _uiState.value = _uiState.value.copy(items = prevItems.filterNot { it.id == consultationId.toString() })
             try {
-                val res = repo.cancelGroupParticipation(consultationId)
-                if (res.isSuccess) {
-                    Log.d("ReservationVM", "cancelGroupParticipation: success id=$consultationId")
-                    _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null)
-                    loadUpcoming()
-                } else {
-                    Log.d("ReservationVM", "cancelGroupParticipation: failure id=$consultationId, ex=${res.exceptionOrNull()?.message}")
-                    // restore previous list on failure
-                    _uiState.value = _uiState.value.copy(items = prev)
-                    _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = res.exceptionOrNull()?.message)
-                }
-            } catch (t: Throwable) {
-                Log.e("ReservationVM", "cancelGroupParticipation: exception", t)
-                // restore previous list on exception
-                _uiState.value = _uiState.value.copy(items = prev)
-                _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = t.message)
-            }
-        }
-    }
+                val token = com.livon.app.data.session.SessionManager.getTokenSync()
+                Log.d("ReservationVM", "cancelGroupParticipation: calling repo with id=$consultationId tokenPresent=${!token.isNullOrBlank()}")
+                 val res = repo.cancelGroupParticipation(consultationId)
+                 if (res.isSuccess) {
+                     Log.d("ReservationVM", "cancelGroupParticipation: success id=$consultationId")
+                     _actionState.value = ReservationActionState(isLoading = false, success = true, errorMessage = null)
+                 } else {
+                     Log.d("ReservationVM", "cancelGroupParticipation: failure id=$consultationId, ex=${res.exceptionOrNull()?.message}")
+                     // restore previous list on failure
+                     _uiState.value = _uiState.value.copy(items = prevItems)
+                     _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = res.exceptionOrNull()?.message)
+                 }
+             } catch (t: Throwable) {
+                 Log.e("ReservationVM", "cancelGroupParticipation: exception", t)
+                 // restore previous list on exception
+                 _uiState.value = _uiState.value.copy(items = prevItems)
+                 _actionState.value = ReservationActionState(isLoading = false, success = false, errorMessage = t.message)
+             }
+         }
+     }
 }

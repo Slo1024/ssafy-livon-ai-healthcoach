@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import coil.compose.rememberAsyncImagePainter
 import com.livon.app.R
+import com.livon.app.feature.member.reservation.ui.ReservationCompleteDialog
 import com.livon.app.feature.shared.auth.ui.CommonScreenC
 import com.livon.app.ui.component.overlay.TopBar
 import com.livon.app.ui.preview.PreviewSurface
@@ -36,7 +37,8 @@ fun MyPageScreen(
     profileImageUri: Uri? = null,
     onBack: () -> Unit = {},
     onClickHealthInfo: () -> Unit = {},
-    onClickFaq: () -> Unit = {}
+    onClickFaq: () -> Unit = {},
+    onLogoutConfirm: () -> Unit = {}
 ) {
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
 
@@ -45,6 +47,9 @@ fun MyPageScreen(
     ) { uri ->
         selectedImageUri = uri
     }
+
+    // ✅ 로그아웃 모달 노출 여부
+    var showLogoutDialog by remember { mutableStateOf(false) }
 
     CommonScreenC(
         modifier = modifier,
@@ -134,7 +139,31 @@ fun MyPageScreen(
         )
 
         // 아래 여백
+        Spacer(Modifier.height(40.dp))
+
+        // ✅ 로그아웃 버튼 (나의 건강 정보 / 자주 묻는 질문과 같은 형태)
+        SettingRow(
+            text = "로그아웃",
+            onClick = { showLogoutDialog = true }
+        )
+
         Spacer(Modifier.height(72.dp))
+    }
+
+    // ✅ 로그아웃 모달 (MyInfoScreen에서 쓰던 회색 배경 + 카드 그대로 사용)
+    if (showLogoutDialog) {
+        ReservationCompleteDialog(
+            onDismiss = { showLogoutDialog = false },
+            onConfirm = {
+                showLogoutDialog = false
+                onLogoutConfirm() // 실제 로그아웃 로직은 바깥에서 주입
+            },
+            titleText = "로그아웃 하시겠습니까?",
+            subtitleText = null,          // 🔹 설명 텍스트 없음
+            showCancelButton = true,      // 🔹 [취소 | 확인] 두 개 버튼
+            confirmLabel = "확인",
+            cancelLabel = "취소"
+        )
     }
 }
 

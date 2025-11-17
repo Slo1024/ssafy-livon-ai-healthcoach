@@ -111,6 +111,12 @@ const Body = styled.div`
   gap: 10px;
   flex: 1;
   min-height: 0;
+  overflow-y: auto;
+  padding-right: 8px;
+
+  @media (max-width: 640px) {
+    padding-right: 0;
+  }
 `;
 
 const PhysicalSection = styled.div`
@@ -122,23 +128,6 @@ const PhysicalSection = styled.div`
   background: transparent;
   border: none;
   flex-shrink: 0;
-`;
-
-const Avatar = styled.div`
-  width: 100px;
-  height: 120px;
-  border-radius: 20px;
-  background: rgba(148, 163, 184, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-
-  svg {
-    width: 48px;
-    height: 48px;
-    color: #94a3b8;
-  }
 `;
 
 const PhysicalList = styled.ul`
@@ -217,14 +206,16 @@ const AnalysisBox = styled.div`
   flex-shrink: 0;
 `;
 
-const AnalysisSummary = styled.p`
+const AnalysisSummary = styled.div`
   margin: 0;
   padding: 10px;
   border-radius: 14px;
   background: transparent;
   color: #1f2937;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 16px;
+  line-height: 1.6;
+  white-space: pre-line;
+  word-break: keep-all;
 `;
 
 const Footer = styled.div`
@@ -322,6 +313,18 @@ export const ParticipantInfo: React.FC<ParticipantInfoProps> = ({
   const { participantInfo, preQna, aiSummary } = data;
   const { memberInfo } = participantInfo;
   const { healthData, nickname } = memberInfo;
+  const cleanedAiSummary = aiSummary
+    ? aiSummary
+        .split("[건강 설문 데이터")[0]
+        .replace(/현재 상태 요약:/g, "현재 상태 요약:\n")
+        .replace(/추천 행동:/g, "\n\n추천 행동:\n")
+        .replace(/-\s*/g, "\n- ")
+        .replace(/근거:[^\n]*\n?/g, "")
+        .replace(/\. +(?!\n)/g, ".\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .replace(/추천 행동:\n\s*\n/g, "추천 행동:\n")
+        .trim()
+    : undefined;
 
   return (
     <Overlay onClick={onClose}>
@@ -378,7 +381,7 @@ export const ParticipantInfo: React.FC<ParticipantInfoProps> = ({
           <AnalysisBox>
             <SectionTitle>AI 분석 결과</SectionTitle>
             <AnalysisSummary>
-              {aiSummary || "AI 분석 결과가 없습니다."}
+              {cleanedAiSummary || "AI 분석 결과가 없습니다."}
             </AnalysisSummary>
           </AnalysisBox>
 

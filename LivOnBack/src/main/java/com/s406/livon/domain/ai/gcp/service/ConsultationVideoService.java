@@ -6,13 +6,22 @@ import com.s406.livon.domain.coach.entity.Consultation;
 import com.s406.livon.domain.coach.entity.IndividualConsultation;
 import com.s406.livon.domain.consultation.repository.ConsultationRepository;
 import com.s406.livon.domain.coach.repository.IndividualConsultationRepository;
+import com.s406.livon.global.config.properties.MinioProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import io.minio.GetObjectArgs;
+import io.minio.MinioClient;
+import java.io.InputStream;
+import java.net.URL;
 
 /**
  * 상담 영상 통합 서비스
@@ -27,6 +36,8 @@ public class ConsultationVideoService {
     private final GcpVideoSummaryService gcpVideoSummaryService;
     private final ConsultationRepository consultationRepository;
     private final IndividualConsultationRepository individualConsultationRepository;
+
+    private final MinioProperties minioProperties;
 
     /**
      * 영상을 업로드하고 자동으로 요약을 생성
@@ -73,6 +84,62 @@ public class ConsultationVideoService {
                 gcpVideoSummaryService.generateVideoSummary(summaryRequest);
 
         return summaryResponse;
+    }
+
+    @Transactional
+    public void uploadAndSummarizeFromUrl(Long consultationId, String videoUrl, String preQnA) {
+        log.info("uploadAndSummarizeFromUrl: MinIO URL로부터 요약 처리 시작. consultationId={}", consultationId);
+
+        String bucketName = minioProperties.getBucket();
+
+        try {
+            // 1. [수정] videoUrl 파싱은 오직 '파일 경로(Object Key)'를 얻기 위해서만 사용합니다.
+            URL url = new URL(videoUrl); // videoUrl은 "http://127.0.0.1:9100/..."
+            String fullPath = url.getPath(); // "/openvidu-appdata/..."
+
+            // 2. Object Key(파일 경로) 추출
+            int bucketPathIndex = fullPath.indexOf("/" + bucketName + "/");
+            if (bucketPathIndex == -1) {
+                log.error("MinIO URL 경로에 버킷 이름({})을 찾을 수 없습니다. URL: {}", bucketName, videoUrl);
+                throw new IllegalArgumentException("MinIO URL에서 버킷 경로를 찾을 수 없습니다.");
+            }
+            String objectKey = fullPath.substring(bucketPathIndex + bucketName.length() + 2); // +2는 양쪽 슬래시
+            String filename = objectKey.substring(objectKey.lastIndexOf('/') + 1);
+
+            // 3. [핵심] MinIO 클라이언트는 'public' 주소로 생성
+            // Egress가 반환한 '127.0.0.1' (잘못된 호스트)를 무시합니다.
+            // 로컬 테스트 시 성공했던 주소를 사용합니다.
+            String correctMinioEndpoint = "http://ov.s406.site:9000";
+
+            log.debug("MinIO GetObject. Endpoint: {} (Ignoring URL host), Bucket: {}, Key: {}",
+                    correctMinioEndpoint, bucketName, objectKey);
+
+            MinioClient tempClient = MinioClient.builder()
+                    .endpoint(correctMinioEndpoint) // ★ 실제 Public 주소 사용
+                    .credentials(minioProperties.getAccessKey(), minioProperties.getSecretKey())
+                    .build();
+
+            // 4. 파일 다운로드
+            InputStream videoStream = tempClient.getObject(
+                    GetObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(objectKey)
+                            .build()
+            );
+
+            // 5. (변경 없음) InputStream -> byte[] -> MultipartFile
+            byte[] videoBytes = videoStream.readAllBytes();
+            videoStream.close();
+            log.info("uploadAndSummarizeFromUrl: MinIO 다운로드 완료. bytes={}, filename={}", videoBytes.length, filename);
+            MultipartFile videoFile = new MockMultipartFile("file", filename, "video/mp4", videoBytes);
+
+            // 6. (변경 없음) 기존 로직 호출
+            uploadAndSummarize(consultationId, videoFile, preQnA);
+
+        } catch (Exception e) { // MalformedURLException, MinioException, IOException 등
+            log.error("URL로부터 영상 처리 중 예외 발생. consultationId={}", consultationId, e);
+            throw new RuntimeException("URL 영상 처리 실패", e);
+        }
     }
 
     /**

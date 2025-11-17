@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -49,17 +50,21 @@ fun ClassCard(
     classInfo: SampleClassInfo,
     onCardClick: () -> Unit,
     onCoachClick: () -> Unit,
-    enabled: Boolean = true // 새 파라미터: 만원일 때 false로 전달
+    enabled: Boolean = true // 만원이거나 이미 예약한 경우 false
 ) {
     val isClosed = classInfo.currentParticipants >= classInfo.maxParticipants
     val remainingCount = classInfo.maxParticipants - classInfo.currentParticipants
-    val participantsColor = if (isClosed) Color.Gray else MaterialTheme.colorScheme.primary
+    val participantsColor = if (isClosed || !enabled) Color.Gray else MaterialTheme.colorScheme.primary
+    
+    // [수정] 비활성화 시 시각적 표시를 위한 alpha 값
+    val alpha = if (enabled) 1f else 0.6f
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = enabled, onClick = onCardClick)
             .padding(vertical = 12.dp) // 위아래에 패딩을 줍니다. (기존 Card의 내부 패딩과 유사한 효과)
+            .graphicsLayer(alpha = alpha) // [수정] 비활성화 시 투명도 적용
     ) {
         // 상단 정보: 날짜, 시간, 클래스 유형
         Row(
@@ -139,14 +144,18 @@ fun ClassCard(
         ) {
             Icon(Icons.Default.Person, contentDescription = "참여 인원", tint = participantsColor)
             Spacer(Modifier.width(4.dp))
-            val participantsText = if (isClosed) {
-                "${classInfo.currentParticipants}/${classInfo.maxParticipants} (마감)"
+            val participantsText = if (isClosed || !enabled) {
+                if (!enabled && !isClosed) {
+                    "${classInfo.currentParticipants}/${classInfo.maxParticipants} (이미 예약됨)"
+                } else {
+                    "${classInfo.currentParticipants}/${classInfo.maxParticipants} (마감)"
+                }
             } else {
                 "${classInfo.currentParticipants}/${classInfo.maxParticipants} (잔여 ${remainingCount})"
             }
             Text(participantsText, color = participantsColor, fontSize = 10.sp)
             Spacer(Modifier.weight(1f))
-            CoachViewButton(enabled = !isClosed, onClick = onCoachClick)
+            CoachViewButton(enabled = !isClosed && enabled, onClick = onCoachClick) // [수정] enabled도 확인
         }
     }
 }

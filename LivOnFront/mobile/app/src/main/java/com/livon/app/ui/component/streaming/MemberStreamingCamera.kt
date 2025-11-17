@@ -9,9 +9,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
@@ -34,8 +34,9 @@ fun MemberStreamingCamera(
 
     Box(modifier = modifier.fillMaxSize()) {
         if (track != null && isCameraEnabled) {
+            val videoModifier = Modifier.fillMaxSize()
             AndroidView(
-                modifier = Modifier.fillMaxSize(),
+                modifier = videoModifier,
                 factory = { context ->
                     SurfaceViewRenderer(context).apply {
                         if (room != null) {
@@ -48,7 +49,7 @@ fun MemberStreamingCamera(
                         }
                         
                         setEnableHardwareScaler(true)
-                        setMirror(isLocalTrack)
+                        setMirror(false)
                         setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
                         Log.d("StreamingCamera", "Creating SurfaceViewRenderer for track: ${track.sid}, isLocal=$isLocalTrack")
 

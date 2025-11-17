@@ -40,13 +40,14 @@ export const createIndividualConsultationApi = async (
   return response.data.result;
 };
 
-// 1:1 상담 취소
+// 1:1 상담 취소 (코치용)
+// 백엔드 스펙: DELETE /api/v1/coaches/consultations/{consultationId}
 export const cancelIndividualConsultationApi = async (
   token: string,
   consultationId: number
 ): Promise<void> => {
   await axios.delete(
-    `${API_BASE_URL}/individual-consultations/${consultationId}`,
+    `${API_BASE_URL}/coaches/consultations/${consultationId}`,
     {
       headers: { Authorization: `Bearer ${token}` },
     }
@@ -102,7 +103,7 @@ interface PaginatedResponse<T> {
 // 클래스 목록 조회
 export const getGroupConsultationsApi = async (
   token: string,
-  sameOrganization: boolean = false,
+  sameOwner: boolean = false,
   page: number = 0,
   size: number = 10
 ): Promise<PaginatedResponse<GroupConsultationListItem>> => {
@@ -112,7 +113,7 @@ export const getGroupConsultationsApi = async (
     message: string;
     result: PaginatedResponse<GroupConsultationListItem>;
   }>(`${API_BASE_URL}/group-consultations`, {
-    params: { sameOrganization, page, size },
+    params: { sameOrganization: sameOwner, page, size },
     headers: { Authorization: `Bearer ${token}` },
   });
   return response.data.result;
@@ -160,7 +161,7 @@ export const createGroupConsultationApi = async (
   return response.data.result;
 };
 
-// 클래스 참여 취소
+// 클래스 참여 취소 (코치/참가자 공용: 참가자 취소 시 해당 엔드포인트 사용)
 export const cancelGroupConsultationParticipationApi = async (
   token: string,
   consultationId: number
@@ -368,10 +369,11 @@ export interface ParticipantMemberInfo {
 
 export interface ParticipantInfoResponse {
   memberInfo: ParticipantMemberInfo;
+  aiSummary?: string;
 }
 
 /**
- * 코치가 1:1 상담 참여자 정보 조회 API
+ * 코치가 상담 참여자 정보 조회 API (여러 참여자 정보 리스트 반환)
  * GET /api/v1/coaches/consultations/{consultationId}/participant-info
  * @param token - 인증 토큰
  * @param consultationId - 상담 ID
@@ -379,7 +381,7 @@ export interface ParticipantInfoResponse {
 export const getParticipantInfoApi = async (
   token: string,
   consultationId: number
-): Promise<ParticipantInfoResponse> => {
+): Promise<ParticipantInfoResponse[]> => {
   // 토큰 검증
   if (!token || token.trim() === "") {
     throw new Error("인증 토큰이 없습니다. 로그인이 필요합니다.");
@@ -389,7 +391,7 @@ export const getParticipantInfoApi = async (
     isSuccess: boolean;
     code: string;
     message: string;
-    result: ParticipantInfoResponse;
+    result: ParticipantInfoResponse[];
   }>(
     `${API_BASE_URL}/coaches/consultations/${consultationId}/participant-info`,
     {

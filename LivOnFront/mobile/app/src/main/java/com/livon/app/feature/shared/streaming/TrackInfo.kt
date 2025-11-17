@@ -8,7 +8,8 @@ data class TrackInfo(
     val participantIdentity: String,
     val isLocal: Boolean = false,
     val isCameraEnabled: Boolean = false,
-    val isMicrophoneEnabled: Boolean = false
+    val isMicrophoneEnabled: Boolean = false,
+    val isScreenShare: Boolean = false
 ) {
     val videoTrack: VideoTrack?
         get() = track as? VideoTrack

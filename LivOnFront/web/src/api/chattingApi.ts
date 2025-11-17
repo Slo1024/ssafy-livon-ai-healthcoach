@@ -75,6 +75,8 @@ export interface GoodsChatMessage {
   content: string;
   sentAt: string; // ISO date-time
   role: "COACH" | "MEMBER";
+  nickname?: string;
+  profileImageUrl?: string;
   messageType: "ENTER" | "TALK" | "LEAVE";
 }
 
@@ -96,6 +98,8 @@ export interface GoodsChatMessageResponse {
     userId: string;
     nickname: string;
     userImage?: string;
+    profileImageUrl?: string;
+    role?: string;
   };
   // STOMP 클라이언트에 저장된 userId (비교용)
   currentUserId?: string;
@@ -106,10 +110,37 @@ export interface GoodsChatMessageResponse {
 /** === 채팅 REST API === */
 /** 채팅방 생성: /goods/chat?consultationId=...  */
 export async function createChatRoom(consultationId: number) {
-  const { data } = await chattingApiClient.post<
-    ApiResponse<GoodsChatRoomResponse>
-  >(`/goods/chat`, null, { params: { consultationId } });
-  return data.result; // GoodsChatRoomResponse
+  try {
+    const { data } = await chattingApiClient.post<
+      ApiResponse<GoodsChatRoomResponse>
+    >(`/goods/chat`, null, { params: { consultationId } });
+    return data.result; // GoodsChatRoomResponse
+  } catch (error: any) {
+    // 에러 상세 정보 로깅
+    const errorResponse = error?.response?.data;
+    console.error("❌ [채팅] 채팅방 생성 API 오류 상세:", {
+      error,
+      message: error?.message,
+      response: errorResponse,
+      responseString: errorResponse
+        ? JSON.stringify(errorResponse, null, 2)
+        : undefined,
+      status: error?.response?.status,
+      statusText: error?.response?.statusText,
+      consultationId,
+      requestUrl: error?.config?.url,
+      requestMethod: error?.config?.method,
+      requestHeaders: error?.config?.headers,
+    });
+    // 응답 데이터를 별도로 출력하여 확인하기 쉽게 함
+    if (errorResponse) {
+      console.error(
+        "❌ [채팅] 백엔드 에러 응답 데이터:",
+        JSON.stringify(errorResponse, null, 2)
+      );
+    }
+    throw error;
+  }
 }
 
 /** 메시지 페이지/증분 조회(시간 기준): /goods/chat/{chatRoomId}/message?lastSentAt=ISO */
@@ -306,12 +337,12 @@ export class StompChatClient {
                     }
 
                     // 원본 메시지에서 이메일 정보 추출 (비교용)
-                    const senderEmail = 
-                      rawMessage.senderEmail || 
-                      rawMessage.email || 
+                    const senderEmail =
+                      rawMessage.senderEmail ||
+                      rawMessage.email ||
                       rawMessage.sender?.email ||
                       undefined;
-                    
+
                     const parsedMessage: GoodsChatMessageResponse = {
                       id: rawMessage.chatMessageId || rawMessage.id,
                       roomId: rawMessage.roomId || rawMessage.chatRoomId,

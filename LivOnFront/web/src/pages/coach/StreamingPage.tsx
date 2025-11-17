@@ -78,6 +78,17 @@ const ScreenShareInfo = styled.div`
   gap: 8px;
 `;
 
+const pickNonEmptyString = (
+  ...values: Array<string | undefined | null>
+): string | undefined => {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim() !== "") {
+      return value;
+    }
+  }
+  return undefined;
+};
+
 const MainContentArea = styled.div`
   flex: 1;
   display: flex;
@@ -103,6 +114,7 @@ interface ChatMessage {
   timestamp: Date;
   timestampString?: string; // UTC 시간 문자열 (서버에서 받은 원본)
   senderImage?: string;
+  senderRole?: string;
   senderUserId?: string;
   messageType?: "ENTER" | "TALK" | "LEAVE";
 }
@@ -215,13 +227,17 @@ export const StreamingPage: React.FC = () => {
   >({});
   const [isLoadingParticipantInfo, setIsLoadingParticipantInfo] =
     useState(false);
-  
+
   // 상담 정보 (preQna, aiSummary 포함)
-  const [consultationInfo, setConsultationInfo] = useState<CoachConsultation | null>(null);
-  const [isLoadingConsultationInfo, setIsLoadingConsultationInfo] = useState(false);
-  
-  // 참여자 정보 API 응답 저장 (ParticipantModalData 생성용)
-  const [participantInfoResponse, setParticipantInfoResponse] = useState<ParticipantInfoResponse | null>(null);
+  const [consultationInfo, setConsultationInfo] =
+    useState<CoachConsultation | null>(null);
+  const [isLoadingConsultationInfo, setIsLoadingConsultationInfo] =
+    useState(false);
+
+  // 참여자 정보 API 응답 저장 (ParticipantModalData 생성용) - 여러 참여자 정보 리스트
+  const [participantInfoResponse, setParticipantInfoResponse] = useState<
+    ParticipantInfoResponse[] | null
+  >(null);
 
   // 참여자 정보를 API에서 가져오는 함수
   const fetchParticipantInfo = useCallback(async () => {
@@ -246,144 +262,149 @@ export const StreamingPage: React.FC = () => {
     setIsLoadingParticipantInfo(true);
     try {
       console.log("🔵 [참여자 정보] API 호출 시작:", { consultationId });
-      const participantInfo = await getParticipantInfoApi(
+      const participantInfoList = await getParticipantInfoApi(
         accessToken,
         consultationId
       );
 
-      console.log("🔵 [참여자 정보] API 응답:", participantInfo);
+      console.log("🔵 [참여자 정보] API 응답:", participantInfoList);
 
-      // ParticipantModalData 생성을 위해 응답 저장
-      setParticipantInfoResponse(participantInfo);
+      // ParticipantModalData 생성을 위해 응답 저장 (배열)
+      setParticipantInfoResponse(participantInfoList);
 
-      // API 응답을 ParticipantDetail 형식으로 변환
-      const memberInfo = participantInfo.memberInfo;
-      const healthData = memberInfo.healthData;
+      // 여러 참여자 정보를 participantInfoMap에 저장
+      // 각 참여자별로 ParticipantDetail 생성 및 저장
+      if (participantInfoList && participantInfoList.length > 0) {
+        participantInfoList.forEach((participantInfo) => {
+          const memberInfo = participantInfo.memberInfo;
+          const healthData = memberInfo.healthData;
 
-      // badges 생성: 건강 상태 데이터 기반
-      const badges: string[] = [];
-      if (healthData.activityLevel) {
-        badges.push(`활동 수준: ${healthData.activityLevel}`);
-      }
-      if (healthData.sleepQuality) {
-        badges.push(`수면 질: ${healthData.sleepQuality}`);
-      }
-      if (healthData.stressLevel) {
-        badges.push(`스트레스 수준: ${healthData.stressLevel}`);
-      }
+          // badges 생성: 건강 상태 데이터 기반
+          const badges: string[] = [];
+          if (healthData.activityLevel) {
+            badges.push(`활동 수준: ${healthData.activityLevel}`);
+          }
+          if (healthData.sleepQuality) {
+            badges.push(`수면 질: ${healthData.sleepQuality}`);
+          }
+          if (healthData.stressLevel) {
+            badges.push(`스트레스 수준: ${healthData.stressLevel}`);
+          }
 
-      // notes 생성: 건강 데이터 요약
-      const notesParts: string[] = [];
-      if (healthData.height) {
-        notesParts.push(`신장: ${healthData.height}cm`);
-      }
-      if (healthData.weight) {
-        notesParts.push(`체중: ${healthData.weight}kg`);
-      }
-      if (typeof healthData.steps === "number") {
-        notesParts.push(`일일 걸음 수: ${healthData.steps}걸음`);
-      }
-      if (typeof healthData.sleepTime === "number") {
-        notesParts.push(`수면 시간: ${healthData.sleepTime}시간`);
-      }
-      const notes = notesParts.join(", ");
+          // notes 생성: 건강 데이터 요약
+          const notesParts: string[] = [];
+          if (healthData.height) {
+            notesParts.push(`신장: ${healthData.height}cm`);
+          }
+          if (healthData.weight) {
+            notesParts.push(`체중: ${healthData.weight}kg`);
+          }
+          if (typeof healthData.steps === "number") {
+            notesParts.push(`일일 걸음 수: ${healthData.steps}걸음`);
+          }
+          if (typeof healthData.sleepTime === "number") {
+            notesParts.push(`수면 시간: ${healthData.sleepTime}시간`);
+          }
+          const notes = notesParts.join(", ");
 
-      // questions: preQna가 있으면 사용 (실제로는 별도 필드가 필요할 수 있음)
-      const questions: string[] = [];
+          // questions: preQna가 있으면 사용 (실제로는 별도 필드가 필요할 수 있음)
+          const questions: string[] = [];
 
-      // analysis 생성: 건강 데이터 기반 분석 결과
-      const analysisSummary: string[] = [];
-      if (healthData.height && healthData.weight) {
-        const bmi = healthData.weight / Math.pow(healthData.height / 100, 2);
-        analysisSummary.push(`BMI: ${bmi.toFixed(1)}`);
+          // analysis 생성: 건강 데이터 기반 분석 결과
+          const analysisSummary: string[] = [];
+          if (healthData.height && healthData.weight) {
+            const bmi =
+              healthData.weight / Math.pow(healthData.height / 100, 2);
+            analysisSummary.push(`BMI: ${bmi.toFixed(1)}`);
+          }
+          if (typeof healthData.sleepTime === "number") {
+            const sleepHours = healthData.sleepTime;
+            if (sleepHours < 7) {
+              analysisSummary.push("수면 시간이 부족합니다.");
+            } else if (sleepHours > 9) {
+              analysisSummary.push("수면 시간이 충분합니다.");
+            }
+          }
+          if (healthData.steps) {
+            if (healthData.steps < 5000) {
+              analysisSummary.push("일일 활동량을 늘리는 것이 좋습니다.");
+            } else if (healthData.steps >= 10000) {
+              analysisSummary.push("활동량이 충분합니다.");
+            }
+          }
+
+          const analysisTip: string[] = [];
+          if (healthData.sleepQuality === "poor") {
+            analysisTip.push("규칙적인 수면 패턴을 유지하세요.");
+          }
+          if (healthData.stressLevel === "high") {
+            analysisTip.push("스트레스 관리를 위한 운동을 추천합니다.");
+          }
+          if (healthData.activityLevel === "low") {
+            analysisTip.push("점진적으로 활동량을 늘려가세요.");
+          }
+
+          const participantDetail: ParticipantDetail = {
+            name: memberInfo.nickname,
+            badges,
+            notes,
+            questions,
+            analysis: {
+              generatedAt: new Date().toLocaleDateString("ko-KR", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              }),
+              type: "건강 상태 분석",
+              summary:
+                analysisSummary.length > 0
+                  ? analysisSummary.join(" ")
+                  : "건강 데이터를 분석한 결과입니다.",
+              tip:
+                analysisTip.length > 0
+                  ? analysisTip.join(" ")
+                  : "규칙적인 운동과 건강한 식습관을 유지하세요.",
+            },
+          };
+
+          // 참가자 identity 찾기 (remoteTracks에서 참가자와 매칭)
+          // 닉네임이나 identity로 매칭 시도
+          let participantIdentity = memberInfo.nickname;
+
+          // remoteTracks에서 닉네임이 일치하는 참가자 찾기
+          const matchingParticipant = remoteTracks.find(
+            (track) =>
+              track.participant?.name === memberInfo.nickname ||
+              track.participantIdentity === memberInfo.nickname
+          );
+
+          if (matchingParticipant) {
+            // remoteTracks의 identity를 우선 사용
+            participantIdentity =
+              matchingParticipant.participantIdentity ||
+              matchingParticipant.participant?.identity ||
+              memberInfo.nickname;
+          }
+
+          setParticipantInfoMap((prev) => ({
+            ...prev,
+            [participantIdentity]: participantDetail,
+          }));
+
+          // 닉네임으로도 매핑 추가 (참가자 이름만으로도 접근 가능하도록)
+          if (participantIdentity !== memberInfo.nickname) {
+            setParticipantInfoMap((prev) => ({
+              ...prev,
+              [memberInfo.nickname]: participantDetail,
+            }));
+          }
+
+          console.log("🔵 [참여자 정보] 변환 완료:", {
+            identity: participantIdentity,
+            detail: participantDetail,
+          });
+        });
       }
-      if (typeof healthData.sleepTime === "number") {
-        const sleepHours = healthData.sleepTime;
-        if (sleepHours < 7) {
-          analysisSummary.push("수면 시간이 부족합니다.");
-        } else if (sleepHours > 9) {
-          analysisSummary.push("수면 시간이 충분합니다.");
-        }
-      }
-      if (healthData.steps) {
-        if (healthData.steps < 5000) {
-          analysisSummary.push("일일 활동량을 늘리는 것이 좋습니다.");
-        } else if (healthData.steps >= 10000) {
-          analysisSummary.push("활동량이 충분합니다.");
-        }
-      }
-
-      const analysisTip: string[] = [];
-      if (healthData.sleepQuality === "poor") {
-        analysisTip.push("규칙적인 수면 패턴을 유지하세요.");
-      }
-      if (healthData.stressLevel === "high") {
-        analysisTip.push("스트레스 관리를 위한 운동을 추천합니다.");
-      }
-      if (healthData.activityLevel === "low") {
-        analysisTip.push("점진적으로 활동량을 늘려가세요.");
-      }
-
-      const participantDetail: ParticipantDetail = {
-        name: memberInfo.nickname,
-        badges,
-        notes,
-        questions,
-        analysis: {
-          generatedAt: new Date().toLocaleDateString("ko-KR", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          }),
-          type: "건강 상태 분석",
-          summary:
-            analysisSummary.length > 0
-              ? analysisSummary.join(" ")
-              : "건강 데이터를 분석한 결과입니다.",
-          tip:
-            analysisTip.length > 0
-              ? analysisTip.join(" ")
-              : "규칙적인 운동과 건강한 식습관을 유지하세요.",
-        },
-      };
-
-      // 참가자 identity 찾기 (remoteTracks에서 참가자와 매칭)
-      // 1:1 상담이므로 remoteTracks의 첫 번째 원격 참가자를 참가자로 간주
-      // 닉네임이나 identity로 매칭 시도
-      let participantIdentity = memberInfo.nickname;
-
-      // remoteTracks에서 닉네임이 일치하는 참가자 찾기
-      const matchingParticipant = remoteTracks.find(
-        (track) =>
-          track.participant?.name === memberInfo.nickname ||
-          track.participantIdentity === memberInfo.nickname
-      );
-
-      if (matchingParticipant) {
-        // remoteTracks의 identity를 우선 사용
-        participantIdentity =
-          matchingParticipant.participantIdentity ||
-          matchingParticipant.participant?.identity ||
-          memberInfo.nickname;
-      }
-
-      setParticipantInfoMap((prev) => ({
-        ...prev,
-        [participantIdentity]: participantDetail,
-      }));
-
-      // 닉네임으로도 매핑 추가 (참가자 이름만으로도 접근 가능하도록)
-      if (participantIdentity !== memberInfo.nickname) {
-        setParticipantInfoMap((prev) => ({
-          ...prev,
-          [memberInfo.nickname]: participantDetail,
-        }));
-      }
-
-      console.log("🔵 [참여자 정보] 변환 완료:", {
-        identity: participantIdentity,
-        detail: participantDetail,
-      });
     } catch (error) {
       console.error("❌ [참여자 정보] API 호출 오류:", error);
       // 에러 발생 시에도 화상 통화는 계속되도록 조용히 처리
@@ -419,7 +440,10 @@ export const StreamingPage: React.FC = () => {
       ]);
 
       // consultationId로 상담 찾기
-      const allConsultations = [...upcomingResponse.items, ...pastResponse.items];
+      const allConsultations = [
+        ...upcomingResponse.items,
+        ...pastResponse.items,
+      ];
       const consultation = allConsultations.find(
         (c) => c.consultationId === Number(consultationId)
       );
@@ -428,7 +452,10 @@ export const StreamingPage: React.FC = () => {
         console.log("🔵 [상담 정보] 조회 성공:", consultation);
         setConsultationInfo(consultation);
       } else {
-        console.warn("⚠️ [상담 정보] 해당 consultationId를 찾을 수 없습니다:", consultationId);
+        console.warn(
+          "⚠️ [상담 정보] 해당 consultationId를 찾을 수 없습니다:",
+          consultationId
+        );
       }
     } catch (error) {
       console.error("❌ [상담 정보] API 호출 오류:", error);
@@ -498,29 +525,33 @@ export const StreamingPage: React.FC = () => {
     async (identity: string) => {
       // 코치인 경우 항상 모달 열기
       if (user?.role === "coach") {
-        setSelectedParticipantId(identity);
-        
         const consultationId =
           location.state?.consultationId || location.state?.reservationId;
-        
-        // 참여자 정보가 없으면 로드 시도
-        if (!participantInfoResponse && consultationId && !isLoadingParticipantInfo) {
-          try {
-            await fetchParticipantInfo();
-          } catch (error) {
-            console.error("참여자 정보 로드 실패:", error);
+
+        // 모달을 열기 전에 필요한 데이터 확보
+        if (consultationId) {
+          // 참여자 정보가 없으면 로드 시도
+          if (!participantInfoResponse && !isLoadingParticipantInfo) {
+            try {
+              await fetchParticipantInfo();
+            } catch (error) {
+              console.error("참여자 정보 로드 실패:", error);
+            }
           }
-        }
-        
-        // 상담 정보가 없으면 로드 시도
-        if (!consultationInfo && consultationId && !isLoadingConsultationInfo) {
-          try {
-            await fetchConsultationInfo();
-          } catch (error) {
-            console.error("상담 정보 로드 실패:", error);
+
+          // 상담 정보가 없으면 로드 시도
+          if (!consultationInfo && !isLoadingConsultationInfo) {
+            try {
+              await fetchConsultationInfo();
+            } catch (error) {
+              console.error("상담 정보 로드 실패:", error);
+            }
           }
         }
 
+        setSelectedParticipantId(identity);
+
+        // 참여자 정보가 없으면 로드 시도
       } else if (participantInfoMap[identity]) {
         setSelectedParticipantId(identity);
       }
@@ -534,7 +565,7 @@ export const StreamingPage: React.FC = () => {
       isLoadingParticipantInfo,
       isLoadingConsultationInfo,
       fetchParticipantInfo,
-          fetchConsultationInfo,
+      fetchConsultationInfo,
     ]
   );
 
@@ -889,9 +920,12 @@ export const StreamingPage: React.FC = () => {
                 console.log("🔵 [채팅] 채팅방 생성 시작:", {
                   consultationId,
                   userId: user.id,
+                  consultationType: consultationInfo?.type,
+                  hasConsultationInfo: !!consultationInfo,
                 });
 
                 // 채팅방 생성
+                // 그룹 상담의 경우 백엔드가 다른 파라미터를 요구할 수 있음
                 const chatRoom = await createChatRoom(consultationId);
                 console.log("🔵 [채팅] 채팅방 생성 완료:", {
                   chatRoomId: chatRoom.chatRoomId,
@@ -915,19 +949,57 @@ export const StreamingPage: React.FC = () => {
                 const convertedMessages: ChatMessage[] = pastMessages
                   .filter((msg) => msg.content && msg.content.trim() !== "") // 빈 메시지 필터링
                   .map((msg) => {
-                    const isSystemMessage = 
-                      msg.messageType === "ENTER" || msg.messageType === "LEAVE";
-                    // 서버 응답에 nickname이 포함되어 있을 수 있음 (타입에는 없지만 실제 응답에 포함될 수 있음)
+                    const isSystemMessage =
+                      msg.messageType === "ENTER" ||
+                      msg.messageType === "LEAVE";
                     const msgWithNickname = msg as any;
-                    const senderName = isSystemMessage 
-                      ? "알림" 
-                      : msgWithNickname.nickname || msgWithNickname.userNickname || msg.userId;
+                    const senderData = msgWithNickname.sender || {};
+                    const senderName = isSystemMessage
+                      ? "알림"
+                      : pickNonEmptyString(
+                          senderData.nickname,
+                          senderData.userNickname,
+                          msgWithNickname.senderNickname,
+                          msg.nickname,
+                          msgWithNickname.nickname,
+                          msgWithNickname.userNickname,
+                          msgWithNickname.name,
+                          msg.userId
+                        ) || "Unknown";
+                    const senderImage = isSystemMessage
+                      ? undefined
+                      : pickNonEmptyString(
+                          senderData.profileImageUrl,
+                          senderData.userImage,
+                          senderData.profileImage,
+                          msg.profileImageUrl,
+                          msgWithNickname.profileImageUrl,
+                          msgWithNickname.userImage,
+                          msgWithNickname.profileImage,
+                          msgWithNickname.memberImage,
+                          msgWithNickname.avatarUrl,
+                          // 최후수단: 내 메시지라면 내 프로필 이미지 사용
+                          msg.userId && user?.id === msg.userId
+                            ? user?.profileImage
+                            : undefined
+                        );
+                    const senderRole = isSystemMessage
+                      ? undefined
+                      : pickNonEmptyString(
+                          senderData.role,
+                          senderData.userRole,
+                          msg.role,
+                          msgWithNickname.role,
+                          msgWithNickname.userRole
+                        );
                     return {
                       id: msg.id,
-                      sender: senderName, // 닉네임 우선, 없으면 userId
+                      sender: senderName,
                       message: msg.content,
-                      timestamp: new Date(msg.sentAt), // ChatPanel에서 UTC 파싱 및 한국 시간대 변환 처리
-                      timestampString: msg.sentAt, // UTC 시간 문자열 (ChatPanel에서 명시적으로 파싱)
+                      timestamp: new Date(msg.sentAt),
+                      timestampString: msg.sentAt,
+                      senderImage,
+                      senderRole,
                       senderUserId: msg.userId,
                       messageType: msg.messageType,
                     };
@@ -969,7 +1041,7 @@ export const StreamingPage: React.FC = () => {
 
                         // 모든 타입의 메시지 처리 (ENTER, LEAVE, TALK 모두 표시)
                         // 시스템 메시지(ENTER, LEAVE)는 발신자를 "알림"으로 표시
-                        
+
                         // 빈 메시지 필터링 (LEAVE 타입이면서 빈 메시지인 경우 제외)
                         if (!message.message || message.message.trim() === "") {
                           console.log("🔵 [채팅] 빈 메시지 무시:", {
@@ -1054,11 +1126,45 @@ export const StreamingPage: React.FC = () => {
 
                           // 새 메시지 생성
                           // 시스템 메시지(ENTER, LEAVE)인 경우 발신자를 "알림"으로 설정
-                          const isSystemMessage = 
-                            message.type === "ENTER" || message.type === "LEAVE";
+                          const isSystemMessage =
+                            message.type === "ENTER" ||
+                            message.type === "LEAVE";
+                          const senderData = (message.sender as any) || {};
                           const senderName = isSystemMessage
                             ? "알림"
-                            : message.sender?.nickname || message.sender?.userId || "Unknown";
+                            : pickNonEmptyString(
+                                senderData.nickname,
+                                senderData.userNickname,
+                                message.sender?.nickname,
+                                (message as any).senderNickname,
+                                (message as any).userNickname,
+                                message.sender?.userId
+                              ) || "Unknown";
+
+                          const resolvedSenderImage = isSystemMessage
+                            ? undefined
+                            : pickNonEmptyString(
+                                senderData.profileImageUrl,
+                                senderData.userImage,
+                                senderData.profileImage,
+                                message.sender?.profileImageUrl,
+                                message.sender?.userImage,
+                                (message.sender as any)?.profileImage,
+                                (message.sender as any)?.imageUrl,
+                                // 내 메시지라면 내 프로필 이미지로 보강
+                                message.sender?.userId &&
+                                  message.sender.userId === user?.id
+                                  ? user?.profileImage
+                                  : undefined
+                              );
+                          const resolvedSenderRole = isSystemMessage
+                            ? undefined
+                            : pickNonEmptyString(
+                                senderData.role,
+                                message.sender?.role,
+                                (message.sender as any)?.role,
+                                (message.sender as any)?.userRole
+                              );
 
                           const newMessage: ChatMessage = {
                             id: message.id,
@@ -1066,7 +1172,8 @@ export const StreamingPage: React.FC = () => {
                             message: message.message,
                             timestamp: new Date(message.sentAt), // ChatPanel에서 UTC 파싱 및 한국 시간대 변환 처리
                             timestampString: message.sentAt, // UTC 시간 문자열 (ChatPanel에서 명시적으로 파싱)
-                            senderImage: message.sender?.userImage || undefined,
+                            senderImage: resolvedSenderImage,
+                            senderRole: resolvedSenderRole,
                             senderUserId: message.sender?.userId,
                             messageType: message.type,
                           };
@@ -1537,6 +1644,7 @@ export const StreamingPage: React.FC = () => {
           onParticipantSearchChange={setParticipantSearchQuery}
           isVideoEnabled={isVideoEnabled}
           isAudioEnabled={isAudioEnabled}
+          localProfileImage={user?.profileImage}
         />
 
         {/* 채팅 패널 */}
@@ -1575,11 +1683,29 @@ export const StreamingPage: React.FC = () => {
         open={Boolean(selectedParticipantId)}
         data={
           selectedParticipantId && participantInfoResponse
-            ? {
-                participantInfo: participantInfoResponse,
-                preQna: consultationInfo?.preQna,
-                aiSummary: consultationInfo?.aiSummary,
-              }
+            ? (() => {
+                // selectedParticipantId와 일치하는 참여자 찾기
+                // 닉네임 또는 identity로 매칭 시도
+                const selectedParticipant = participantInfoResponse.find(
+                  (info) =>
+                    info.memberInfo.nickname === selectedParticipantId ||
+                    selectedParticipantId === info.memberInfo.nickname
+                );
+
+                // 만약 정확히 일치하는 참여자가 없으면 첫 번째 참여자 사용
+                const participantInfo =
+                  selectedParticipant || participantInfoResponse[0];
+
+                return participantInfo
+                  ? {
+                      participantInfo,
+                      preQna: consultationInfo?.preQna,
+                      aiSummary:
+                        participantInfo.aiSummary ??
+                        consultationInfo?.aiSummary,
+                    }
+                  : undefined;
+              })()
             : undefined
         }
         isLoading={

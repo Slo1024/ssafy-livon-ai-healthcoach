@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -65,6 +66,10 @@ fun LiveStreamingCoachScreen(
 
     var currentScreen by remember { mutableStateOf("streaming") } // "streaming", "participant", "chatting"
     var showHeader by remember { mutableStateOf(false) } // default: header hidden
+    var focusedTrackSid by remember { mutableStateOf<String?>(null) } // double-tap focus
+    // identity -> display name 매핑 (필요 시 외부 데이터로 채워 넣을 수 있음)
+    val identityToDisplayName = remember { mutableStateMapOf<String, String>() }
+    fun displayNameFor(identity: String): String = identityToDisplayName[identity] ?: identity
 
     LivonTheme {
         when (currentScreen) {
@@ -160,138 +165,277 @@ fun LiveStreamingCoachScreen(
                                 .fillMaxSize()
                                 .padding(paddingValues)
                         ) {
+                            focusedTrackSid?.let { sid ->
+                                val focused = participantTracks.firstOrNull { it.track?.sid == sid }
+                                if (focused != null) {
+                                    StreamingCamera(
+                                        track = focused.track as? VideoTrack,
+                                        userName = displayNameFor(focused.participantIdentity),
+                                        isCameraEnabled = focused.isCameraEnabled,
+                                        isScreenShare = focused.isScreenShare,
+                                        eglBaseContext = eglBaseContext,
+                                        room = room,
+                                        modifier = Modifier.fillMaxSize(),
+                                        onDoubleTap = { focusedTrackSid = null }
+                                    )
+                                    return@Box
+                                } else {
+                                    focusedTrackSid = null
+                                }
+                            }
                             when (remoteTracks.size) {
                                 0 -> {
                                     coachTrackInfo?.let { me ->
                                         StreamingCamera(
                                             track = me.track as? VideoTrack,
-                                            userName = me.participantIdentity,
+                                            userName = displayNameFor(me.participantIdentity),
                                             isCameraEnabled = me.isCameraEnabled,
+                                            isScreenShare = me.isScreenShare,
                                             eglBaseContext = eglBaseContext,
                                             room = room,
-                                            modifier = Modifier.fillMaxSize()
+                                            modifier = Modifier.fillMaxSize(),
+                                            onDoubleTap = { me.track?.sid?.let { focusedTrackSid = it } }
                                         )
                                     } ?: Text("비디오 스트림을 준비 중입니다.")
                                 }
 
                                 1 -> {
                                     val remote = remoteTracks.first()
-                                    StreamingCamera(
-                                        track = remote.track as? VideoTrack,
-                                        userName = remote.participantIdentity,
-                                        isCameraEnabled = remote.isCameraEnabled,
-                                        eglBaseContext = eglBaseContext,
-                                        room = room,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
 
-                                    coachTrackInfo?.let { me ->
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(6.dp),
+                                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        // 위: 내 화면 (코치)
                                         Box(
                                             modifier = Modifier
-                                                .align(Alignment.BottomEnd)
-                                                .padding(12.dp)
-                                                .size(140.dp)
+                                                .weight(1f)
+                                                .fillMaxWidth()
+                                        ) {
+                                            coachTrackInfo?.let { me ->
+                                                StreamingCamera(
+                                                    track = me.track as? VideoTrack,
+                                                    userName = displayNameFor(me.participantIdentity),
+                                                    isCameraEnabled = me.isCameraEnabled,
+                                                    isScreenShare = me.isScreenShare,
+                                                    eglBaseContext = eglBaseContext,
+                                                    room = room,
+                                                    modifier = Modifier.fillMaxSize()
+                                                )
+                                            } ?: Text("내 비디오 스트림을 준비 중입니다.")
+                                        }
+
+                                        // 아래: 상대방 화면
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .fillMaxWidth()
                                         ) {
                                             StreamingCamera(
-                                                track = me.track as? VideoTrack,
-                                                userName = me.participantIdentity,
-                                                isCameraEnabled = me.isCameraEnabled,
+                                                track = remote.track as? VideoTrack,
+                                                userName = displayNameFor(remote.participantIdentity),
+                                                isCameraEnabled = remote.isCameraEnabled,
+                                                isScreenShare = remote.isScreenShare,
                                                 eglBaseContext = eglBaseContext,
                                                 room = room,
-                                                modifier = Modifier.fillMaxSize()
+                                                modifier = Modifier.fillMaxSize(),
+                                                onDoubleTap = { remote.track?.sid?.let { focusedTrackSid = it } }
                                             )
                                         }
                                     }
                                 }
 
                                 else -> {
-                                    val pageSize = 4
-                                    val pages = (remoteTracks.size + pageSize - 1) / pageSize
+                                    val screenShareRemote = remoteTracks.firstOrNull { it.isScreenShare }
+                                    if (screenShareRemote != null) {
+                                        val remainingRemotes = remoteTracks.filter { it.track?.sid != screenShareRemote.track?.sid }
+                                        val pageSize = 4
+                                        val gridPages = if (coachTrackInfo != null) {
+                                            val leftover = (remainingRemotes.size - 3).coerceAtLeast(0)
+                                            1 + (if (leftover == 0) 0 else (leftover + pageSize - 1) / pageSize)
+                                        } else {
+                                            (remainingRemotes.size + pageSize - 1) / pageSize
+                                        }
 
-                                    LazyRow(
-                                        modifier = Modifier.fillMaxSize()
-                                    ) {
-                                        items(pages) { pageIndex ->
-                                            val start = pageIndex * pageSize
-                                            val end = minOf(start + pageSize, remoteTracks.size)
-
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillParentMaxWidth()
-                                                    .fillParentMaxHeight()
-                                                    .padding(8.dp)
-                                            ) {
-                                                Column(
-                                                    modifier = Modifier.fillMaxSize(),
-                                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        LazyRow(modifier = Modifier.fillMaxSize()) {
+                                            // Page 0: full-screen shared screen
+                                            item {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillParentMaxWidth()
+                                                        .fillParentMaxHeight()
+                                                        .padding(8.dp)
                                                 ) {
-                                                    Row(
-                                                        modifier = Modifier.weight(1f),
-                                                        horizontalArrangement = Arrangement.spacedBy(
-                                                            8.dp
-                                                        )
+                                                    StreamingCamera(
+                                                        track = screenShareRemote.track as? VideoTrack,
+                                                        userName = displayNameFor(screenShareRemote.participantIdentity),
+                                                        isCameraEnabled = screenShareRemote.isCameraEnabled,
+                                                        isScreenShare = true,
+                                                        eglBaseContext = eglBaseContext,
+                                                        room = room,
+                                                        modifier = Modifier.fillMaxSize(),
+                                                        onDoubleTap = { screenShareRemote.track?.sid?.let { focusedTrackSid = it } }
+                                                    )
+                                                }
+                                            }
+
+                                            // Subsequent pages: 2x2 grid
+                                            items(gridPages) { pageIndex ->
+                                                val pageItems: List<TrackInfo> = if (pageIndex == 0) {
+                                                    val list = mutableListOf<TrackInfo>()
+                                                    coachTrackInfo?.let { list.add(it) }
+                                                    list.addAll(remainingRemotes.take(if (coachTrackInfo != null) 3 else 4))
+                                                    list
+                                                } else {
+                                                    val startRemote = (pageIndex - 1) * pageSize + (if (coachTrackInfo != null) 3 else 4)
+                                                    val endRemote = minOf(startRemote + pageSize, remainingRemotes.size)
+                                                    if (startRemote < endRemote) remainingRemotes.subList(startRemote, endRemote) else emptyList()
+                                                }
+
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillParentMaxWidth()
+                                                        .fillParentMaxHeight()
+                                                        .padding(8.dp)
+                                                ) {
+                                                    Column(
+                                                        modifier = Modifier.fillMaxSize(),
+                                                        verticalArrangement = Arrangement.spacedBy(8.dp)
                                                     ) {
-                                                        for (i in 0 until 2) {
-                                                            val idx = start + i
-                                                            if (idx < end) {
-                                                                val t = remoteTracks[idx]
-                                                                Box(modifier = Modifier.weight(1f)) {
-                                                                    StreamingCamera(
-                                                                        track = t.track as? VideoTrack,
-                                                                        userName = t.participantIdentity,
-                                                                        isCameraEnabled = t.isCameraEnabled,
-                                                                        eglBaseContext = eglBaseContext,
-                                                                        room = room,
-                                                                        modifier = Modifier.fillMaxSize()
-                                                                    )
+                                                        Row(
+                                                            modifier = Modifier.weight(1f),
+                                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                        ) {
+                                                            for (i in 0 until 2) {
+                                                                if (i < pageItems.size) {
+                                                                    val t = pageItems[i]
+                                                                    Box(modifier = Modifier.weight(1f)) {
+                                                                        StreamingCamera(
+                                                                            track = t.track as? VideoTrack,
+                                                                            userName = displayNameFor(t.participantIdentity),
+                                                                            isCameraEnabled = t.isCameraEnabled,
+                                                                            isScreenShare = t.isScreenShare,
+                                                                            eglBaseContext = eglBaseContext,
+                                                                            room = room,
+                                                                            modifier = Modifier.fillMaxSize(),
+                                                                            onDoubleTap = { t.track?.sid?.let { focusedTrackSid = it } }
+                                                                        )
+                                                                    }
+                                                                } else {
+                                                                    Spacer(modifier = Modifier.weight(1f))
                                                                 }
-                                                            } else {
-                                                                Spacer(modifier = Modifier.weight(1f))
                                                             }
                                                         }
-                                                    }
-                                                    Row(
-                                                        modifier = Modifier.weight(1f),
-                                                        horizontalArrangement = Arrangement.spacedBy(
-                                                            8.dp
-                                                        )
-                                                    ) {
-                                                        for (i in 2 until 4) {
-                                                            val idx = start + i
-                                                            if (idx < end) {
-                                                                val t = remoteTracks[idx]
-                                                                Box(modifier = Modifier.weight(1f)) {
-                                                                    StreamingCamera(
-                                                                        track = t.track as? VideoTrack,
-                                                                        userName = t.participantIdentity,
-                                                                        isCameraEnabled = t.isCameraEnabled,
-                                                                        eglBaseContext = eglBaseContext,
-                                                                        room = room,
-                                                                        modifier = Modifier.fillMaxSize()
-                                                                    )
+                                                        Row(
+                                                            modifier = Modifier.weight(1f),
+                                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                        ) {
+                                                            for (i in 2 until 4) {
+                                                                if (i < pageItems.size) {
+                                                                    val t = pageItems[i]
+                                                                    Box(modifier = Modifier.weight(1f)) {
+                                                                        StreamingCamera(
+                                                                            track = t.track as? VideoTrack,
+                                                                            userName = displayNameFor(t.participantIdentity),
+                                                                            isCameraEnabled = t.isCameraEnabled,
+                                                                            isScreenShare = t.isScreenShare,
+                                                                            eglBaseContext = eglBaseContext,
+                                                                            room = room,
+                                                                            modifier = Modifier.fillMaxSize(),
+                                                                            onDoubleTap = { t.track?.sid?.let { focusedTrackSid = it } }
+                                                                        )
+                                                                    }
+                                                                } else {
+                                                                    Spacer(modifier = Modifier.weight(1f))
                                                                 }
-                                                            } else {
-                                                                Spacer(modifier = Modifier.weight(1f))
                                                             }
                                                         }
                                                     }
                                                 }
+                                            }
+                                        }
+                                    } else {
+                                        val pageSize = 4
 
-                                                coachTrackInfo?.let { me ->
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .align(Alignment.BottomEnd)
-                                                            .padding(12.dp)
-                                                            .size(140.dp)
+                                        // 기존 2x2 페이징 (첫 페이지에 나 포함)
+                                        val pages = if (coachTrackInfo != null) {
+                                            val remainingRemotes = (remoteTracks.size - 3).coerceAtLeast(0)
+                                            1 + (if (remainingRemotes == 0) 0 else (remainingRemotes + pageSize - 1) / pageSize)
+                                        } else {
+                                            (remoteTracks.size + pageSize - 1) / pageSize
+                                        }
+
+                                        LazyRow(
+                                            modifier = Modifier.fillMaxSize()
+                                        ) {
+                                            items(pages) { pageIndex ->
+                                                val pageItems: List<TrackInfo> = if (pageIndex == 0) {
+                                                    val list = mutableListOf<TrackInfo>()
+                                                    coachTrackInfo?.let { list.add(it) }
+                                                    list.addAll(remoteTracks.take(if (coachTrackInfo != null) 3 else 4))
+                                                    list
+                                                } else {
+                                                    val startRemote = (pageIndex - 1) * pageSize + (if (coachTrackInfo != null) 3 else 4)
+                                                    val endRemote = minOf(startRemote + pageSize, remoteTracks.size)
+                                                    if (startRemote < endRemote) remoteTracks.subList(startRemote, endRemote) else emptyList()
+                                                }
+
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillParentMaxWidth()
+                                                        .fillParentMaxHeight()
+                                                        .padding(8.dp)
+                                                ) {
+                                                    Column(
+                                                        modifier = Modifier.fillMaxSize(),
+                                                        verticalArrangement = Arrangement.spacedBy(8.dp)
                                                     ) {
-                                                        MemberStreamingCamera(
-                                                            track = me.track as? VideoTrack,
-                                                            userName = me.participantIdentity,
-                                                            isCameraEnabled = me.isCameraEnabled,
-                                                            eglBaseContext = eglBaseContext,
-                                                            room = room,
-                                                            modifier = Modifier.fillMaxSize()
-                                                        )
+                                                        Row(
+                                                            modifier = Modifier.weight(1f),
+                                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                        ) {
+                                                            for (i in 0 until 2) {
+                                                                if (i < pageItems.size) {
+                                                                    val t = pageItems[i]
+                                                                    Box(modifier = Modifier.weight(1f)) {
+                                                                        StreamingCamera(
+                                                                            track = t.track as? VideoTrack,
+                                                                            userName = t.participantIdentity,
+                                                                            isCameraEnabled = t.isCameraEnabled,
+                                                                            eglBaseContext = eglBaseContext,
+                                                                            room = room,
+                                                                            modifier = Modifier.fillMaxSize()
+                                                                        )
+                                                                    }
+                                                                } else {
+                                                                    Spacer(modifier = Modifier.weight(1f))
+                                                                }
+                                                            }
+                                                        }
+                                                        Row(
+                                                            modifier = Modifier.weight(1f),
+                                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                        ) {
+                                                            for (i in 2 until 4) {
+                                                                if (i < pageItems.size) {
+                                                                    val t = pageItems[i]
+                                                                    Box(modifier = Modifier.weight(1f)) {
+                                                                        StreamingCamera(
+                                                                            track = t.track as? VideoTrack,
+                                                                            userName = t.participantIdentity,
+                                                                            isCameraEnabled = t.isCameraEnabled,
+                                                                            eglBaseContext = eglBaseContext,
+                                                                            room = room,
+                                                                            modifier = Modifier.fillMaxSize()
+                                                                        )
+                                                                    }
+                                                                } else {
+                                                                    Spacer(modifier = Modifier.weight(1f))
+                                                                }
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }

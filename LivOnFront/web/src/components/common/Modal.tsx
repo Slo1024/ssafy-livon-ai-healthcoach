@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import styled from "styled-components";
 import profilePictureIcon from "../../assets/images/profile_picture.png";
 import { SegmentedTabs } from "../common/Button";
 import {
@@ -7,7 +6,94 @@ import {
   getParticipantInfoApi,
 } from "../../api/reservationApi";
 import { CONFIG } from "../../constants/config";
-import { BaseModalProps, Overlay } from "./ModalStyles";
+import {
+  BaseModalProps,
+  Overlay,
+  EditModalCard,
+  EditModalTitle,
+  FormField,
+  FormLabel,
+  FormInput,
+  FormTextArea,
+  FormDropdown,
+  ButtonRow,
+  SaveButton,
+  CloseButton,
+  DeleteConfirmCard,
+  DeleteConfirmTitle,
+  DeleteConfirmButtonRow,
+  DeleteButton,
+  CancelButton,
+  SaveConfirmCard,
+  SaveConfirmTitle,
+  SaveConfirmButtonRow,
+  SaveConfirmButton,
+  SaveCancelButton,
+  ClassCreatedCard,
+  ClassCreatedTitle,
+  ClassListButton,
+  MemberInfoCard,
+  MemberInfoTitle,
+  MemberInfoDescription,
+  MemberContentContainer,
+  ProfileIconContainer,
+  ProfileImage,
+  MemberDataContainer,
+  MemberDataItem,
+  QASection,
+  QATitle,
+  QAQuestion,
+  MemberInfoConfirmButton,
+  LoadingText,
+  ErrorText,
+  ApplicationApprovalCard,
+  ApplicationApprovalTitle,
+  ApplicationTabsContainer,
+  ApplicationMemberList,
+  ApplicationMemberItem,
+  ApplicationProfileImage,
+  ApplicationMemberName,
+  ApplicationButtonContainer,
+  ApplicationMemberInfoButton,
+  ApplicationApproveButton,
+  ApplicationCancelApprovalButton,
+  ApplicationConfirmButton,
+  ReservationCancelConfirmCard,
+  ReservationCancelConfirmTitle,
+  ReservationCancelConfirmButtonContainer,
+  ReservationCancelConfirmButton,
+  ReservationCancelSuccessCard,
+  ReservationCancelSuccessTitle,
+  ReservationCancelSuccessButton,
+  ConsultationSummaryCard,
+  ConsultationSummaryTitle,
+  ConsultationSummaryDate,
+  ConsultationSummaryTime,
+  ConsultationSummaryContent,
+  ConsultationSummaryConfirmButton,
+  ApplicationMemberInfoCard,
+  ApplicationMemberInfoTitle,
+  ApplicationMemberInfoList,
+  ApplicationMemberInfoItem,
+  ApplicationMemberInfoProfileImage,
+  ApplicationMemberInfoName,
+  ApplicationMemberInfoButtonContainer,
+  ApplicationMemberInfoMemberInfoButton,
+  ApplicationMemberInfoDeleteButton,
+  ApplicationMemberInfoConfirmButton,
+  FAQAnswerCard,
+  FAQAnswerTitle,
+  FAQAnswerQuestion,
+  FAQAnswerContent,
+  FAQAnswerConfirmButton,
+  InquirySuccessCard,
+  InquirySuccessTitle,
+  InquirySuccessButton,
+  StreamingEndCard,
+  StreamingEndTitle,
+  StreamingEndMessage,
+  StreamingEndButton,
+} from "./ModalStyles";
 import { DateTimePickerModal } from "./DateTimePickerModal";
 
 // 분리된 모달들을 re-export
@@ -21,141 +107,6 @@ export type { DateTimePickerModalProps } from "./DateTimePickerModal";
 // =====================
 // 클래스 정보 수정 모달
 // =====================
-
-const EditModalCard = styled.div`
-  width: 680px;
-  max-width: 90vw;
-  max-height: 90vh;
-  overflow-y: auto;
-  background: #ffffff;
-  border-radius: 24px;
-  padding: 40px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-`;
-
-const EditModalTitle = styled.h2`
-  margin: 0 0 32px 0;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  font-weight: 700;
-  font-size: 24px;
-  color: #111827;
-  text-align: left;
-`;
-
-const FormField = styled.div`
-  margin-bottom: 24px;
-`;
-
-const FormLabel = styled.label`
-  display: block;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  color: #374151;
-  margin-bottom: 8px;
-`;
-
-const FormInput = styled.input`
-  width: 100%;
-  height: 48px;
-  border: 1px solid #4965f6;
-  border-radius: 8px;
-  padding: 0 12px;
-  font-size: 14px;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-
-  &:focus {
-    outline: none;
-    border-color: #3b5dd8;
-  }
-`;
-
-const FormTextArea = styled.textarea`
-  width: 100%;
-  min-height: 120px;
-  border: 2px dashed #4965f6;
-  border-radius: 8px;
-  padding: 12px;
-  font-size: 14px;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  resize: vertical;
-
-  &:focus {
-    outline: none;
-    border-color: #3b5dd8;
-  }
-`;
-
-const FormDropdown = styled.select`
-  width: 100%;
-  height: 48px;
-  border: 1px solid #4965f6;
-  border-radius: 8px;
-  padding: 0 12px;
-  padding-right: 36px;
-  font-size: 14px;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  background-color: white;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%234965f6' d='M1 0l4 4 4-4 1 1-5 5-5-5z'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 10px 6px;
-  cursor: pointer;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-
-  &:focus {
-    outline: none;
-    border-color: #3b5dd8;
-  }
-`;
-
-const ButtonRow = styled.div`
-  display: flex;
-  gap: 12px;
-  margin-top: 32px;
-  justify-content: flex-end;
-`;
-
-const SaveButton = styled.button`
-  padding: 12px 24px;
-  background-color: #4965f6;
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-
-  &:hover {
-    background-color: #3b5dd8;
-  }
-`;
-
-const CloseButton = styled.button`
-  padding: 12px 24px;
-  background-color: #ffffff;
-  color: #4965f6;
-  border: 1px solid #4965f6;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-
-  &:hover {
-    background-color: #f7fafc;
-  }
-`;
 
 export interface ClassEditModalProps extends BaseModalProps {
   classNameData?: {
@@ -386,65 +337,6 @@ export const ClassEditModal: React.FC<ClassEditModalProps> = ({
 // 삭제 확인 모달 (삭제/취소 버튼)
 // =====================
 
-const DeleteConfirmCard = styled.div`
-  width: 420px;
-  max-width: 90vw;
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 32px 24px 24px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  text-align: center;
-`;
-
-const DeleteConfirmTitle = styled.h2`
-  margin: 0 0 24px 0;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  font-weight: 600;
-  font-size: 18px;
-  color: #111827;
-`;
-
-const DeleteConfirmButtonRow = styled.div`
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-`;
-
-const DeleteButton = styled.button`
-  padding: 12px 24px;
-  background-color: #ffffff;
-  color: #ff0000;
-  border: 1px solid #ff0000;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-
-  &:hover {
-    background-color: #fef2f2;
-  }
-`;
-
-const CancelButton = styled.button`
-  padding: 12px 24px;
-  background-color: #4965f6;
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-
-  &:hover {
-    background-color: #3b5dd8;
-  }
-`;
-
 export interface DeleteConfirmModalProps extends BaseModalProps {
   onConfirm: () => void;
 }
@@ -483,65 +375,6 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
 // =====================
 // 저장 확인 모달 (저장/취소 버튼)
 // =====================
-
-const SaveConfirmCard = styled.div`
-  width: 420px;
-  max-width: 90vw;
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 32px 24px 24px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  text-align: center;
-`;
-
-const SaveConfirmTitle = styled.h2`
-  margin: 0 0 24px 0;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  font-weight: 600;
-  font-size: 18px;
-  color: #111827;
-`;
-
-const SaveConfirmButtonRow = styled.div`
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-`;
-
-const SaveConfirmButton = styled.button`
-  padding: 12px 24px;
-  background-color: #4965f6;
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-
-  &:hover {
-    background-color: #3b5dd8;
-  }
-`;
-
-const SaveCancelButton = styled.button`
-  padding: 12px 24px;
-  background-color: #4965f6;
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-
-  &:hover {
-    background-color: #3b5dd8;
-  }
-`;
 
 export interface SaveConfirmModalProps extends BaseModalProps {
   onConfirm: () => void;
@@ -582,43 +415,6 @@ export const SaveConfirmModal: React.FC<SaveConfirmModalProps> = ({
 // 클래스 개설 완료 모달
 // =====================
 
-const ClassCreatedCard = styled.div`
-  width: 420px;
-  max-width: 90vw;
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 32px 24px 24px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  text-align: center;
-`;
-
-const ClassCreatedTitle = styled.h2`
-  margin: 0 0 24px 0;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  font-weight: 600;
-  font-size: 18px;
-  color: #111827;
-`;
-
-const ClassListButton = styled.button`
-  width: 100%;
-  padding: 12px 24px;
-  background-color: #4965f6;
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-
-  &:hover {
-    background-color: #3b5dd8;
-  }
-`;
-
 export interface ClassCreatedModalProps extends BaseModalProps {
   onGoToList: () => void;
 }
@@ -656,128 +452,6 @@ export const ClassCreatedModal: React.FC<ClassCreatedModalProps> = ({
 // =====================
 // 회원 정보 모달
 // =====================
-
-const MemberInfoCard = styled.div`
-  width: 600px;
-  max-width: 90vw;
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 32px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-`;
-
-const MemberInfoTitle = styled.h2`
-  margin: 0 0 8px 0;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  font-weight: 700;
-  font-size: 24px;
-  color: #111827;
-`;
-
-const MemberInfoDescription = styled.p`
-  margin: 0 0 24px 0;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  font-size: 14px;
-  color: #6b7280;
-  line-height: 1.5;
-`;
-
-const MemberContentContainer = styled.div`
-  display: flex;
-  gap: 24px;
-  margin-bottom: 24px;
-`;
-
-const ProfileIconContainer = styled.div`
-  width: 120px;
-  height: 160px;
-  background-color: #f3f4f6;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  position: relative;
-  overflow: hidden;
-`;
-
-const ProfileImage = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-`;
-
-const MemberDataContainer = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-`;
-
-const MemberDataItem = styled.div`
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  font-size: 16px;
-  color: #111827;
-`;
-
-const QASection = styled.div`
-  margin-top: 24px;
-  padding-top: 24px;
-  border-top: 1px solid #e5e7eb;
-`;
-
-const QATitle = styled.h3`
-  margin: 0 0 12px 0;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  font-weight: 600;
-  font-size: 16px;
-  color: #111827;
-`;
-
-const QAQuestion = styled.div`
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  font-size: 14px;
-  color: #374151;
-  line-height: 1.5;
-`;
-
-const MemberInfoConfirmButton = styled.button`
-  width: 100%;
-  padding: 12px 24px;
-  background-color: #4965f6;
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  margin-top: 24px;
-
-  &:hover {
-    background-color: #3b5dd8;
-  }
-`;
-
-const LoadingText = styled.div`
-  text-align: center;
-  padding: 20px;
-  color: #6b7280;
-  font-size: 14px;
-`;
-
-const ErrorText = styled.div`
-  text-align: center;
-  padding: 20px;
-  color: #ef4444;
-  font-size: 14px;
-`;
 
 export interface MemberInfoModalProps extends BaseModalProps {
   memberName?: string;
@@ -838,11 +512,26 @@ export const MemberInfoModal: React.FC<MemberInfoModalProps> = ({
           });
 
           const response = await getParticipantInfoApi(token, consultationId);
-          const participantInfo = response.memberInfo;
-          const healthData = participantInfo?.healthData;
+
+          // 여러 참여자 정보 중 첫 번째 참여자 사용 (또는 memberId와 일치하는 참여자 찾기)
+          let participantInfo = response[0];
+          if (memberId && response.length > 1) {
+            // memberId와 일치하는 참여자 찾기 (필요시 추가 로직 구현)
+            const found = response.find(
+              (info) =>
+                info.memberInfo.nickname === memberName ||
+                memberName === info.memberInfo.nickname
+            );
+            if (found) {
+              participantInfo = found;
+            }
+          }
+
+          const memberInfo = participantInfo?.memberInfo;
+          const healthData = memberInfo?.healthData;
 
           setMemberInfo({
-            nickname: participantInfo.nickname || memberName || "회원",
+            nickname: memberInfo?.nickname || memberName || "회원",
             height: healthData?.height,
             weight: healthData?.weight,
             sleepTime: healthData?.sleepTime,
@@ -949,9 +638,10 @@ export const MemberInfoModal: React.FC<MemberInfoModalProps> = ({
   const sleepTime = memberInfo?.sleepTime ?? memberData?.sleepTime;
   const qaQuestion = memberInfo?.preQna || question;
   const profileImage = memberInfo?.profileImage || profilePictureIcon;
-  
+
   // 건강 데이터 존재 여부 확인
-  const hasHealthData = height !== undefined || weight !== undefined || sleepTime !== undefined;
+  const hasHealthData =
+    height !== undefined || weight !== undefined || sleepTime !== undefined;
   const hasQnA = qaQuestion && qaQuestion.trim() !== "";
 
   return (
@@ -991,7 +681,9 @@ export const MemberInfoModal: React.FC<MemberInfoModalProps> = ({
                     )}
                   </>
                 ) : (
-                  <MemberDataItem style={{ color: "#6b7280", fontStyle: "italic" }}>
+                  <MemberDataItem
+                    style={{ color: "#6b7280", fontStyle: "italic" }}
+                  >
                     건강 데이터가 없습니다.
                   </MemberDataItem>
                 )}
@@ -1023,202 +715,25 @@ export const MemberInfoModal: React.FC<MemberInfoModalProps> = ({
 // 신청 회원 예약 승인 모달
 // =====================
 
-const ApplicationApprovalCard = styled.div`
-  width: 680px;
-  max-width: 90vw;
-  max-height: 80vh;
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 32px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  display: flex;
-  flex-direction: column;
-`;
-
-const ApplicationApprovalTitle = styled.h2`
-  margin: 0 0 24px 0;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  font-weight: 700;
-  font-size: 24px;
-  color: #111827;
-`;
-
-const ApplicationTabsContainer = styled.div`
-  margin-bottom: 24px;
-`;
-
-const ApplicationMemberList = styled.div`
-  flex: 1;
-  overflow-y: auto;
-  margin-bottom: 24px;
-  max-height: 400px;
-`;
-
-const ApplicationMemberItem = styled.div`
-  display: flex;
-  align-items: center;
-  padding: 16px 0;
-  border-bottom: 1px solid #e5e7eb;
-
-  &:last-child {
-    border-bottom: none;
-  }
-`;
-
-const ApplicationProfileImage = styled.img`
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
-  object-fit: cover;
-  margin-right: 16px;
-  background-color: #f3f4f6;
-`;
-
-const ApplicationMemberName = styled.div`
-  flex: 1;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  font-size: 16px;
-  font-weight: 500;
-  color: #111827;
-`;
-
-const ApplicationButtonContainer = styled.div`
-  display: flex;
-  gap: 8px;
-`;
-
-const ApplicationMemberInfoButton = styled.button`
-  padding: 8px 16px;
-  background-color: #ffffff;
-  color: #4965f6;
-  border: 1px solid #4965f6;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  white-space: nowrap;
-
-  &:hover {
-    background-color: #f7fafc;
-  }
-`;
-
-const ApplicationApproveButton = styled.button`
-  padding: 8px 16px;
-  background-color: #ffffff;
-  color: #4965f6;
-  border: 1px solid #4965f6;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  white-space: nowrap;
-
-  &:hover {
-    background-color: #f7fafc;
-  }
-`;
-
-const ApplicationCancelApprovalButton = styled.button`
-  padding: 8px 16px;
-  background-color: #ffffff;
-  color: #4965f6;
-  border: 1px solid #4965f6;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  white-space: nowrap;
-
-  &:hover {
-    background-color: #f7fafc;
-  }
-`;
-
-const ApplicationConfirmButton = styled.button`
-  width: 100%;
-  padding: 12px 24px;
-  background-color: #4965f6;
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-
-  &:hover {
-    background-color: #3b5dd8;
-  }
-`;
-
 export interface ApplicationMember {
   id: string;
   name: string;
+  status?: "PENDING" | "APPROVED";
 }
 
 export interface ApplicationApprovalModalProps extends BaseModalProps {
   members?: ApplicationMember[];
-  onMemberInfoClick?: (memberName: string) => void;
+  consultationId?: number;
+  onMemberInfoClick?: (
+    memberName: string,
+    memberId?: string,
+    consultationId?: number
+  ) => void;
 }
 
 // =====================
 // 예약 취소 확인 모달
 // =====================
-
-const ReservationCancelConfirmCard = styled.div`
-  width: 420px;
-  max-width: 90vw;
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 32px 24px 24px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  text-align: center;
-`;
-
-const ReservationCancelConfirmTitle = styled.h2`
-  margin: 0 0 24px 0;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  font-weight: 600;
-  font-size: 18px;
-  color: #111827;
-  line-height: 1.3;
-  white-space: pre-line;
-`;
-
-const ReservationCancelConfirmButtonContainer = styled.div`
-  display: flex;
-  gap: 8px;
-  margin-top: 0;
-`;
-
-const ReservationCancelConfirmButton = styled.button`
-  flex: 1;
-  height: 48px;
-  background-color: #4965f6;
-  color: #ffffff;
-  border: none;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-
-  &:hover {
-    background-color: #3b5dd8;
-  }
-`;
 
 export interface ReservationCancelConfirmModalProps extends BaseModalProps {
   onConfirm: () => void;
@@ -1269,46 +784,6 @@ export const ReservationCancelConfirmModal: React.FC<
 // 예약 취소 완료 모달
 // =====================
 
-const ReservationCancelSuccessCard = styled.div`
-  width: 420px;
-  max-width: 90vw;
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 32px 24px 24px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  text-align: center;
-`;
-
-const ReservationCancelSuccessTitle = styled.h2`
-  margin: 0 0 24px 0;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  font-weight: 600;
-  font-size: 18px;
-  color: #111827;
-  line-height: 1.3;
-  white-space: pre-line;
-`;
-
-const ReservationCancelSuccessButton = styled.button`
-  margin-top: 0;
-  width: 100%;
-  height: 48px;
-  background-color: #4965f6;
-  color: #ffffff;
-  border: none;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-
-  &:hover {
-    background-color: #3b5dd8;
-  }
-`;
-
 export interface ReservationCancelSuccessModalProps extends BaseModalProps {
   onConfirm?: () => void;
 }
@@ -1346,80 +821,6 @@ export const ReservationCancelSuccessModal: React.FC<
 // =====================
 // 상담 요약본 모달
 // =====================
-
-const ConsultationSummaryCard = styled.div`
-  width: 600px;
-  max-width: 90vw;
-  max-height: 80vh;
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 32px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  display: flex;
-  flex-direction: column;
-`;
-
-const ConsultationSummaryTitle = styled.h2`
-  margin: 0 0 24px 0;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  font-weight: 700;
-  font-size: 24px;
-  color: #111827;
-`;
-
-const ConsultationSummaryDate = styled.div`
-  margin-bottom: 8px;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  font-size: 14px;
-  color: #6b7280;
-`;
-
-const ConsultationSummaryTime = styled.div`
-  margin-bottom: 24px;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  font-size: 14px;
-  color: #6b7280;
-`;
-
-const ConsultationSummaryContent = styled.div`
-  flex: 1;
-  overflow-y: auto;
-  margin-bottom: 24px;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  font-size: 14px;
-  color: #374151;
-  line-height: 1.8;
-
-  p {
-    margin: 0 0 16px 0;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
-`;
-
-const ConsultationSummaryConfirmButton = styled.button`
-  width: 100%;
-  padding: 12px 24px;
-  background-color: #4965f6;
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-
-  &:hover {
-    background-color: #3b5dd8;
-  }
-`;
 
 export interface ConsultationSummaryModalProps extends BaseModalProps {
   memberName: string;
@@ -1479,122 +880,6 @@ export const ConsultationSummaryModal: React.FC<
 // =====================
 // 신청 회원 정보 모달 (승인 기능 없음)
 // =====================
-
-const ApplicationMemberInfoCard = styled.div`
-  width: 680px;
-  max-width: 90vw;
-  max-height: 80vh;
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 32px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  display: flex;
-  flex-direction: column;
-`;
-
-const ApplicationMemberInfoTitle = styled.h2`
-  margin: 0 0 24px 0;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  font-weight: 700;
-  font-size: 24px;
-  color: #111827;
-`;
-
-const ApplicationMemberInfoList = styled.div`
-  flex: 1;
-  overflow-y: auto;
-  margin-bottom: 24px;
-  max-height: 400px;
-`;
-
-const ApplicationMemberInfoItem = styled.div`
-  display: flex;
-  align-items: center;
-  padding: 16px 0;
-  border-bottom: 1px solid #e5e7eb;
-
-  &:last-child {
-    border-bottom: none;
-  }
-`;
-
-const ApplicationMemberInfoProfileImage = styled.img`
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
-  object-fit: cover;
-  margin-right: 16px;
-  background-color: #f3f4f6;
-`;
-
-const ApplicationMemberInfoName = styled.div`
-  flex: 1;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  font-size: 16px;
-  font-weight: 500;
-  color: #111827;
-`;
-
-const ApplicationMemberInfoButtonContainer = styled.div`
-  display: flex;
-  gap: 8px;
-`;
-
-const ApplicationMemberInfoMemberInfoButton = styled.button`
-  padding: 8px 16px;
-  background-color: #ffffff;
-  color: #4965f6;
-  border: 1px solid #4965f6;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  white-space: nowrap;
-
-  &:hover {
-    background-color: #f7fafc;
-  }
-`;
-
-const ApplicationMemberInfoDeleteButton = styled.button`
-  padding: 8px 16px;
-  background-color: #ffffff;
-  color: #4965f6;
-  border: 1px solid #4965f6;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  white-space: nowrap;
-
-  &:hover {
-    background-color: #f7fafc;
-  }
-`;
-
-const ApplicationMemberInfoConfirmButton = styled.button`
-  width: 100%;
-  padding: 12px 24px;
-  background-color: #4965f6;
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-
-  &:hover {
-    background-color: #3b5dd8;
-  }
-`;
 
 export interface ApplicationMemberInfoModalProps extends BaseModalProps {
   members?: ApplicationMember[];
@@ -1707,65 +992,6 @@ export const ApplicationMemberInfoModal: React.FC<
 // FAQ 답변 모달
 // =====================
 
-const FAQAnswerCard = styled.div`
-  width: 600px;
-  max-width: 90vw;
-  max-height: 80vh;
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 32px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  display: flex;
-  flex-direction: column;
-`;
-
-const FAQAnswerTitle = styled.h2`
-  margin: 0 0 24px 0;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  font-weight: 700;
-  font-size: 24px;
-  color: #111827;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-`;
-
-const FAQAnswerQuestion = styled.span`
-  font-weight: 700;
-  color: #111827;
-`;
-
-const FAQAnswerContent = styled.div`
-  flex: 1;
-  overflow-y: auto;
-  margin-bottom: 24px;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  font-size: 14px;
-  color: #374151;
-  line-height: 1.8;
-  white-space: pre-line;
-`;
-
-const FAQAnswerConfirmButton = styled.button`
-  width: 100%;
-  padding: 12px 24px;
-  background-color: #4965f6;
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-
-  &:hover {
-    background-color: #3b5dd8;
-  }
-`;
-
 export interface FAQAnswerModalProps extends BaseModalProps {
   question: string;
   answer: string;
@@ -1803,46 +1029,6 @@ export const FAQAnswerModal: React.FC<FAQAnswerModalProps> = ({
 // 문의 사항 전달 완료 모달
 // =====================
 
-const InquirySuccessCard = styled.div`
-  width: 420px;
-  max-width: 90vw;
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 32px 24px 24px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  text-align: center;
-`;
-
-const InquirySuccessTitle = styled.h2`
-  margin: 0 0 24px 0;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  font-weight: 600;
-  font-size: 18px;
-  color: #111827;
-  line-height: 1.3;
-  white-space: pre-line;
-`;
-
-const InquirySuccessButton = styled.button`
-  margin-top: 0;
-  width: 100%;
-  height: 48px;
-  background-color: #4965f6;
-  color: #ffffff;
-  border: none;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-
-  &:hover {
-    background-color: #3b5dd8;
-  }
-`;
-
 export interface InquirySuccessModalProps extends BaseModalProps {
   onConfirm?: () => void;
 }
@@ -1872,7 +1058,7 @@ export const InquirySuccessModal: React.FC<InquirySuccessModalProps> = ({
       >
         <InquirySuccessTitle>문의 사항이 전달되었습니다.</InquirySuccessTitle>
         <InquirySuccessButton onClick={handleConfirm}>
-          확인
+          홈으로 이동
         </InquirySuccessButton>
       </InquirySuccessCard>
     </Overlay>
@@ -1882,53 +1068,6 @@ export const InquirySuccessModal: React.FC<InquirySuccessModalProps> = ({
 // =====================
 // 스트리밍 종료 모달
 // =====================
-
-const StreamingEndCard = styled.div`
-  width: 600px;
-  max-width: 90vw;
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 32px 24px 24px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  text-align: center;
-`;
-
-const StreamingEndTitle = styled.h2`
-  margin: 0 0 16px 0;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  font-weight: 700;
-  font-size: 24px;
-  color: #111827;
-`;
-
-const StreamingEndMessage = styled.p`
-  margin: 0 0 24px 0;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  font-size: 16px;
-  color: #6b7280;
-  line-height: 1.6;
-  white-space: pre-line;
-`;
-
-const StreamingEndButton = styled.button`
-  width: 100%;
-  padding: 12px 24px;
-  background-color: #4965f6;
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-
-  &:hover {
-    background-color: #3b5dd8;
-  }
-`;
 
 export interface StreamingEndModalProps extends BaseModalProps {
   onConfirm?: () => void;
@@ -1971,42 +1110,70 @@ export const StreamingEndModal: React.FC<StreamingEndModalProps> = ({
 
 export const ApplicationApprovalModal: React.FC<
   ApplicationApprovalModalProps
-> = ({ open, onClose, members = [], onMemberInfoClick, className, style }) => {
+> = ({
+  open,
+  onClose,
+  members = [],
+  consultationId,
+  onMemberInfoClick,
+  className,
+  style,
+}) => {
   const [activeTab, setActiveTab] = useState<"pending" | "approved">("pending");
-  const [pendingMembers, setPendingMembers] = useState<ApplicationMember[]>([]);
-  const [approvedMembers, setApprovedMembers] = useState<ApplicationMember[]>(
-    []
-  );
+  const [memberList, setMemberList] = useState<ApplicationMember[]>([]);
   const [showMemberInfoModal, setShowMemberInfoModal] = useState(false);
   const [selectedMemberName, setSelectedMemberName] = useState<string>("");
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [selectedConsultationId, setSelectedConsultationId] = useState<
+    number | null
+  >(null);
 
   // 초기 회원 목록 설정
   useEffect(() => {
     if (open) {
-      setPendingMembers(members);
-      setApprovedMembers([]);
+      setMemberList(
+        members.map((member) => ({
+          ...member,
+          status: member.status ?? "PENDING",
+        }))
+      );
       setActiveTab("pending");
     }
   }, [open, members]);
 
+  const pendingMembers = memberList.filter(
+    (member) => member.status !== "APPROVED"
+  );
+  const approvedMembers = memberList.filter(
+    (member) => member.status === "APPROVED"
+  );
+
   const handleApprove = (member: ApplicationMember) => {
-    setPendingMembers((prev) => prev.filter((m) => m.id !== member.id));
-    setApprovedMembers((prev) => [...prev, member]);
+    setMemberList((prev) =>
+      prev.map((item) =>
+        item.id === member.id ? { ...item, status: "APPROVED" } : item
+      )
+    );
   };
 
   const handleCancelApproval = (member: ApplicationMember) => {
-    setApprovedMembers((prev) => prev.filter((m) => m.id !== member.id));
-    setPendingMembers((prev) => [...prev, member]);
+    setMemberList((prev) =>
+      prev.map((item) =>
+        item.id === member.id ? { ...item, status: "PENDING" } : item
+      )
+    );
   };
 
   const handleMemberInfoClick = (memberName: string, memberId?: string) => {
+    if (onMemberInfoClick) {
+      onMemberInfoClick(memberName, memberId, consultationId);
+      return;
+    }
+
     setSelectedMemberName(memberName);
     setSelectedMemberId(memberId || null);
+    setSelectedConsultationId(consultationId ?? null);
     setShowMemberInfoModal(true);
-    if (onMemberInfoClick) {
-      onMemberInfoClick(memberName);
-    }
   };
 
   const handleConfirm = () => {
@@ -2102,15 +1269,19 @@ export const ApplicationApprovalModal: React.FC<
       </Overlay>
 
       {/* 회원 정보 모달 */}
-      <MemberInfoModal
-        open={showMemberInfoModal}
-        onClose={() => {
-          setShowMemberInfoModal(false);
-          setSelectedMemberId(null);
-        }}
-        memberName={selectedMemberName}
-        memberId={selectedMemberId || undefined}
-      />
+      {!onMemberInfoClick && (
+        <MemberInfoModal
+          open={showMemberInfoModal}
+          onClose={() => {
+            setShowMemberInfoModal(false);
+            setSelectedMemberId(null);
+            setSelectedConsultationId(null);
+          }}
+          memberName={selectedMemberName}
+          memberId={selectedMemberId || undefined}
+          consultationId={selectedConsultationId || undefined}
+        />
+      )}
     </>
   );
 };
@@ -2181,4 +1352,3 @@ export const Modal: React.FC<ModalProps> = ({
     </div>
   );
 };
-

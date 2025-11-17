@@ -11,6 +11,38 @@ import { CONFIG } from "../../constants/config";
 import { getMyProfileApi } from "../../api/authApi";
 import { getCoachDetailApi } from "../../api/classApi";
 
+const CheckIcon = styled.span`
+  color: #28a745;
+  font-size: 16px;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+`;
+
+const CrossIcon = styled.span`
+  color: #ff0000;
+  font-size: 16px;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+`;
+
+const InfoIndicator = styled.div`
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  margin-top: 5px;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+  white-space: nowrap;
+  width: 100%;
+  color: #28a745;
+`;
+
+const ErrorIndicator = styled(InfoIndicator)`
+  color: #ff0000;
+`;
+
 const PageContainer = styled.div`
   min-height: 100vh;
   background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
@@ -270,6 +302,15 @@ const FormField = styled.div`
     align-items: stretch;
     gap: 8px;
   }
+`;
+
+// 입력 박스와 보조 메시지를 세로로 쌓는 컨테이너 (회원가입 화면과 동일한 배치)
+const FieldColumn = styled.div`
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 6px;
+  width: 100%;
 `;
 
 const FormLabel = styled.label`
@@ -685,6 +726,9 @@ export const MyPageInfoPage: React.FC = () => {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    if (field === "nickname") {
+      setNicknameCheckStatus("idle");
+    }
   };
 
   const handleAddQualification = () =>
@@ -693,6 +737,24 @@ export const MyPageInfoPage: React.FC = () => {
   const navigateToVerification = () => {
     // 정보 수정 완료 모달 표시
     setShowSuccessModal(true);
+  };
+
+  // 닉네임 중복 확인 상태 (회원가입 화면과 동일 UI)
+  const [nicknameCheckStatus, setNicknameCheckStatus] = useState<
+    "idle" | "available" | "taken"
+  >("idle");
+
+  // 임시 중복 확인 로직(회원가입 화면과 동일한 블랙리스트 기반 예시)
+  const isTaken = (value: string) => {
+    const blacklist = ["admin", "test", "user", "guest", "root"];
+    return value ? blacklist.includes(value.trim().toLowerCase()) : false;
+  };
+
+  const handleCheckNickname = () => {
+    if (!formData.nickname.trim()) return;
+    setNicknameCheckStatus(
+      isTaken(formData.nickname) ? "taken" : "available"
+    );
   };
 
   const handleGoHome = () => {
@@ -823,17 +885,33 @@ export const MyPageInfoPage: React.FC = () => {
           <FormColumn>
             <FormField>
               <FormLabel>닉네임</FormLabel>
-              <InputWithButton>
-                <CommonInput
-                  placeholder="닉네임을 입력하세요"
-                  value={formData.nickname}
-                  onChange={(e) =>
-                    handleInputChange("nickname", e.target.value)
-                  }
-                  style={{ flex: 1 }}
-                />
-                <SmallButton type="button">중복확인</SmallButton>
-              </InputWithButton>
+              <FieldColumn>
+                <InputWithButton>
+                  <CommonInput
+                    placeholder="닉네임을 입력하세요"
+                    value={formData.nickname}
+                    onChange={(e) =>
+                      handleInputChange("nickname", e.target.value)
+                    }
+                    style={{ flex: 1 }}
+                  />
+                  <SmallButton type="button" onClick={handleCheckNickname}>
+                    중복확인
+                  </SmallButton>
+                </InputWithButton>
+                {nicknameCheckStatus === "available" && (
+                  <InfoIndicator>
+                    <CheckIcon>✓</CheckIcon>
+                    사용 가능한 닉네임입니다.
+                  </InfoIndicator>
+                )}
+                {nicknameCheckStatus === "taken" && (
+                  <ErrorIndicator>
+                    <CrossIcon>✕</CrossIcon>
+                    이미 사용중인 닉네임입니다.
+                  </ErrorIndicator>
+                )}
+              </FieldColumn>
             </FormField>
 
             <FormField>

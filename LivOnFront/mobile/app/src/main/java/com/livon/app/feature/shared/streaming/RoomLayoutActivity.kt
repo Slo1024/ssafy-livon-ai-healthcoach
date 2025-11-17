@@ -49,6 +49,14 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import com.livon.app.data.remote.api.ConsultationVideoApi
+import com.livon.app.data.remote.api.ConsultationVideoApiImpl
 
 
 class RoomLayoutActivity : AppCompatActivity() {
@@ -211,7 +219,8 @@ class RoomLayoutActivity : AppCompatActivity() {
                                         participantIdentity = participantName,
                                         isLocal = true,
                                         isCameraEnabled = localParticipant.isCameraEnabled(),
-                                        isMicrophoneEnabled = localParticipant.isMicrophoneEnabled()
+                                        isMicrophoneEnabled = localParticipant.isMicrophoneEnabled(),
+                                        isScreenShare = screenShareTrack != null
                                     )
                                 )
                                 updatedTracks.toList()
@@ -327,7 +336,8 @@ class RoomLayoutActivity : AppCompatActivity() {
                     track = track,
                     participantIdentity = event.participant.identity!!.value,
                     isLocal = false,
-                    isCameraEnabled = true
+                    isCameraEnabled = true,
+                    isScreenShare = event.publication.source == Track.Source.SCREEN_SHARE
                 )
             }
         }
@@ -379,19 +389,30 @@ class RoomLayoutActivity : AppCompatActivity() {
         }
     }
 
-    private suspend fun stopRemoteRecording() {
-        val egressId = activeEgressId ?: return
+    /**
+     * [수정]
+     * 원격 녹화 중지 '요청'을 보냅니다.
+     * 반환값이 List<RemoteRecordingFileResult>? 에서 Boolean (요청 성공 여부)로 변경되었습니다.
+     */
+    private suspend fun stopRemoteRecording(): Boolean {
+        // activeEgressId가 없으면 요청 실패
+        val egressId = activeEgressId ?: run {
+            Log.w("LiveKitRecording", "activeEgressId is null. Cannot stop recording.")
+            return false // [수정]
+        }
+
         val consultationId = intent.getLongExtra("consultationId", -1L)
         if (consultationId == -1L) {
             Log.w("LiveKitRecording", "consultationId missing. Cannot stop recording.")
-            activeEgressId = null
-            return
+            activeEgressId = null // activeEgressId를 여기서 null로 처리
+            return false // [수정]
         }
+
         val jwtToken = SessionManager.getTokenSync()
         if (jwtToken.isNullOrBlank()) {
             Log.w("LiveKitRecording", "JWT token missing. Cannot stop recording.")
-            activeEgressId = null
-            return
+            activeEgressId = null // activeEgressId를 여기서 null로 처리
+            return false // [수정]
         }
 
         try {
@@ -402,22 +423,32 @@ class RoomLayoutActivity : AppCompatActivity() {
                     setBody(RemoteRecordingStopRequest(consultationId, egressId))
                 }.body<RemoteRecordingResponse<RemoteRecordingStopResult>>()
             }
+
+            // API 응답이 성공이면 true 반환
             if (apiResponse.isSuccess) {
                 val fileCount = apiResponse.result?.files?.size ?: 0
-                Log.d("LiveKitRecording", "Remote recording stopped. files=$fileCount")
+                // [수정] 로그 메시지 변경 (실제 중지 완료가 아니라 '요청'이 시작된 것)
+                Log.d("LiveKitRecording", "Remote recording stop initiated. files=$fileCount")
+                return true // [수정]
             } else {
                 Log.w("LiveKitRecording", "Failed to stop remote recording: ${apiResponse.message}")
             }
         } catch (e: Exception) {
             Log.e("LiveKitRecording", "Remote recording stop error", e)
         } finally {
+            // API 호출 성공 여부와 관계없이 egressId는 비워줍니다.
             activeEgressId = null
         }
+
+        // API 실패 또는 예외 발생 시 false 반환
+        return false // [수정]
     }
 
     override fun onDestroy() {
         runBlocking {
-            stopRemoteRecording()
+            try {
+                stopRemoteRecording()
+            } catch (_: Exception) {}
         }
         releaseResources()
         super.onDestroy()
@@ -425,11 +456,95 @@ class RoomLayoutActivity : AppCompatActivity() {
 
     private fun leaveRoom() {
         lifecycleScope.launch {
-            stopRemoteRecording()
-            releaseResources()
-            finish()
+            try {
+//                val files = stopRemoteRecording()
+//                Log.d("VideoUpload", "stopRemoteRecording returned: ${files?.size ?: 0} files")
+//                val firstMp4 = files?.firstOrNull { (it.location ?: "").endsWith(".mp4", ignoreCase = true) }
+//                    ?: files?.firstOrNull()
+//                if (firstMp4?.location != null) {
+//                    Log.d("VideoUpload", "Selected file url=${firstMp4.location}")
+//                    val consultationId = intent.getLongExtra("consultationId", -1L)
+//                    if (consultationId != -1L) {
+//                        try {
+//                            Log.d("VideoUpload", "Starting uploadAndSummarizeRecordedVideo... consultationId=$consultationId")
+//                            uploadAndSummarizeRecordedVideo(
+//                                consultationId = consultationId,
+//                                fileUrl = firstMp4.location!!,
+//                                preQnA = null
+//                            )
+//                            Log.d("VideoUpload", "uploadAndSummarizeRecordedVideo completed")
+//                        } catch (e: Exception) {
+//                            Log.w("VideoUpload", "Upload and summarize failed: ${e.message}", e)
+//                        }
+//                    }
+//                } else {
+//                    Log.w("VideoUpload", "No recording file available to upload.")
+//                }
+                val requestSent = stopRemoteRecording()
+                if (requestSent) {
+                    Log.d("VideoUpload", "Stop recording request sent successfully.")
+                } else {
+                    Log.w("VideoUpload", "Stop recording request FAILED.")
+                }
+            } catch (e: Exception) {
+                Log.w("RoomLayoutActivity", "leaveRoom stop/upload error: ${e.message}", e)
+            } finally {
+                releaseResources()
+                finish()
+            }
         }
     }
+
+//    private suspend fun uploadAndSummarizeRecordedVideo(
+//        consultationId: Long,
+//        fileUrl: String,
+//        preQnA: String?
+//    ) = withContext(Dispatchers.IO) {
+//        // 1) 다운로드
+//        Log.d("VideoUpload", "Downloading file from $fileUrl")
+//        val http = OkHttpClient()
+//        val request = Request.Builder().url(fileUrl).build()
+//        val response = http.newCall(request).execute()
+//        if (!response.isSuccessful) {
+//            throw IllegalStateException("Download failed: HTTP ${response.code}")
+//        }
+//        val body = response.body ?: throw IllegalStateException("Download body is null")
+//        val cacheDir = cacheDir
+//        val fileName = fileUrl.substringAfterLast('/').ifBlank { "recording.mp4" }
+//        val tempFile = java.io.File(cacheDir, fileName)
+//        body.byteStream().use { input ->
+//            tempFile.outputStream().use { output ->
+//                input.copyTo(output)
+//            }
+//        }
+//        Log.d("VideoUpload", "Download complete: ${tempFile.absolutePath} (${tempFile.length()} bytes)")
+//        response.close()
+//
+//        try {
+//            // 2) 멀티파트 생성
+//            val mediaType = "video/mp4".toMediaType()
+//            val filePart = MultipartBody.Part.createFormData(
+//                name = "file",
+//                filename = tempFile.name,
+//                body = tempFile.asRequestBody(mediaType)
+//            )
+//            val preQnAPart = preQnA?.toRequestBody("text/plain".toMediaType())
+//
+//            // 3) 업로드 호출
+//            val api: ConsultationVideoApi = ConsultationVideoApiImpl()
+//            Log.d("VideoUpload", "Calling uploadAndSummarize API...")
+//            api.uploadAndSummarize(
+//                consultationId = consultationId,
+//                filePart = filePart,
+//                preQnA = preQnAPart
+//            )
+//            Log.d("VideoUpload", "Upload and summarize succeeded for consultationId=$consultationId")
+//        } finally {
+//            // 4) 임시 파일 정리
+//            runCatching { tempFile.delete() }
+//            Log.d("VideoUpload", "Temp file deleted")
+//        }
+//    }
 
     private fun releaseResources() {
         if (resourcesReleased) return
@@ -547,7 +662,8 @@ class RoomLayoutActivity : AppCompatActivity() {
                         participantIdentity = participantName,
                         isLocal = true,
                         isCameraEnabled = isCameraEnabled,
-                        isMicrophoneEnabled = localParticipant.isMicrophoneEnabled()
+                        isMicrophoneEnabled = localParticipant.isMicrophoneEnabled(),
+                        isScreenShare = false
                     )
                 )
                 updatedTracks.toList()

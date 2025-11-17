@@ -211,7 +211,8 @@ class RoomLayoutActivity : AppCompatActivity() {
                                         participantIdentity = participantName,
                                         isLocal = true,
                                         isCameraEnabled = localParticipant.isCameraEnabled(),
-                                        isMicrophoneEnabled = localParticipant.isMicrophoneEnabled()
+                                        isMicrophoneEnabled = localParticipant.isMicrophoneEnabled(),
+                                        isScreenShare = screenShareTrack != null
                                     )
                                 )
                                 updatedTracks.toList()
@@ -327,7 +328,8 @@ class RoomLayoutActivity : AppCompatActivity() {
                     track = track,
                     participantIdentity = event.participant.identity!!.value,
                     isLocal = false,
-                    isCameraEnabled = true
+                    isCameraEnabled = true,
+                    isScreenShare = event.publication.source == Track.Source.SCREEN_SHARE
                 )
             }
         }
@@ -547,7 +549,8 @@ class RoomLayoutActivity : AppCompatActivity() {
                         participantIdentity = participantName,
                         isLocal = true,
                         isCameraEnabled = isCameraEnabled,
-                        isMicrophoneEnabled = localParticipant.isMicrophoneEnabled()
+                        isMicrophoneEnabled = localParticipant.isMicrophoneEnabled(),
+                        isScreenShare = false
                     )
                 )
                 updatedTracks.toList()

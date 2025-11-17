@@ -3,17 +3,17 @@ package com.livon.app.ui.component.streaming
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.zIndex
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.input.pointer.pointerInput
 import com.livon.app.R
 import io.livekit.android.room.Room
 import io.livekit.android.room.track.VideoTrack
@@ -26,17 +26,19 @@ fun StreamingCamera(
     track: VideoTrack?,
     userName: String,
     isCameraEnabled: Boolean,
+    isScreenShare: Boolean = false,
     eglBaseContext: livekit.org.webrtc.EglBase.Context,
     room: Room? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onDoubleTap: (() -> Unit)? = null
 ) {
     val isLocalTrack = track is LocalVideoTrack
-    var showMemberDetail by remember { mutableStateOf(false) }
 
     Box(modifier = modifier.fillMaxSize()) {
         if (track != null && isCameraEnabled) {
+            val videoModifier = Modifier.fillMaxSize()
             AndroidView(
-                modifier = Modifier.fillMaxSize(),
+                modifier = videoModifier,
                 factory = { context ->
                     SurfaceViewRenderer(context).apply {
                         if (room != null) {
@@ -49,8 +51,11 @@ fun StreamingCamera(
                         }
                         
                         setEnableHardwareScaler(true)
-                        setMirror(isLocalTrack)
-                        setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
+                        setMirror(if (isScreenShare) false else true)
+                        setScalingType(
+                            if (isScreenShare) RendererCommon.ScalingType.SCALE_ASPECT_FIT
+                            else RendererCommon.ScalingType.SCALE_ASPECT_FILL
+                        )
                         Log.d("StreamingCamera", "Creating SurfaceViewRenderer for track: ${track.sid}, isLocal=$isLocalTrack")
 
                         track.addRenderer(this)
@@ -85,6 +90,19 @@ fun StreamingCamera(
                     }
                 }
             )
+
+            // Double-tap overlay to toggle focus
+            if (onDoubleTap != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onDoubleTap = { onDoubleTap.invoke() }
+                            )
+                        }
+                )
+            }
         } else {
             Box(
                 modifier = Modifier
@@ -101,67 +119,13 @@ fun StreamingCamera(
             }
         }
 
-        // Information icon for remote participants only
-        if (!isLocalTrack) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .zIndex(2f)
-                    .padding(8.dp)
-            ) {
-                IconButton(
-                    onClick = { showMemberDetail = true },
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(
-                            Color.Black.copy(alpha = 0.5f),
-                            CircleShape
-                        )
-                ) {
-                    androidx.compose.material3.Icon(
-                        painter = painterResource(id = R.drawable.information),
-                        contentDescription = "정보",
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-        }
-
+        // 이름 태그 표시 (하단 좌측)
         UserNameTag(
             name = userName,
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .zIndex(2f)
                 .padding(12.dp)
         )
-
-        // StreamingMemberDetail overlay
-        if (showMemberDetail && !isLocalTrack) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(10f)
-                    .background(Color.Black.copy(alpha = 0.3f)),
-                contentAlignment = Alignment.CenterEnd
-            ) {
-                StreamingMemberDetail(
-                    memberName = userName,
-                    bioInfoList = listOf(
-                        BioInfo("키"),
-                        BioInfo("몸무게"),
-                        BioInfo("운동 경력")
-                    ),
-                    bottomText = "입력하신 정보는 공개되지 않습니다.",
-                    qaList = listOf(
-                        QAItem("운동 목표는 무엇인가요?"),
-                        QAItem("선호하는 운동 시간대는?")
-                    ),
-                    onClose = { showMemberDetail = false },
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
-        }
     }
 }
 

@@ -35,6 +35,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.boot:spring-boot-starter-aop'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    implementation 'org.springframework:spring-test'
     implementation group: 'org.springframework.boot', name: 'spring-boot-starter-mail'
 
     implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
@@ -58,6 +59,8 @@ dependencies {
 	implementation platform('com.google.cloud:libraries-bom:26.43.0')
 	implementation 'com.google.cloud:google-cloud-vertexai'
 	implementation 'com.google.cloud:google-cloud-storage'
+
+    implementation 'io.minio:minio:8.5.10'
 }
 
 tasks.named('test') {

@@ -41,7 +41,7 @@ export const createIndividualConsultationApi = async (
 };
 
 // 1:1 상담 취소 (코치용)
-// 백엔드 스펙 기준: DELETE /api/v1/coaches/consultations/{consultationId}
+// 백엔드 스펙: DELETE /api/v1/coaches/consultations/{consultationId}
 export const cancelIndividualConsultationApi = async (
   token: string,
   consultationId: number

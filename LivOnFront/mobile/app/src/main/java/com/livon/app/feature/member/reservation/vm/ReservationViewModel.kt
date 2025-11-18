@@ -265,17 +265,34 @@ class ReservationViewModel(
                 val filteredList = finalList.filter { item ->
                      try {
                          val startIso = item.startAtIso
-                         val start = if (!startIso.isNullOrBlank()) LocalDateTime.parse(startIso) else null
+                         val start = if (!startIso.isNullOrBlank()) {
+                             try {
+                                 LocalDateTime.parse(startIso)
+                             } catch (e: Throwable) {
+                                 Log.w("ReservationVM", "Failed to parse startAtIso='$startIso' for past reservation id=${item.id}", e)
+                                 null
+                             }
+                         } else null
+                         
                          if (status == "upcoming") {
                              // include if start is null (fallback), or start >= now, or item isLive
                              (start == null) || item.isLive || !start.isBefore(now)
                          } else {
-                             // past: include only if start exists and is before now
-                             (start != null && start.isBefore(now))
+                             // past: include if start exists and is before or equal to now
+                             // 서버에서 이미 past로 필터링해서 보내줬으므로, start가 null이어도 포함
+                             // (서버가 Source of Truth이므로)
+                             if (start == null) {
+                                 // startAtIso가 없거나 파싱 실패한 경우, 서버에서 past로 보냈다면 포함
+                                 true
+                             } else {
+                                 // start가 현재 시간 이전이거나 같으면 포함 (과거 예약)
+                                 !start.isAfter(now)
+                             }
                          }
-                     } catch (_: Throwable) {
-                         // on parse error, conservatively include in upcoming to avoid hiding
-                         status == "upcoming"
+                     } catch (e: Throwable) {
+                         Log.w("ReservationVM", "Filter error for reservation id=${item.id}, status=$status", e)
+                         // on parse error, 서버에서 이미 필터링해서 보냈으므로 포함
+                         true
                      }
                  }
 

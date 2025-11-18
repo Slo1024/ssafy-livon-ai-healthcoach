@@ -505,7 +505,27 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                     ).show()
                 }
             },
-            onAiAnalyze = { /* AI 리포트 진입은 별도 라우트에서 처리 */ }
+            onAiAnalyze = { item ->
+                // AI 분석 결과 화면으로 이동
+                try {
+                    val consultationId = item.id.toLongOrNull()
+                    if (consultationId != null) {
+                        val encMember = java.net.URLEncoder.encode(item.coachName, "UTF-8")
+                        // 날짜 포맷팅: 예) 9.13 (금)
+                        val dayKor = "월화수목금토일"[item.date.dayOfWeek.value % 7]
+                        val dateText = "${item.date.month.value}.${item.date.dayOfMonth} ($dayKor)"
+                        val encDate = java.net.URLEncoder.encode(dateText, "UTF-8")
+                        val encName = java.net.URLEncoder.encode(item.className, "UTF-8")
+                        nav.navigate("ai_result/$consultationId/$encMember/$encDate/$encName")
+                    } else {
+                        Log.w("MemberNavGraph", "onAiAnalyze: consultationId is null for item.id=${item.id}")
+                        Toast.makeText(context, "예약 ID를 확인할 수 없습니다.", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Throwable) {
+                    Log.e("MemberNavGraph", "onAiAnalyze: failed to navigate", e)
+                    Toast.makeText(context, "AI 분석 결과를 불러올 수 없습니다.", Toast.LENGTH_SHORT).show()
+                }
+            }
         )
         // (기존 다이얼로그/추가 로직이 있었다면 여기 이어서 유지)
     }
@@ -601,14 +621,20 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                     } }
                 },
                 onSeeAiDetail = {
-                    // navigate to AiResultScreen with encoded params
+                    // navigate to AiResultScreen with consultationId
                     try {
-                        val encMember = java.net.URLEncoder.encode(found.coachName, "UTF-8")
-                        val encDate = java.net.URLEncoder.encode(sessionInfo.dateText, "UTF-8")
-                        val encName = java.net.URLEncoder.encode(sessionInfo.modelText ?: found.className, "UTF-8")
-                        val encSummary = java.net.URLEncoder.encode(found.aiSummary ?: "", "UTF-8")
-                        nav.navigate("ai_result/$encMember/$encDate/$encName/$encSummary")
-                    } catch (_: Throwable) {}
+                        val consultationId = found.id.toLongOrNull()
+                        if (consultationId != null) {
+                            val encMember = java.net.URLEncoder.encode(found.coachName, "UTF-8")
+                            val encDate = java.net.URLEncoder.encode(sessionInfo.dateText, "UTF-8")
+                            val encName = java.net.URLEncoder.encode(sessionInfo.modelText ?: found.className, "UTF-8")
+                            nav.navigate("ai_result/$consultationId/$encMember/$encDate/$encName")
+                        } else {
+                            Log.w("MemberNavGraph", "onSeeAiDetail: consultationId is null for item.id=${found.id}")
+                        }
+                    } catch (e: Throwable) {
+                        Log.e("MemberNavGraph", "onSeeAiDetail: failed to navigate", e)
+                    }
                 },
                 navController = nav
              )
@@ -906,6 +932,49 @@ fun NavGraphBuilder.memberNavGraph(nav: NavHostController) {
                     android.util.Log.w("MemberNavGraph", "Failed to navigate to health survey from MyInfo", e)
                 }
             }
+        )
+    }
+
+    // AI 분석 결과 화면
+    composable("ai_result/{consultationId}/{member}/{date}/{name}") { backStackEntry ->
+        val consultationIdStr = backStackEntry.arguments?.getString("consultationId") ?: ""
+        val consultationId = consultationIdStr.toLongOrNull()
+        val memberName = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("member") ?: "", "UTF-8")
+        val counselingDateText = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("date") ?: "", "UTF-8")
+        val counselingName = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("name") ?: "", "UTF-8")
+
+        val repository = remember { com.livon.app.data.repository.ConsultationVideoRepositoryImpl() }
+        val viewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return com.livon.app.feature.member.schedule.vm.AiResultViewModel(repository) as T
+            }
+        }) as com.livon.app.feature.member.schedule.vm.AiResultViewModel
+
+        val uiState by viewModel.uiState.collectAsState()
+
+        // consultationId가 유효할 때만 데이터 로드
+        LaunchedEffect(consultationId) {
+            if (consultationId != null) {
+                viewModel.loadSummary(consultationId)
+            } else {
+                android.util.Log.w("MemberNavGraph", "ai_result: invalid consultationId=$consultationIdStr")
+            }
+        }
+
+        // 에러가 발생한 경우 빈 문자열 대신 에러 메시지 표시 (선택적)
+        val displaySummary = if (uiState.error != null && uiState.summary.isBlank()) {
+            "영상 요약을 불러오는 중 오류가 발생했습니다: ${uiState.error}"
+        } else {
+            uiState.summary
+        }
+
+        com.livon.app.feature.member.schedule.ui.AiResultScreen(
+            memberName = memberName,
+            counselingDateText = counselingDateText,
+            counselingName = counselingName,
+            aiSummary = displaySummary,
+            onBack = { nav.popBackStack() }
         )
     }
 }

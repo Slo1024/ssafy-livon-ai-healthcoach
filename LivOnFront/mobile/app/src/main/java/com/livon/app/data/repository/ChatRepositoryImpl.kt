@@ -70,6 +70,8 @@ private fun ChatMessageDto.toDomainModel(): ChatMessage {
         content = this.content,
         sentAt = this.sentAt,
         role = this.role,
-        messageType = this.messageType
+        messageType = this.messageType,
+        nickname = this.senderNickname,
+        profileImageUrl = this.senderImageUrl
     )
 }

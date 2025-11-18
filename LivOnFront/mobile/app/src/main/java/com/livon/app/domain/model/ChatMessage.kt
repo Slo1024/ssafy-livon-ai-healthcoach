@@ -7,6 +7,8 @@ data class ChatMessage(
     val content: String,
     val sentAt: String,
     val role: String,
-    val messageType: String
+    val messageType: String,
+    val nickname: String? = null,
+    val profileImageUrl: String? = null
 )
 

@@ -611,8 +611,8 @@ const ParticipantInfoButton = styled.button`
   position: absolute;
   top: 8px;
   right: 8px;
-  width: 28px;
-  height: 28px;
+  width: 40px;
+  height: 40px;
   border: none;
   border-radius: 6px;
   background-color: rgba(17, 24, 39, 0.6);
@@ -640,8 +640,8 @@ const ParticipantInfoButton = styled.button`
   }
 
   img {
-    width: 14px;
-    height: 14px;
+    width: 20px;
+    height: 20px;
   }
 `;
 

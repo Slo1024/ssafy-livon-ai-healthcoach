@@ -192,9 +192,10 @@ fun StreamingCheating(
 
                             items(uiState.messages, key = { it.id }) { message ->
                                 StreamingCheatingProfile(
-                                    userName = message.userId,
+                                    userName = message.nickname ?: message.userId,
                                     message = message.content,
                                     time = DateFormatter.formatToTime(message.sentAt),
+                                    profileImageUrl = message.profileImageUrl,
                                     role = message.role
                                 )
                             }

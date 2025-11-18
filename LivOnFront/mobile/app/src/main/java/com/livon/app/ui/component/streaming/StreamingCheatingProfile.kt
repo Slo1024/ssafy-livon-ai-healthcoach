@@ -18,11 +18,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.livon.app.R
 import com.livon.app.ui.theme.*
 
@@ -32,10 +34,20 @@ fun StreamingCheatingProfile(
     message: String,
     time: String,
     modifier: Modifier = Modifier,
+    profileImageUrl: String? = null,
     profileImageResId: Int = R.drawable.profile,
     role: String = "MEMBER"
 ) {
     val isCoach = role.equals("COACH", ignoreCase = true)
+    val imageModifier = Modifier
+        .padding(start = 4.dp)
+        .size(50.dp)
+        .clip(CircleShape)
+        .then(
+            if (isCoach)
+                Modifier.border(3.dp, Main, CircleShape)
+            else Modifier
+        )
 
     Row(
         modifier = modifier
@@ -43,19 +55,22 @@ fun StreamingCheatingProfile(
             .padding(vertical = 4.dp, horizontal = 16.dp),
         verticalAlignment = Alignment.Top
     ) {
-        Image(
-            painter = painterResource(id = profileImageResId),
-            contentDescription = "사용자 프로필",
-            modifier = Modifier
-                .padding(start = 4.dp)
-                .size(50.dp)
-                .clip(CircleShape)
-                .then(
-                    if (isCoach)
-                        Modifier.border(3.dp, Main, CircleShape)
-                    else Modifier
-                )
-        )
+        if (profileImageUrl != null && profileImageUrl.isNotBlank()) {
+            AsyncImage(
+                model = profileImageUrl,
+                contentDescription = "사용자 프로필",
+                contentScale = ContentScale.Crop,
+                modifier = imageModifier,
+                error = painterResource(id = profileImageResId),
+                placeholder = painterResource(id = profileImageResId)
+            )
+        } else {
+            Image(
+                painter = painterResource(id = profileImageResId),
+                contentDescription = "사용자 프로필",
+                modifier = imageModifier
+            )
+        }
 
         Spacer(Modifier.width(8.dp))
 

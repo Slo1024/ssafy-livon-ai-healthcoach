@@ -67,13 +67,23 @@ fun StreamingCamera(
                     }
                 },
                 update = { renderer ->
-                    if (track != null) {
+                    if (track != null && isCameraEnabled) {
                         try {
                             track.removeRenderer(renderer)
                             track.addRenderer(renderer)
                             Log.d("StreamingCamera", "Renderer updated for track: ${track.sid}")
                         } catch (e: Exception) {
                             Log.e("StreamingCamera", "Error updating renderer", e)
+                        }
+                    } else {
+                        // 카메라가 꺼졌을 때 렌더러 제거
+                        try {
+                            if (track != null) {
+                                track.removeRenderer(renderer)
+                                Log.d("StreamingCamera", "Renderer removed from track (camera disabled): ${track.sid}")
+                            }
+                        } catch (e: Exception) {
+                            Log.e("StreamingCamera", "Error removing renderer", e)
                         }
                     }
                 },

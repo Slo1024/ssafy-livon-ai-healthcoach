@@ -83,6 +83,7 @@ class RoomLayoutActivity : AppCompatActivity() {
 
     private var activeEgressId: String? = null
     private var resourcesReleased: Boolean = false
+    private var localParticipantNickname: String? = null
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -172,6 +173,7 @@ class RoomLayoutActivity : AppCompatActivity() {
 
     private fun connectToRoom() {
         val participantName = intent.getStringExtra("participantName") ?: "Participant1"
+        localParticipantNickname = participantName // 로컬 참가자 nickname 저장
         val roomName = intent.getStringExtra("roomName") ?: "Test Room"
         val consultationId = intent.getLongExtra("consultationId", -1L)
 
@@ -209,7 +211,8 @@ class RoomLayoutActivity : AppCompatActivity() {
                         Log.d("LiveKitDebug", "Video track publications updated: ${publications.size}, selected: $selectedTrack, hasScreenShare=${screenShareTrack != null}")
 
                         if (selectedTrack != null) {
-                            val participantName = localParticipant.identity?.value ?: "Participant"
+                            // 표시용: nickname 사용
+                            val participantName = localParticipantNickname ?: localParticipant.identity?.value ?: "Participant"
                             _participantTracks.update { currentTracks ->
                                 val updatedTracks = currentTracks.filter { !it.isLocal }.toMutableList()
                                 updatedTracks.add(
@@ -272,10 +275,18 @@ class RoomLayoutActivity : AppCompatActivity() {
                         val pub = event.publication
                         Log.d("LiveKitDebug", "Track muted: ${pub.sid}, source: ${pub.source}")
                         if (pub.source == Track.Source.CAMERA) {
-                            val pid = event.participant.identity?.value
-                            if (pid != null) {
+                            // participantIdentity가 nickname으로 설정되어 있으므로, nickname으로 매칭
+                            val participantName = event.participant.name?.takeIf { it.isNotBlank() } 
+                                ?: event.participant.identity?.value
+                            if (participantName != null) {
                                 _participantTracks.update { list ->
-                                    list.map { if (!it.isLocal && it.participantIdentity == pid) it.copy(isCameraEnabled = false) else it }
+                                    list.map { 
+                                        if (!it.isLocal && it.participantIdentity == participantName) {
+                                            it.copy(isCameraEnabled = false)
+                                        } else {
+                                            it
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -284,10 +295,18 @@ class RoomLayoutActivity : AppCompatActivity() {
                         val pub = event.publication
                         Log.d("LiveKitDebug", "Track unmuted: ${pub.sid}, source: ${pub.source}")
                         if (pub.source == Track.Source.CAMERA) {
-                            val pid = event.participant.identity?.value
-                            if (pid != null) {
+                            // participantIdentity가 nickname으로 설정되어 있으므로, nickname으로 매칭
+                            val participantName = event.participant.name?.takeIf { it.isNotBlank() } 
+                                ?: event.participant.identity?.value
+                            if (participantName != null) {
                                 _participantTracks.update { list ->
-                                    list.map { if (!it.isLocal && it.participantIdentity == pid) it.copy(isCameraEnabled = true) else it }
+                                    list.map { 
+                                        if (!it.isLocal && it.participantIdentity == participantName) {
+                                            it.copy(isCameraEnabled = true)
+                                        } else {
+                                            it
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -330,11 +349,15 @@ class RoomLayoutActivity : AppCompatActivity() {
     private fun onTrackSubscribed(event: RoomEvent.TrackSubscribed) {
         val track = event.track
         if (track is VideoTrack) {
-            Log.d("LiveKitDebug", "Remote VideoTrack subscribed: sid=${track.sid}, participant=${event.participant.identity?.value}")
+            // 표시용: nickname 우선 사용 (participant.name), 없으면 identity 사용
+            val participantName = event.participant.name?.takeIf { it.isNotBlank() } 
+                ?: event.participant.identity?.value 
+                ?: "Participant"
+            Log.d("LiveKitDebug", "Remote VideoTrack subscribed: sid=${track.sid}, participant=$participantName")
             _participantTracks.update { currentTracks ->
                 currentTracks + TrackInfo(
                     track = track,
-                    participantIdentity = event.participant.identity!!.value,
+                    participantIdentity = participantName,
                     isLocal = false,
                     isCameraEnabled = true,
                     isScreenShare = event.publication.source == Track.Source.SCREEN_SHARE
@@ -646,7 +669,8 @@ class RoomLayoutActivity : AppCompatActivity() {
 
     private fun updateLocalParticipantInfo() {
         val localParticipant = room.localParticipant
-        val participantName = localParticipant.identity?.value ?: "Participant"
+        // 표시용: nickname 사용
+        val participantName = localParticipantNickname ?: localParticipant.identity?.value ?: "Participant"
 
         val cameraTrackPublication = localParticipant.getTrackPublication(Track.Source.CAMERA)
         val cameraTrack = cameraTrackPublication?.track

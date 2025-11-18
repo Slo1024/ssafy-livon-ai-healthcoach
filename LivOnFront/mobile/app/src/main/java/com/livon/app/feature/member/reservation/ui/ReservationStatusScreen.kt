@@ -17,6 +17,7 @@ import com.livon.app.ui.theme.LivonTheme
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.sp
 import com.livon.app.BuildConfig
 
 enum class ReservationTab { CURRENT, PAST }
@@ -83,6 +84,8 @@ fun ReservationStatusScreen(
 
     // Debug toggle: when true, force showJoin for all cards so developer can test "입장하기" 버튼
     val debugForceJoin = remember { mutableStateOf(false) }
+    // Debug toggle: when true, force showAiButton for all cards so developer can test "AI 분석" 버튼
+    val debugForceAi = remember { mutableStateOf(false) }
 
     CommonScreenC(
         topBar = { TopBar(title = "예약 현황", onBack = onBack) }
@@ -145,10 +148,10 @@ fun ReservationStatusScreen(
                                 onCancel = if (!item.isLive) ({ cancelTarget = item; showCancelDialog = true }) else null,
                                 // If debugForceJoin is enabled, provide onJoin even when not live
                                 onJoin   = if (item.isLive || debugForceJoin.value)  ({ onJoin(item) })   else null,
-                                onAiAnalyze = null,
+                                onAiAnalyze = if (debugForceAi.value) ({ onAiAnalyze(item) }) else null,
                                 showJoin = item.isLive || debugForceJoin.value,
                                 showCancel = !item.isLive && !debugForceJoin.value,
-                                showAiButton = false,
+                                showAiButton = debugForceAi.value,
                                 dividerBold = true
                             )
                         } else {
@@ -175,10 +178,10 @@ fun ReservationStatusScreen(
                                 onDetail = { onDetail(item, true) },
                                 onCancel = null,
                                 onJoin = null,
-                                onAiAnalyze = if (showAI) ({ onAiAnalyze(item) }) else null,
+                                onAiAnalyze = if (showAI || debugForceAi.value) ({ onAiAnalyze(item) }) else null,
                                 showJoin = false,
                                 showCancel = false,
-                                showAiButton = showAI,
+                                showAiButton = showAI || debugForceAi.value,
                                 dividerBold = false
                             )
                         }
@@ -191,10 +194,24 @@ fun ReservationStatusScreen(
                 Box(modifier = Modifier
                     .fillMaxSize()
                     .padding(16.dp), contentAlignment = Alignment.BottomEnd) {
-                    FloatingActionButton(
-                        onClick = { debugForceJoin.value = !debugForceJoin.value }
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(if (debugForceJoin.value) "디버그: Join ON" else "디버그: Join OFF")
+                        // AI 분석 버튼 토글
+                        FloatingActionButton(
+                            onClick = { debugForceAi.value = !debugForceAi.value },
+                            modifier = Modifier.size(56.dp)
+                        ) {
+                            Text(if (debugForceAi.value) "AI\nON" else "AI\nOFF", fontSize = 10.sp)
+                        }
+                        
+                        // 기존 Join 디버그 버튼
+                        FloatingActionButton(
+                            onClick = { debugForceJoin.value = !debugForceJoin.value }
+                        ) {
+                            Text(if (debugForceJoin.value) "Join\nON" else "Join\nOFF", fontSize = 10.sp)
+                        }
                     }
                 }
             }
@@ -219,6 +236,7 @@ fun ReservationStatusScreen(
             cancelLabel = "취소"
         )
     }
+
 }
 
 /* ---------- 유틸 ---------- */

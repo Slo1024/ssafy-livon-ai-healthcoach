@@ -28,6 +28,7 @@ import {
   createChatRoom,
   getChatMessagesSince,
   GoodsChatMessageResponse,
+  GoodsChatMessage,
   setAuthToken,
 } from "../../api/chattingApi";
 import { ChatPanel } from "../../components/streaming/chat/ChatPanel";
@@ -238,6 +239,12 @@ export const StreamingPage: React.FC = () => {
   const [participantInfoResponse, setParticipantInfoResponse] = useState<
     ParticipantInfoResponse[] | null
   >(null);
+  const [participantInfoByIdentity, setParticipantInfoByIdentity] = useState<
+    Record<string, ParticipantInfoResponse>
+  >({});
+  const [participantInfoByNickname, setParticipantInfoByNickname] = useState<
+    Record<string, ParticipantInfoResponse>
+  >({});
 
   // 참여자 정보를 API에서 가져오는 함수
   const fetchParticipantInfo = useCallback(async () => {
@@ -275,6 +282,10 @@ export const StreamingPage: React.FC = () => {
       // 여러 참여자 정보를 participantInfoMap에 저장
       // 각 참여자별로 ParticipantDetail 생성 및 저장
       if (participantInfoList && participantInfoList.length > 0) {
+        const detailMapUpdates: Record<string, ParticipantDetail> = {};
+        const infoByIdentity: Record<string, ParticipantInfoResponse> = {};
+        const infoByNickname: Record<string, ParticipantInfoResponse> = {};
+
         participantInfoList.forEach((participantInfo) => {
           const memberInfo = participantInfo.memberInfo;
           const healthData = memberInfo.healthData;
@@ -386,17 +397,13 @@ export const StreamingPage: React.FC = () => {
               memberInfo.nickname;
           }
 
-          setParticipantInfoMap((prev) => ({
-            ...prev,
-            [participantIdentity]: participantDetail,
-          }));
+          detailMapUpdates[participantIdentity] = participantDetail;
+          infoByIdentity[participantIdentity] = participantInfo;
+          infoByNickname[memberInfo.nickname] = participantInfo;
 
           // 닉네임으로도 매핑 추가 (참가자 이름만으로도 접근 가능하도록)
           if (participantIdentity !== memberInfo.nickname) {
-            setParticipantInfoMap((prev) => ({
-              ...prev,
-              [memberInfo.nickname]: participantDetail,
-            }));
+            detailMapUpdates[memberInfo.nickname] = participantDetail;
           }
 
           console.log("🔵 [참여자 정보] 변환 완료:", {
@@ -404,6 +411,19 @@ export const StreamingPage: React.FC = () => {
             detail: participantDetail,
           });
         });
+        // 한번에 상태 업데이트
+        setParticipantInfoMap((prev) => ({
+          ...prev,
+          ...detailMapUpdates,
+        }));
+        setParticipantInfoByIdentity((prev) => ({
+          ...prev,
+          ...infoByIdentity,
+        }));
+        setParticipantInfoByNickname((prev) => ({
+          ...prev,
+          ...infoByNickname,
+        }));
       }
     } catch (error) {
       console.error("❌ [참여자 정보] API 호출 오류:", error);
@@ -491,6 +511,9 @@ export const StreamingPage: React.FC = () => {
     const updatedMap: Record<string, ParticipantDetail> = {
       ...participantInfoMap,
     };
+    const updatedInfoByIdentity: Record<string, ParticipantInfoResponse> = {
+      ...participantInfoByIdentity,
+    };
 
     Object.entries(participantInfoMap).forEach(([key, detail]) => {
       // key가 닉네임인 경우, remoteTracks에서 해당 참가자 찾기
@@ -512,6 +535,13 @@ export const StreamingPage: React.FC = () => {
         if (participantIdentity !== key) {
           updatedMap[participantIdentity] = detail;
         }
+
+        // ParticipantInfoResponse도 identity로 연결 시도 (nickname 기반으로 역참조)
+        const nickname = detail.name;
+        const infoForNickname = participantInfoByNickname[nickname];
+        if (infoForNickname && !updatedInfoByIdentity[participantIdentity]) {
+          updatedInfoByIdentity[participantIdentity] = infoForNickname;
+        }
       }
     });
 
@@ -519,7 +549,19 @@ export const StreamingPage: React.FC = () => {
     if (JSON.stringify(updatedMap) !== JSON.stringify(participantInfoMap)) {
       setParticipantInfoMap(updatedMap);
     }
-  }, [remoteTracks, participantInfoMap, user?.role]);
+    if (
+      JSON.stringify(updatedInfoByIdentity) !==
+      JSON.stringify(participantInfoByIdentity)
+    ) {
+      setParticipantInfoByIdentity(updatedInfoByIdentity);
+    }
+  }, [
+    remoteTracks,
+    participantInfoMap,
+    participantInfoByIdentity,
+    participantInfoByNickname,
+    user?.role,
+  ]);
 
   const handleOpenParticipantInfo = useCallback(
     async (identity: string) => {
@@ -947,11 +989,13 @@ export const StreamingPage: React.FC = () => {
                 // 빈 메시지는 필터링
                 // 시간대 변환은 ChatPanel에서 처리
                 const convertedMessages: ChatMessage[] = pastMessages
-                  .filter((msg) => msg.content && msg.content.trim() !== "") // 빈 메시지 필터링
-                  .map((msg) => {
+                  .filter(
+                    (msg: GoodsChatMessage) =>
+                      msg.content && msg.content.trim() !== ""
+                  ) // 빈 메시지 필터링
+                  .map((msg: GoodsChatMessage) => {
                     const isSystemMessage =
-                      msg.messageType === "ENTER" ||
-                      msg.messageType === "LEAVE";
+                      msg.messageType === "ENTER" || msg.messageType === "LEAVE";
                     const msgWithNickname = msg as any;
                     const senderData = msgWithNickname.sender || {};
                     const senderName = isSystemMessage
@@ -1684,18 +1728,46 @@ export const StreamingPage: React.FC = () => {
         data={
           selectedParticipantId && participantInfoResponse
             ? (() => {
-                // selectedParticipantId와 일치하는 참여자 찾기
-                // 닉네임 또는 identity로 매칭 시도
-                const selectedParticipant = participantInfoResponse.find(
-                  (info) =>
-                    info.memberInfo.nickname === selectedParticipantId ||
-                    selectedParticipantId === info.memberInfo.nickname
-                );
+                // 1) identity로 직접 매핑된 참여자 정보 우선
+                let participantInfo: ParticipantInfoResponse | undefined =
+                  participantInfoByIdentity[selectedParticipantId];
 
-                // 만약 정확히 일치하는 참여자가 없으면 첫 번째 참여자 사용
-                const participantInfo =
-                  selectedParticipant || participantInfoResponse[0];
+                // 2) 없으면 remoteTracks에서 해당 identity의 참가자를 찾아
+                //    metadata.nickname 또는 participant.name으로 닉네임을 추론 후 매칭
+                if (!participantInfo) {
+                  const matching = remoteTracks.find(
+                    (t) =>
+                      t.participantIdentity === selectedParticipantId ||
+                      t.participant?.identity === selectedParticipantId ||
+                      t.participant?.name === selectedParticipantId
+                  );
+                  let metaNickname: string | undefined;
+                  try {
+                    const metaRaw = matching?.participant?.metadata;
+                    if (metaRaw) {
+                      const parsed = JSON.parse(metaRaw);
+                      if (parsed && typeof parsed.nickname === "string") {
+                        metaNickname = parsed.nickname;
+                      }
+                    }
+                  } catch {
+                    // ignore JSON parse error
+                  }
+                  const candidateName =
+                    metaNickname ||
+                    matching?.participant?.name ||
+                    selectedParticipantId;
+                  participantInfo =
+                    participantInfoResponse.find(
+                      (info) => info.memberInfo.nickname === candidateName
+                    ) ||
+                    participantInfoResponse.find(
+                      (info) =>
+                        info.memberInfo.nickname === selectedParticipantId
+                    );
+                }
 
+                // 3) 최종적으로도 못 찾으면 undefined 반환 (잘못된 정보 표시 방지)
                 return participantInfo
                   ? {
                       participantInfo,

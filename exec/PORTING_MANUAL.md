@@ -29,8 +29,7 @@
 ### 시연 시나리오
 1. 앱
  - 메인 화면(예약 하기 선택)
- ![rn_image_picker_lib_temp_276b324b-dbba-4cdc-9faa-9af8354ee1d6](/uploads/30db749ac29df906d5c2021b12f16628/rn_image_picker_lib_temp_276b324b-dbba-4cdc-9faa-9af8354ee1d6.jpg)
- - 상담 종류 선택 화면(그룹 상담 선택)
+![rn_image_picker_lib_temp_276b324b-dbba-4cdc-9faa-9af8354ee1d6](/uploads/d46b1e31764b91dddcbc94bdc6a55568/rn_image_picker_lib_temp_276b324b-dbba-4cdc-9faa-9af8354ee1d6.jpg) - 상담 종류 선택 화면(그룹 상담 선택)
  - 클래스 리스트 화면(예약할 클래스 선택)
  - 클래스 상세 정보 화면(예약 하기 선택)
  - 현재 예약 화면(기능 선택 -> 채팅 아이콘 선택)

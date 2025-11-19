@@ -217,6 +217,7 @@ export const StreamingPage: React.FC = () => {
     participantName;
   const localParticipantIdentity =
     room?.localParticipant?.identity || "__local__";
+
   const [roomName] = useState(() => {
     const consultationId =
       location.state?.consultationId || location.state?.reservationId;
@@ -1185,7 +1186,7 @@ export const StreamingPage: React.FC = () => {
                                 message.sender?.userId
                               ) || "Unknown";
 
-                          const resolvedSenderImage = isSystemMessage
+                          let resolvedSenderImage = isSystemMessage
                             ? undefined
                             : pickNonEmptyString(
                                 senderData.profileImageUrl,
@@ -1249,6 +1250,8 @@ export const StreamingPage: React.FC = () => {
 
                           return sorted;
                         });
+
+                          
                       },
                       (error) => {
                         console.error("❌ [채팅] STOMP 채팅 연결 오류:", error);

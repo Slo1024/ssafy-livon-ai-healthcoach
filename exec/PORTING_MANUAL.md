@@ -30,22 +30,34 @@
 1. 앱
  - 메인 화면(예약 하기 선택)
 <img src="/uploads/d46b1e31764b91dddcbc94bdc6a55568/rn_image_picker_lib_temp_276b324b-dbba-4cdc-9faa-9af8354ee1d6.jpg" width="200" height="350" />
+
 ---
+
  - 상담 종류 선택 화면(그룹 상담 선택)
 <img src="/uploads/5e444132f9ae5620abff4115ff0f0094/rn_image_picker_lib_temp_be9a1e4d-1af1-4ff5-905b-1edbf5f6acaa.jpg" width="200" height="350" />
+
 ---
+
  - 클래스 상세 정보 화면(예약 하기 선택)
 <img src="/uploads/a442c414412af1fcdae1315e91d9e20b/rn_image_picker_lib_temp_cd4ffb6a-36a5-4b27-b5e5-36821cb76af4.jpg" width="200" height="350" />
+
 ---
+
  - 현재 예약 화면(기능 선택 -> 채팅 아이콘 선택)
 <img src="/uploads/4aea41ee5932ff9255a6aea5c35aff99/rn_image_picker_lib_temp_95d10a44-9a49-42a9-9905-79583888ff19.jpg" width="200" height="350" />
+
 ---
+
  - 스트리밍 화면
 <img src="/uploads/82453816278fa73cab3f4e8173581177/rn_image_picker_lib_temp_f79ae315-86a1-4cfb-82fd-669d108ca52a.jpg" width="200" height="350" />
+
 ---
+
  - 채팅창
 <img src="/uploads/d3e8a911668c9dfb6ee59f8e1c3214bf/rn_image_picker_lib_temp_6bf586dd-9e3d-4fab-b80d-b7771d6b24f8.jpg" width="200" height="350" />
+
 ---
+
 2. 웹
  - 회원 별 정보 상세보기
 <img src="/uploads/71234dc729abd119dc38f57cc2fe6bb0/스크린샷_2025-11-18_222442__1_.png" width="200" height="350" />

@@ -307,7 +307,7 @@ export class StompChatClient {
                       convertedType = "LEAVE";
                     }
 
-                    // sender 정보 구성 (sender 객체가 있으면 사용, 없으면 senderId만 사용)
+                    // sender 정보 구성 (sender 객체가 있으면 사용, 없으면 senderId/최상위 필드 사용)
                     let senderInfo = undefined;
                     if (rawMessage.sender) {
                       senderInfo = {
@@ -319,7 +319,23 @@ export class StompChatClient {
                           rawMessage.sender.nickname || rawMessage.sender.name,
                         userImage:
                           rawMessage.sender.userImage ||
-                          rawMessage.sender.profileImage,
+                          rawMessage.sender.profileImage ||
+                          rawMessage.senderImageUrl || // 최상위 및 대체 키 보정
+                          rawMessage.sender.profileImageUrl ||
+                          rawMessage.senderImageUrl ||
+                          rawMessage.profileImageUrl || // 최상위 보정
+                          rawMessage.senderImageUrl ||
+                          rawMessage.imageUrl ||
+                          rawMessage.memberImage,
+                        profileImageUrl:
+                          rawMessage.sender.profileImageUrl ||
+                          rawMessage.sender.userImage ||
+                          rawMessage.sender.profileImage ||
+                          rawMessage.senderImageUrl ||
+                          rawMessage.profileImageUrl || // 최상위 보정
+                          rawMessage.senderImageUrl ||
+                          rawMessage.imageUrl ||
+                          rawMessage.memberImage,
                       };
                     } else if (rawMessage.senderId) {
                       // sender 객체가 없고 senderId만 있는 경우
@@ -330,8 +346,20 @@ export class StompChatClient {
                           rawMessage.senderName ||
                           undefined,
                         userImage:
+                          rawMessage.senderImageUrl || // 최상위 보정
+                          rawMessage.profileImageUrl || // 최상위 보정
                           rawMessage.senderImage ||
                           rawMessage.senderProfileImage ||
+                          rawMessage.imageUrl ||
+                          rawMessage.memberImage ||
+                          undefined,
+                        profileImageUrl:
+                          rawMessage.senderImageUrl ||
+                          rawMessage.profileImageUrl ||
+                          rawMessage.senderProfileImage ||
+                          rawMessage.senderImage ||
+                          rawMessage.imageUrl ||
+                          rawMessage.memberImage ||
                           undefined,
                       };
                     }

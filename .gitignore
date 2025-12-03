@@ -2,4 +2,6 @@
 .idea
 
 ### VS Code ###
-.vscode/
+.vscode/LivOnBack/src/main/resources/keys/
+LivOnFront/mobile/app/release/
+*.apk
